@@ -1,9 +1,10 @@
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, reopened, synchronize, closed]
 
 jobs:
   move-to-review:
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.PROJECT_AUTOMATION_TOKEN }}
@@ -20,4 +21,21 @@ jobs:
               --url https://github.com/robertodelfranco/ft_transcendence/issues/$issue_num \
               --field "Status" \
               --value "In Review"
+          fi
+
+  move-to-failed:
+    if: github.event.action == 'closed' && github.event.pull_request.merged == false
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PROJECT_AUTOMATION_TOKEN }}
+      PR_BODY: ${{ github.event.pull_request.body }}
+    steps:
+      - run: |
+          issue_num=$(echo "$PR_BODY" | grep -oiP '(close[sd]?|fix(es|ed)?|resolve[sd]?)\s+#\K\d+' | head -1)
+          if [ -n "$issue_num" ]; then
+            gh project item-edit 3 \
+              --owner robertodelfranco \
+              --url https://github.com/robertodelfranco/ft_transcendence/issues/$issue_num \
+              --field "Status" \
+              --value "Failed"
           fi
