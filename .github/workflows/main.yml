@@ -1,15 +1,21 @@
 on:
   pull_request:
-  
+    types: [opened, reopened]
+
 jobs:
-  move-card:
+  move-to-review:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.PROJECT_AUTOMATION_TOKEN }}
+      PR_BODY: ${{ github.event.pull_request.body }}
     steps:
       - run: |
-          gh project item-edit 3 \
-            --owner ${{ github.repository_owner }} \
-            --url ${{ github.event.pull_request.html_url }} \
-            --field "Status" \
-            --value "In Review"
+          issue_num=$(echo "$PR_BODY" | grep -oiP '(close[sd]?|fix(es|ed)?|resolve[sd]?)\s+#\K\d+' | head -1)
+
+          if [ -n "$issue_num" ]; then
+            gh project item-edit 3 \
+              --owner robertodelfranco \
+              --url https://github.com/robertodelfranco/ft_transcendence/issues/$issue_num \
+              --field "Status" \
+              --value "In Review"
+          fi
