@@ -1,0 +1,8 @@
+on:
+  pull_request:
+  
+jobs:
+  move-card:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "disparou"
