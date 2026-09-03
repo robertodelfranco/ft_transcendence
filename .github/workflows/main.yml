@@ -4,5 +4,12 @@ on:
 jobs:
   move-card:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PROJECT_AUTOMATION_TOKEN }}
     steps:
-      - run: echo "disparou"
+      - run: |
+          gh project item-edit 3 \
+            --owner robertodelfranco \
+            --url ${{ github.event.pull_request.html_url }} \
+            --field "Status" \
+            --value "In Review"
