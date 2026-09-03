@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: db_transcendence
+    env_file: .env
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - transcendence
+
+  backend:
+    build: ./backend
+    container_name: backend_transcendence
+    env_file: .env
+    depends_on:
+      - db
+    networks:
+      - transcendence
+
+  frontend:
+    build: ./frontend
+    container_name: frontend_transcendence
+    networks:
+      - transcendence
+
+  proxy:
+    build: ./proxy
+    container_name: proxy_transcendence
+    ports:
+      - "${PROXY_PORT:-8080}:80"
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - transcendence
+
+volumes:
+  db_data:
+
+networks:
+  transcendence:
+    driver: bridge

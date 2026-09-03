@@ -1,0 +1,13 @@
+-- Scripts aqui rodam automaticamente na PRIMEIRA vez que o container do
+-- Postgres sobe (volume "db_data" vazio). Se o volume já existe, eles NÃO
+-- rodam de novo!
+--
+-- Este arquivo é o que fica versionado no git e compartilhado entre a
+-- equipe: todo mundo que der `docker compose up` cria o mesmo schema.
+--
+-- Exemplo:
+-- CREATE TABLE users (
+--     id SERIAL PRIMARY KEY,
+--     username VARCHAR(255) UNIQUE NOT NULL,
+--     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- );

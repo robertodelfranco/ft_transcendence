@@ -1,0 +1,9 @@
+# Environment
+.env
+
+# Build output
+dist/
+build/
+
+# OS / editors
+.DS_Store
