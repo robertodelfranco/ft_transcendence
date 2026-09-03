@@ -10,6 +10,7 @@ jobs:
       PR_BODY: ${{ github.event.pull_request.body }}
     steps:
       - run: gh auth status
+      
       - run: |
           issue_num=$(echo "$PR_BODY" | grep -oiP '(close[sd]?|fix(es|ed)?|resolve[sd]?)\s+#\K\d+' | head -1)
 
