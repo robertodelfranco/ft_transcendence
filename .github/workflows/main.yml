@@ -9,7 +9,7 @@ jobs:
     steps:
       - run: |
           gh project item-edit 3 \
-            --owner robertodelfranco \
+            --owner ${{ github.repository_owner }} \
             --url ${{ github.event.pull_request.html_url }} \
             --field "Status" \
             --value "In Review"
