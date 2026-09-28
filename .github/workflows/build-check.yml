@@ -1,0 +1,58 @@
+name: Build check
+
+concurrency:
+  group: build-check-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs: 
+  compose-up:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env for CI
+        run: |
+          cat > .env <<EOF
+          POSTGRES_USER=ci
+          POSTGRES_PASSWORD=ci
+          POSTGRES_DB=transcendence
+          POSTGRES_HOST=db_transcendence
+          POSTGRES_PORT=5432
+          PROXY_PORT=8080
+          EOF
+        
+      - name: Build and start stack
+        run: docker compose up -d --build
+      
+      - name: Wait for proxy -> frontend and proxy -> backend
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/ > /dev/null \
+              && curl -fsS http://localhost:8080/api/health > /dev/null; then
+              echo "stack is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "timeout waiting for stack"
+          exit 1
+        
+      - name: Check database
+        run: docker compose exec -T db pg_isready -U ci -d transcendence
+
+      - name: No container exited
+        run: test -z "$(docker compose ps -a -q --status exited)"
+      
+      - name: Show containers
+        if: always()
+        run: docker compose ps -a
+      
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs
