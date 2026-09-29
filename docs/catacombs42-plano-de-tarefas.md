@@ -1,8 +1,10 @@
 # Catacombs 42 — plano de tarefas (27/09 → 07/11/2026)
 
-> Guia de execução do projeto. A **parte 1** lista tudo que precisa ser feito, organizado por tarefa e por semana, sem dono. A **parte 2** recomenda uma divisão entre as 5 pessoas. O time usa a parte 1 para decidir a alocação e depois como checklist até a defesa.
+> Guia de execução do projeto. A **parte 1** lista tudo que precisa ser feito, organizado por tarefa e por semana, sem dono. A **parte 2** registra quem faz o quê entre as 5 pessoas. O time usa a parte 1 como checklist até a defesa.
 >
 > Escopo fechado em 25/09/2026. Como o sistema funciona (interfaces, protocolo, contratos, constantes do Cub3D, schema, decisões técnicas) está em [catacombs42-web-arquitetura.md](catacombs42-web-arquitetura.md), citado aqui como "arq. §N". A proposta ampliada que deu origem a este plano, com outros módulos possíveis, está em [catacombs42-ideias-e-modulos.md](catacombs42-ideias-e-modulos.md). Vocabulário: [CONTEXT.md](../CONTEXT.md).
+>
+> **Revisão de 28/09/2026:** o *AI opponent* saiu do escopo e o *Monitoring system* (Prometheus + Grafana) entrou no lugar, com os mesmos 2 pontos. O PvP 1v1 continua (ver §1.1). F2.7, F2.13 e F3.6 passaram para o Caminho 1. A alocação dos 5 caminhos foi fechada no mesmo dia (§9).
 
 ## Sumário
 
@@ -18,8 +20,8 @@
 
 **Parte 2 — Quem faz o quê**
 
-9. [Divisão recomendada entre 5 pessoas](#9-divisão-recomendada-entre-5-pessoas)
-10. [Docs a atualizar depois da reunião](#10-docs-a-atualizar-depois-da-reunião)
+9. [Divisão entre as 5 pessoas](#9-divisão-entre-as-5-pessoas)
+10. [Docs atualizados depois da reunião](#10-docs-atualizados-depois-da-reunião)
 
 ---
 
@@ -42,7 +44,7 @@ O jogo é o Catacombs 42 em 3D de verdade (Three.js), com a matemática e as reg
 | 9 | Advanced 3D graphics (Three.js) | Major | 2 | F3 |
 | 10 | **Game customization** | Minor | 1 | F1, F3, F4, F5, F7 |
 | 11 | **Game statistics & match history** | Minor | 1 | F5, F7 |
-| 12 | **AI opponent** | Major | 2 | F1, F2 |
+| 12 | **Monitoring system (Prometheus + Grafana)** | Major | 2 | F8, F2 |
 | 13 | **Multiple languages (3)** | Minor | 1 | F7 |
 | | **Total** | | **21** | exigido: 14 |
 
@@ -52,9 +54,10 @@ A margem de 7 pontos é o seguro. Como "módulo pela metade vale zero", a seçã
 
 Lendo o texto do subject (capítulo IV), cada um traz mais do que o nome sugere:
 
-- **AI opponent**: "must be challenging and able to **win** occasionally", "simulate human-like behavior", "**must be able to use** the customization options", e alguém do time explica a implementação. Para o bot poder *ganhar*, precisa existir um modo em que ele é adversário. Por isso o **PvP 1v1 entra no escopo desde já** (ele não pontua sozinho, mas sustenta o AI opponent, o "against each other" do módulo 1 e o "1v1 games" do módulo de estatísticas).
+- **Monitoring system**: "Set up Prometheus to collect metrics", "Configure **exporters** and integrations", "Create **custom** Grafana dashboards", "Set up **alerting rules**", "**Secure access** to Grafana". São cinco coisas; na avaliação isso vira: métricas do nosso backend e do jogo, pelo menos dois exporters (host/containers e Postgres), dashboards nossos provisionados por arquivo, um alerta disparado ao vivo e Grafana só por HTTPS com login.
+- **PvP 1v1 continua no escopo** mesmo sem o bot. Ele não pontua sozinho, mas sustenta o "users can play **against each other**" do módulo 1 (que está nos 14 não cortáveis) e o "1v1 games" e "opponents" do módulo de estatísticas, além do ranking Elo.
 - **Game statistics & match history**: wins/losses, **ranking**, **level**, histórico com data, resultado e oponentes, **achievements e progressão**, **leaderboard**. São seis coisas; todas precisam aparecer na tela.
-- **Game customization**: power-ups/ataques/habilidades (pickups de mana e armadura), **mapas ou temas diferentes**, configurações ajustáveis e **defaults**. O bot precisa respeitar as mesmas opções.
+- **Game customization**: power-ups/ataques/habilidades (pickups de mana e armadura), **mapas ou temas diferentes**, configurações ajustáveis e **defaults**.
 - **i18n**: sistema de i18n, **3 traduções completas**, seletor de idioma na UI, **todo texto visível traduzível**. Isso inclui Privacy Policy, Terms of Service, mensagens de erro e a HUD do jogo. Fazer desde o primeiro componente custa pouco; fazer no fim custa uma semana.
 
 ### 1.2 Decisões de jogo que continuam valendo (de 18/09)
@@ -72,7 +75,7 @@ O porquê de cada uma está na arq. §4. Resumo:
 
 ### 1.3 Fora do escopo
 
-Ficam documentados para ninguém começar sem combinar: segundo jogo / arena com nome próprio (*Add another game*), modo retrô com raycaster e WASM, spectator mode como módulo, chat, notificações, design system como módulo, Prometheus/Grafana, torneio, gamificação. Um jogador morto no co-op pode seguir a câmera de um companheiro vivo; isso é detalhe de UX e não é reivindicado como *Spectator mode*.
+Ficam documentados para ninguém começar sem combinar: segundo jogo / arena com nome próprio (*Add another game*), modo retrô com raycaster e WASM, spectator mode como módulo, chat, notificações, design system como módulo, AI opponent (saiu em 28/09: o critério "vence às vezes e erra como humano" exige calibração com risco alto para o prazo), torneio, gamificação. Um jogador morto no co-op pode seguir a câmera de um companheiro vivo; isso é detalhe de UX e não é reivindicado como *Spectator mode*.
 
 ---
 
@@ -109,7 +112,7 @@ Seis semanas, domingo a sábado. Cinco de construção e uma de acabamento. Um *
 | **S1** | 27/09 – 03/10 | Fundação e contratos | **C1 · 02/10**: login pelo Nginx com cadeado; testes do parser verdes; masmorra em 3D no `dev.html`; casca React com seletor de 3 idiomas |
 | **S2** | 04/10 – 10/10 | Jogo de ponta a ponta com 1 jogador | **C2 · 09/10**: um player cria Room no lobby e anda em 3D com movimento decidido pelo servidor, via `wss://` |
 | **S3** | 11/10 – 17/10 | Multiplayer, prediction, PvP | **C3 · 16/10**: duas máquinas jogam co-op até o boss morrer com prediction ligada; Match gravado; PvP 1v1 jogável |
-| **S4** | 18/10 – 24/10 | Módulos novos | **C4 · 23/10**: reconexão funciona; bot joga PvP e às vezes ganha; opções mudam o jogo; estatísticas, level e conquistas reais; login pela 42 |
+| **S4** | 18/10 – 24/10 | Módulos novos | **C4 · 23/10**: reconexão funciona; Grafana mostra os dashboards do jogo e do backend; opções mudam o jogo; estatísticas, level e conquistas reais; login pela 42 |
 | **S5** | 25/10 – 31/10 | Completar e polir | **C5 · 30/10**: todo módulo da seção 7 demonstrável de ponta a ponta, nos 3 idiomas, com console limpo. **Feature freeze no sábado, 31/10** |
 | **S6** | 01/11 – 07/11 | Bugs, README, ensaio | **Defesa · 07/11** |
 
@@ -131,7 +134,6 @@ flowchart LR
     R --> N[F2.6 N players]
     N --> PR[F2.7 Prediction]
     N --> PV[F1.8 PvP]
-    PV --> B[F1.10 Bot]
     N --> MR[F5.3 record_match_result]
     MR --> S[F5.5 Estatísticas]
     PR --> RC[F2.10 Reconexão]
@@ -168,7 +170,7 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 
 ### F1 — Simulation (servidor, Python puro)
 
-**Olhar:** arq. §3 (três bugs do C para não portar), §5 (estado da Room e regras de N jogadores), §6 (interface, laço, constantes, opções, bot), §15 (mapa de migração); Cub3D `parser_bonus/*`, `movement_bonus.c`, `move_utils_bonus.c`, `enemy_move_bonus.c`, `enemy_manage_bonus.c`, `move_boss_bonus.c`, `attack_bonus/create_*` e `update_*`, `door_bonus.c`, `handle_utils_bonus.c`; mapas em `maps/valid` e `maps/invalid`.
+**Olhar:** arq. §3 (três bugs do C para não portar), §5 (estado da Room e regras de N jogadores), §6 (interface, laço, constantes, opções), §15 (mapa de migração); Cub3D `parser_bonus/*`, `movement_bonus.c`, `move_utils_bonus.c`, `enemy_move_bonus.c`, `enemy_manage_bonus.c`, `move_boss_bonus.c`, `attack_bonus/create_*` e `update_*`, `door_bonus.c`, `handle_utils_bonus.c`; mapas em `maps/valid` e `maps/invalid`.
 
 | ID | Tarefa | d | Dep. | Sem. | Pronto quando |
 |---|---|---|---|---|---|
@@ -180,11 +182,9 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | F1.6 | `Ruleset` (interface) + `CoopRuleset`; `game_over` emitido uma vez; 5 players; teste de performance | 1 | F1.5 | S2 | 1000 ticks com 5 players + 20 inimigos + boss + 10 projéteis em < 200 ms |
 | F1.7 | CLI que roda N ticks e grava `snapshot.json` para o render | 0,5 | F1.6 | S2 | O JSON abre no `dev.html` de F3 sem adaptação |
 | F1.8 | `PvpRuleset`: 1v1, fireball fere player, respawn no spawn livre mais longe do inimigo, 5 eliminações ou 3 min, inimigos desligados | 2 | F1.6 | S3 | Partida PvP termina pelas duas condições nos testes |
-| F1.9 | `RoomOptions` aplicadas na Simulation com defaults: `map`, `theme`, `start_hp`, `enemy_density`, pickups ligados/desligados, `friendly_fire` (co-op), limite de eliminações e de tempo (PvP), `bot_difficulty` | 1,5 | F1.8 | S3 | Sem opções, o jogo roda com os defaults; cada opção tem teste |
-| F1.10 | `BotPolicy.decide(room, player_id)`: máquina de estados (procurar, perseguir, atacar, buscar poção/mana/armadura), atraso de reação 150–300 ms, ruído de mira, 3 níveis de dificuldade, respeita as opções da Room; escreve no Input do próprio Player | 4 | F1.9 | S4 | Bot vence partidas PvP contra humano em alguns casos, e nunca de forma perfeita |
-| F1.11 | Calibração do bot com partidas registradas (taxa de vitória por nível) e documento de uma página explicando a política | 1 | F1.10 | S5 | Página em `docs/` pronta para a defesa |
+| F1.9 | `RoomOptions` aplicadas na Simulation com defaults: `map`, `theme`, `start_hp`, `enemy_density`, pickups ligados/desligados, `friendly_fire` (co-op), limite de eliminações e de tempo (PvP) | 1,5 | F1.8 | S3 | Sem opções, o jogo roda com os defaults; cada opção tem teste |
 
-**Subtotal F1: 19,5 d**
+**Subtotal F1: 14,5 d**
 
 ### F2 — Netcode e Room runtime (servidor e cliente)
 
@@ -198,15 +198,14 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | F2.4 | `WS /ws/game/{room_id}`: `join` com token em ≤ 5 s, `welcome`, laço de leitura, códigos `44xx` | 1,5 | F2.3, F6.4 | S2 | Testes de `join` sem token, válido e malformado |
 | F2.5 | Cliente: socket, `mountGame`, `ViewState` montado do último Snapshot (sem prediction ainda), envio de Input e Action | 1,5 | F2.4 | S2 | C2: 1 player anda com movimento decidido pelo servidor |
 | F2.6 | N players; limite de 60 Inputs/s; `dt` do servidor; `Seq` monotônico; fila por conexão com descarte (cliente lento não trava a Room) | 1 | F2.5 | S3 | 5 abas numa Room sem travar |
-| F2.7 | Prediction + Reconciliation; `applyInput.ts` com a mesma matemática de `sim.py`; teste que roda a mesma sequência nos dois lados e compara | 2,5 | F2.6 | S3 | `console.assert` de reconciliação não dispara em 5 min |
+| F2.7 | Prediction + Reconciliation; `applyInput.ts` com a mesma matemática de `sim.py`; teste que roda a mesma sequência nos dois lados e compara. O `applyInput.ts` e o teste cruzado começam logo depois de F1.3 (S2); a Reconciliation liga no cliente quando F2.6 chega | 2,5 | F1.3, F2.6 | S2–S3 | `console.assert` de reconciliação não dispara em 5 min |
 | F2.8 | Interpolation dos outros a `now − 100 ms` | 1 | F2.6 | S3 | Outro player desliza sem saltos |
 | F2.9 | Fim de partida: chamar `record_match_result` uma vez, remover a Room após 60 s, `4503` no desligamento | 1 | F5.3 | S3 | Teste: `game_over` → uma chamada, mesmo com ticks depois |
 | F2.10 | Grace period de 30 s e Reconnection com Snapshot completo; no PvP, grace expirada conta derrota | 2 | F2.7 | S4 | Fechar a aba e voltar em 20 s mantém HP e chaves |
-| F2.11 | Bot como Player sem socket dentro da Room (entra pelo lobby com "adicionar bot") | 0,5 | F1.10 | S4 | Room PvP com 1 humano + 1 bot inicia e termina |
 | F2.12 | `ping/pong` com RTT na HUD; teste de aceite com throttling (100 ms + 2 % de perda, 5 min) anotado no PR | 1 | F2.8 | S5 | Resultado do teste no PR |
 | F2.13 | Teste de carga: 4 Rooms × 5 players, p99 do tick < 5 ms | 0,5 | F2.6 | S5 | Números no PR |
 
-**Subtotal F2: 17,5 d**
+**Subtotal F2: 17 d**
 
 ### F3 — Render 3D (cliente, Three.js)
 
@@ -219,7 +218,7 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | F3.3 | Billboards animados: inimigos (10 quadros), boss, itens, fireball, bullet, outros players | 2,5 | F3.2 | S2 | Todas as entidades do Snapshot aparecem |
 | F3.4 | Porta como mesh animado; mão com bola de fogo como overlay fixo na câmera | 1,5 | F3.2 | S2 | Porta abre com animação quando o Snapshot muda |
 | F3.5 | Técnicas "advanced": tochas como luzes pontuais com sombra, névoa, partículas (rastro e impacto da fireball), bloom leve, instancing | 3 | F3.3 | S3 | Lista das técnicas pronta para a defesa |
-| F3.6 | Minimapa (canvas 2D sobreposto) | 1 | F3.2 | S3 | Mostra células, players e cone de visão |
+| F3.6 | Minimapa (canvas 2D sobreposto) | 1 | F3.2 | S4 | Mostra células, players e cone de visão |
 | F3.7 | Efeitos de dano, morte e respawn; eventos de kill feed repassados à HUD | 1 | F3.5 | S4 | Kill feed aparece no PvP |
 | F3.8 | **Temas** (Game customization): no mínimo 2 conjuntos de texturas e luz selecionáveis por `options.theme` (ex.: masmorra e esgoto, a partir de `enemy_sewer.cub`) | 1,5 | F3.5, F1.9 | S4 | Trocar o tema no lobby muda o visual da partida |
 | F3.9 | Áudio (passos, tiro, acerto, música) com Web Audio, iniciado só após interação do usuário (política de autoplay não pode gerar warning) | 1 | F3.3 | S4 | Som funciona, console limpo |
@@ -239,7 +238,7 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | F4.4 | Dois mapas PvP 1v1 pequenos e simétricos | 1 | F1.8 | S3 | Carregam e são jogáveis |
 | F4.5 | Catálogo de opções de customização com defaults e limites (tabela que F1.9, F5.2 e F7.7 seguem) | 0,5 | — | S3 | Uma tabela em `docs/contracts/` |
 | F4.6 | Lista de conquistas (≥ 5) e fórmula de XP/level e de ranking | 0,5 | — | S3 | F5.5 e F5.7 implementam sem inventar regra |
-| F4.7 | Passada de balanceamento: co-op, PvP e bot | 1 | F1.10 | S5 | Números finais no `rules.*` |
+| F4.7 | Passada de balanceamento: co-op e PvP | 1 | F1.9 | S5 | Números finais no `rules.*` |
 
 **Subtotal F4: 5 d**
 
@@ -250,16 +249,15 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | ID | Tarefa | d | Dep. | Sem. | Pronto quando |
 |---|---|---|---|---|---|
 | F5.1 | Alembic configurado (o `entrypoint` roda `alembic upgrade head`); modelos `matches` e `match_players` | 1,5 | F0.3 | S1 | Migração sobe do zero no compose |
-| F5.2 | Lobby: `POST /api/matches` (mode, map, max_players, options validadas com defaults) → `room_id`; listar Rooms abertas (de `RoomManager.info`, nunca do banco); entrar, sair, pronto, iniciar; adicionar bot; lobby atualizado em tempo real via `ConnectionManager` | 3 | F2.3, F6.4 | S2 | Dois usuários veem o lobby mudar sem recarregar; corrida da última vaga resolvida no `join` |
+| F5.2 | Lobby: `POST /api/matches` (mode, map, max_players, options validadas com defaults) → `room_id`; listar Rooms abertas (de `RoomManager.info`, nunca do banco); entrar, sair, pronto, iniciar; lobby atualizado em tempo real via `ConnectionManager` | 3 | F2.3, F6.4 | S2 | Dois usuários veem o lobby mudar sem recarregar; corrida da última vaga resolvida no `join` |
 | F5.3 | `record_match_result(match_id, MatchResult)` idempotente; `startup` marca `running` → `aborted` | 1 | F5.1 | S3 | Chamada dupla grava uma vez |
 | F5.4 | `player_stats` agregado: vitórias, derrotas, eliminações, mortes, tempo jogado, por modo | 1 | F5.3 | S4 | Bate com os `match_players` |
 | F5.5 | Ranking (Elo no PvP) e level por XP (fórmula de F4.6) | 1 | F5.4 | S4 | Ranking muda após uma partida PvP |
 | F5.6 | Histórico paginado: data, modo, mapa, resultado, oponentes/companheiros | 1 | F5.3 | S4 | `GET /api/users/{id}/matches` |
 | F5.7 | Conquistas (≥ 5) em `user_achievements`, desbloqueadas no `record_match_result` e anunciadas ao cliente | 1,5 | F5.3, F4.6 | S4 | Desbloquear uma conquista numa partida real |
 | F5.8 | Leaderboard | 0,5 | F5.5 | S4 | `GET /api/leaderboard` |
-| F5.9 | Partidas contra bot entram nas estatísticas com o bot como oponente identificado | 0,5 | F2.11 | S4 | Histórico mostra "Bot (difícil)" como oponente |
 
-**Subtotal F5: 11 d**
+**Subtotal F5: 10,5 d**
 
 ### F6 — Identidade e usuários (backend compartilhado)
 
@@ -290,7 +288,7 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | F7.4 | Telas de login e cadastro com a mesma validação do backend; botão "entrar com a 42" | 1 | F7.1 | S1 | C1 |
 | F7.5 | Perfil próprio e de terceiros, edição, upload de avatar, lista de amigos com status online | 2 | F6.6, F6.7 | S3 | Critérios do *Standard user management* visíveis |
 | F7.6 | Rota `/play/:roomId` que monta `mountGame`; HUD em React (HP, mana, armadura, chaves, ping, players, placar e kill feed no PvP) via `onHud` | 2 | F2.5, F4.3 | S2–S3 | HUD reage ao Snapshot |
-| F7.7 | Lobby: criar Room com opções de customização (e defaults visíveis), listar Rooms, entrar, pronto, adicionar bot com dificuldade | 2 | F5.2, F4.5 | S2–S4 | Criar partida sem mexer em nada usa os defaults |
+| F7.7 | Lobby: criar Room com opções de customização (e defaults visíveis), listar Rooms, entrar, pronto | 2 | F5.2, F4.5 | S2–S4 | Criar partida sem mexer em nada usa os defaults |
 | F7.8 | Tela de resultado; histórico; estatísticas, ranking e level com barra de progresso; conquistas; leaderboard | 2,5 | F5.4–F5.8 | S4 | Os seis itens do módulo de estatísticas aparecem |
 | F7.9 | Responsivo, acessibilidade básica, passada de console limpo em todas as telas | 1 | — | S5 | Console vazio navegando o site inteiro |
 
@@ -298,7 +296,7 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 
 ### F8 — Infra e operação
 
-**Olhar:** arq. §12 (Nginx, compose, CI, demo); `docker-compose.yml`, `proxy/nginx.conf` e `.github/workflows/` atuais; capítulo VI do subject (README).
+**Olhar:** arq. §12 (Nginx, compose, CI, demo); `docker-compose.yml`, `proxy/nginx.conf` e `.github/workflows/` atuais; capítulo VI do subject (README). Para o monitoring: doc do Prometheus (*Configuration*, *Alerting rules*, *Metric types*), doc do `prometheus_client` para Python, doc do Grafana (*Provisioning*, *Configure security*), READMEs do `node-exporter`, cAdvisor e `postgres-exporter`.
 
 | ID | Tarefa | d | Dep. | Sem. | Pronto quando |
 |---|---|---|---|---|---|
@@ -308,8 +306,13 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | F8.4 | Build de produção do frontend servindo assets do jogo | 0,5 | F0.4 | S2 | Sem Vite dev server no compose final |
 | F8.5 | Esqueleto do README com todas as seções do capítulo VI (inclusive diagrama do schema) | 1 | — | S3 | Cada pessoa sabe onde escrever a própria parte |
 | F8.6 | Setup da demo: 2–3 máquinas na mesma rede com a CA do `mkcert` confiável | 0,5 | F8.1 | S5 | Ensaio de C5 feito nessas máquinas |
+| F8.7 | Instrumentação: `GET /metrics` com `prometheus_client`, só na rede interna do compose; `http_requests_total{route,status}`, `auth_login_total{result}`, `ws_connections{channel}`, `game_rooms_active`, `game_tick_seconds` (histograma) | 1 | F2.3, F6.5 | S3 | `curl backend:8000/metrics` de dentro da rede mostra as cinco séries; de fora do compose não responde |
+| F8.8 | Prometheus no compose com `scrape_configs` do backend e dos exporters (`node-exporter` ou cAdvisor, `postgres-exporter`); retenção definida; sem porta publicada | 1 | F8.7 | S3 | Todos os *targets* `UP` na página de status do Prometheus |
+| F8.9 | Grafana com datasource e dashboards provisionados por arquivo versionado: jogo (Rooms ativas, p95/p99 do tick, conexões WS), backend (req/s, 5xx, logins falhos), host/containers e Postgres | 1,5 | F8.8 | S4 | `docker compose down -v && up` e os dashboards voltam sozinhos |
+| F8.10 | Regras de alerta (backend fora do ar, p99 do tick acima de 33 ms, taxa de 5xx, pico de logins falhos) com roteiro para disparar um ao vivo | 1 | F8.8 | S5 | Derrubar o backend e ver o alerta ir para *firing* |
+| F8.11 | Acesso seguro: Grafana só pelo Nginx em `/grafana/` com TLS, admin vindo do `.env`, anônimo e signup desligados; Prometheus e `/metrics` sem acesso externo | 0,5 | F8.9, F8.1 | S4 | Sem login não entra; porta do Prometheus não responde de fora |
 
-**Subtotal F8: 5,5 d**
+**Subtotal F8: 10,5 d**
 
 ### F9 — Documentação e defesa (todos)
 
@@ -336,29 +339,30 @@ O que precisa estar **pronto** até cada checkpoint (IDs da seção 5). Tarefa q
 - **C1 · sex 02/10:** login pelo Nginx com cadeado; parser e movimento verdes; masmorra 3D no `dev.html`; casca React em 3 idiomas.
 
 ### S2 · 04/10 – 10/10 · Um jogador de ponta a ponta
-- **Jogo:** F1.4, F1.5, F1.6, F1.7; F2.1–F2.5; F3.3, F3.4; F4.3.
+- **Jogo:** F1.4, F1.5, F1.6, F1.7; F2.1–F2.5; início de F2.7 (`applyInput.ts` + teste cruzado); F3.3, F3.4; F4.3.
 - **Backend:** F5.2; F6.3, F6.5.
 - **Web:** F7.3; início de F7.6 e F7.7.
 - **Infra:** F8.3, F8.4.
 - **C2 · sex 09/10:** um player entra pelo lobby, cria a Room e anda em 3D com movimento decidido pelo servidor, via `wss://`.
 
 ### S3 · 11/10 – 17/10 · Multiplayer, prediction, PvP
-- **Jogo:** F1.8, F1.9; F2.6–F2.9; F3.5, F3.6; F4.4, F4.5, F4.6.
+- **Jogo:** F1.8, F1.9; F2.6–F2.9; F3.5; F4.4, F4.5, F4.6.
 - **Backend:** F5.3; F6.6, F6.7.
 - **Web:** F7.5, F7.6.
-- **Infra:** F8.5.
+- **Infra:** F8.5; F8.7, F8.8.
 - **C3 · sex 16/10:** duas máquinas jogam co-op até o boss morrer com prediction ligada; o Match aparece no banco; PvP 1v1 jogável entre duas pessoas.
 
 ### S4 · 18/10 – 24/10 · Módulos novos
-- **Jogo:** F1.10; F2.10, F2.11; F3.7, F3.8, F3.9.
-- **Backend:** F5.4–F5.9; F6.8.
-- **Web:** F7.7 (opções e bot), F7.8.
-- **C4 · sex 23/10:** fechar a aba e voltar; bot joga PvP e às vezes ganha; opções e temas mudam o jogo; estatísticas, level, ranking e conquistas reais; login pela 42.
+- **Jogo:** F2.10; F3.6, F3.7, F3.8, F3.9.
+- **Backend:** F5.4–F5.8; F6.8.
+- **Web:** F7.7 (opções), F7.8.
+- **Infra:** F8.9, F8.11.
+- **C4 · sex 23/10:** fechar a aba e voltar; Grafana com login mostra os dashboards do jogo e do backend; opções e temas mudam o jogo; estatísticas, level, ranking e conquistas reais; login pela 42.
 
 ### S5 · 25/10 – 31/10 · Completar e polir
-- **Jogo:** F1.11; F2.12, F2.13; F3.10; F4.7.
+- **Jogo:** F2.12, F2.13; F3.10; F4.7.
 - **Web:** F7.2 (traduções completas), F7.9.
-- **Infra:** F8.6.
+- **Infra:** F8.6, F8.10.
 - **Todos:** F9.1 começa.
 - **C5 · sex 30/10:** a lista da seção 7 inteira demonstrada, nos 3 idiomas, com console limpo, nas máquinas da demo. **Freeze no sábado 31/10.**
 
@@ -383,8 +387,8 @@ Checklist para C5 e para o ensaio. O módulo só entra no README se **todos** os
 | OAuth 2.0 | Login pela 42 cria ou vincula conta | F6.8, F7.4 |
 | Advanced 3D | Ambiente imersivo; técnicas: luz dinâmica com sombra, névoa, partículas, bloom, instancing; 60 fps | F3.1–F3.5, F3.10 |
 | Game customization | Pickups de mana/armadura como power-ups; ≥ 2 mapas e ≥ 2 temas; opções ajustáveis; defaults sem escolher nada | F1.9, F3.8, F4.4, F4.5, F7.7 |
-| Game statistics | Vitórias/derrotas, ranking, level, histórico (data, resultado, oponentes), conquistas e progressão, leaderboard | F5.3–F5.9, F7.8 |
-| AI opponent | Bot vence às vezes, erra como humano, usa as opções da Room; alguém explica a política | F1.10, F1.11, F2.11 |
+| Game statistics | Vitórias/derrotas, ranking, level, histórico (data, resultado, oponentes), conquistas e progressão, leaderboard | F5.3–F5.8, F7.8 |
+| Monitoring | Prometheus coletando backend, jogo e exporters; dashboards próprios no Grafana; derrubar o backend e ver o alerta disparar; Grafana só por HTTPS com login | F8.7–F8.11 |
 | i18n | 3 idiomas completos, seletor na UI, nenhum texto fixo (inclusive páginas legais, erros e HUD) | F7.2, F7.3 |
 
 ---
@@ -396,16 +400,16 @@ Checklist para C5 e para o ensaio. O módulo só entra no README se **todos** os
 | Frente | d |
 |---|---|
 | F0 Fundação | 6 |
-| F1 Simulation | 19,5 |
-| F2 Netcode | 17,5 |
+| F1 Simulation | 14,5 |
+| F2 Netcode | 17 |
 | F3 Render 3D | 16 |
 | F4 Conteúdo | 5 |
-| F5 Partidas e estatísticas | 11 |
+| F5 Partidas e estatísticas | 10,5 |
 | F6 Identidade e usuários | 12 |
 | F7 Casca web | 16,5 |
-| F8 Infra | 5,5 |
+| F8 Infra e monitoring | 10,5 |
 | F9 Docs e defesa | 5 |
-| **Total** | **≈ 114 d** |
+| **Total** | **≈ 113 d** |
 
 Capacidade: 5 pessoas × 5 semanas de construção × 5 dias = **125 d no papel**. Com a realidade de quem estuda (outras entregas, dias perdidos, aprendizado de Three.js, asyncio e React), algo entre **85 e 100 d**. **O escopo de 21 pontos só cabe se o time trabalhar perto do tempo integral**; a folga é pequena. Consequências práticas:
 
@@ -420,7 +424,7 @@ Capacidade: 5 pessoas × 5 semanas de construção × 5 dias = **125 d no papel*
 | Three.js novo para todo mundo | C1 sem masmorra no `dev.html` | F3 camada mínima: caixas texturizadas + billboards + uma luz; as técnicas "advanced" entram na S3 |
 | Prediction diverge (`sim.py` ≠ `applyInput.ts`) | Assert de reconciliação dispara em C3 | Uma pessoa revisa os dois arquivos; teste cruzado Python × TS (F2.7) |
 | Auth atrasa e trava o time | C1 sem `me` pelo Nginx | Access de 8 h temporário, refresh na S2 |
-| Bot perfeito ou burro demais | C4 sem vitória do bot, ou bot invencível | Ajustar atraso e ruído; dificuldade média como default |
+| Grafana configurado à mão | Dashboard some depois de `docker compose down -v` | Tudo provisionado por arquivo versionado (F8.9); nada clicado na UI entra na demo |
 | Texto não traduzido espalhado | Qualquer string no JSX | Regra de lint (`i18next/no-literal-string`) no CI desde a S1 |
 | Warning no console do Chrome | Qualquer um, em qualquer tela | Bug bloqueante desde a S1 |
 | 5 players na demo | Laptop engasga com 5 abas | Demo com 3 máquinas; o módulo pede 3+ |
@@ -434,7 +438,7 @@ Corta-se de baixo para cima, sempre o módulo inteiro, e ele sai do README. Os 1
 |---|---|---|---|
 | 1º a sair | i18n (se as traduções não fecharem) | 1 | 20 |
 | 2º | Game statistics (se conquistas/ranking não fecharem) | 1 | 19 |
-| 3º | AI opponent | 2 | 17 |
+| 3º | Monitoring (se alertas ou acesso seguro não fecharem) | 2 | 17 |
 | — | Game customization, Advanced 3D e os 14 da base | — | piso: 17 |
 
 Os três primeiros são os módulos com entrega mais isolada: cortá-los não quebra nada que os outros usam. O time pode reordenar na reunião, desde que a tabela fique escrita aqui. OAuth não está na lista porque tem troca de mesmo valor: se a intra travar, vira 2FA.
@@ -443,83 +447,86 @@ Os três primeiros são os módulos com entrega mais isolada: cortá-los não qu
 
 # Parte 2 — Quem faz o quê
 
-## 9. Divisão recomendada entre 5 pessoas
+## 9. Divisão entre as 5 pessoas
 
-Critérios usados:
+Alocação fechada em 28/09/2026. Critérios usados:
 
-1. **Carga parecida** (≈ 19–25 d cada, contra ≈ 23 d de média; quem tem papel de PM ou Tech Lead fica com menos tarefa).
+1. **Carga parecida** (≈ 20–23 d cada, contra ≈ 23 d de média; quem tem papel de PM ou Tech Lead fica com menos tarefa).
 2. **Cada caminho é explicável sozinho na defesa**: uma pessoa, um pedaço com interface clara.
 3. **Ninguém parado na S1**: quem depende do jogo pronto começa por algo que o jogo precisa.
 4. **Três pessoas no jogo**, como o time pediu, separadas pelas costuras Snapshot e `ViewState`.
 5. Papéis do subject: **PO**, **PM / Scrum Master**, **Tech Lead**, e todos desenvolvem.
 
-| Caminho | Papel | Frentes | d |
-|---|---|---|---|
-| **1 · Simulation e IA** | Tech Lead (Roberto) | F1 inteira (incl. bot e PvP), F0.2, F0.5, revisão de `rules.*` e `applyInput.ts` | ≈ 22 + revisão |
-| **2 · Auth e Netcode** | Dev | F6.1–F6.5, F0.3, F2 (menos F2.13) | ≈ 25 |
-| **3 · Render 3D e conteúdo** | Dev | F3, F4 | ≈ 21 |
-| **4 · Web, usuários e i18n** | PO | F0.4, F7, F6.6–F6.7 | ≈ 21 |
-| **5 · Partidas, estatísticas e infra** | PM / Scrum Master | F0.6, F5, F6.8, F8, F2.13 | ≈ 19,5 + coordenação |
+| Caminho | Pessoa (GitHub) | Papel | Frentes | d |
+|---|---|---|---|---|
+| **1 · Simulation e Prediction** | Roberto (`@robertodelfranco`) | Tech Lead | F1 inteira (incl. PvP), F2.7, F2.13, F3.6, F0.2, F0.5, revisão de `rules.*` | ≈ 21 + revisão |
+| **2 · Auth e Netcode** | Augusto (`@augustocesarmd`) | Dev | F6.1–F6.5, F0.3, F2 (menos F2.7 e F2.13), F8.7 | ≈ 23 |
+| **3 · Render 3D e conteúdo** | Rafael (`@rflheringer`) | Dev | F3 (menos F3.6), F4 | ≈ 20 |
+| **4 · Web, usuários e i18n** | Caio (`@caioosantos`) | PO | F0.4, F7, F6.6–F6.7 | ≈ 21 |
+| **5 · Partidas, estatísticas, infra e monitoring** | Akita (`@kanashir0`) | PM / Scrum Master | F0.6, F5, F6.8, F8 (menos F8.7) | ≈ 22,5 + coordenação |
 
 F0.1 e F9 são de todos.
 
-### Caminho 1 — Simulation e IA (Tech Lead)
+### Caminho 1 — Simulation e Prediction · Roberto (Tech Lead)
 
-- **Faz:** parser, movimento, colisão, inimigos, boss, projéteis, pickups, `CoopRuleset`, `PvpRuleset`, `RoomOptions` na simulação, bot. Publica os contratos na S1. Revisa todo PR que mexe em `rules.*`, `sim.py` ou `applyInput.ts`.
-- **Por quê:** é o port direto do C que você escreveu; na defesa você explica a matemática que já conhece e a política do bot (módulo de 2 pontos que exige explicação). A Simulation é Python puro, sem rede e sem banco, então não trava ninguém enquanto a infra sobe.
-- **Semana a semana:** S1 contratos + parser + movimento · S2 entidades + CoopRuleset + CLI · S3 PvP + opções · S4 bot · S5 calibração e página explicando o bot.
-- **Aprender antes:** `dataclasses`, funções puras e determinismo, `pytest.mark.parametrize`; para o bot, máquinas de estado finitas e como "errar de propósito" (atraso de reação, ruído de mira).
-- **Explica na defesa:** por que `dt` e não quadro; por que o servidor decide o acerto; como o bot decide e por que às vezes perde.
-- **Muda em relação ao plano anterior:** a autenticação sai deste caminho (ver Caminho 2). O Tech Lead continua revisando o PR de auth, porque é quem escreveu as decisões da arq. §4.
+- **Faz:** parser, movimento, colisão, inimigos, boss, projéteis, pickups, `CoopRuleset`, `PvpRuleset`, `RoomOptions` na simulação; `applyInput.ts` com o teste cruzado Python × TS, Prediction e Reconciliation no cliente; minimapa; teste de carga do tick. Publica os contratos na S1. Revisa todo PR que mexe em `rules.*` ou `sim.py`.
+- **Por quê:** é o port direto do C que você escreveu; na defesa você explica a matemática que já conhece. O `applyInput.ts` é o espelho em TS do movimento de `sim.py`, então quem escreve os dois é quem garante que eles batem. O minimapa é parente do minimapa do Cub3D, e o teste de carga mede a própria Simulation. A Simulation é Python puro, sem rede e sem banco, então não trava ninguém enquanto a infra sobe.
+- **Semana a semana:** S1 contratos + parser + movimento · S2 entidades + CoopRuleset + CLI + `applyInput.ts` com teste cruzado · S3 PvP + opções + Reconciliation ligada no cliente · S4 minimapa + par com o Caminho 2 na reconexão (F2.10 depende de F2.7) · S5 teste de carga + folga para revisão e bugs.
+- **Aprender antes:** `dataclasses`, funções puras e determinismo, `pytest.mark.parametrize`; TypeScript o suficiente para `applyInput.ts`; Gambetta, *Fast-Paced Multiplayer* partes I–II (prediction e reconciliation); canvas 2D.
+- **Explica na defesa:** por que `dt` e não quadro; por que o servidor decide o acerto; por que o cliente prevê, como ele corrige quando o servidor discorda e como o teste cruzado garante que as duas implementações dão o mesmo resultado.
+- **Muda em relação ao plano anterior:** a autenticação sai deste caminho (ver Caminho 2); o Tech Lead continua revisando o PR de auth, porque é quem escreveu as decisões da arq. §4. Em 28/09 o bot saiu do escopo e entraram F2.7, F2.13 e F3.6.
 
-### Caminho 2 — Auth e Netcode
+### Caminho 2 — Auth e Netcode · Augusto
 
-- **Faz:** pacote do backend, signup/login/refresh/logout, `get_current_user`, middlewares (logging, erros, rate limit); depois `ConnectionManager`, `RoomManager`, WebSocket do jogo, Prediction, Reconciliation, Interpolation, reconexão, bot dentro da Room.
-- **Por quê:** o netcode só começa quando a Simulation tem entidades (S2). A S1 dessa pessoa vai para a auth, que é pré-requisito de todo mundo. Auth e WebSocket se encontram em `authenticate_ws_token`, então é um caminho contínuo, não dois assuntos.
-- **Semana a semana:** S1 pacote + auth mínima · S2 refresh + middlewares + WS com 1 player · S3 N players + prediction · S4 reconexão + bot na Room · S5 teste com throttling.
-- **Aprender antes:** JWT (RFC 7519), Argon2id e rotação de refresh (RFC 9700), cookies `HttpOnly`/`SameSite`; `asyncio` (tasks, cancelamento, `Queue`); Gambetta partes I–IV.
-- **Explica na defesa:** fluxo de tokens e rotação com detecção de reuso; tick fixo e Snapshot; por que prediction + reconciliation eliminam o "puxão".
-- **Atenção:** é o caminho mais pesado e o que está no caminho crítico. O Tech Lead faz par nas primeiras horas de F2.3 e F2.7.
+- **Faz:** pacote do backend, signup/login/refresh/logout, `get_current_user`, middlewares (logging, erros, rate limit); depois `ConnectionManager`, `RoomManager`, WebSocket do jogo, Interpolation, fim de partida, reconexão; `/metrics` com as métricas do backend e do jogo.
+- **Por quê:** o netcode só começa quando a Simulation tem entidades (S2). A S1 dessa pessoa vai para a auth, que é pré-requisito de todo mundo. Auth e WebSocket se encontram em `authenticate_ws_token`, então é um caminho contínuo, não dois assuntos. A instrumentação fica aqui porque as métricas moram nos middlewares e no laço do `RoomManager`, que são código deste caminho.
+- **Semana a semana:** S1 pacote + auth mínima · S2 refresh + middlewares + WS com 1 player · S3 N players + interpolation + fim de partida + `/metrics` · S4 reconexão · S5 teste com throttling.
+- **Aprender antes:** JWT (RFC 7519), Argon2id e rotação de refresh (RFC 9700), cookies `HttpOnly`/`SameSite`; `asyncio` (tasks, cancelamento, `Queue`); Gambetta partes I–IV; tipos de métrica do Prometheus (counter, gauge, histogram).
+- **Explica na defesa:** fluxo de tokens e rotação com detecção de reuso; tick fixo e Snapshot; interpolation dos outros players; por que o tick é histograma e o login é counter.
+- **Atenção:** é o caminho mais pesado e o que está no caminho crítico. O Tech Lead faz par nas primeiras horas de F2.3. O F2.7 agora é do Tech Lead, e F2.6 e F2.10 encostam nele: os dois combinam na S2 a interface do cliente (onde a Prediction entra no laço de Input e de Snapshot).
 
-### Caminho 3 — Render 3D e conteúdo
+### Caminho 3 — Render 3D e conteúdo · Rafael
 
-- **Faz:** a cena Three.js inteira (paredes, câmera, Pointer Lock, billboards, porta, mão, luzes, névoa, partículas, bloom, minimapa, temas, áudio) e o conteúdo do jogo (mapas, números, especificação da HUD, lista de conquistas e opções).
+- **Faz:** a cena Three.js inteira (paredes, câmera, Pointer Lock, billboards, porta, mão, luzes, névoa, partículas, bloom, temas, áudio; o minimapa é do Caminho 1) e o conteúdo do jogo (mapas, números, especificação da HUD, lista de conquistas e opções).
 - **Por quê:** o render só consome `ViewState`, então essa pessoa trabalha desde o primeiro dia contra `snapshot.example.json`, sem esperar servidor. O conteúdo fica junto porque mapas, temas e HUD são decisões visuais.
 - **Semana a semana:** S1 `dev.html` com a masmorra · S2 entidades e porta · S3 técnicas "advanced" + mapas PvP · S4 temas, efeitos, áudio · S5 performance e balanceamento.
 - **Aprender antes:** fundamentos de Three.js (cena, câmera, material, luz, `InstancedMesh`, `Sprite`, `EffectComposer`); Pointer Lock API.
 - **Explica na defesa:** cada técnica "advanced" e por que ela está ali; como o render não sabe que existe rede.
 
-### Caminho 4 — Web, usuários e i18n (PO)
+### Caminho 4 — Web, usuários e i18n · Caio (PO)
 
 - **Faz:** a casca React, roteamento, contexto de auth, i18n em 3 idiomas, páginas legais, login/cadastro, perfil e amigos (telas **e** backend de perfil, avatar e amigos), `/play` com a HUD, lobby, telas de estatísticas.
-- **Por quê:** o módulo *Standard user management* fica inteiro com uma pessoa, de ponta a ponta, o que torna a explicação na defesa simples. A PO é quem valida cada módulo contra o texto do subject, e a maior parte dessa validação é visível nas telas.
+- **Por quê:** o módulo *Standard user management* fica inteiro com uma pessoa, de ponta a ponta, o que torna a explicação na defesa simples. Quem tem o papel de PO valida cada módulo contra o texto do subject, e a maior parte dessa validação é visível nas telas.
 - **Semana a semana:** S1 casca + i18n + login · S2 páginas legais + `/play` + lobby · S3 perfil e amigos (back e front) + HUD · S4 opções no lobby + telas de estatística · S5 traduções completas + console limpo + responsivo.
 - **Aprender antes:** React com TypeScript, `react-router`, `react-i18next`; o contrato de auth (arq. §9.1); FastAPI `Depends` o suficiente para F6.6–F6.7.
 - **Explica na defesa:** como o i18n cobre todo texto; como a HUD recebe estado do jogo sem conhecer o jogo; o fluxo de avatar validado nos dois lados.
 - **Papel de PO:** mantém o backlog no board, prioriza, e roda o checklist da seção 7 em cada checkpoint.
 
-### Caminho 5 — Partidas, estatísticas e infra (PM)
+### Caminho 5 — Partidas, estatísticas, infra e monitoring · Akita (PM)
 
-- **Faz:** Alembic e schema (dona do schema de partidas), lobby no backend, `record_match_result`, estatísticas, ranking, level, conquistas, leaderboard; OAuth 42; Nginx com TLS, CI, compose, README e demo.
-- **Por quê:** a infra da S1 é curta e já tem base no repo, então sobra espaço para uma frente de backend inteira. Partidas e estatísticas se encontram com a infra no banco (migrações no `entrypoint`, schema no README). O OAuth é uma tarefa curta e isolada da S4.
-- **Semana a semana:** S1 TLS + CI + Alembic · S2 lobby + compose final · S3 `record_match_result` + README esqueleto · S4 estatísticas, conquistas, leaderboard, OAuth · S5 teste de carga + setup da demo.
-- **Aprender antes:** SQLAlchemy 2.0 assíncrono e Alembic; Nginx `proxy_pass` com upgrade de WebSocket; `mkcert`; RFC 6749 §4.1 para o OAuth.
-- **Explica na defesa:** o schema e suas relações; por que estado de partida nunca vai para o banco; idempotência de `record_match_result`; o fluxo do OAuth com `state`.
+- **Faz:** Alembic e schema (responsável pelo schema de partidas), lobby no backend, `record_match_result`, estatísticas, ranking, level, conquistas, leaderboard; OAuth 42; Nginx com TLS, CI, compose, README e demo; Prometheus, exporters, dashboards e alertas do Grafana, acesso seguro.
+- **Por quê:** a infra da S1 é curta e já tem base no repo, então sobra espaço para uma frente de backend inteira. Partidas e estatísticas se encontram com a infra no banco (migrações no `entrypoint`, schema no README). O OAuth é uma tarefa curta e isolada da S4. O monitoring é compose, Nginx e arquivos de configuração, o mesmo terreno da infra que já é deste caminho.
+- **Semana a semana:** S1 TLS + CI + Alembic · S2 lobby + compose final · S3 `record_match_result` + README esqueleto + Prometheus e exporters · S4 estatísticas, conquistas, leaderboard, OAuth, dashboards e Grafana atrás do Nginx · S5 alertas + setup da demo.
+- **Aprender antes:** SQLAlchemy 2.0 assíncrono e Alembic; Nginx `proxy_pass` com upgrade de WebSocket; `mkcert`; RFC 6749 §4.1 para o OAuth; Prometheus (`scrape_configs`, PromQL básico, `rate` e `histogram_quantile`, regras de alerta) e provisioning do Grafana.
+- **Explica na defesa:** o schema e suas relações; por que estado de partida nunca vai para o banco; idempotência de `record_match_result`; o fluxo do OAuth com `state`; o que cada dashboard mostra, como o alerta dispara e por que o Prometheus não é acessível de fora.
 - **Papel de PM:** reunião de segunda, checkpoints de sexta, blockers, prazos da seção 3.
 
 ### Alternativas que o time pode preferir
 
-- **Tech Lead fica com a auth (como no plano anterior) e o Caminho 2 fica com o bot.** Funciona, mas o Caminho 2 fica parado na S1, e o bot (que exige explicar a política) sai de quem conhece o comportamento dos inimigos no C.
-- **Dividir F2 entre servidor e cliente.** Possível se alguém quiser menos carga no Caminho 2, com a condição de que a mesma pessoa revise `sim.py` e `applyInput.ts`.
-- **Contingência:** se uma pessoa sair ou travar, a PO absorve telas e o Tech Lead absorve backend. Nunca o contrário.
+- **F8.7 (métricas) no Caminho 5.** Deixa o Caminho 2 mais leve, com o custo de o Caminho 5 mexer nos middlewares e no laço do `RoomManager`, que não são código seu.
+- **Minimapa de volta ao Caminho 3.** Se o Tech Lead precisar de mais folga para revisão, o F3.6 volta para o render sem mexer em interface nenhuma (ele só consome `ViewState`).
+- **Contingência:** se uma pessoa sair ou travar, o Caminho 4 (PO) absorve telas e o Caminho 1 (Tech Lead) absorve backend. Nunca o contrário.
 
 ---
 
-## 10. Docs a atualizar depois da reunião
+## 10. Docs atualizados depois da reunião
 
-Quando a alocação for fechada:
+Feito em 28–29/09, com a alocação fechada:
 
-- **`CLAUDE.md`**: seção "Time e slices" (nova alocação por caminho), escopo de 21 pontos, link para este documento como fonte do plano, e a regra de i18n (nenhum texto visível fora do sistema de tradução) entre as invariantes.
-- **`CONTEXT.md`**: redefinir **Slice** (o conjunto de frentes de uma pessoa); adicionar **Frente**, **Checkpoint**, **Ruleset**, **Pickup** (generaliza Item: key, potion, mana, armor), **Mana**, **Armor**, **Bot**, **Theme**, **ViewState**, **Renderer**, **Achievement**; atualizar **Mode** (`pvp` = 1v1 com respawn e limite de eliminações/tempo).
-- **`AGENTS.md`**: o conteúdo do `CLAUDE.md` passa para `AGENTS.md` (lido pela maioria dos agentes), e o `CLAUDE.md` fica só com `@AGENTS.md`.
-- **Docs do repo** (arquitetura e ideias reorganizadas em 25/09): ficam cinco para o time — `AGENTS.md`, `CONTEXT.md`, [catacombs42-web-arquitetura.md](catacombs42-web-arquitetura.md), este plano e [transcendence.md](transcendence.md) — mais [catacombs42-ideias-e-modulos.md](catacombs42-ideias-e-modulos.md) como referência da proposta ampliada.
+- [x] **`AGENTS.md`**: recebeu o conteúdo do antigo `CLAUDE.md`, com "Time e slices" na alocação nova (nomes e GitHub), escopo de 21 pontos, este plano como fonte e a regra de i18n entre as invariantes. O `CLAUDE.md` ficou só com `@AGENTS.md`.
+- [x] **`CONTEXT.md`**: **Slice** redefinida (o conjunto de frentes de uma pessoa); adicionados **Frente**, **Checkpoint**, **Ruleset**, **Pickup** (substitui Item), **Mana**, **Armor**, **Theme**, **ViewState**, **Renderer** e **Achievement**; **Mode** atualizado.
+- [x] **Arquitetura**: bot removido (§5, §6, §8.3, §10, §14, §15); monitoring descrito na §12.1 e no contrato 12.
+- [ ] [catacombs42-ideias-e-modulos.md](catacombs42-ideias-e-modulos.md) fica como está: é o registro da proposta ampliada, não o escopo vigente.
+- [ ] [roadmap-roberto.md](roadmap-roberto.md) é pessoal e anterior a 28/09; o Roberto decide se atualiza.
+
+Docs do time: `AGENTS.md`, `CONTEXT.md`, [catacombs42-web-arquitetura.md](catacombs42-web-arquitetura.md), este plano e [transcendence.md](transcendence.md), mais [catacombs42-ideias-e-modulos.md](catacombs42-ideias-e-modulos.md) como referência.
