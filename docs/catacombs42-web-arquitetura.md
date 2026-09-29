@@ -1,6 +1,6 @@
 # Catacombs 42 — arquitetura
 
-> Como o sistema funciona: componentes, estado, protocolo, contratos, banco e as decisões técnicas por trás de cada um. Atualizado em 25/09/2026 para o escopo fechado (jogo 3D em Three.js, 21 pontos).
+> Como o sistema funciona: componentes, estado, protocolo, contratos, banco e as decisões técnicas por trás de cada um. Atualizado em 25/09/2026 para o escopo fechado (jogo 3D em Three.js, 21 pontos) e em 28/09/2026 para a troca do *AI opponent* pelo *Monitoring system* (sem bot; Prometheus + Grafana na §12).
 >
 > O que fazer e quando está em [catacombs42-plano-de-tarefas.md](catacombs42-plano-de-tarefas.md). O vocabulário está em [CONTEXT.md](../CONTEXT.md). A proposta ampliada com todas as opções de módulos está em [catacombs42-ideias-e-modulos.md](catacombs42-ideias-e-modulos.md). Os códigos F1–F8 são as frentes do plano.
 
@@ -28,7 +28,7 @@
 
 ## 1. A ideia em um minuto
 
-O Catacombs 42 é o bonus do Cub3D: um dungeon crawler single-player em C, com raycasting estilo Wolfenstein, inimigos, boss que atira, portas com chave, poções, bola de fogo e minimapa, rodando numa janela MLX42. O projeto o transforma no jogo do Transcendence: **3D de verdade no navegador (Three.js), de 1 a 5 pessoas**, em co-op na masmorra ou em PvP 1v1 (contra outra pessoa ou contra um bot).
+O Catacombs 42 é o bonus do Cub3D: um dungeon crawler single-player em C, com raycasting estilo Wolfenstein, inimigos, boss que atira, portas com chave, poções, bola de fogo e minimapa, rodando numa janela MLX42. O projeto o transforma no jogo do Transcendence: **3D de verdade no navegador (Three.js), de 1 a 5 pessoas**, em co-op na masmorra ou em PvP 1v1 entre duas pessoas.
 
 A analogia que resume a arquitetura é **um teatro**:
 
@@ -64,7 +64,7 @@ O que atravessa a rede são **números** (posições, estados), nunca pixels. Po
                                                 └─────────────────────────────────────────┘
 ```
 
-Tudo sobe com `docker compose up` em quatro serviços que já existem no repo: `db`, `backend`, `frontend`, `proxy`.
+Tudo sobe com `docker compose up` em quatro serviços que já existem no repo (`db`, `backend`, `frontend`, `proxy`), mais os de monitoring da §12 (`prometheus`, `grafana` e os exporters).
 
 **Invariantes** (valem para toda frente; um PR que quebra um deles precisa de ADR):
 
@@ -151,7 +151,7 @@ Room
 ├── rng: random.Random(seed)          ← nunca o random global
 ├── grid: list[list[str]]             ← MUTÁVEL: portas D/O, pickups somem
 ├── players: { id → Player }
-│     Player: user_id | None (bot), is_bot, name, x, y, dir_x, dir_y,
+│     Player: user_id, name, x, y, dir_x, dir_y,
 │             hp, mana, armor, keys, alive, connected,
 │             input {up, down, left, right, rot_left, rot_right, sprint},
 │             pending_mouse_dx, last_input_seq, attack_cooldown,
@@ -171,7 +171,6 @@ Room
 - Todo projétil tem **`owner_id`**: é a base de kill feed, placar, estatísticas e conquistas.
 - Porta trancada consome a chave de **quem apertou**.
 - Player com HP ≤ 0 fica `alive = False`: não colide e é ignorado por inimigos. No co-op, a câmera dele segue um companheiro vivo (UX local, sem módulo de spectator). No PvP, renasce.
-- Bot é um Player com `is_bot = True` e sem socket (seção 6.5).
 
 ---
 
@@ -233,7 +232,7 @@ Números finais são calibrados por F4 (tarefa F4.7 do plano).
 
 ### 6.4 `RoomOptions` (Game customization)
 
-Validadas no `POST /api/matches` com defaults; a Simulation lê de `room.options`; o bot respeita todas.
+Validadas no `POST /api/matches` com defaults; a Simulation lê de `room.options`.
 
 | Opção | Valores | Default |
 |---|---|---|
@@ -245,18 +244,8 @@ Validadas no `POST /api/matches` com defaults; a Simulation lê de `room.options
 | `friendly_fire` | bool (co-op) | `false` |
 | `frag_limit` | 3–10 (PvP) | 5 |
 | `time_limit_s` | 120–600 (PvP) | 180 |
-| `bot` | `null` ou `{difficulty: "easy" \| "medium" \| "hard"}` (PvP) | `null` |
 
 A tabela oficial com limites é a de F4.5 (`docs/contracts/`).
-
-### 6.5 Bot (AI opponent)
-
-`BotPolicy.decide(room, player_id) -> (InputState, Action | None)`, chamada pela Room a cada tick para cada Player com `is_bot`. O bot **escreve no Input do próprio Player**, exatamente como um humano: a Simulation não sabe que ele é bot, e não existe caminho de trapaça.
-
-- **Máquina de estados**: procurar → perseguir → atacar → recuar para buscar poção, mana ou armadura quando fraco. Reaproveita a perseguição de `enemy_move_bonus.c`.
-- **Humano, não perfeito**: atraso de reação de 150–300 ms (fila de decisões), ruído de mira (erro angular), velocidade de giro limitada como a de um jogador. A dificuldade muda esses três números.
-- **Usa as opções**: ignora pickups desligados, respeita `start_hp`, `frag_limit` e `time_limit_s`.
-- O resultado entra nas estatísticas com o bot como oponente identificado (`match_players.is_bot`).
 
 ---
 
@@ -281,7 +270,7 @@ Toda mensagem: `{"v": 1, "type": "<tipo>", ...}`. Contrato completo com exemplos
 ```json
 {"v":1,"type":"welcome","player_id":"p_1","room":{"id":"r_8f3a","mode":"coop","options":{"start_hp":10,"theme":"dungeon"}},"map":{"grid":["111","1N1","111"],"textures":{"NO":"/assets/map/dungeon_wall_4.png","SO":"…","WE":"…","EA":"…"},"floor":[84,84,84],"ceiling":[22,30,0]},"snapshot":{}}
 {"v":1,"type":"snapshot","tick":1200,"last_input_seq":42,
- "players":[{"id":"p_1","name":"rdel-fra","is_bot":false,"x":3.5,"y":2.5,"dx":0,"dy":-1,"hp":8,"mana":60,"armor":0,"keys":1,"alive":true,"connected":true}],
+ "players":[{"id":"p_1","name":"rdel-fra","x":3.5,"y":2.5,"dx":0,"dy":-1,"hp":8,"mana":60,"armor":0,"keys":1,"alive":true,"connected":true}],
  "enemies":[{"id":"e_3","x":6.2,"y":7.1,"state":"alert","frame":1}],
  "boss":{"x":12.5,"y":14.5,"hp":40,"state":"attack","frame":4},
  "projectiles":[{"id":"f_9","kind":"fireball","owner":"p_1","x":4.1,"y":1.9,"dx":0,"dy":-1,"state":"moving","frame":0}],
@@ -369,7 +358,7 @@ interface Renderer {
 export interface HudState {
   hp: number; maxHp: number; mana: number; maxMana: number; armor: number;
   keys: number; alive: boolean; ping: number | null;
-  players: Array<{ id: string; name: string; isBot: boolean; hp: number; alive: boolean; connected: boolean }>;
+  players: Array<{ id: string; name: string; hp: number; alive: boolean; connected: boolean }>;
   scoreboard: { frags: Record<string, number>; timeLeftS: number } | null;
   killfeed: Array<{ by: string | null; victim: string; tick: number }>;
   status: "connecting" | "running" | "finished" | "disconnected" | "error";
@@ -465,7 +454,6 @@ class RoomManager:
     def create(self, match_id: int, mode: Literal["coop", "pvp"], max_players: int,
                options: RoomOptions) -> str: ...                      # room_id
     def join(self, room_id: str, user_id: int) -> Player: ...        # RoomFull / RoomNotFound / AlreadyIn
-    def add_bot(self, room_id: str, difficulty: str) -> Player: ...
     def leave(self, room_id: str, user_id: int) -> None: ...         # só no lobby
     def start(self, room_id: str) -> None: ...                        # NotEnoughPlayers
     def info(self, room_id: str) -> RoomInfo: ...
@@ -486,9 +474,7 @@ class MatchResult:
 
 @dataclass(frozen=True)
 class MatchPlayerResult:
-    user_id: int | None          # None para bot
-    is_bot: bool
-    bot_difficulty: str | None
+    user_id: int
     won: bool
     survived: bool
     kills: int                   # inimigos + boss
@@ -513,7 +499,7 @@ Migrações por Alembic; o `entrypoint` do backend roda `alembic upgrade head` a
 | `oauth_accounts` | `id`, `user_id`, `provider` (`"42"`), `provider_user_id` (único por provider) | F6 |
 | `friendships` | `user_id`, `friend_id`, `created_at` (par único) | F6 |
 | `matches` | `id`, `mode`, `map`, `options` (JSONB), `status` (`lobby`/`running`/`finished`/`aborted`), `created_by`, `started_at`, `ended_at`, `result`, `reason` | F5 |
-| `match_players` | `match_id`, `user_id` (nulo para bot), `is_bot`, `bot_difficulty`, `won`, `survived`, `kills`, `frags`, `deaths`, `damage_dealt`, `damage_taken`, `armor_absorbed`, `keys_collected`, `potions_used`, `disconnected_at_end`, `elo_before`, `elo_after`, `xp_gained` | F5 |
+| `match_players` | `match_id`, `user_id`, `won`, `survived`, `kills`, `frags`, `deaths`, `damage_dealt`, `damage_taken`, `armor_absorbed`, `keys_collected`, `potions_used`, `disconnected_at_end`, `elo_before`, `elo_after`, `xp_gained` | F5 |
 | `player_stats` | por `user_id` e `mode`: `wins`, `losses`, `kills`, `deaths`, `playtime_s`, `elo`, `xp`, `level` (tabela agregada atualizada em `record_match_result`) | F5 |
 | `user_achievements` | `user_id`, `code`, `unlocked_at`, `match_id` (o catálogo de conquistas vive no código) | F5 |
 
@@ -549,6 +535,23 @@ Regras de negócio (fórmula de XP e level, Elo do PvP, lista de conquistas) sã
 - **CI** (`.github/workflows/build-check.yml`): build das imagens, `pytest`, `vitest` e lint a cada PR.
 - **Demo**: 2–3 máquinas na mesma rede com a CA do `mkcert` instalada.
 
+### 12.1 Monitoring (Prometheus + Grafana)
+
+O que o módulo cobra: coleta pelo Prometheus, exporters, dashboards próprios no Grafana, regras de alerta e acesso seguro ao Grafana. Tarefas F8.7–F8.11 do plano.
+
+```
+backend:8000/metrics ─────┐
+node-exporter / cAdvisor ─┼─► prometheus (scrape, regras de alerta) ─► grafana ◄── Nginx /grafana/ (TLS + login)
+postgres-exporter ────────┘
+```
+
+- **Instrumentação** (`app/core/metrics.py`, `prometheus_client`): `http_requests_total{route,status}` e `auth_login_total{result}` (counters, no middleware e no login), `ws_connections{channel}` e `game_rooms_active` (gauges, no `ConnectionManager` e no `RoomManager`), `game_tick_seconds` (histograma, no laço da Room). Tick é histograma porque o que interessa é a cauda (p95/p99 contra o orçamento de 33 ms); login é counter porque o que interessa é a taxa (`rate`).
+- **`/metrics` só na rede interna**: o Nginx não roteia esse path. Prometheus também não publica porta.
+- **Labels com cardinalidade baixa**: `route` é o template da rota (`/api/users/{id}`), nunca o path com o id; nada de `user_id` ou `room_id` em label.
+- **Grafana**: datasource e dashboards provisionados por arquivo em `monitoring/grafana/provisioning/` (versionados; nada criado à mão na UI entra na demo). Servido em `/grafana/` pelo Nginx (`GF_SERVER_ROOT_URL` + `serve_from_sub_path`), admin vindo do `.env`, anônimo e signup desligados.
+- **Alertas** (`monitoring/prometheus/alerts.yml`): backend fora do ar (`up == 0`), p99 do tick acima de 33 ms, taxa de 5xx, pico de logins falhos. Na defesa, derrubar o backend e mostrar o alerta indo para *firing*.
+- **Recursos**: a retenção do Prometheus é curta (dias, não meses); é demo local.
+
 ---
 
 ## 13. Contratos entre frentes
@@ -568,6 +571,7 @@ Fechados na S1. Um contrato muda no **mesmo PR** que muda o código, e o PR cita
 | 9 | Rotas, rede, um worker, CI | F8 ↔ todos | `docs/contracts/infra.md`, README | §12 |
 | 10 | `ConnectionManager` e `/ws/app` | F2 ↔ F5, F6 | `docs/contracts/ws-manager.md` | §7.4, §9.3 |
 | 11 | `RoomOptions` com defaults e limites | F4 ↔ F1, F5, F7 | `docs/contracts/room-options.md` | §6.4 |
+| 12 | Nomes e labels das métricas | F2, F6 → F8 | `app/core/metrics.py` | §12.1 |
 
 ---
 
@@ -577,12 +581,12 @@ Fechados na S1. Um contrato muda no **mesmo PR** que muda o código, e o PR cita
 backend/
   app/
     main.py                 # create_app(): routers, handlers, lifespan (startup: aborta Matches "running")
-    core/  config.py  security.py  logging.py  errors.py  ratelimit.py
+    core/  config.py  security.py  logging.py  errors.py  ratelimit.py  metrics.py
     db/    session.py  models/
     auth/  router.py  schemas.py  service.py  deps.py  oauth42.py
     users/                  # perfil, avatar, amigos
     ws/    manager.py  app_router.py      # ConnectionManager e /ws/app
-    game/  world.py  state.py  rules.py  sim.py  snapshot.py  rooms.py  protocol.py  router.py  bot.py
+    game/  world.py  state.py  rules.py  sim.py  snapshot.py  rooms.py  protocol.py  router.py
            rulesets/  coop.py  pvp.py
     matches/                # lobby, record_match_result, estatísticas, Elo, conquistas, leaderboard
   alembic/
@@ -605,6 +609,10 @@ frontend/
     public/assets/          # PNGs do Cub3D, modelos, sons
   src/                      # React: rotas, telas, HUD, i18n; importa ../game
     locales/  pt-BR.json  en.json  es.json
+
+monitoring/
+  prometheus/  prometheus.yml  alerts.yml
+  grafana/provisioning/  datasources/  dashboards/   # JSON dos dashboards versionado
 ```
 
 Regra de fronteira: `frontend/game/` não importa nada de `frontend/src/`; `app/game/sim.py` não importa FastAPI, SQLAlchemy nem `ws`. São essas as duas costuras que permitem testar o jogo sem rede e sem site. Teste de deleção: se apagar `sim.py` e a complexidade reaparecer espalhada em `rooms.py` e no cliente, o módulo estava raso.
@@ -621,7 +629,7 @@ Regra de fronteira: `frontend/game/` não importa nada de `frontend/src/`; `app/
 | `player_bonus/movement_bonus.c`, `move_utils_bonus.c` | **PY** + **TS** (`applyInput.ts`) | Por dt; colisão com outros players; as duas versões são idênticas |
 | `player_bonus/init_player_bonus.c` | **PY** | Orientação inicial por spawn |
 | `player_bonus/controls_bonus.c` | **TS** | Teclas → `input`/`action`; mouse nas bordas vira Pointer Lock + `mouse_dx` |
-| `enemy_bonus/enemy_move_bonus.c`, `enemy_manage_bonus.c` (estado) | **PY** | Alvo = player vivo mais próximo; base do bot |
+| `enemy_bonus/enemy_move_bonus.c`, `enemy_manage_bonus.c` (estado) | **PY** | Alvo = player vivo mais próximo |
 | `enemy_bonus/enemy_position_bonus.c`, `enemy_sort_bonus.c`, `enemy_images_bonus.c` | **Three** | Billboards; o Three.js ordena e projeta |
 | `boss_bonus/init_boss`, `move_boss` | **PY** | Usar o retorno de `can_boss_move_utils` |
 | `boss_bonus/render_boss`, `attack_bonus/render_*` | **Three** | Billboards animados |
@@ -662,6 +670,9 @@ Regra de fronteira: `frontend/game/` não importa nada de `frontend/src/`; `app/
 - RFC 6749 §4.1, *Authorization Code Grant*: https://www.rfc-editor.org/rfc/rfc6749#section-4.1
 - RFC 6455, *The WebSocket Protocol* (códigos de fechamento 4000–4999): https://www.rfc-editor.org/rfc/rfc6455
 - OWASP, *Password Storage* e *CSRF Prevention* Cheat Sheets: https://cheatsheetseries.owasp.org/
+- Prometheus, *Metric types*, *Instrumentation* (cardinalidade de labels) e *Alerting rules*: https://prometheus.io/docs/
+- `prometheus_client` para Python: https://prometheus.github.io/client_python/
+- Grafana, *Provision Grafana* e *Run Grafana behind a reverse proxy*: https://grafana.com/docs/grafana/latest/
 - Three.js, documentação e exemplos: https://threejs.org/docs/ e https://threejs.org/examples/
 - MDN, *Pointer Lock API*: https://developer.mozilla.org/en-US/docs/Web/API/Pointer_Lock_API
 - react-i18next: https://react.i18next.com/
