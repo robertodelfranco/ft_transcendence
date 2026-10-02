@@ -9,39 +9,44 @@ Conta cadastrada no site (e-mail + senha ou OAuth). Existe fora de qualquer part
 _Evitar_: account, conta, jogador (quando o assunto é login/perfil)
 
 **Player**:
-A presença de um User dentro de uma Room: posição, direção, HP, Mana, Armor, chaves, vivo/morto, conectado/desconectado. Um User vira Player ao entrar na Room e deixa de ser ao fim dela.
-_Evitar_: user (dentro do jogo), boneco, personagem
-
-**Spectator**:
-Quem recebe Snapshots de uma Room sem controlar um Player. Um Player morto vira Spectator da própria Room.
+A presença de um User dentro de uma Room, identificada pelo id do próprio User: posição, direção, HP, Mana, Armor, chaves, vivo/morto, conectado/desconectado. Um User vira Player ao entrar na Room e deixa de ser ao fim dela; morto, continua sendo Player (no coop, a câmera dele segue um companheiro vivo).
+_Evitar_: user (dentro do jogo), boneco, personagem, spectator (não existe: está fora do escopo)
 
 ## Partida
 
 **Room**:
-A instância de jogo que vive na memória do backend enquanto a partida acontece: Grid, players, enemies, boss, projectiles, doors. Identificada por `room_id`.
+A instância de jogo que vive na memória do backend enquanto a partida acontece: Grid, players, enemies, boss, projectiles, doors. Identificada pelo `match_id` do Match que ela vira.
 _Evitar_: sala (ok em conversa; no código é room), game, session
 
 **Match**:
 O registro persistido de uma partida: quem jogou, quando, resultado, estatísticas por Player. É o que a Room vira quando termina.
 _Evitar_: game, partida (em código), history
 
+**MatchResult**:
+O resumo que a Room produz ao terminar: resultado, motivo e os números de cada Player. É a única coisa que sai da Room para o banco, e é dele que o Match é gravado.
+_Evitar_: result (sozinho), summary, stats (é o agregado por User)
+
 **Achievement**:
 Conquista que um User desbloqueia ao fim de um Match (ex.: derrotar o Boss sem morrer). O catálogo vive no código; o desbloqueio fica em `user_achievements`.
 _Evitar_: badge, trophy, conquista (no código)
 
 **Lobby**:
-O estado de uma Room antes de começar: jogadores entrando, marcando pronto, escolhendo Map e Mode.
+O estado de uma Room antes de começar: Players entrando e marcando pronto. Mode, Map e as demais RoomOptions já estão fixados desde a criação.
 _Evitar_: waiting room, sala de espera
+
+**RoomOptions**:
+As escolhas de customização de uma Room (Map, Theme, HP inicial, Pickups ligados, limites do pvp), fixadas na criação e imutáveis depois. O que não foi escolhido assume o default.
+_Evitar_: settings, config, opções (no código)
 
 **Mode**:
 A regra de vitória da Room: `coop` (fuga da masmorra, até 5 Players: vitória quando o Boss morre, derrota quando todos morrem, sem respawn) ou `pvp` (1v1 sem inimigos, com respawn: vence quem chegar a `frag_limit` eliminações ou tiver o maior placar em `time_limit_s`). Cada Mode tem seu Ruleset.
 
 **Map**:
-Um arquivo `.cub` válido (texturas, cores, grid, spawns). Imutável.
+Um arquivo de grade escrito pelo time, com os caracteres do `.cub` do Cub3D: paredes, Spawns e as posições de Enemy, Boss, Door e Pickup. Não tem texturas nem cores (isso é do Theme). Imutável.
 _Evitar_: level, fase, mapa (no código)
 
 **Theme**:
-O conjunto de texturas e luz escolhido nas opções da Room (`dungeon`, `sewer`). Só muda o visual no cliente; não altera o Grid nem as regras.
+O visual inteiro de uma partida, escolhido nas RoomOptions (`dungeon`, `sewer`): paredes, chão, teto, sprites de Enemy e Boss, luz. Só existe no cliente; não altera o Grid nem as regras.
 _Evitar_: skin, map (Theme não troca o Map)
 
 **Grid**:
@@ -50,6 +55,14 @@ _Evitar_: map (quando é o estado em jogo), matrix, tiles
 
 **Spawn**:
 Célula do Grid marcada com N/S/E/W onde um Player nasce, com orientação inicial.
+
+**Kill**:
+Um Enemy ou o Boss morto por um Player.
+_Evitar_: frag (é Player contra Player)
+
+**Frag**:
+Um Player eliminado por outro Player no Mode `pvp`. É o que o placar do pvp conta.
+_Evitar_: kill (é contra Enemy ou Boss), eliminação, elimination
 
 ## Simulação
 
@@ -79,7 +92,7 @@ _Evitar_: input (é contínuo), command
 
 **Event**:
 Um fato que a Simulation produziu e o servidor anuncia: door_opened, player_hit, enemy_died, game_over. O cliente reage (HUD, som); o módulo de Match persiste o que sobrevive.
-_Evitar_: message, notification (é o sistema de notificações do site), log
+_Evitar_: message, notification, log
 
 **Seq**:
 Número crescente que o cliente dá a cada Input; volta no Snapshot para o cliente saber até onde o servidor já aplicou. Base da Prediction e da Reconciliation.
@@ -108,6 +121,10 @@ _Evitar_: state, snapshot (Snapshot é o que chega do servidor; ViewState é o q
 **Renderer**:
 O módulo que desenha uma ViewState com Three.js (`init`, `render`, `resize`, `dispose`).
 _Evitar_: engine, graphics
+
+**HudState**:
+O que o jogo entrega à casca para ela desenhar a HUD: HP, Mana, Armor, chaves, ping, lista de Players, placar e kill feed (os avisos de morte de Player). É a costura entre o jogo e a casca: a casca não lê Snapshot.
+_Evitar_: hud data, ViewState (é o que vai para o Renderer)
 
 ## Entidades da masmorra
 
@@ -145,7 +162,7 @@ Um bloco técnico do projeto com tarefas numeradas: F0 Fundação, F1 Simulation
 _Evitar_: módulo, slice, área
 
 **Checkpoint**:
-Demo de integração na sexta-feira, com critério observável (C1–C5 no plano). Checkpoint não fechado vira o assunto da reunião de segunda.
+Demo de integração no domingo, com critério observável (C1–C5 no plano). Checkpoint não fechado vira o assunto da reunião de segunda.
 _Evitar_: milestone, entrega, sprint review
 
 **Module** (módulo):
@@ -156,7 +173,7 @@ _Evitar_: usar "módulo" para pacote Python ou para Slice
 A interface combinada entre duas Slices (endpoints, mensagens, assinaturas), fechada antes do código dos dois lados.
 
 **ConnectionManager**:
-O registro único de sockets abertos por User, usado pelo jogo e pelo chat.
+O registro único de sockets abertos por User, usado pela partida e pelo canal de presença e Lobby da casca.
 
 **RoomManager**:
 O registro de Rooms vivas e das tasks que rodam a Simulation de cada uma.
