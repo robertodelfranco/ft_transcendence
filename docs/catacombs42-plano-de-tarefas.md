@@ -1,10 +1,14 @@
-# Catacombs 42 — plano de tarefas (27/09 → 07/11/2026)
+# Catacombs 42 — plano de tarefas (28/09 → 09/11/2026)
 
 > Guia de execução do projeto. A **parte 1** lista tudo que precisa ser feito, organizado por tarefa e por semana, sem dono. A **parte 2** registra quem faz o quê entre as 5 pessoas. O time usa a parte 1 como checklist até a defesa.
 >
 > Escopo fechado em 25/09/2026. Como o sistema funciona (interfaces, protocolo, contratos, constantes do Cub3D, schema, decisões técnicas) está em [catacombs42-web-arquitetura.md](catacombs42-web-arquitetura.md), citado aqui como "arq. §N". A proposta ampliada que deu origem a este plano, com outros módulos possíveis, está em [catacombs42-ideias-e-modulos.md](catacombs42-ideias-e-modulos.md). Vocabulário: [CONTEXT.md](../CONTEXT.md).
 >
 > **Revisão de 28/09/2026:** o *AI opponent* saiu do escopo e o *Monitoring system* (Prometheus + Grafana) entrou no lugar, com os mesmos 2 pontos. O PvP 1v1 continua (ver §1.1). F2.7, F2.13 e F3.6 passaram para o Caminho 1. A alocação dos 5 caminhos foi fechada no mesmo dia (§9).
+>
+> **Revisão de 01/10/2026:** os ciclos passaram a ser de segunda a domingo e todos os marcos andaram 2 dias. O checkpoint saiu da sexta e foi para o domingo; a reunião continua na segunda. A defesa em 09/11 é meta, não data marcada. O C1 passou a ser a reunião de contratos de 04/10 e os critérios técnicos dele foram para o C2; a lista de tarefas de cada semana não mudou. O atraso estimado é de 2 semanas: o PM refaz o calendário de S2 em diante depois da reunião.
+>
+> **Revisão de 02/10/2026:** decisões da preparação da reunião de contratos. O Player é identificado pelo `user_id` e a partida pelo `match_id`; o Snapshot não leva `frame`; o Theme decide todo o visual; o parser com códigos de erro saiu (F1.1 virou um carregador de Map mais um teste dos mapas); `friendly_fire` saiu das opções. Os contratos passaram a ser escritos por quem produz e assinados por quem consome: índice e donos em [contracts/README.md](contracts/README.md).
 
 ## Sumário
 
@@ -48,7 +52,7 @@ O jogo é o Catacombs 42 em 3D de verdade (Three.js), com a matemática e as reg
 | 13 | **Multiple languages (3)** | Minor | 1 | F7 |
 | | **Total** | | **21** | exigido: 14 |
 
-A margem de 7 pontos é o seguro. Como "módulo pela metade vale zero", a seção 8 define a ordem de corte, caso algum módulo não chegue inteiro em 30/10.
+A margem de 7 pontos é o seguro. Como "módulo pela metade vale zero", a seção 8 define a ordem de corte, caso algum módulo não chegue inteiro em 01/11.
 
 ### 1.1 O que os módulos novos exigem de verdade
 
@@ -105,18 +109,18 @@ Não dão ponto, mas qualquer um ausente reprova o projeto. Cada um tem tarefa n
 
 ## 3. Calendário e checkpoints
 
-Seis semanas, domingo a sábado. Cinco de construção e uma de acabamento. Um **checkpoint** é uma demo de integração na sexta-feira, com todo mundo na chamada e um critério observável. Checkpoint não fechado vira o assunto da reunião de segunda.
+Seis semanas, segunda a domingo. Cinco de construção e uma de acabamento. Um **checkpoint** é uma demo de integração no domingo, com todo mundo na chamada e um critério observável. Checkpoint não fechado vira o assunto da reunião de segunda.
 
-| Semana | Datas | Tema | Checkpoint (sexta) |
+| Semana | Datas | Tema | Checkpoint (domingo) |
 |---|---|---|---|
-| **S1** | 27/09 – 03/10 | Fundação e contratos | **C1 · 02/10**: login pelo Nginx com cadeado; testes do parser verdes; masmorra em 3D no `dev.html`; casca React com seletor de 3 idiomas |
-| **S2** | 04/10 – 10/10 | Jogo de ponta a ponta com 1 jogador | **C2 · 09/10**: um player cria Room no lobby e anda em 3D com movimento decidido pelo servidor, via `wss://` |
-| **S3** | 11/10 – 17/10 | Multiplayer, prediction, PvP | **C3 · 16/10**: duas máquinas jogam co-op até o boss morrer com prediction ligada; Match gravado; PvP 1v1 jogável |
-| **S4** | 18/10 – 24/10 | Módulos novos | **C4 · 23/10**: reconexão funciona; Grafana mostra os dashboards do jogo e do backend; opções mudam o jogo; estatísticas, level e conquistas reais; login pela 42 |
-| **S5** | 25/10 – 31/10 | Completar e polir | **C5 · 30/10**: todo módulo da seção 7 demonstrável de ponta a ponta, nos 3 idiomas, com console limpo. **Feature freeze no sábado, 31/10** |
-| **S6** | 01/11 – 07/11 | Bugs, README, ensaio | **Defesa · 07/11** |
+| **S1** | 28/09 – 04/10 | Fundação e contratos | **C1 · 04/10**: reunião de contratos: todo contrato de `docs/contracts/` tem rascunho e lista de pontos em aberto |
+| **S2** | 05/10 – 11/10 | Jogo de ponta a ponta com 1 jogador | **C2 · 11/10**: um player cria Room no lobby e anda em 3D com movimento decidido pelo servidor, via `wss://`. Herdado do C1: login pelo Nginx com cadeado; carregador de Map e movimento verdes; masmorra em 3D no `dev.html`; casca React com seletor de 3 idiomas |
+| **S3** | 12/10 – 18/10 | Multiplayer, prediction, PvP | **C3 · 18/10**: duas máquinas jogam co-op até o boss morrer com prediction ligada; Match gravado; PvP 1v1 jogável |
+| **S4** | 19/10 – 25/10 | Módulos novos | **C4 · 25/10**: reconexão funciona; Grafana mostra os dashboards do jogo e do backend; opções mudam o jogo; estatísticas, level e conquistas reais; login pela 42 |
+| **S5** | 26/10 – 01/11 | Completar e polir | **C5 · 01/11**: todo módulo da seção 7 demonstrável de ponta a ponta, nos 3 idiomas, com console limpo. **Feature freeze no mesmo domingo, 01/11, ao fim do checkpoint** |
+| **S6** | 02/11 – 08/11 | Bugs, README, ensaio | **Defesa (meta) · seg 09/11** |
 
-Regra do freeze: depois de 31/10 só entra correção de bug, texto e tradução. Módulo que não passou em C5 sai do README (seção 8).
+Regra do freeze: depois de 01/11 só entra correção de bug, texto e tradução. Módulo que não passou em C5 sai do README (seção 8).
 
 ---
 
@@ -127,7 +131,7 @@ O que atrasa o projeto inteiro se atrasar. As outras tarefas têm folga porque t
 ```mermaid
 flowchart LR
     C[F0.2 Contratos] --> A[F6.2 Auth mínima]
-    C --> P[F1.1 Parser + F1.3 Movimento]
+    C --> P[F1.1 Carregador de Map + F1.3 Movimento]
     P --> E[F1.5 Entidades + F1.6 CoopRuleset]
     A --> R[F2.3/F2.4 Room runtime + WS]
     E --> R
@@ -162,7 +166,7 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | ID | Tarefa | d | Dep. | Sem. | Pronto quando |
 |---|---|---|---|---|---|
 | F0.1 | Reunião de kickoff: ler este doc, fechar alocação, registrar papéis (PO, PM, TL) | 0,5 | — | S1 | Alocação escrita na seção 9; papéis no README |
-| F0.2 | Contratos publicados em `docs/contracts/`: `ws-messages.md` + `snapshot.example.json` (5 players, mana, armadura, 20 inimigos, boss, projéteis, portas), `auth.md`, `rooms.md` (RoomManager + `MatchResult`), `map-format.md`, `mount-game.md` (`MountOptions`/`HudState`) | 2 | — | S1 | Cada frente consumidora abriu issue citando o contrato |
+| F0.2 | Contratos publicados em `docs/contracts/`: `ws-messages.md` + `snapshot.example.json` (5 players, mana, armadura, 20 inimigos, boss, projéteis, portas), `auth.md`, `rooms.md` (RoomManager + `MatchResult`), `map-format.md`, `mount-game.md` (`ViewState`/`MountOptions`/`HudState`), `ws-manager.md`, `matches-api.md`, `infra.md`, `room-options.md`, `rules.md`, `i18n.md`. Cada um é escrito por quem produz e assinado por quem consome; índice, donos e modelo em [contracts/README.md](contracts/README.md) | 2 | — | S1 | Cada frente consumidora abriu issue citando o contrato |
 | F0.3 | Backend vira pacote `backend/app/` com `create_app()`, `pydantic-settings`, envelope de erro, `GET /api/health`, `pytest` + `httpx.ASGITransport` | 1,5 | — | S1 | Teste de `/health` verde no CI |
 | F0.4 | Frontend: Vite + React + TypeScript + framework CSS; `frontend/game/` isolado (não importa nada de `frontend/src/`); `vitest` | 1 | — | S1 | `npm run build` e `vitest` verdes no CI |
 | F0.5 | ADRs curtos em `docs/adr/`: servidor autoritativo e Room em memória; tokens (access em memória, refresh em cookie); Three.js puro atrás de `mountGame` | 0,5 | — | S1 | Três arquivos de 3 frases |
@@ -170,11 +174,11 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 
 ### F1 — Simulation (servidor, Python puro)
 
-**Olhar:** arq. §3 (três bugs do C para não portar), §5 (estado da Room e regras de N jogadores), §6 (interface, laço, constantes, opções), §15 (mapa de migração); Cub3D `parser_bonus/*`, `movement_bonus.c`, `move_utils_bonus.c`, `enemy_move_bonus.c`, `enemy_manage_bonus.c`, `move_boss_bonus.c`, `attack_bonus/create_*` e `update_*`, `door_bonus.c`, `handle_utils_bonus.c`; mapas em `maps/valid` e `maps/invalid`.
+**Olhar:** arq. §3 (três bugs do C para não portar), §5 (estado da Room e regras de N jogadores), §6 (interface, laço, constantes, opções), §15 (mapa de migração); Cub3D `parser_bonus/*`, `movement_bonus.c`, `move_utils_bonus.c`, `enemy_move_bonus.c`, `enemy_manage_bonus.c`, `move_boss_bonus.c`, `attack_bonus/create_*` e `update_*`, `door_bonus.c`, `handle_utils_bonus.c`; mapas em `maps/valid`.
 
 | ID | Tarefa | d | Dep. | Sem. | Pronto quando |
 |---|---|---|---|---|---|
-| F1.1 | `parse_cub(text) -> Map` com `MapError(code)`; caracteres novos `M` (mana), `A` (armadura), `T` (tocha); vários spawns | 2 | F0.2 | S1 | Teste parametrizado com os 33 mapas do Cub3D + mapas com `M A T` |
+| F1.1 | Carregador de Map: lê a grade (caracteres do Cub3D mais `M` mana, `A` armadura, `T` tocha; vários spawns) e devolve Grid, Spawns e posições das entidades. Sem parser com códigos de erro: Map é escrito pelo time, não pelo usuário | 1 | F0.2 | S1 | Um teste percorre `maps/coop/` e `maps/pvp/` e reprova mapa com caractere desconhecido, borda aberta, Spawns de menos ou sem exatamente 1 Boss no coop |
 | F1.2 | `state.py` (dataclasses `Room`, `Player`, `Enemy`, `Boss`, `Projectile`, `Door`, `InputState`, `Action`, `Event`) e `rules.py` com todas as constantes e unidades | 1 | F0.2 | S1 | `rules.py` revisado contra a tabela da arq. §6.3 |
 | F1.3 | Movimento por `dt` (andar, sprint, girar por tecla e por `mouse_dx` limitado), colisão com parede, porta e outros players | 2 | F1.2 | S1 | 1 s andando = 3,6 células; `\|dir\| = 1`; parede e player bloqueiam |
 | F1.4 | Portas, chaves, poções, pickups de mana e armadura | 1,5 | F1.3 | S2 | Porta trancada consome 1 chave de quem apertou; pickup some do Grid |
@@ -182,9 +186,9 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | F1.6 | `Ruleset` (interface) + `CoopRuleset`; `game_over` emitido uma vez; 5 players; teste de performance | 1 | F1.5 | S2 | 1000 ticks com 5 players + 20 inimigos + boss + 10 projéteis em < 200 ms |
 | F1.7 | CLI que roda N ticks e grava `snapshot.json` para o render | 0,5 | F1.6 | S2 | O JSON abre no `dev.html` de F3 sem adaptação |
 | F1.8 | `PvpRuleset`: 1v1, fireball fere player, respawn no spawn livre mais longe do inimigo, 5 eliminações ou 3 min, inimigos desligados | 2 | F1.6 | S3 | Partida PvP termina pelas duas condições nos testes |
-| F1.9 | `RoomOptions` aplicadas na Simulation com defaults: `map`, `theme`, `start_hp`, `enemy_density`, pickups ligados/desligados, `friendly_fire` (co-op), limite de eliminações e de tempo (PvP) | 1,5 | F1.8 | S3 | Sem opções, o jogo roda com os defaults; cada opção tem teste |
+| F1.9 | `RoomOptions` aplicadas na Simulation com defaults: `map`, `theme`, `start_hp`, `enemy_density`, pickups ligados/desligados, limite de eliminações e de tempo (PvP) | 1,5 | F1.8 | S3 | Sem opções, o jogo roda com os defaults; cada opção tem teste |
 
-**Subtotal F1: 14,5 d**
+**Subtotal F1: 13,5 d**
 
 ### F2 — Netcode e Room runtime (servidor e cliente)
 
@@ -195,7 +199,7 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | F2.1 | `ConnectionManager` (`connect`, `disconnect`, `send_to_user`, `broadcast`, `is_online`, `online_users`, callback de presença) com testes por fake de socket, e o endpoint `/ws/app` (arq. §7.4) | 2 | F0.3, F6.4 | S2 | Presença funciona com duas abas do mesmo User |
 | F2.2 | `protocol.py` (Pydantic, união discriminada por `type`) e `types.ts` espelhado | 1 | F0.2 | S2 | Mensagem inválida fecha com `4400` |
 | F2.3 | `RoomManager` + uma `asyncio.Task` por Room, tick fixo 30 Hz com compensação de deriva, Snapshot a cada 2 ticks; `join` atômico | 2 | F1.6 | S2 | Room criada, iniciada e cancelada sem vazar task |
-| F2.4 | `WS /ws/game/{room_id}`: `join` com token em ≤ 5 s, `welcome`, laço de leitura, códigos `44xx` | 1,5 | F2.3, F6.4 | S2 | Testes de `join` sem token, válido e malformado |
+| F2.4 | `WS /ws/game/{match_id}`: `join` com token em ≤ 5 s, `welcome`, laço de leitura, códigos `44xx` | 1,5 | F2.3, F6.4 | S2 | Testes de `join` sem token, válido e malformado |
 | F2.5 | Cliente: socket, `mountGame`, `ViewState` montado do último Snapshot (sem prediction ainda), envio de Input e Action | 1,5 | F2.4 | S2 | C2: 1 player anda com movimento decidido pelo servidor |
 | F2.6 | N players; limite de 60 Inputs/s; `dt` do servidor; `Seq` monotônico; fila por conexão com descarte (cliente lento não trava a Room) | 1 | F2.5 | S3 | 5 abas numa Room sem travar |
 | F2.7 | Prediction + Reconciliation; `applyInput.ts` com a mesma matemática de `sim.py`; teste que roda a mesma sequência nos dois lados e compara. O `applyInput.ts` e o teste cruzado começam logo depois de F1.3 (S2); a Reconciliation liga no cliente quando F2.6 chega | 2,5 | F1.3, F2.6 | S2–S3 | `console.assert` de reconciliação não dispara em 5 min |
@@ -213,7 +217,7 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 
 | ID | Tarefa | d | Dep. | Sem. | Pronto quando |
 |---|---|---|---|---|---|
-| F3.1 | `dev.html`: cena a partir do grid (paredes como `InstancedMesh` texturizado com `NearestFilter`, chão e teto com as cores do `.cub`), câmera FPS com yaw/pitch, Pointer Lock, contra `snapshot.example.json` | 2,5 | F0.2 | S1 | C1: masmorra em 3D no navegador |
+| F3.1 | `dev.html`: cena a partir do grid (paredes como `InstancedMesh` texturizado com `NearestFilter`, chão e teto com as cores do Theme), câmera FPS com yaw/pitch, Pointer Lock, contra `snapshot.example.json` | 2,5 | F0.2 | S1 | C2: masmorra em 3D no navegador |
 | F3.2 | `Renderer` (`init`, `render(view, dt)`, `resize`, `dispose`) e `AssetLoader` com estado de erro na tela (nunca warning no console) | 1 | F3.1 | S1–S2 | Asset faltando mostra erro na tela, console limpo |
 | F3.3 | Billboards animados: inimigos (10 quadros), boss, itens, fireball, bullet, outros players | 2,5 | F3.2 | S2 | Todas as entidades do Snapshot aparecem |
 | F3.4 | Porta como mesh animado; mão com bola de fogo como overlay fixo na câmera | 1,5 | F3.2 | S2 | Porta abre com animação quando o Snapshot muda |
@@ -228,11 +232,11 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 
 ### F4 — Conteúdo e gameplay (dados e design)
 
-**Olhar:** arq. §6.1 (formato `.cub` e Rulesets), §6.3 (constantes), §6.4 (opções), §10.3 (schema de estatísticas); mapas do Cub3D; o texto dos módulos *Game customization* e *Game statistics* no subject.
+**Olhar:** arq. §6.1 (arquivo de Map e Rulesets), §6.3 (constantes), §6.4 (opções), §10.3 (schema de estatísticas); mapas do Cub3D; o texto dos módulos *Game customization* e *Game statistics* no subject.
 
 | ID | Tarefa | d | Dep. | Sem. | Pronto quando |
 |---|---|---|---|---|---|
-| F4.1 | `map-format.md` + mapas co-op (`dungeon_map`, `enemy`, `enemy_sewer`) com 5 spawns e `M A T` | 1 | F0.2 | S1 | Os mapas passam no parser de F1.1 |
+| F4.1 | Mapas co-op (`dungeon_map`, `enemy`, `enemy_sewer`) no formato de `map-format.md`: só a grade, com 5 spawns e `M A T` | 1 | F0.2 | S1 | Os mapas passam no teste de F1.1 |
 | F4.2 | `rules.py` / `rules.ts` v1: números da arq. §6.3 + mana, armadura, respawn, limites do PvP | 0,5 | F1.2 | S1 | Mesmos nomes nos dois arquivos |
 | F4.3 | Especificação da HUD co-op e PvP (o que aparece, quando, em que ordem) | 0,5 | — | S2 | F7 consegue desenhar sem perguntar |
 | F4.4 | Dois mapas PvP 1v1 pequenos e simétricos | 1 | F1.8 | S3 | Carregam e são jogáveis |
@@ -249,7 +253,7 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | ID | Tarefa | d | Dep. | Sem. | Pronto quando |
 |---|---|---|---|---|---|
 | F5.1 | Alembic configurado (o `entrypoint` roda `alembic upgrade head`); modelos `matches` e `match_players` | 1,5 | F0.3 | S1 | Migração sobe do zero no compose |
-| F5.2 | Lobby: `POST /api/matches` (mode, map, max_players, options validadas com defaults) → `room_id`; listar Rooms abertas (de `RoomManager.info`, nunca do banco); entrar, sair, pronto, iniciar; lobby atualizado em tempo real via `ConnectionManager` | 3 | F2.3, F6.4 | S2 | Dois usuários veem o lobby mudar sem recarregar; corrida da última vaga resolvida no `join` |
+| F5.2 | Lobby: `POST /api/matches` (mode, map, max_players, options validadas com defaults) → `match_id`; listar Rooms abertas (de `RoomManager.info`, nunca do banco); entrar, sair, pronto, iniciar; lobby atualizado em tempo real via `ConnectionManager` | 3 | F2.3, F6.4 | S2 | Dois usuários veem o lobby mudar sem recarregar; corrida da última vaga resolvida no `join` |
 | F5.3 | `record_match_result(match_id, MatchResult)` idempotente; `startup` marca `running` → `aborted` | 1 | F5.1 | S3 | Chamada dupla grava uma vez |
 | F5.4 | `player_stats` agregado: vitórias, derrotas, eliminações, mortes, tempo jogado, por modo | 1 | F5.3 | S4 | Bate com os `match_players` |
 | F5.5 | Ranking (Elo no PvP) e level por XP (fórmula de F4.6) | 1 | F5.4 | S4 | Ranking muda após uma partida PvP |
@@ -266,13 +270,13 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | ID | Tarefa | d | Dep. | Sem. | Pronto quando |
 |---|---|---|---|---|---|
 | F6.1 | Migrações `users`, `refresh_tokens`, `oauth_accounts`, `friendships` (com F5.1) | 0,5 | F5.1 | S1 | Sobem junto com as de F5 |
-| F6.2 | Signup, login e `me`: Argon2id, JWT de acesso, validação Pydantic, mesma mensagem para e-mail e senha errados | 2 | F6.1 | S1 | C1: signup → login → `me` pelo Nginx com HTTPS |
+| F6.2 | Signup, login e `me`: Argon2id, JWT de acesso, validação Pydantic, mesma mensagem para e-mail e senha errados | 2 | F6.1 | S1 | C2: signup → login → `me` pelo Nginx com HTTPS |
 | F6.3 | Refresh com rotação e detecção de reuso; logout | 1,5 | F6.2 | S2 | Reuso de refresh antigo revoga a família |
 | F6.4 | `get_current_user` e `authenticate_ws_token` | 0,5 | F6.2 | S1 | Outras frentes usam `CurrentUser` |
 | F6.5 | Middlewares: logging JSON com `request_id`, handlers de erro no envelope, `RateLimit` como dependência | 2 | F0.3 | S2 | 6 logins errados em 1 min dão 429 |
 | F6.6 | Perfil: `GET/PATCH /api/users/me`, perfil público, upload de avatar validado (tipo e tamanho) com avatar padrão, idioma preferido | 1,5 | F6.4 | S3 | Avatar inválido é recusado no front e no back |
 | F6.7 | Amigos (adicionar, remover, listar) e status online via presença do `ConnectionManager` | 2 | F2.1 | S3 | Amigo aparece online ao abrir o site |
-| F6.8 | OAuth 2.0 com a 42 (Authorization Code + `state`), emitindo os mesmos tokens; pedir o app na intra **já na S1** | 2 | F6.3 | S4 | Login pela 42 cria ou vincula conta |
+| F6.8 | OAuth 2.0 com a 42 (Authorization Code + `state`), emitindo os mesmos tokens; registrar o app na intra (formulário no perfil de um membro do time, gera UID e SECRET) antes da S4 | 2 | F6.3 | S4 | Login pela 42 cria ou vincula conta |
 
 **Subtotal F6: 12 d**
 
@@ -285,9 +289,9 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | F7.1 | Roteamento, layout, contexto de auth (access em memória, refresh ao carregar), rotas protegidas, cliente HTTP que entende o envelope de erro; abrir `/ws/app` após o login (quando F2.1 existir) | 2 | F0.4 | S1 | Recarregar a página mantém o login |
 | F7.2 | i18n desde o primeiro componente: `react-i18next`, pt-BR / en / es, seletor na UI, preferência salva no perfil (com fallback local), códigos de erro do backend traduzidos no front; traduções completas na S5 | 3 | F0.4 | S1 + S5 | Nenhuma string solta no JSX (checagem no CI ou revisão) |
 | F7.3 | Privacy Policy e Terms of Service com conteúdo real, nos 3 idiomas, link no rodapé de toda página | 1 | F7.2 | S1–S2 | Acessíveis sem login |
-| F7.4 | Telas de login e cadastro com a mesma validação do backend; botão "entrar com a 42" | 1 | F7.1 | S1 | C1 |
+| F7.4 | Telas de login e cadastro com a mesma validação do backend; botão "entrar com a 42" | 1 | F7.1 | S1 | C2 |
 | F7.5 | Perfil próprio e de terceiros, edição, upload de avatar, lista de amigos com status online | 2 | F6.6, F6.7 | S3 | Critérios do *Standard user management* visíveis |
-| F7.6 | Rota `/play/:roomId` que monta `mountGame`; HUD em React (HP, mana, armadura, chaves, ping, players, placar e kill feed no PvP) via `onHud` | 2 | F2.5, F4.3 | S2–S3 | HUD reage ao Snapshot |
+| F7.6 | Rota `/play/:matchId` que monta `mountGame`; HUD em React (HP, mana, armadura, chaves, ping, players, placar e kill feed no PvP) via `onHud` | 2 | F2.5, F4.3 | S2–S3 | HUD reage ao Snapshot |
 | F7.7 | Lobby: criar Room com opções de customização (e defaults visíveis), listar Rooms, entrar, pronto | 2 | F5.2, F4.5 | S2–S4 | Criar partida sem mexer em nada usa os defaults |
 | F7.8 | Tela de resultado; histórico; estatísticas, ranking e level com barra de progresso; conquistas; leaderboard | 2,5 | F5.4–F5.8 | S4 | Os seis itens do módulo de estatísticas aparecem |
 | F7.9 | Responsivo, acessibilidade básica, passada de console limpo em todas as telas | 1 | — | S5 | Console vazio navegando o site inteiro |
@@ -318,7 +322,7 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 
 | ID | Tarefa | d | Dep. | Sem. | Pronto quando |
 |---|---|---|---|---|---|
-| F9.1 | Cada pessoa escreve no README: features, módulos com justificativa, contribuições individuais, desafios | 1 × 5 | F8.5 | S5–S6 | README completo em 04/11 |
+| F9.1 | Cada pessoa escreve no README: features, módulos com justificativa, contribuições individuais, desafios | 1 × 5 | F8.5 | S5–S6 | README completo em 06/11 |
 | F9.2 | Ensaio de defesa: cada pessoa explica a própria parte com o código aberto e faz uma "modificação rápida" (dano da fireball, campo novo no Snapshot, texto novo traduzido, opção nova no lobby) | incluso | — | S6 | Todo mundo passou pelo ensaio |
 
 **Subtotal F9: 5 d**
@@ -329,45 +333,45 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 
 O que precisa estar **pronto** até cada checkpoint (IDs da seção 5). Tarefa que atravessa semanas aparece onde termina.
 
-### S1 · 27/09 – 03/10 · Fundação e contratos
+### S1 · 28/09 – 04/10 · Fundação e contratos
 - **Todos:** F0.1, F0.2, F0.5, F0.6.
 - **Backend:** F0.3, F5.1, F6.1, F6.2, F6.4.
 - **Jogo:** F1.1, F1.2, F1.3; F3.1, F3.2; F4.1, F4.2.
 - **Web:** F0.4, F7.1, F7.2 (estrutura e seletor), F7.4.
 - **Infra:** F8.1, F8.2.
-- Pedir o app OAuth na intra da 42 (vai ser usado em F6.8).
-- **C1 · sex 02/10:** login pelo Nginx com cadeado; parser e movimento verdes; masmorra 3D no `dev.html`; casca React em 3 idiomas.
+- Registrar o app OAuth na intra da 42 (vai ser usado em F6.8).
+- **C1 · dom 04/10:** reunião de contratos: cada contrato de `docs/contracts/` com rascunho e pontos em aberto. Os critérios técnicos originais passaram para o C2.
 
-### S2 · 04/10 – 10/10 · Um jogador de ponta a ponta
+### S2 · 05/10 – 11/10 · Um jogador de ponta a ponta
 - **Jogo:** F1.4, F1.5, F1.6, F1.7; F2.1–F2.5; início de F2.7 (`applyInput.ts` + teste cruzado); F3.3, F3.4; F4.3.
 - **Backend:** F5.2; F6.3, F6.5.
 - **Web:** F7.3; início de F7.6 e F7.7.
 - **Infra:** F8.3, F8.4.
-- **C2 · sex 09/10:** um player entra pelo lobby, cria a Room e anda em 3D com movimento decidido pelo servidor, via `wss://`.
+- **C2 · dom 11/10:** um player entra pelo lobby, cria a Room e anda em 3D com movimento decidido pelo servidor, via `wss://`. Herdado do C1: login pelo Nginx com cadeado; carregador de Map e movimento verdes; masmorra 3D no `dev.html`; casca React em 3 idiomas.
 
-### S3 · 11/10 – 17/10 · Multiplayer, prediction, PvP
+### S3 · 12/10 – 18/10 · Multiplayer, prediction, PvP
 - **Jogo:** F1.8, F1.9; F2.6–F2.9; F3.5; F4.4, F4.5, F4.6.
 - **Backend:** F5.3; F6.6, F6.7.
 - **Web:** F7.5, F7.6.
 - **Infra:** F8.5; F8.7, F8.8.
-- **C3 · sex 16/10:** duas máquinas jogam co-op até o boss morrer com prediction ligada; o Match aparece no banco; PvP 1v1 jogável entre duas pessoas.
+- **C3 · dom 18/10:** duas máquinas jogam co-op até o boss morrer com prediction ligada; o Match aparece no banco; PvP 1v1 jogável entre duas pessoas.
 
-### S4 · 18/10 – 24/10 · Módulos novos
+### S4 · 19/10 – 25/10 · Módulos novos
 - **Jogo:** F2.10; F3.6, F3.7, F3.8, F3.9.
 - **Backend:** F5.4–F5.8; F6.8.
 - **Web:** F7.7 (opções), F7.8.
 - **Infra:** F8.9, F8.11.
-- **C4 · sex 23/10:** fechar a aba e voltar; Grafana com login mostra os dashboards do jogo e do backend; opções e temas mudam o jogo; estatísticas, level, ranking e conquistas reais; login pela 42.
+- **C4 · dom 25/10:** fechar a aba e voltar; Grafana com login mostra os dashboards do jogo e do backend; opções e temas mudam o jogo; estatísticas, level, ranking e conquistas reais; login pela 42.
 
-### S5 · 25/10 – 31/10 · Completar e polir
+### S5 · 26/10 – 01/11 · Completar e polir
 - **Jogo:** F2.12, F2.13; F3.10; F4.7.
 - **Web:** F7.2 (traduções completas), F7.9.
 - **Infra:** F8.6, F8.10.
 - **Todos:** F9.1 começa.
-- **C5 · sex 30/10:** a lista da seção 7 inteira demonstrada, nos 3 idiomas, com console limpo, nas máquinas da demo. **Freeze no sábado 31/10.**
+- **C5 · dom 01/11:** a lista da seção 7 inteira demonstrada, nos 3 idiomas, com console limpo, nas máquinas da demo. **Freeze no mesmo domingo, ao fim do checkpoint.**
 
-### S6 · 01/11 – 07/11 · Acabamento
-- Só bug, texto e tradução. README fechado até 04/11. F9.2 (ensaio) em 05–06/11. **Defesa em 07/11.**
+### S6 · 02/11 – 08/11 · Acabamento
+- Só bug, texto e tradução. README fechado até 06/11. F9.2 (ensaio) em 07–08/11. **Defesa (meta) em 09/11.**
 
 ---
 
@@ -400,7 +404,7 @@ Checklist para C5 e para o ensaio. O módulo só entra no README se **todos** os
 | Frente | d |
 |---|---|
 | F0 Fundação | 6 |
-| F1 Simulation | 14,5 |
+| F1 Simulation | 13,5 |
 | F2 Netcode | 17 |
 | F3 Render 3D | 16 |
 | F4 Conteúdo | 5 |
@@ -409,7 +413,7 @@ Checklist para C5 e para o ensaio. O módulo só entra no README se **todos** os
 | F7 Casca web | 16,5 |
 | F8 Infra e monitoring | 10,5 |
 | F9 Docs e defesa | 5 |
-| **Total** | **≈ 113 d** |
+| **Total** | **≈ 112 d** |
 
 Capacidade: 5 pessoas × 5 semanas de construção × 5 dias = **125 d no papel**. Com a realidade de quem estuda (outras entregas, dias perdidos, aprendizado de Three.js, asyncio e React), algo entre **85 e 100 d**. **O escopo de 21 pontos só cabe se o time trabalhar perto do tempo integral**; a folga é pequena. Consequências práticas:
 
@@ -421,9 +425,9 @@ Capacidade: 5 pessoas × 5 semanas de construção × 5 dias = **125 d no papel*
 
 | Risco | Sinal precoce | Plano B |
 |---|---|---|
-| Three.js novo para todo mundo | C1 sem masmorra no `dev.html` | F3 camada mínima: caixas texturizadas + billboards + uma luz; as técnicas "advanced" entram na S3 |
+| Three.js novo para todo mundo | C2 sem masmorra no `dev.html` | F3 camada mínima: caixas texturizadas + billboards + uma luz; as técnicas "advanced" entram na S3 |
 | Prediction diverge (`sim.py` ≠ `applyInput.ts`) | Assert de reconciliação dispara em C3 | Uma pessoa revisa os dois arquivos; teste cruzado Python × TS (F2.7) |
-| Auth atrasa e trava o time | C1 sem `me` pelo Nginx | Access de 8 h temporário, refresh na S2 |
+| Auth atrasa e trava o time | C2 sem `me` pelo Nginx | Access de 8 h temporário, refresh na S2 |
 | Grafana configurado à mão | Dashboard some depois de `docker compose down -v` | Tudo provisionado por arquivo versionado (F8.9); nada clicado na UI entra na demo |
 | Texto não traduzido espalhado | Qualquer string no JSX | Regra de lint (`i18next/no-literal-string`) no CI desde a S1 |
 | Warning no console do Chrome | Qualquer um, em qualquer tela | Bug bloqueante desde a S1 |
@@ -459,7 +463,7 @@ Alocação fechada em 28/09/2026. Critérios usados:
 
 | Caminho | Pessoa (GitHub) | Papel | Frentes | d |
 |---|---|---|---|---|
-| **1 · Simulation e Prediction** | Roberto (`@robertodelfranco`) | Tech Lead | F1 inteira (incl. PvP), F2.7, F2.13, F3.6, F0.2, F0.5, revisão de `rules.*` | ≈ 21 + revisão |
+| **1 · Simulation e Prediction** | Roberto (`@robertodelfranco`) | Tech Lead | F1 inteira (incl. PvP), F2.7, F2.13, F3.6, F0.2, F0.5, revisão de `rules.*` | ≈ 20 + revisão |
 | **2 · Auth e Netcode** | Augusto (`@augustocesarmd`) | Dev | F6.1–F6.5, F0.3, F2 (menos F2.7 e F2.13), F8.7 | ≈ 23 |
 | **3 · Render 3D e conteúdo** | Rafael (`@rflheringer`) | Dev | F3 (menos F3.6), F4 | ≈ 20 |
 | **4 · Web, usuários e i18n** | Caio (`@caioosantos`) | PO | F0.4, F7, F6.6–F6.7 | ≈ 21 |
@@ -469,9 +473,9 @@ F0.1 e F9 são de todos.
 
 ### Caminho 1 — Simulation e Prediction · Roberto (Tech Lead)
 
-- **Faz:** parser, movimento, colisão, inimigos, boss, projéteis, pickups, `CoopRuleset`, `PvpRuleset`, `RoomOptions` na simulação; `applyInput.ts` com o teste cruzado Python × TS, Prediction e Reconciliation no cliente; minimapa; teste de carga do tick. Publica os contratos na S1. Revisa todo PR que mexe em `rules.*` ou `sim.py`.
+- **Faz:** carregador de Map, movimento, colisão, inimigos, boss, projéteis, pickups, `CoopRuleset`, `PvpRuleset`, `RoomOptions` na simulação; `applyInput.ts` com o teste cruzado Python × TS, Prediction e Reconciliation no cliente; minimapa; teste de carga do tick. Coordena os contratos da S1 e escreve os do jogo (cada contrato é escrito por quem produz; ver `docs/contracts/README.md`). Revisa todo PR que mexe em `rules.*` ou `sim.py`.
 - **Por quê:** é o port direto do C que você escreveu; na defesa você explica a matemática que já conhece. O `applyInput.ts` é o espelho em TS do movimento de `sim.py`, então quem escreve os dois é quem garante que eles batem. O minimapa é parente do minimapa do Cub3D, e o teste de carga mede a própria Simulation. A Simulation é Python puro, sem rede e sem banco, então não trava ninguém enquanto a infra sobe.
-- **Semana a semana:** S1 contratos + parser + movimento · S2 entidades + CoopRuleset + CLI + `applyInput.ts` com teste cruzado · S3 PvP + opções + Reconciliation ligada no cliente · S4 minimapa + par com o Caminho 2 na reconexão (F2.10 depende de F2.7) · S5 teste de carga + folga para revisão e bugs.
+- **Semana a semana:** S1 contratos + carregador de Map + movimento · S2 entidades + CoopRuleset + CLI + `applyInput.ts` com teste cruzado · S3 PvP + opções + Reconciliation ligada no cliente · S4 minimapa + par com o Caminho 2 na reconexão (F2.10 depende de F2.7) · S5 teste de carga + folga para revisão e bugs.
 - **Aprender antes:** `dataclasses`, funções puras e determinismo, `pytest.mark.parametrize`; TypeScript o suficiente para `applyInput.ts`; Gambetta, *Fast-Paced Multiplayer* partes I–II (prediction e reconciliation); canvas 2D.
 - **Explica na defesa:** por que `dt` e não quadro; por que o servidor decide o acerto; por que o cliente prevê, como ele corrige quando o servidor discorda e como o teste cruzado garante que as duas implementações dão o mesmo resultado.
 - **Muda em relação ao plano anterior:** a autenticação sai deste caminho (ver Caminho 2); o Tech Lead continua revisando o PR de auth, porque é quem escreveu as decisões da arq. §4. Em 28/09 o bot saiu do escopo e entraram F2.7, F2.13 e F3.6.
@@ -481,7 +485,7 @@ F0.1 e F9 são de todos.
 - **Faz:** pacote do backend, signup/login/refresh/logout, `get_current_user`, middlewares (logging, erros, rate limit); depois `ConnectionManager`, `RoomManager`, WebSocket do jogo, Interpolation, fim de partida, reconexão; `/metrics` com as métricas do backend e do jogo.
 - **Por quê:** o netcode só começa quando a Simulation tem entidades (S2). A S1 dessa pessoa vai para a auth, que é pré-requisito de todo mundo. Auth e WebSocket se encontram em `authenticate_ws_token`, então é um caminho contínuo, não dois assuntos. A instrumentação fica aqui porque as métricas moram nos middlewares e no laço do `RoomManager`, que são código deste caminho.
 - **Semana a semana:** S1 pacote + auth mínima · S2 refresh + middlewares + WS com 1 player · S3 N players + interpolation + fim de partida + `/metrics` · S4 reconexão · S5 teste com throttling.
-- **Aprender antes:** JWT (RFC 7519), Argon2id e rotação de refresh (RFC 9700), cookies `HttpOnly`/`SameSite`; `asyncio` (tasks, cancelamento, `Queue`); Gambetta partes I–IV; tipos de métrica do Prometheus (counter, gauge, histogram).
+- **Aprender antes:** JWT (RFC 7519), Argon2id e rotação de refresh (RFC 9700), cookies `HttpOnly`/`SameSite`; `asyncio` (tasks, cancelamento, `Queue`); Gambetta partes I–IV; tipos de métrica do Prometheus (counter, gauge, histogram); o que o Nginx faz com a requisição antes de ela chegar ao backend (onde o HTTPS termina, `proxy_pass`, cabeçalhos repassados, upgrade de WebSocket), porque o auth e os WebSockets rodam atrás dele, embora o Nginx seja do Caminho 5.
 - **Explica na defesa:** fluxo de tokens e rotação com detecção de reuso; tick fixo e Snapshot; interpolation dos outros players; por que o tick é histograma e o login é counter.
 - **Atenção:** é o caminho mais pesado e o que está no caminho crítico. O Tech Lead faz par nas primeiras horas de F2.3. O F2.7 agora é do Tech Lead, e F2.6 e F2.10 encostam nele: os dois combinam na S2 a interface do cliente (onde a Prediction entra no laço de Input e de Snapshot).
 
@@ -509,7 +513,7 @@ F0.1 e F9 são de todos.
 - **Semana a semana:** S1 TLS + CI + Alembic · S2 lobby + compose final · S3 `record_match_result` + README esqueleto + Prometheus e exporters · S4 estatísticas, conquistas, leaderboard, OAuth, dashboards e Grafana atrás do Nginx · S5 alertas + setup da demo.
 - **Aprender antes:** SQLAlchemy 2.0 assíncrono e Alembic; Nginx `proxy_pass` com upgrade de WebSocket; `mkcert`; RFC 6749 §4.1 para o OAuth; Prometheus (`scrape_configs`, PromQL básico, `rate` e `histogram_quantile`, regras de alerta) e provisioning do Grafana.
 - **Explica na defesa:** o schema e suas relações; por que estado de partida nunca vai para o banco; idempotência de `record_match_result`; o fluxo do OAuth com `state`; o que cada dashboard mostra, como o alerta dispara e por que o Prometheus não é acessível de fora.
-- **Papel de PM:** reunião de segunda, checkpoints de sexta, blockers, prazos da seção 3.
+- **Papel de PM:** reunião de segunda, checkpoints de domingo, blockers, prazos da seção 3.
 
 ### Alternativas que o time pode preferir
 
@@ -527,6 +531,6 @@ Feito em 28–29/09, com a alocação fechada:
 - [x] **`CONTEXT.md`**: **Slice** redefinida (o conjunto de frentes de uma pessoa); adicionados **Frente**, **Checkpoint**, **Ruleset**, **Pickup** (substitui Item), **Mana**, **Armor**, **Theme**, **ViewState**, **Renderer** e **Achievement**; **Mode** atualizado.
 - [x] **Arquitetura**: bot removido (§5, §6, §8.3, §10, §14, §15); monitoring descrito na §12.1 e no contrato 12.
 - [ ] [catacombs42-ideias-e-modulos.md](catacombs42-ideias-e-modulos.md) fica como está: é o registro da proposta ampliada, não o escopo vigente.
-- [ ] [roadmap-roberto.md](roadmap-roberto.md) é pessoal e anterior a 28/09; o Roberto decide se atualiza.
+- [x] [roadmap-roberto.md](roadmap-roberto.md) é pessoal; foi reescrito em 02/10 para o Caminho 1 (Simulation e Prediction).
 
 Docs do time: `AGENTS.md`, `CONTEXT.md`, [catacombs42-web-arquitetura.md](catacombs42-web-arquitetura.md), este plano e [transcendence.md](transcendence.md), mais [catacombs42-ideias-e-modulos.md](catacombs42-ideias-e-modulos.md) como referência.
