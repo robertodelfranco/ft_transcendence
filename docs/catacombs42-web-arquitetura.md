@@ -1,6 +1,6 @@
 # Catacombs 42 — arquitetura
 
-> Como o sistema funciona: componentes, estado, protocolo, contratos, banco e as decisões técnicas por trás de cada um. Atualizado em 25/09/2026 para o escopo fechado (jogo 3D em Three.js, 21 pontos) e em 28/09/2026 para a troca do *AI opponent* pelo *Monitoring system* (sem bot; Prometheus + Grafana na §12).
+> Como o sistema funciona: componentes, estado, protocolo, contratos, banco e as decisões técnicas por trás de cada um. Atualizado em 25/09/2026 para o escopo fechado (jogo 3D em Three.js, 21 pontos) e em 28/09/2026 para a troca do *AI opponent* pelo *Monitoring system* (sem bot; Prometheus + Grafana na §12). Em 02/10/2026 entraram as decisões da preparação dos contratos: Player identificado pelo `user_id` e partida pelo `match_id`, Snapshot sem `frame`, Theme dono de todo o visual, arquivo de Map só com a grade (sem parser com códigos de erro) e fim do `friendly_fire`; depois, fim do `enemy_density` (Map com até 20 Enemies) e Inputs aplicados em fila, um por Tick ([contracts/ws-messages.md](contracts/ws-messages.md) §2.9).
 >
 > O que fazer e quando está em [catacombs42-plano-de-tarefas.md](catacombs42-plano-de-tarefas.md). O vocabulário está em [CONTEXT.md](../CONTEXT.md). A proposta ampliada com todas as opções de módulos está em [catacombs42-ideias-e-modulos.md](catacombs42-ideias-e-modulos.md). Os códigos F1–F8 são as frentes do plano.
 
@@ -127,7 +127,7 @@ Cada uma vira um ADR curto em `docs/adr/` (título + 1–3 frases de contexto, d
 | 5 | **No WebSocket, o token vai na primeira mensagem (`join`)**, não na query string; sem `join` em 5 s, fecha com `4401` | Query string vai para log e histórico; o navegador não deixa setar header no handshake | Cookie de access com `Path=/ws/` |
 | 6 | **OAuth 2.0 com a 42** (Authorization Code + `state`), emitindo os mesmos tokens do login | 1 ponto, fluxo curto, público real | 2FA TOTP (`pyotp`) se a intra travar: mesmo ponto |
 | 7 | **Simulation a 30 Hz (dt = 1/30 fixo); Snapshot a cada 2 ticks (15 Hz)** | Divide limpo; 15 Hz basta com interpolação a 100 ms | 60/20 se o input "grudar" |
-| 8 | **Vários `N/S/E/W` no `.cub`**; a Room exige `len(spawns) >= max_players` | Compatível com os mapas existentes, sem caractere novo de spawn | Caractere `X` de spawn livre |
+| 8 | **Vários `N/S/E/W` no arquivo de Map**; a Room exige `len(spawns) >= max_players` | Compatível com os mapas existentes, sem caractere novo de spawn | Caractere `X` de spawn livre |
 | 9 | **Rate limit próprio**: dependência `RateLimit(times, seconds, key)`, token bucket em memória | Um worker, sem Redis; ~40 linhas explicáveis na defesa | `fastapi-limiter` se um dia houver Redis |
 | 10 | **Um worker** (`uvicorn` sem `--workers`), documentado no README como limitação consciente | Room e conexões em memória; o subject não exige escala | Redis pub/sub + sticky sessions |
 | 11 | **JSON com `v: 1` em toda mensagem** | Depurável no DevTools; ~3 KB por Snapshot × 15 Hz é pouco | Binário se a banda incomodar; o `v` permite trocar |
@@ -144,24 +144,26 @@ Tudo que no C estava espalhado em `t_game` vira o estado de **uma Room**, com a 
 
 ```
 Room
-├── id, match_id, mode ("coop" | "pvp"), status ("lobby" | "running" | "finished")
+├── match_id (é o id da Room), mode ("coop" | "pvp"), status ("lobby" | "running" | "finished")
 ├── options: RoomOptions             ← customização, com defaults (seção 6.4)
 ├── ruleset: CoopRuleset | PvpRuleset
 ├── tick: int                         ← relógio oficial, vai em todo Snapshot
 ├── rng: random.Random(seed)          ← nunca o random global
 ├── grid: list[list[str]]             ← MUTÁVEL: portas D/O, pickups somem
-├── players: { id → Player }
+├── players: { user_id → Player }
 │     Player: user_id, name, x, y, dir_x, dir_y,
 │             hp, mana, armor, keys, alive, connected,
 │             input {up, down, left, right, rot_left, rot_right, sprint},
-│             pending_mouse_dx, last_input_seq, attack_cooldown,
+│             input_queue, last_input_seq, attack_cooldown,
 │             kills, deaths, frags, damage_dealt, damage_taken, …
-├── enemies: [ {id, x, y, state, frame, target_player_id} ]
-├── boss: {x, y, hp, state, frame, target_player_id} | None
+├── enemies: [ {id, x, y, state, target_player_id} ]
+├── boss: {x, y, hp, state, target_player_id} | None
 ├── projectiles: [ {id, kind: "fireball" | "bullet", owner_id, x, y, dx, dy, state} ]
 ├── doors: [ {x, y, locked, open} ]
 └── result: None | {result, winner_ids, reason}
 ```
+
+O Player é identificado pelo `user_id` do User, e é esse número que `target_player_id` e `owner_id` guardam. A Room é identificada pelo `match_id`. O servidor não guarda quadro de animação: ele manda o `state` e o cliente anima (§7.1).
 
 **O que muda por haver N jogadores** (em relação ao C):
 
@@ -178,7 +180,7 @@ Room
 
 ### 6.1 Interface
 
-- `parse_cub(text) -> Map`, com `MapError(code)` usando os códigos do `cub3d_bonus.h`. Regras na ordem do C: extensão; caracteres de controle; separação mapa/config; texturas únicas; `F`/`C` com 3 inteiros 0–255; caracteres permitidos; mapa fechado; ≥ 1 spawn (vários permitidos); ≥ 1 `I`; exatamente 1 `B` (só nos mapas co-op). Caracteres novos: `M` (mana), `A` (armadura), `T` (tocha: célula livre no servidor, luz no cliente).
+- **Carregador de Map** (`load_map(text) -> Map`; o nome é sugestão): lê a grade e devolve o Grid inicial, os Spawns com orientação e as posições de Enemy, Boss, Door e Pickup. Caracteres: os do Cub3D (`1 0 N S E W D K P I B`) mais `M` (mana), `A` (armadura) e `T` (tocha: célula livre no servidor, luz no cliente). O arquivo não tem linhas de textura nem de cor, porque o visual é do Theme (§8.2). Não existe parser com códigos de erro: quem escreve Map é o time, não o usuário. No lugar dele, um teste percorre `maps/coop/` e `maps/pvp/` e reprova o PR se algum mapa tiver caractere desconhecido, borda aberta, Spawns de menos para o Mode, ou não tiver exatamente 1 `B` no coop.
 - `step(room, dt) -> list[Event]`, **determinística** e sem I/O. Ordem fixa por tick:
   1. aplicar Inputs (yaw por `mouse_dx` limitado, rotação por tecla, movimento, coleta);
   2. Actions pendentes (`fire` se houver mana e cooldown vencido; `door`);
@@ -188,7 +190,7 @@ Room
   8. Ruleset: respawn, fim de partida.
 - `to_snapshot(room, for_player_id) -> dict`.
 - `Ruleset`: `on_start`, `on_player_death`, `check_end`, `entity_set` (quais caracteres do mapa valem), `numbers`. Dois adapters:
-  - **`CoopRuleset`**: vitória quando o boss morre; derrota quando todos morrem; sem respawn; `game_over` emitido **uma vez**.
+  - **`CoopRuleset`**: vitória quando o boss morre; derrota quando todos morrem; sem respawn; fireball não fere Player; `game_over` emitido **uma vez**.
   - **`PvpRuleset`**: 1v1, inimigos e boss desligados, fireball fere player, respawn no spawn livre mais longe do adversário, vitória em `frag_limit` eliminações ou maior placar em `time_limit_s`.
 - Garantias que as outras frentes usam: `hp` inteiro; posição nunca fora do grid (checar limites: mapas irregulares têm linhas de tamanhos diferentes); constantes só em `rules.py`.
 
@@ -232,16 +234,14 @@ Números finais são calibrados por F4 (tarefa F4.7 do plano).
 
 ### 6.4 `RoomOptions` (Game customization)
 
-Validadas no `POST /api/matches` com defaults; a Simulation lê de `room.options`.
+Validadas no `POST /api/matches` com defaults e imutáveis depois de criada a Room; a Simulation lê de `room.options`.
 
 | Opção | Valores | Default |
 |---|---|---|
 | `map` | mapas da pasta do modo | primeiro da lista |
-| `theme` | `dungeon`, `sewer` (texturas e luz no cliente) | `dungeon` |
+| `theme` | `dungeon`, `sewer` (todo o visual no cliente: paredes, chão, teto, sprites, luz) | `dungeon` |
 | `start_hp` | 5–20 | 10 |
-| `enemy_density` | `normal`, `double` (co-op) | `normal` |
 | `pickups` | `{potion, mana, armor}` ligados/desligados | todos ligados |
-| `friendly_fire` | bool (co-op) | `false` |
 | `frag_limit` | 3–10 (PvP) | 5 |
 | `time_limit_s` | 120–600 (PvP) | 180 |
 
@@ -253,12 +253,12 @@ A tabela oficial com limites é a de F4.5 (`docs/contracts/`).
 
 Toda mensagem: `{"v": 1, "type": "<tipo>", ...}`. Contrato completo com exemplos em `docs/contracts/ws-messages.md` + `snapshot.example.json`.
 
-### 7.1 `/ws/game/{room_id}`
+### 7.1 `/ws/game/{match_id}`
 
 **Cliente → servidor**
 
 ```json
-{"v":1,"type":"join","room_id":"r_8f3a","token":"<access jwt>"}
+{"v":1,"type":"join","match_id":12,"token":"<access jwt>"}
 {"v":1,"type":"input","seq":42,"keys":{"up":true,"down":false,"left":false,"right":false,"rot_left":false,"rot_right":false,"sprint":false},"mouse_dx":0.031}
 {"v":1,"type":"action","seq":43,"kind":"fire"}
 {"v":1,"type":"action","seq":44,"kind":"door"}
@@ -268,24 +268,26 @@ Toda mensagem: `{"v": 1, "type": "<tipo>", ...}`. Contrato completo com exemplos
 **Servidor → cliente**
 
 ```json
-{"v":1,"type":"welcome","player_id":"p_1","room":{"id":"r_8f3a","mode":"coop","options":{"start_hp":10,"theme":"dungeon"}},"map":{"grid":["111","1N1","111"],"textures":{"NO":"/assets/map/dungeon_wall_4.png","SO":"…","WE":"…","EA":"…"},"floor":[84,84,84],"ceiling":[22,30,0]},"snapshot":{}}
+{"v":1,"type":"welcome","user_id":7,"room":{"match_id":12,"mode":"coop","options":{"start_hp":10,"theme":"dungeon"}},"map":{"grid":["111","1N1","111"]},"snapshot":{}}
 {"v":1,"type":"snapshot","tick":1200,"last_input_seq":42,
- "players":[{"id":"p_1","name":"rdel-fra","x":3.5,"y":2.5,"dx":0,"dy":-1,"hp":8,"mana":60,"armor":0,"keys":1,"alive":true,"connected":true}],
- "enemies":[{"id":"e_3","x":6.2,"y":7.1,"state":"alert","frame":1}],
- "boss":{"x":12.5,"y":14.5,"hp":40,"state":"attack","frame":4},
- "projectiles":[{"id":"f_9","kind":"fireball","owner":"p_1","x":4.1,"y":1.9,"dx":0,"dy":-1,"state":"moving","frame":0}],
+ "players":[{"id":7,"name":"rdel-fra","x":3.5,"y":2.5,"dx":0,"dy":-1,"hp":8,"mana":60,"armor":0,"keys":1,"alive":true,"connected":true}],
+ "enemies":[{"id":"e_3","x":6.2,"y":7.1,"state":"alert"}],
+ "boss":{"x":12.5,"y":14.5,"hp":40,"state":"attack"},
+ "projectiles":[{"id":"f_9","kind":"fireball","owner":7,"x":4.1,"y":1.9,"dx":0,"dy":-1,"state":"moving"}],
  "doors":[{"x":5,"y":8,"open":false,"locked":true}],
  "grid_delta":[{"x":5,"y":3,"c":"0"}],
  "scoreboard":null}
-{"v":1,"type":"event","name":"player_died","tick":1201,"data":{"player_id":"p_2","by":"p_1"}}
-{"v":1,"type":"event","name":"game_over","tick":1900,"data":{"result":"win","winner_ids":["p_1","p_2"],"reason":"boss_defeated"}}
+{"v":1,"type":"event","name":"player_died","tick":1201,"data":{"player_id":9,"by":7}}
+{"v":1,"type":"event","name":"game_over","tick":1900,"data":{"result":"win","winner_ids":[7,9],"reason":"boss_defeated"}}
 {"v":1,"type":"pong","t":1726400000123}
 {"v":1,"type":"error","code":"room_full","message":"…"}
 ```
 
+- **Ids**: todo id de Player (`players[].id`, `owner`, `by`, `winner_ids`) é o `user_id` do User. Enemy e Projectile têm id próprio, local à Room (`e_3`, `f_9`). A partida é identificada pelo `match_id`.
+- **Sem `frame`**: o servidor manda só o `state` de cada entidade. O cliente anima no próprio relógio e reinicia a animação quando o `state` muda.
 - `mouse_dx`: giro acumulado em radianos desde o último `input` (a sensibilidade é aplicada no cliente); o servidor limita por tick.
 - `grid_delta`: só as células que mudaram (porta, pickup). O grid completo vem no `welcome`.
-- `scoreboard`: `null` no co-op; no PvP, `{"frags":{"p_1":3,"p_2":1},"time_left_s":94}`.
+- `scoreboard`: `null` no co-op; no PvP, `{"frags":{"7":3,"9":1},"time_left_s":94}` (chave de objeto JSON é sempre texto; o formato final fica no contrato).
 - **Events**: `player_joined`, `player_left`, `player_disconnected`, `player_reconnected`, `door_opened`, `door_closed`, `item_picked {kind, by}`, `player_hit {target, by, amount, absorbed}`, `enemy_died {enemy_id, killer_id}`, `boss_died {killer_id}`, `player_died {player_id, by}` (vira o kill feed), `player_respawned`, `achievement_unlocked {user_id, code}` (após o fim), `game_over {result, winner_ids, reason}`.
 - **Códigos de fechamento**: `4400` mensagem inválida, `4401` não autenticado, `4403` não é membro da Room, `4404` Room inexistente, `4409` Room cheia, `4503` servidor encerrando.
 
@@ -293,7 +295,7 @@ Toda mensagem: `{"v": 1, "type": "<tipo>", ...}`. Contrato completo com exemplos
 
 O cliente aplica o próprio Input na hora (**Prediction**), com a mesma função do servidor (`applyInput.ts` ≡ `sim.py`), e guarda os Inputs ainda não confirmados. Quando chega um Snapshot com `last_input_seq = 41`, ele põe o Player na posição oficial, descarta até 41 e reaplica 42, 43… (**Reconciliation**). Erro pequeno (< 0,05 célula) é corrigido suavemente em 100 ms; erro grande, teleporta. Os **outros** Players e entidades são desenhados a `now − 100 ms`, interpolando entre Snapshots (**Interpolation**); sem Snapshot novo por mais de 2 intervalos, congela (não extrapola).
 
-Do lado do servidor: o `dt` aplicado é sempre o do servidor (nunca um dt vindo do cliente: é anti speed-hack); Inputs além de 60/s são ignorados; `seq` só cresce e é guardado por conexão (reinicia ao reconectar).
+Do lado do servidor: o `dt` aplicado é sempre o do servidor (nunca um dt vindo do cliente: é anti speed-hack); cada Input é aplicado uma única vez, em fila, um por Tick e no máximo dois para alcançar o cliente (60/s), e fila vazia deixa o Player parado ([contracts/ws-messages.md](contracts/ws-messages.md) §2.9); `seq` só cresce e é guardado por conexão (reinicia ao reconectar).
 
 ### 7.3 Desconexão e reconexão (módulo *Remote players*)
 
@@ -309,7 +311,7 @@ Aberto pela casca logo após o login (mesmo `join` com token). Carrega:
 
 - presença: `{"type":"presence","user_id":7,"online":true}` para os amigos;
 - lobby: `{"type":"lobby_update","match_id":12,"players":[…],"status":"lobby"}` para quem está no lobby daquela Room;
-- `{"type":"match_started","room_id":"r_8f3a"}`: a casca navega para `/play/r_8f3a`.
+- `{"type":"match_started","match_id":12}`: a casca navega para `/play/12`.
 
 ---
 
@@ -342,11 +344,13 @@ interface Renderer {
 
 ### 8.2 A cena em Three.js
 
-- **Mundo a partir do grid**: cada célula `1` é uma caixa texturizada, desenhada com `InstancedMesh` (uma chamada de desenho por textura); chão e teto como planos com as cores `F`/`C` do `.cub`. Texturas do Cub3D com `NearestFilter` (mantém o pixel art).
+- **Mundo a partir do grid**: cada célula `1` é uma caixa texturizada, desenhada com `InstancedMesh` (uma chamada de desenho por textura); chão e teto como planos com as cores do Theme. Texturas do Cub3D com `NearestFilter` (mantém o pixel art).
+- **Eixos**: `x` do Grid vira `X`, `y` do Grid vira `Z` e a altura é `Y`; 1 célula = 1 unidade e a parede tem altura 1. A câmera do Three.js olha para `-Z`, que é o norte do Grid (`dy = -1`), então `yaw = atan2(-dx, -dy)` e o mapa não sai espelhado.
 - **Câmera**: posição = Player, altura fixa; yaw vem do estado; pitch só local, limitado a ±60°.
 - **Entidades**: inimigos, boss, itens, projéteis e outros Players como **billboards** (`Sprite`) animados com os quadros existentes, "sentando" no chão como o `less_height` do C fazia. Porta como mesh que desliza.
 - **Mão com bola de fogo**: overlay fixo na câmera.
-- **Técnicas "advanced"** (o que o módulo *Advanced 3D graphics* cobra): tochas (`T`) como `PointLight` com sombra, névoa (`Fog`), partículas no rastro e no impacto da fireball, pós-processamento com `EffectComposer` + bloom leve, instancing das paredes, temas de textura e luz por `options.theme`.
+- **Theme**: um arquivo em `frontend/game/` define, para cada Theme, as texturas de parede, as cores de chão e teto, os sprites de Enemy e de Boss (com número de quadros e duração de cada um) e a luz. No C o conjunto de sprites dependia de o nome do mapa conter `sewer`; aqui depende só do Theme.
+- **Técnicas "advanced"** (o que o módulo *Advanced 3D graphics* cobra): tochas (`T`) como `PointLight` com sombra, névoa (`Fog`), partículas no rastro e no impacto da fireball, pós-processamento com `EffectComposer` + bloom leve, instancing das paredes, Themes por `options.theme`.
 - **Minimapa**: canvas 2D sobreposto, a partir do grid e das posições.
 - **Áudio**: Web Audio, iniciado só após a primeira interação (evita o warning de autoplay).
 - **Assets**: `AssetLoader` carrega PNGs, modelos e sons; falha vira `HudState.status = "error"` na tela.
@@ -358,18 +362,18 @@ interface Renderer {
 export interface HudState {
   hp: number; maxHp: number; mana: number; maxMana: number; armor: number;
   keys: number; alive: boolean; ping: number | null;
-  players: Array<{ id: string; name: string; hp: number; alive: boolean; connected: boolean }>;
+  players: Array<{ id: number; name: string; hp: number; alive: boolean; connected: boolean }>;
   scoreboard: { frags: Record<string, number>; timeLeftS: number } | null;
-  killfeed: Array<{ by: string | null; victim: string; tick: number }>;
+  killfeed: Array<{ by: number | null; victim: number; tick: number }>;
   status: "connecting" | "running" | "finished" | "disconnected" | "error";
   error?: string;          // código, traduzido pela casca
 }
 export interface MountOptions {
-  roomId: string;
+  matchId: number;
   getAccessToken: () => Promise<string>;   // a casca guarda o token; o jogo pede quando precisa
   onHud: (hud: HudState) => void;
-  onEnd: (result: { result: "win" | "loss" | "draw"; winnerIds: string[]; reason: string }) => void;
-  wsUrl?: string;                           // default: wss://<host>/ws/game/<roomId>
+  onEnd: (result: { result: "win" | "loss" | "draw"; winnerIds: number[]; reason: string }) => void;
+  wsUrl?: string;                           // default: wss://<host>/ws/game/<matchId>
 }
 export function mountGame(canvas: HTMLCanvasElement, opts: MountOptions): { unmount(): void };
 ```
@@ -433,11 +437,11 @@ Garantias: `send_to_user` nunca levanta por socket fechado; um User pode ter vá
 ### 10.1 Ciclo de vida de uma partida
 
 ```
-POST /api/matches ─► Match(status="lobby") + RoomManager.create ─► room_id
+POST /api/matches ─► Match(status="lobby") + RoomManager.create ─► match_id
       │                     (lobby atualizado por /ws/app)
 POST /api/matches/{id}/start ─► RoomManager.start ─► /ws/app: match_started
       │
-cliente abre /ws/game/{room_id} ─► join ─► Room roda
+cliente abre /ws/game/{match_id} ─► join ─► Room roda
       │
 Event game_over ─► record_match_result(match_id, MatchResult)  (idempotente)
       │               └► estatísticas, Elo, XP, conquistas
@@ -452,11 +456,11 @@ A plataforma de partidas **nunca lê estado de Room em andamento do banco**; par
 # app/game/rooms.py — o que a plataforma de partidas chama
 class RoomManager:
     def create(self, match_id: int, mode: Literal["coop", "pvp"], max_players: int,
-               options: RoomOptions) -> str: ...                      # room_id
-    def join(self, room_id: str, user_id: int) -> Player: ...        # RoomFull / RoomNotFound / AlreadyIn
-    def leave(self, room_id: str, user_id: int) -> None: ...         # só no lobby
-    def start(self, room_id: str) -> None: ...                        # NotEnoughPlayers
-    def info(self, room_id: str) -> RoomInfo: ...
+               options: RoomOptions) -> None: ...                     # a Room é guardada pelo match_id
+    def join(self, match_id: int, user_id: int) -> Player: ...        # RoomFull / RoomNotFound / AlreadyIn
+    def leave(self, match_id: int, user_id: int) -> None: ...         # só no lobby
+    def start(self, match_id: int) -> None: ...                        # NotEnoughPlayers
+    def info(self, match_id: int) -> RoomInfo: ...
 
 # app/matches/service.py — o que a Room chama ao terminar
 async def record_match_result(match_id: int, result: MatchResult) -> None: ...   # idempotente
@@ -547,7 +551,7 @@ postgres-exporter ────────┘
 
 - **Instrumentação** (`app/core/metrics.py`, `prometheus_client`): `http_requests_total{route,status}` e `auth_login_total{result}` (counters, no middleware e no login), `ws_connections{channel}` e `game_rooms_active` (gauges, no `ConnectionManager` e no `RoomManager`), `game_tick_seconds` (histograma, no laço da Room). Tick é histograma porque o que interessa é a cauda (p95/p99 contra o orçamento de 33 ms); login é counter porque o que interessa é a taxa (`rate`).
 - **`/metrics` só na rede interna**: o Nginx não roteia esse path. Prometheus também não publica porta.
-- **Labels com cardinalidade baixa**: `route` é o template da rota (`/api/users/{id}`), nunca o path com o id; nada de `user_id` ou `room_id` em label.
+- **Labels com cardinalidade baixa**: `route` é o template da rota (`/api/users/{id}`), nunca o path com o id; nada de `user_id` ou `match_id` em label.
 - **Grafana**: datasource e dashboards provisionados por arquivo em `monitoring/grafana/provisioning/` (versionados; nada criado à mão na UI entra na demo). Servido em `/grafana/` pelo Nginx (`GF_SERVER_ROOT_URL` + `serve_from_sub_path`), admin vindo do `.env`, anônimo e signup desligados.
 - **Alertas** (`monitoring/prometheus/alerts.yml`): backend fora do ar (`up == 0`), p99 do tick acima de 33 ms, taxa de 5xx, pico de logins falhos. Na defesa, derrubar o backend e mostrar o alerta indo para *firing*.
 - **Recursos**: a retenção do Prometheus é curta (dias, não meses); é demo local.
@@ -556,22 +560,24 @@ postgres-exporter ────────┘
 
 ## 13. Contratos entre frentes
 
-Fechados na S1. Um contrato muda no **mesmo PR** que muda o código, e o PR cita o número.
+Fechados na S1. Um contrato muda no **mesmo PR** que muda o código, e o PR cita o número. Quem escreve e quem assina cada um está em [contracts/README.md](contracts/README.md).
 
 | # | Contrato | Entre | Onde vive | Nesta página |
 |---|---|---|---|---|
 | 1 | Snapshot, Events, mensagens WS | F1 ↔ F2 ↔ F3 | `docs/contracts/ws-messages.md`, `snapshot.example.json`, `protocol.py`, `types.ts` | §7 |
-| 2 | `Renderer` e `ViewState` | F2 → F3 | `frontend/game/src/render/renderer.ts` | §8.1 |
+| 2 | `Renderer` e `ViewState` | F2 → F3 | `docs/contracts/mount-game.md`, `frontend/game/src/render/renderer.ts` | §8.1 |
 | 3 | `Ruleset` | F1, F4 | `app/game/rulesets/` | §6.1 |
-| 4 | `rules.py` ↔ `rules.ts` e `sim.py` ↔ `applyInput.ts` | F1 ↔ F2 | `app/game/rules.py`, `frontend/game/src/rules.ts` | §6.3 |
+| 4 | `rules.py` ↔ `rules.ts` e `sim.py` ↔ `applyInput.ts` | F1 ↔ F2 | `docs/contracts/rules.md`, `app/game/rules.py`, `frontend/game/src/rules.ts` | §6.3 |
 | 5 | `RoomManager` e `MatchResult` | F2 ↔ F5 | `docs/contracts/rooms.md` | §10.2 |
-| 6 | `mountGame`, `MountOptions`, `HudState` | F2/F3 ↔ F7 | `frontend/game/src/index.ts` | §8.3 |
+| 6 | `mountGame`, `MountOptions`, `HudState` | F2/F3 ↔ F7 | `docs/contracts/mount-game.md`, `frontend/game/src/index.ts` | §8.3 |
 | 7 | Auth, `CurrentUser`, envelope, rate limit | F6 ↔ todos | `docs/contracts/auth.md` | §9.1, §9.2 |
-| 8 | Formato `.cub` estendido | F4 ↔ F1, F3 | `docs/contracts/map-format.md` | §6.1 |
+| 8 | Arquivo de Map (grade) e arquivo de Themes | F4 ↔ F1, F3 | `docs/contracts/map-format.md`, `docs/contracts/mount-game.md` | §6.1, §8.2 |
 | 9 | Rotas, rede, um worker, CI | F8 ↔ todos | `docs/contracts/infra.md`, README | §12 |
 | 10 | `ConnectionManager` e `/ws/app` | F2 ↔ F5, F6 | `docs/contracts/ws-manager.md` | §7.4, §9.3 |
 | 11 | `RoomOptions` com defaults e limites | F4 ↔ F1, F5, F7 | `docs/contracts/room-options.md` | §6.4 |
 | 12 | Nomes e labels das métricas | F2, F6 → F8 | `app/core/metrics.py` | §12.1 |
+| 13 | API REST de lobby (criar, listar, entrar, pronto, iniciar) | F5 ↔ F7 | `docs/contracts/matches-api.md` | §10.1 |
+| 14 | Convenções de i18n, catálogo de `code` de erro e mapa de rotas do SPA | F7 ↔ F6 | `docs/contracts/i18n.md` | §9.2, §11 |
 
 ---
 
@@ -590,10 +596,10 @@ backend/
            rulesets/  coop.py  pvp.py
     matches/                # lobby, record_match_result, estatísticas, Elo, conquistas, leaderboard
   alembic/
-  maps/  coop/  pvp/        # .cub servidos pelo backend
+  maps/  coop/  pvp/        # grades de Map; a pasta define o Mode
   tests/
     conftest.py             # app de teste, sessão em transação com rollback
-    fixtures/maps/          # valid/ + invalid/ do Cub3D
+    fixtures/maps/          # grades pequenas para os testes da Simulation
     auth/  users/  ws/  game/  matches/
   Dockerfile  requirements.txt  entrypoint.sh
 
@@ -625,7 +631,7 @@ Regra de fronteira: `frontend/game/` não importa nada de `frontend/src/`; `app/
 
 | Arquivo(s) do Cub3D | Destino | Observação |
 |---|---|---|
-| `parser_bonus/*.c` | **PY** | Mesmo formato `.cub`; vários spawns; `M A T` |
+| `parser_bonus/*.c` | **PY** (só o carregamento) | Vira o carregador de Map: lê a grade, com vários spawns e `M A T`. A validação com códigos de erro não migra |
 | `player_bonus/movement_bonus.c`, `move_utils_bonus.c` | **PY** + **TS** (`applyInput.ts`) | Por dt; colisão com outros players; as duas versões são idênticas |
 | `player_bonus/init_player_bonus.c` | **PY** | Orientação inicial por spawn |
 | `player_bonus/controls_bonus.c` | **TS** | Teclas → `input`/`action`; mouse nas bordas vira Pointer Lock + `mouse_dx` |
@@ -642,7 +648,7 @@ Regra de fronteira: `frontend/game/` não importa nada de `frontend/src/`; `app/
 | `player_bonus/life_bonus*.c` | **TS** (React) | HUD via `onHud` |
 | `initializers_bonus/lightning_bonus.c` | **TS** | Efeito de luz local, RNG do cliente |
 | `initializers_bonus.c`, `clean_bonus.c`, `free_bonus.c`, `error_bonus.c`, `MLX42/`, `lib/` | **✗** | Janela, hooks e memória viram navegador e Python |
-| `assets/**/*.png`, `maps/valid/*.cub`, `maps/invalid/*.cub` | **copiar** | PNGs no frontend; mapas no backend; inválidos viram fixtures de teste |
+| `assets/**/*.png`, `maps/valid/*.cub` | **copiar** | PNGs no frontend; mapas no backend, sem o cabeçalho de texturas e cores. Os de `maps/invalid/` não migram |
 
 ---
 
