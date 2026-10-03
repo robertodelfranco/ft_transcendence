@@ -8,7 +8,7 @@
 >
 > **Revisão de 01/10/2026:** os ciclos passaram a ser de segunda a domingo e todos os marcos andaram 2 dias. O checkpoint saiu da sexta e foi para o domingo; a reunião continua na segunda. A defesa em 09/11 é meta, não data marcada. O C1 passou a ser a reunião de contratos de 04/10 e os critérios técnicos dele foram para o C2; a lista de tarefas de cada semana não mudou. O atraso estimado é de 2 semanas: o PM refaz o calendário de S2 em diante depois da reunião.
 >
-> **Revisão de 02/10/2026:** decisões da preparação da reunião de contratos. O Player é identificado pelo `user_id` e a partida pelo `match_id`; o Snapshot não leva `frame`; o Theme decide todo o visual; o parser com códigos de erro saiu (F1.1 virou um carregador de Map mais um teste dos mapas); `friendly_fire` saiu das opções. Os contratos passaram a ser escritos por quem produz e assinados por quem consome: índice e donos em [contracts/README.md](contracts/README.md).
+> **Revisão de 02/10/2026:** decisões da preparação da reunião de contratos. O Player é identificado pelo `user_id` e a partida pelo `match_id`; o Snapshot não leva `frame`; o Theme decide todo o visual; o parser com códigos de erro saiu (F1.1 virou um carregador de Map mais um teste dos mapas); `friendly_fire` e `enemy_density` saíram das opções (o Map tem no máximo 20 Enemies). Os contratos passaram a ser escritos por quem produz e assinados por quem consome: índice e donos em [contracts/README.md](contracts/README.md).
 
 ## Sumário
 
@@ -186,7 +186,7 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | F1.6 | `Ruleset` (interface) + `CoopRuleset`; `game_over` emitido uma vez; 5 players; teste de performance | 1 | F1.5 | S2 | 1000 ticks com 5 players + 20 inimigos + boss + 10 projéteis em < 200 ms |
 | F1.7 | CLI que roda N ticks e grava `snapshot.json` para o render | 0,5 | F1.6 | S2 | O JSON abre no `dev.html` de F3 sem adaptação |
 | F1.8 | `PvpRuleset`: 1v1, fireball fere player, respawn no spawn livre mais longe do inimigo, 5 eliminações ou 3 min, inimigos desligados | 2 | F1.6 | S3 | Partida PvP termina pelas duas condições nos testes |
-| F1.9 | `RoomOptions` aplicadas na Simulation com defaults: `map`, `theme`, `start_hp`, `enemy_density`, pickups ligados/desligados, limite de eliminações e de tempo (PvP) | 1,5 | F1.8 | S3 | Sem opções, o jogo roda com os defaults; cada opção tem teste |
+| F1.9 | `RoomOptions` aplicadas na Simulation com defaults: `map`, `theme`, `start_hp`, pickups ligados/desligados, limite de eliminações e de tempo (PvP) | 1,5 | F1.8 | S3 | Sem opções, o jogo roda com os defaults; cada opção tem teste |
 
 **Subtotal F1: 13,5 d**
 

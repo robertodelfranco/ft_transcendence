@@ -1,6 +1,6 @@
 # Catacombs 42 — arquitetura
 
-> Como o sistema funciona: componentes, estado, protocolo, contratos, banco e as decisões técnicas por trás de cada um. Atualizado em 25/09/2026 para o escopo fechado (jogo 3D em Three.js, 21 pontos) e em 28/09/2026 para a troca do *AI opponent* pelo *Monitoring system* (sem bot; Prometheus + Grafana na §12). Em 02/10/2026 entraram as decisões da preparação dos contratos: Player identificado pelo `user_id` e partida pelo `match_id`, Snapshot sem `frame`, Theme dono de todo o visual, arquivo de Map só com a grade (sem parser com códigos de erro) e fim do `friendly_fire`.
+> Como o sistema funciona: componentes, estado, protocolo, contratos, banco e as decisões técnicas por trás de cada um. Atualizado em 25/09/2026 para o escopo fechado (jogo 3D em Three.js, 21 pontos) e em 28/09/2026 para a troca do *AI opponent* pelo *Monitoring system* (sem bot; Prometheus + Grafana na §12). Em 02/10/2026 entraram as decisões da preparação dos contratos: Player identificado pelo `user_id` e partida pelo `match_id`, Snapshot sem `frame`, Theme dono de todo o visual, arquivo de Map só com a grade (sem parser com códigos de erro) e fim do `friendly_fire`; depois, fim do `enemy_density` (Map com até 20 Enemies) e Inputs aplicados em fila, um por Tick ([contracts/ws-messages.md](contracts/ws-messages.md) §2.9).
 >
 > O que fazer e quando está em [catacombs42-plano-de-tarefas.md](catacombs42-plano-de-tarefas.md). O vocabulário está em [CONTEXT.md](../CONTEXT.md). A proposta ampliada com todas as opções de módulos está em [catacombs42-ideias-e-modulos.md](catacombs42-ideias-e-modulos.md). Os códigos F1–F8 são as frentes do plano.
 
@@ -154,7 +154,7 @@ Room
 │     Player: user_id, name, x, y, dir_x, dir_y,
 │             hp, mana, armor, keys, alive, connected,
 │             input {up, down, left, right, rot_left, rot_right, sprint},
-│             pending_mouse_dx, last_input_seq, attack_cooldown,
+│             input_queue, last_input_seq, attack_cooldown,
 │             kills, deaths, frags, damage_dealt, damage_taken, …
 ├── enemies: [ {id, x, y, state, target_player_id} ]
 ├── boss: {x, y, hp, state, target_player_id} | None
@@ -241,7 +241,6 @@ Validadas no `POST /api/matches` com defaults e imutáveis depois de criada a Ro
 | `map` | mapas da pasta do modo | primeiro da lista |
 | `theme` | `dungeon`, `sewer` (todo o visual no cliente: paredes, chão, teto, sprites, luz) | `dungeon` |
 | `start_hp` | 5–20 | 10 |
-| `enemy_density` | `normal`, `double` (co-op) | `normal` |
 | `pickups` | `{potion, mana, armor}` ligados/desligados | todos ligados |
 | `frag_limit` | 3–10 (PvP) | 5 |
 | `time_limit_s` | 120–600 (PvP) | 180 |
@@ -296,7 +295,7 @@ Toda mensagem: `{"v": 1, "type": "<tipo>", ...}`. Contrato completo com exemplos
 
 O cliente aplica o próprio Input na hora (**Prediction**), com a mesma função do servidor (`applyInput.ts` ≡ `sim.py`), e guarda os Inputs ainda não confirmados. Quando chega um Snapshot com `last_input_seq = 41`, ele põe o Player na posição oficial, descarta até 41 e reaplica 42, 43… (**Reconciliation**). Erro pequeno (< 0,05 célula) é corrigido suavemente em 100 ms; erro grande, teleporta. Os **outros** Players e entidades são desenhados a `now − 100 ms`, interpolando entre Snapshots (**Interpolation**); sem Snapshot novo por mais de 2 intervalos, congela (não extrapola).
 
-Do lado do servidor: o `dt` aplicado é sempre o do servidor (nunca um dt vindo do cliente: é anti speed-hack); Inputs além de 60/s são ignorados; `seq` só cresce e é guardado por conexão (reinicia ao reconectar).
+Do lado do servidor: o `dt` aplicado é sempre o do servidor (nunca um dt vindo do cliente: é anti speed-hack); cada Input é aplicado uma única vez, em fila, um por Tick e no máximo dois para alcançar o cliente (60/s), e fila vazia deixa o Player parado ([contracts/ws-messages.md](contracts/ws-messages.md) §2.9); `seq` só cresce e é guardado por conexão (reinicia ao reconectar).
 
 ### 7.3 Desconexão e reconexão (módulo *Remote players*)
 
