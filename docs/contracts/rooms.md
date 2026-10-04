@@ -16,6 +16,8 @@ Um Match é identificado pelo `match_id` (inteiro, a PK de `matches`), em todo l
 
 A Room é criada junto com a linha de `matches`, então **o `match_id` existe antes da Room** e é a chave das duas. Um Match sem Room é um Match terminado (ou abortado); uma Room sem Match não existe.
 
+> **Atenção, divergência viva:** a arquitetura (§7.1 e §10.2) e o glossário ([CONTEXT.md](../../CONTEXT.md), entrada *Room*) ainda dizem `room_id` como string, com `RoomManager.create(...) -> room_id` e `/ws/game/{room_id}`. Quem implementar lendo só aqueles dois arquivos constrói a interface errada. Os dois precisam do mesmo ajuste, por PR de quem é dono deles ("Em aberto" 7).
+
 ### 2.2 `RoomManager` — o que o lobby chama
 
 ```python
@@ -37,13 +39,14 @@ class RoomManager:
 | `RoomFull` | `len(players) == max_players` | `room_full` |
 | `AlreadyIn` | o User já está nesta Room | `already_in` |
 | `NotInRoom` | `leave`, `set_ready` ou `start` de quem não está na Room | `not_in_match` |
-| `AlreadyStarted` | `join`, `leave` ou `set_ready` com `status != "lobby"` | `already_started` |
+| `AlreadyStarted` | `join`, `leave`, `set_ready` **ou `start`** com `status != "lobby"` | `already_started` |
 | `NotEnoughPlayers` | `start` abaixo do mínimo do Mode | `not_enough_players` |
 
 Garantias que o lobby assume:
 
 - **`join` é atômico.** Roda num único event loop, sem `await` entre conferir a vaga e inserir o Player. É aí que a corrida "dois usuários na última vaga" se resolve (arq. §10.1), não na rota HTTP.
 - **`create` não inicia nada.** A Room nasce em `status = "lobby"`, sem `asyncio.Task`. A task do tick nasce no `start`.
+- **`start` só funciona uma vez.** Segunda chamada levanta `AlreadyStarted`, que é o 409 `already_started` de [matches-api.md](matches-api.md) §2.2. Sem isso, um duplo clique ou um retry de rede criaria duas tasks de tick para a mesma Room — dois ticks por tick, movimento e dano aplicados em dobro.
 - **`leave` do último Player destrói a Room** e devolve `None`. Quem chamou grava `matches.status = "aborted"`.
 - **`list_open` é a única fonte de Rooms abertas.** A API nunca lista Lobby a partir do banco (arq. §10.1).
 - **`options` são imutáveis** depois do `create` ([README](README.md#o-que-já-está-decidido)).
@@ -127,20 +130,26 @@ Regra de preenchimento de `won`:
 ### 2.5 `record_match_result`
 
 ```python
-async def record_match_result(match_id: int, result: MatchResult) -> None: ...
+@dataclass(frozen=True)
+class AchievementUnlock:
+    user_id: int
+    code: str
+
+async def record_match_result(match_id: int,
+                              result: MatchResult) -> list[AchievementUnlock]: ...
 ```
 
 Chamada uma única vez pela Room, no `game_over` (F2.9). **Idempotente**: chamar duas vezes grava uma vez.
 
 Tudo numa transação, nesta ordem:
 
-1. `SELECT ... FROM matches WHERE id = :match_id AND status = 'running' FOR UPDATE`. Sem linha, retorna sem fazer nada — é a chave de idempotência (§4).
+1. `SELECT ... FROM matches WHERE id = :match_id AND status = 'running' FOR UPDATE`. Sem linha, **devolve `[]`** e não faz mais nada — é a chave de idempotência (§4). A segunda chamada não reanuncia conquista nenhuma.
 2. `INSERT` em `match_players`, um por Player.
 3. `UPDATE`/`INSERT` em `player_stats` por `(user_id, mode)`: contadores, `playtime_s`, `xp`, `level` e, no `pvp`, `elo`.
 4. `INSERT` em `user_achievements` com `ON CONFLICT (user_id, code) DO NOTHING`; as desbloqueadas voltam para quem chamou, que emite `achievement_unlocked`.
 5. `UPDATE matches SET status = 'finished', result, reason, ended_at, duration_ticks`.
 
-A função é `async` e usa a sessão do SQLAlchemy; não toca em WebSocket. Quem anuncia as conquistas ao cliente é a Room, com o que a função devolveu (ver "Em aberto" 4).
+A função devolve **as conquistas desbloqueadas nesta chamada** (lista vazia se nenhuma, ou se a chamada foi a repetida). É `async` e usa a sessão do SQLAlchemy; **não toca em WebSocket**. Quem emite `achievement_unlocked {user_id, code}` é a Room, com o que a função devolveu — é o que mantém a função testável sem rede (ver "Em aberto" 4; se o time preferir a função chamando o `ConnectionManager`, o retorno vira `None` e esta seção muda junto).
 
 ### 2.6 Estados de um Match
 
@@ -396,7 +405,8 @@ No empate, `result` é `"draw"`, `reason` é `"time_limit"` e os dois Players t�
 | 4 | Quem emite `achievement_unlocked`: `record_match_result` devolve a lista e a Room emite, ou a função chama o `ConnectionManager` direto? Proposta: devolve a lista — a função fica sem dependência de rede e testável. | Akita e Augusto | reunião 04/10 |
 | 5 | Fórmula de XP e de level, fórmula de Elo e a lista de ≥ 5 conquistas com o código de cada uma. Sem elas, F5.5 e F5.7 inventariam regra. | Rafael (F4.6) | **início da S3** |
 | 6 | `damage_dealt` no `coop` conta dano em Enemy e Boss; no `pvp`, dano em Player. Confirmar que a Simulation separa os dois contadores ou que a soma basta. | Roberto | reunião 04/10 |
-| 7 | O que acontece com `matches` e `match_players` se um User for apagado. Hoje: `RESTRICT`, ou seja, não apaga. Não há tela de exclusão de conta no escopo; se entrar, vira anonimização do `username`, não `DELETE`. | Augusto e Akita | quando a exclusão de conta entrar no escopo |
+| 7 | A arq. §7.1/§10.2 e o `CONTEXT.md` ainda descrevem `room_id` como string e `RoomManager` com `room_id`. Enquanto não forem atualizados, cada pessoa pode implementar uma interface diferente. Proposta: PR do Roberto (dono dos dois docs) atualizando as duas seções e a entrada *Room* do glossário, citando este contrato. | Roberto | reunião 04/10 |
+| 8 | O que acontece com `matches` e `match_players` se um User for apagado. Hoje: `RESTRICT`, ou seja, não apaga. Não há tela de exclusão de conta no escopo; se entrar, vira anonimização do `username`, não `DELETE`. | Augusto e Akita | quando a exclusão de conta entrar no escopo |
 
 ---
 

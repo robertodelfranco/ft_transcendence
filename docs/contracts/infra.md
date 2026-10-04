@@ -91,13 +91,14 @@ PROXY_HTTPS_PORT=443
 PROM_RETENTION_TIME=7d
 GF_SECURITY_ADMIN_USER=
 GF_SECURITY_ADMIN_PASSWORD=
-GF_SERVER_ROOT_URL=https://localhost/grafana/
 GF_SERVER_SERVE_FROM_SUB_PATH=true
 GF_USERS_ALLOW_SIGN_UP=false
 GF_AUTH_ANONYMOUS_ENABLED=false
 ```
 
 A URL do banco é montada pelo `pydantic-settings` a partir das cinco variáveis de Postgres; não há `DATABASE_URL` separada, para não existirem duas fontes da mesma informação.
+
+Pelo mesmo motivo, **`GF_SERVER_ROOT_URL` não aparece no `.env`**: ela é derivada no compose, no bloco `environment:` do serviço `grafana`, como `https://${PUBLIC_HOST}/grafana/`. `PUBLIC_HOST` é a única fonte do nome público, e ele já precisa bater com o certificado (§2.4). Vale a diferença: o compose **interpola** `${...}` em `environment:`, mas `env_file` entrega o valor literal — por isso a derivação mora no compose, não no `.env`.
 
 ### 2.6 Monitoring
 
@@ -206,6 +207,8 @@ cp "$(mkcert -CAROOT)/rootCA.pem" .          # levar para as outras máquinas
 ```
 
 ## 4. Decisões
+
+> A numeração começa em **5** de propósito: os itens 5, 6 e 7 são as respostas às perguntas 5, 6 e 7 do meu briefing em [README.md](README.md), e manter o número facilita conferir na reunião. As perguntas 1 a 4 são respondidas em [rooms.md](rooms.md) §4; a 8, na §5 deste arquivo.
 
 5. **O backend enxerga o caminho inteiro** (pergunta 5). `proxy_pass http://backend:8000;` sem barra final mantém `/api/...`. O motivo é que o prefixo aparece em quatro lugares que precisam concordar: a rota do FastAPI, o `Path` do cookie de refresh, a rota que vai no log com `request_id` e a label `route` do Prometheus. Com reescrita, três deles passam a usar um caminho que ninguém digita, e todo bug de cookie vira uma investigação. O repo hoje tem `proxy_pass http://backend:8000/;` com barra — muda no PR de F8.1.
 6. **O IP real chega em `X-Forwarded-For`** (pergunta 6), com `X-Real-IP` e `X-Forwarded-Proto` ao lado, e o `uvicorn` roda com `--proxy-headers` para que `request.client.host` já seja o IP do cliente — é a chave do rate limit por IP do Augusto, que sem isso jogaria todos os usuários no mesmo balde. O backend confia nesses cabeçalhos **porque não é alcançável de fora do compose**: a confiança vem da topologia, não do cabeçalho. Se algum dia o backend publicasse porta, essa confiança virava um bypass de rate limit.

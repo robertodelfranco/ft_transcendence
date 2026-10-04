@@ -108,7 +108,7 @@ No calendário replanejado ([replanejamento-e-board.md](../pm/replanejamento-e-b
 | **S5** · 01–14/11 | **F8.10** alertas · **F8.6** demo · **F9.1** minha parte do README · folga para bug e revisão |
 | **S6** · 15–21/11 | bug, README fechado, ensaio |
 
-**O gargalo é a S4:** F5.4–F5.8 + F6.8 + F8.9 + F8.11 somam 9 d numa semana de 5. Mitigação já aplicada acima: F5.6 foi puxado para a S3 (só depende de F5.3). Se ainda estourar, o que sai primeiro é F5.8 (leaderboard, 0,5 d, última peça do módulo de estatísticas) e o OAuth vira 2FA TOTP — mesma pontuação, metade do risco (plano §8.2). Decido isso no checkpoint C3, em 23/10, não na véspera.
+**O gargalo é a S4:** F5.4–F5.8 + F6.8 + F8.9 + F8.11 somavam 9 d numa semana de 5. Mitigação já aplicada acima: F5.6 (1 d) foi puxado para a S3, porque só depende de F5.3 — a S4 da tabela fica em **8 d**, ainda acima da capacidade. Se ainda estourar, o que sai primeiro é F5.8 (leaderboard, 0,5 d, última peça do módulo de estatísticas) e o OAuth vira 2FA TOTP — mesma pontuação, metade do risco (plano §8.2). Decido isso no checkpoint C3, em 23/10, não na véspera.
 
 ## 6. O que eu explico na defesa
 
