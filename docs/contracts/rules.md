@@ -1,6 +1,8 @@
 # Contrato: números das regras (`rules.md`)
 
-**Estado:** rascunho para a reunião de 04/10. **Escreve:** Roberto (nomes e unidades), Rafael (valores). **Assina:** Augusto.
+**Estado:** rascunho para revisão; valores propostos em §5.3. **Escrevem:** Simulation (nomes e unidades) e Render/conteúdo (valores). **Assina:** Netcode.
+
+Base: versão compartilhada da `main`, revisão `7fae52b`. Nomes, unidades e números existentes foram preservados; a contribuição de conteúdo está em §5.3 e §5.4.
 
 ## 1. Para que serve
 
@@ -11,7 +13,7 @@ A Simulation (`backend/app/game/rules.py`) e o cliente do jogo (`frontend/game/s
 Como ler as tabelas:
 
 - **Unidade.** `cél` é uma célula do Grid. Tudo que anda é por segundo, nunca por quadro nem por Tick.
-- **Arq.** `sim` quando o nome já está na arq. §6.3; `novo` quando o nome não existia na arq. Todos os nomes foram aprovados pelo Roberto em 02/10.
+- **Arq.** `sim` quando o nome já está na arq. §6.3; `novo` quando o nome não existia na arq. Todos os nomes foram aprovados pela Simulation em 02/10.
 - **No C.** De onde o número vem, em `src/bonus/` do Cub3D (commit `66b1473`), conferido linha a linha em 02/10.
 - Valor com ¹ ou ² é ponto de partida e se decide jogando (ponto 1 de "Em aberto"). ¹: o valor por quadro do C vezes 60 fps. ²: o C não serve de referência (ver o ponto).
 
@@ -28,7 +30,7 @@ Como ler as tabelas:
 | `PLAYER_SPEED` | cél/s | `3.6` ¹ | sim | `0.06` por quadro (`player_bonus/init_player_bonus.c:78`) |
 | `PLAYER_SPRINT_MULT` | multiplicador | `2.0` | novo | `move_speed * 2.0` (`player_bonus/movement_bonus.c:22`) |
 | `PLAYER_ROT_SPEED` | rad/s | `1.8` ¹ | sim | `0.03` rad por quadro (`player_bonus/init_player_bonus.c:79`) |
-| `MOUSE_MAX_ROT_SPEED` | rad/s | Rafael | sim | Sem equivalente: o C girava `0.012` rad por evento de cursor nas faixas laterais de 30% da janela (`player_bonus/controls_bonus.c:63-71`) |
+| `MOUSE_MAX_ROT_SPEED` | rad/s | a definir (§5.3) | sim | Sem equivalente: o C girava `0.012` rad por evento de cursor nas faixas laterais de 30% da janela (`player_bonus/controls_bonus.c:63-71`) |
 | `PLAYER_RADIUS` | cél | `0.05` | novo | `R`, testado nos 4 cantos contra `1` e `D` (`include/cub3d_bonus.h:27`, `player_bonus/move_utils_bonus.c:100-111`) |
 | `BODY_BLOCK_DISTANCE` | cél | `0.6` | novo | Player não chega a menos disso (`<`) de Enemy, Boss ou outro Player vivo (`player_bonus/move_utils_bonus.c:26` e `:90`) |
 | `FIREBALL_COOLDOWN_S` | s | `0.4` | novo | `attack_delay > 0.4` (`player_bonus/controls_bonus.c:90`) |
@@ -75,7 +77,7 @@ O HP inicial e o teto da poção não são constantes: vêm de `options.start_hp
 | `PROJECTILE_HIT_S` | s | `0.4` | novo | Tempo em `hit` antes de sair do Snapshot: 4 quadros de `0.1` s (`attack_bonus/render_fireball_bonus.c:32-38`). O bullet que acertava o Player usava 4 de `0.05` s (`update_bullet_bonus.c:64`) |
 | `FIREBALL_PLAYER_DAMAGE` | HP | `2` | sim | Não existe no C. Só vale no `pvp` |
 
-### 2.6 Valores por Ruleset (o Rafael preenche)
+### 2.6 Valores por Ruleset (conteúdo preenche)
 
 Nada disto existe no C. Cada linha tem um valor para `coop` e outro para `pvp`; a arq. §6.3 pede co-op generoso e PvP apertado. No código, estes valores ficam no `numbers` de cada Ruleset (arq. §6.1), um dicionário com os nomes abaixo; `rules.ts` espelha o mesmo dicionário por Mode.
 
@@ -128,12 +130,37 @@ Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um
 - **`BODY_BLOCK_DISTANCE` usa `<` para todos.** O C usava `<=` para Enemy e `<` para Boss. Só bloqueia quem está vivo: Enemy em `dying` não bloqueia (o C já fazia assim), e Player morto também não (arq. §5).
 - **Mana é fracionária na Room e inteira no fio.** `MANA_REGEN_PER_S` a 30 Hz soma frações por Tick. A Room guarda o valor exato, o Snapshot manda o arredondamento para baixo, e a fireball exige Mana exata `>= FIREBALL_MANA_COST`.
 - **Os números do netcode** (Snapshot a cada 2 Ticks, Interpolation, Reconciliation, Grace period) ficam em [ws-messages.md](ws-messages.md) §2.8, porque não são regra de jogo. Daqueles números, só o `TICK_RATE` entra aqui, porque a Prediction usa o mesmo `dt` do servidor.
-- **Este contrato fecha nomes e unidades agora.** Os valores finais saem do balanceamento do Rafael (F4.7, S5).
+- **Este contrato fecha nomes e unidades agora.** Os valores finais saem do balanceamento de conteúdo (F4.7, S5).
 
 ## 5. Em aberto
 
-1. **Velocidade do Player, velocidade do projétil e comportamento do Boss se decidem jogando.** *Roberto e Rafael, no primeiro teste com o Boss em rede (S3, até o C3 de 18/10).* Até lá, valem os pontos de partida da tabela, e cada um muda trocando só números:
+1. **Velocidade do Player, velocidade do projétil e comportamento do Boss se decidem jogando.** *Simulation e conteúdo, no primeiro teste com o Boss em rede (S3, até o C3 de 18/10).* Até lá, valem os pontos de partida da tabela, e cada um muda trocando só números:
    - **Player.** `3.6` e `1.8` são o C rodando a 60 fps, o vsync padrão da MLX42 (`MLX42/src/mlx_init.c:111`) num monitor de 60 Hz. Não é preciso medir o fps do Cub3D: o número sai do teste.
    - **Projectile.** O `move_delay` do projétil no C nunca volta a zero (só é somado e comparado), então depois dos primeiros 0,2 s ele salta 0,5 célula a cada quadro: cerca de 30 cél/s a 60 fps. Os `2.5` da arq. são mais lentos que o Player (3,6; 7,2 correndo), que ultrapassaria a própria fireball. O ponto de partida é `12`, acima do sprint e ainda desviável no `pvp`.
    - **Boss.** Depois de atirar, o C faz `attack_delay = 1` (`init_boss_bonus.c:51`) e testa `attack_delay > 1.0`, que passa no quadro seguinte. Por isso o intervalo real entre bullets é de cerca de 1,2 s, e a até 18 células o Boss não anda: os limites `> 8` e `<= 16` não têm efeito. O port implementa a regra que o C pretendia: anda até `BOSS_MIN_RANGE`, atira a até `BOSS_ATTACK_RANGE`, um bullet a cada `BOSS_ATTACK_COOLDOWN_S`. O comportamento real do C é a mesma regra com `BOSS_MIN_RANGE = 18` e `BOSS_ATTACK_COOLDOWN_S = 1.2`, então testar os dois é trocar dois números. O Boss em `idle` leva dano e acorda ao ser atingido; no C ele era invulnerável até ver alguém (`update_fireball_bonus.c:24`).
 2. **Mais tarde, com resposta neste arquivo:** a diagonal continua 1,41 vez mais rápida? (R2) No `pvp`, o que é um Spawn livre e há proteção depois do respawn? (R6)
+
+
+### 5.3 Valores iniciais por Mode — proposta de conteúdo
+
+Valores propostos para revisão e playtest, não medidos nem aprovados. As células de §2.6 ficam em aberto até a decisão conjunta; depois, os valores aceitos passam para aquela tabela e para os dois arquivos de regras.
+
+| Nome | Unidade | `coop` proposto | `pvp` proposto | Motivo |
+|---|---|---:|---:|---|
+| `MANA_MAX` | Mana | 100 | 100 | Mesma escala na HUD; ritmo diferente pelo custo e regeneração |
+| `FIREBALL_MANA_COST` | Mana | 10 | 20 | Reserva cheia permite 10 disparos no coop e 5 no PvP |
+| `MANA_REGEN_PER_S` | Mana/s | 10 | 5 | Recuperar o custo de um disparo leva 1 s no coop e 4 s no PvP |
+| `MANA_PICKUP` | Mana | 30 | 20 | Recupera três disparos no coop e um no PvP, respeitando o teto |
+| `ARMOR_POINTS` | Armor | 3 | 2 | Proteção inicial menor no duelo; conferir com o dano de 2 por fireball |
+| `RESPAWN_DELAY_S` | s | não se aplica | 3 | Pausa curta entre eliminações, a verificar em partida |
+| `MOUSE_MAX_ROT_SPEED` | rad/s | 6.283185307179586 | 6.283185307179586 | Uma volta por segundo como limite inicial igual nos dois Modes |
+
+O limite de mouse é velocidade angular, não sensibilidade em pixels. Com `TICK_RATE = 30`, a proposta limita o giro horizontal a cerca de 0,20944 rad por Tick. Netcode e Prediction precisam usar o mesmo valor.
+
+### 5.4 Semânticas que precisam acompanhar os números
+
+**Conteúdo e Simulation:** fechar Mana inicial e após respawn (proposta: cheia); confirmar que Pickup soma até `MANA_MAX`; definir se Armor soma, substitui ou tem teto. `ARMOR_POINTS` sozinho não responde essas perguntas.
+
+**Conteúdo e Partidas:** confirmar respawn apenas no `pvp`, critérios de Spawn livre e proteção após renascer, junto do ponto 2 acima. Nenhuma proteção nova foi presumida nesta proposta.
+
+**Validação:** jogar coop e PvP antes de promover os números a decisões. Registrar frequência de disparos, tempo sem Mana, utilidade dos Pickups e duração do duelo; verificar a rotação do mouse no navegador com a mesma limitação do servidor. Esta preparação não executou esses testes.
