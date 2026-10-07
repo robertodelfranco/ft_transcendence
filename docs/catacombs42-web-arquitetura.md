@@ -1,6 +1,6 @@
 # Catacombs 42 — arquitetura
 
-> Como o sistema funciona: componentes, estado, protocolo, contratos, banco e as decisões técnicas por trás de cada um. Atualizado em 25/09/2026 para o escopo fechado (jogo 3D em Three.js, 21 pontos) e em 28/09/2026 para a troca do *AI opponent* pelo *Monitoring system* (sem bot; Prometheus + Grafana na §12). Em 02/10/2026 entraram as decisões da preparação dos contratos: Player identificado pelo `user_id` e partida pelo `match_id`, Snapshot sem `frame`, Theme dono de todo o visual, arquivo de Map só com a grade (sem parser com códigos de erro) e fim do `friendly_fire`; depois, fim do `enemy_density` (Map com até 20 Enemies) e Inputs aplicados em fila, um por Tick ([contracts/ws-messages.md](contracts/ws-messages.md) §2.9).
+> Como o sistema funciona: componentes, estado, protocolo, contratos, banco e as decisões técnicas por trás de cada um. Atualizado em 25/09/2026 para o escopo fechado (jogo 3D em Three.js, 21 pontos) e em 28/09/2026 para a troca do *AI opponent* pelo *Monitoring system* (sem bot; Prometheus + Grafana na §12). Em 02/10/2026 entraram as decisões da preparação dos contratos: Player identificado pelo `user_id` e partida pelo `match_id`, Snapshot sem `frame`, Theme dono de todo o visual, arquivo de Map só com a grade (sem parser com códigos de erro) e fim do `friendly_fire`; depois, fim do `enemy_density` (Map com até 20 Enemies) e Inputs aplicados em fila, um por Tick ([contracts/ws-messages.md](contracts/ws-messages.md) §2.9). Em 06/10/2026: `map` fora de `RoomOptions`, placar da HUD em lista, `ViewState` com `camera`, estado de Lobby no `RoomManager` e calendário replanejado ([pm/replanejamento-e-board.md](pm/replanejamento-e-board.md)). Em 07/10: Door aberta não fecha, o Player desliza na parede e a diagonal é normalizada ([contracts/ws-messages.md](contracts/ws-messages.md) §4).
 >
 > O que fazer e quando está em [catacombs42-plano-de-tarefas.md](catacombs42-plano-de-tarefas.md). O vocabulário está em [CONTEXT.md](../CONTEXT.md). A proposta ampliada com todas as opções de módulos está em [catacombs42-ideias-e-modulos.md](catacombs42-ideias-e-modulos.md). Os códigos F1–F8 são as frentes do plano.
 
@@ -144,7 +144,7 @@ Tudo que no C estava espalhado em `t_game` vira o estado de **uma Room**, com a 
 
 ```
 Room
-├── match_id (é o id da Room), mode ("coop" | "pvp"), status ("lobby" | "running" | "finished")
+├── match_id (é o id da Room), mode ("coop" | "pvp"), status ("running" | "finished")
 ├── options: RoomOptions             ← customização, com defaults (seção 6.4)
 ├── ruleset: CoopRuleset | PvpRuleset
 ├── tick: int                         ← relógio oficial, vai em todo Snapshot
@@ -162,6 +162,8 @@ Room
 ├── doors: [ {x, y, locked, open} ]
 └── result: None | {result, winner_ids, reason}
 ```
+
+A Room da Simulation nasce no `start`. Antes disso, o Lobby (quem entrou, quem está pronto, quem é o host) é estado do `RoomManager` ([contracts/rooms.md](contracts/rooms.md)).
 
 O Player é identificado pelo `user_id` do User, e é esse número que `target_player_id` e `owner_id` guardam. A Room é identificada pelo `match_id`. O servidor não guarda quadro de animação: ele manda o `state` e o cliente anima (§7.1).
 
@@ -234,18 +236,17 @@ Números finais são calibrados por F4 (tarefa F4.7 do plano).
 
 ### 6.4 `RoomOptions` (Game customization)
 
-Validadas no `POST /api/matches` com defaults e imutáveis depois de criada a Room; a Simulation lê de `room.options`.
+Validadas no `POST /api/matches` com defaults e imutáveis depois de criada a Room; a Simulation lê de `room.options`. O `map` é parâmetro de criação, ao lado de `mode` e `max_players`, e fica fora de `options`.
 
 | Opção | Valores | Default |
 |---|---|---|
-| `map` | mapas da pasta do modo | primeiro da lista |
 | `theme` | `dungeon`, `sewer` (todo o visual no cliente: paredes, chão, teto, sprites, luz) | `dungeon` |
 | `start_hp` | 5–20 | 10 |
 | `pickups` | `{potion, mana, armor}` ligados/desligados | todos ligados |
 | `frag_limit` | 3–10 (PvP) | 5 |
 | `time_limit_s` | 120–600 (PvP) | 180 |
 
-A tabela oficial com limites é a de F4.5 (`docs/contracts/`).
+A tabela oficial com limites é [contracts/room-options.md](contracts/room-options.md).
 
 ---
 
@@ -268,7 +269,7 @@ Toda mensagem: `{"v": 1, "type": "<tipo>", ...}`. Contrato completo com exemplos
 **Servidor → cliente**
 
 ```json
-{"v":1,"type":"welcome","user_id":7,"room":{"match_id":12,"mode":"coop","options":{"start_hp":10,"theme":"dungeon"}},"map":{"grid":["111","1N1","111"]},"snapshot":{}}
+{"v":1,"type":"welcome","user_id":7,"room":{"match_id":12,"mode":"coop","map":"dungeon_map","options":{"start_hp":10,"theme":"dungeon"}},"map":{"grid":["111","1N1","111"]},"snapshot":{}}
 {"v":1,"type":"snapshot","tick":1200,"last_input_seq":42,
  "players":[{"id":7,"name":"rdel-fra","x":3.5,"y":2.5,"dx":0,"dy":-1,"hp":8,"mana":60,"armor":0,"keys":1,"alive":true,"connected":true}],
  "enemies":[{"id":"e_3","x":6.2,"y":7.1,"state":"alert"}],
@@ -287,8 +288,8 @@ Toda mensagem: `{"v": 1, "type": "<tipo>", ...}`. Contrato completo com exemplos
 - **Sem `frame`**: o servidor manda só o `state` de cada entidade. O cliente anima no próprio relógio e reinicia a animação quando o `state` muda.
 - `mouse_dx`: giro acumulado em radianos desde o último `input` (a sensibilidade é aplicada no cliente); o servidor limita por tick.
 - `grid_delta`: só as células que mudaram (porta, pickup). O grid completo vem no `welcome`.
-- `scoreboard`: `null` no co-op; no PvP, `{"frags":{"7":3,"9":1},"time_left_s":94}` (chave de objeto JSON é sempre texto; o formato final fica no contrato).
-- **Events**: `player_joined`, `player_left`, `player_disconnected`, `player_reconnected`, `door_opened`, `door_closed`, `item_picked {kind, by}`, `player_hit {target, by, amount, absorbed}`, `enemy_died {enemy_id, killer_id}`, `boss_died {killer_id}`, `player_died {player_id, by}` (vira o kill feed), `player_respawned`, `achievement_unlocked {user_id, code}` (após o fim), `game_over {result, winner_ids, reason}`.
+- `scoreboard`: `null` no co-op; no PvP, `{"players":[{"id":7,"frags":3},{"id":9,"frags":1}],"time_left_s":94}`, em ordem de placar.
+- **Events**: `player_joined`, `player_left`, `player_disconnected`, `player_reconnected`, `door_opened`, `item_picked {kind, by}`, `player_hit {target, by, amount, absorbed}`, `enemy_died {enemy_id, killer_id}`, `boss_died {killer_id}`, `player_died {player_id, by}` (vira o kill feed), `player_respawned`, `achievement_unlocked {user_id, code}` (após o fim), `game_over {result, winner_ids, reason}`.
 - **Códigos de fechamento**: `4400` mensagem inválida, `4401` não autenticado, `4403` não é membro da Room, `4404` Room inexistente, `4409` Room cheia, `4503` servidor encerrando.
 
 ### 7.2 Por que `seq` existe: Prediction, Reconciliation e Interpolation
@@ -331,7 +332,7 @@ net/ (F2): socket ─► prediction ─► interpolation ─► ViewState
 
 ### 8.1 `ViewState` e `Renderer`
 
-**`ViewState`** é tudo que o render recebe a cada quadro do navegador: o Player próprio já previsto (com o pitch local), os outros interpolados, entidades, portas, grid e o `Map`. O render **não sabe que existe rede**; por isso ele é desenvolvido desde o primeiro dia contra `snapshot.example.json` e a CLI da Simulation.
+**`ViewState`** é tudo que o render recebe a cada quadro do navegador: o Player próprio já previsto (com o pitch local), os outros interpolados, entidades, portas, o Grid atual e a `camera` (a pose de onde desenhar: a do próprio Player ou, quando ele morre no co-op, a de um companheiro vivo). O `Map` vai uma vez só, no `init`. O render **não sabe que existe rede**; por isso ele é desenvolvido desde o primeiro dia contra `snapshot.example.json` e a CLI da Simulation.
 
 ```ts
 interface Renderer {
@@ -363,7 +364,7 @@ export interface HudState {
   hp: number; maxHp: number; mana: number; maxMana: number; armor: number;
   keys: number; alive: boolean; ping: number | null;
   players: Array<{ id: number; name: string; hp: number; alive: boolean; connected: boolean }>;
-  scoreboard: { frags: Record<string, number>; timeLeftS: number } | null;
+  scoreboard: { players: Array<{ id: number; frags: number }>; timeLeftS: number } | null;
   killfeed: Array<{ by: number | null; victim: number; tick: number }>;
   status: "connecting" | "running" | "finished" | "disconnected" | "error";
   error?: string;          // código, traduzido pela casca
@@ -452,6 +453,8 @@ A plataforma de partidas **nunca lê estado de Room em andamento do banco**; par
 
 ### 10.2 Contrato `RoomManager` ↔ partidas
 
+Rascunho de origem. O contrato atual, com `set_ready`, `RoomInfo` e as tabelas, é [contracts/rooms.md](contracts/rooms.md).
+
 ```python
 # app/game/rooms.py — o que a plataforma de partidas chama
 class RoomManager:
@@ -469,8 +472,8 @@ async def record_match_result(match_id: int, result: MatchResult) -> None: ...  
 class MatchResult:
     match_id: int
     mode: Literal["coop", "pvp"]
-    result: Literal["win", "loss", "draw", "aborted"]
-    reason: str                  # "boss_defeated" | "all_dead" | "frag_limit" | "time_limit" | "forfeit" | "server_shutdown"
+    result: Literal["win", "loss", "draw"]
+    reason: str                  # "boss_defeated" | "all_dead" | "frag_limit" | "time_limit" | "forfeit"
     started_at: datetime
     ended_at: datetime
     duration_ticks: int
