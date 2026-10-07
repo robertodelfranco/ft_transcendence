@@ -37,11 +37,12 @@ A arquitetura exige os componentes abaixo, mas ainda não define os nomes das pr
 | Projectiles | `id: string`, `kind: "fireball" ou "bullet"`, `owner: number ou null`, `x, y, dx, dy: number`, `state` | `owner` é `user_id`; bullet do Boss usa `null` |
 | Doors | `x, y: number` inteiros, `open, locked: boolean` | Coordenadas da célula, não do centro |
 | Grid atual | `string[]`, retangular | Grade inicial com o `grid_delta` do Snapshot aplicado |
-| Map inicial | Objeto com `grid: string[]` | `welcome.map`; opções da Room já aplicadas |
+| Map inicial | Objeto com `grid: string[]` | `welcome.map`; opções da Room já aplicadas. Vai uma vez no `init`, não no `ViewState` |
+| Câmera | `x, y, dx, dy, pitch` | A pose de onde desenhar: a do Player próprio ou, com ele morto no `coop`, a de um companheiro vivo |
 
 Em Player, `id`, `hp`, `mana`, `armor` e `keys` são inteiros; `name` é string; posições/direções são números; `alive` e `connected` são booleanos. A Mana chega arredondada para baixo; a fração fica na Simulation ([rules.md](rules.md)).
 
-**`grid_delta` é acumulado desde a grade inicial.** A integração recompõe o Grid usando a base de `welcome.map.grid` e o delta do Snapshot atual. Aplicar apenas sobre a grade do Snapshot anterior deixaria uma Door aberta quando ela fecha e sai do delta. O Renderer recebe a grade já recomposta.
+**`grid_delta` é acumulado desde a grade inicial.** A integração recompõe o Grid usando a base de `welcome.map.grid` e o delta do Snapshot atual. Desde 07/10 a Door aberta não fecha e o delta só cresce ([ws-messages.md](ws-messages.md) §4); recompor a partir da base continua sendo a regra, porque um Snapshot pode ser descartado. O Renderer recebe a grade já recomposta.
 
 Pickups e tochas vêm das células `K/P/M/A/T`. Players, Enemies e Boss vêm das entidades: seus marcadores já foram substituídos por `0` no Grid recebido.
 
@@ -98,7 +99,7 @@ export interface HudState {
   players: Array<{
     id: number; name: string; hp: number; alive: boolean; connected: boolean;
   }>;
-  scoreboard: { frags: Record<string, number>; timeLeftS: number } | null;
+  scoreboard: { players: Array<{ id: number; frags: number }>; timeLeftS: number } | null;
   killfeed: Array<{ by: number | null; victim: number; tick: number }>;
   status: "connecting" | "running" | "finished" | "disconnected" | "error";
   error?: string;
@@ -125,14 +126,14 @@ export declare function mountGame(
 | `alive` | Player local vivo |
 | `ping` | RTT; `null` enquanto não medido; explicitar unidade em §5.5 |
 | `players` | Estado dos participantes; `id` é o `user_id` |
-| `scoreboard` | `null` no `coop`; `timeLeftS` em segundos e contagem de Frags no `pvp` |
+| `scoreboard` | `null` no `coop`; no `pvp`, a lista de Frags por Player em ordem de placar e `timeLeftS` em segundos |
 | `killfeed` | Eliminações de Player; `by` pode ser `null`, `victim` é `user_id`, `tick` é Tick da Room |
 | `status`, `error` | Estado da integração e código traduzido pela casca |
 | `getAccessToken` | A casca entrega o token ao jogo quando solicitado |
 | `onHud`, `onEnd` | Callbacks de atualização de HUD e término |
 | `wsUrl` | Opcional; padrão `wss://<host>/ws/game/<matchId>` |
 
-O placar de rede já é `{players: [{id, frags}], time_left_s}`, enquanto o da arquitetura ainda usa `Record<string, number>`. A divergência precisa de revisão conjunta (§5.5); não se deve passar o objeto da rede diretamente ao `onHud`.
+O placar da HUD usa a mesma lista da rede, `{players: [{id, frags}]}`, com `timeLeftS` no lugar de `time_left_s`. Decidido em 06/10; a arq. §8.3 mudou junto.
 
 O canvas pertence à casca (posição, tamanho, CSS). O jogo desenha cena, mão e minimapa; textos e ícones da HUD são emitidos por `onHud` e desenhados em React, com i18n.
 
@@ -203,19 +204,20 @@ type ProjectileView = {
   x: number; y: number; dx: number; dy: number; state: "moving" | "hit";
 };
 type DoorView = { x: number; y: number; open: boolean; locked: boolean };
+type CameraView = { x: number; y: number; dx: number; dy: number; pitch: number };
 interface ViewState {
-  localPlayer: PlayerView & { pitch: number };
+  localPlayer: PlayerView;
   otherPlayers: PlayerView[];
   enemies: EnemyView[];
   boss: BossView | null;
   projectiles: ProjectileView[];
   doors: DoorView[];
   grid: string[];
-  map: GameMap;
+  camera: CameraView;
 }
 ```
 
-Propor pitch em radianos, positivo olhando para cima; `otherPlayers` exclui o próprio Player. Só chamar `render` depois de existir Player local. Fechar câmera de espectador, ausência do Player após saída e se `view.map` permanece necessário além de `init(map)`.
+Aprovado pela Simulation/Prediction em 06/10, com dois ajustes já aplicados acima. O `map` saiu do `ViewState`, porque o Renderer já o recebe no `init`. Entrou `camera`, a pose de onde desenhar: com o Player local vivo, é a pose dele mais o pitch; com ele morto no `coop`, é a de um companheiro vivo, escolhido por quem monta o `ViewState`. A Prediction escreve só em `localPlayer` e `camera`, então liga sem mudar o Renderer. Pitch em radianos, positivo olhando para cima; `otherPlayers` exclui o próprio Player. Só chamar `render` depois de existir Player local. Falta fechar a ausência do Player após saída.
 
 ### 5.2 Ciclo de vida — Render e Netcode
 
@@ -234,7 +236,7 @@ Proposta de arquivo: `frontend/game/public/assets/themes.json`, com entradas `du
 | Prefixo de Boss | `assets/enemy/boss_mage/boss_mage_` | `assets/enemy/boss_skeleton/boss_skeleton_` |
 | Prefixo de bullet | `assets/player/fireball_` | `assets/enemy/boss_attack/boss_attack_` |
 
-Chão, teto e paredes vêm de `maps/valid/enemy.cub` e `enemy_sewer.cub`. Os slots do raycaster espelhado precisam de conferência antes de virar faces do Three.js.
+Chão, teto e paredes vêm de `maps/valid/enemy.cub` e `enemy_sewer.cub`. Conferido no C (`raycasting_bonus/raycasting_utils_bonus.c:32-50`): a face vista por quem olha para leste usa `EA`; para oeste, `WE`; para sul, `NO`; para norte, `SO`. No eixo norte-sul o nome é o da face; no leste-oeste, o da direção do olhar.
 
 Para ambos os Themes, somar o índice e `.png` ao prefixo correspondente:
 
@@ -244,12 +246,12 @@ Para ambos os Themes, somar o índice e `.png` ao prefixo correspondente:
 | Enemy `attack` | 3, 4, 5, 6 | 4 | 350 | Sim enquanto `attack` |
 | Enemy `dying` | 7, 8, 9 | 3 | 500 | Não; segura o último até remoção |
 | Boss `idle` / `alert` | 0, 1, 2 | 3 | 300 | Sim |
-| Boss `attack` | 3, 4, 5, 6 | 4 | 300 | Fechar sincronização com tiro |
+| Boss `attack` | 3, 4, 5, 6 | 4 | 300 | Não; os 1,2 s são o `BOSS_ATTACK_WINDUP_S`, e o bullet sai ao fim |
 | Boss `dying` | 7, 8, 9 | 3 | 400 | Não |
 | Projectile `moving` | 0 | 1 | Estático | — |
 | Projectile `hit` | 0, 1, 2, 3 | 4 | 100 | Não |
 
-**350 ms no ataque do Enemy é proposta nova**, para um ciclo de quatro PNGs durar os 1,4 s da regra; não é o valor do C (200 ms). Validar visualmente e com Simulation, sem usar o fim do clipe para aplicar dano. Fireball usa `assets/player/fireball_` nos dois Themes.
+**350 ms no ataque do Enemy é proposta nova**, para um ciclo de quatro PNGs durar os 1,4 s da regra; não é o valor do C (200 ms). A Simulation confirmou em 06/10 que o ciclo bate com `ENEMY_ATTACK_INTERVAL_S`; falta validar visualmente, sem usar o fim do clipe para aplicar dano. Fireball usa `assets/player/fireball_` nos dois Themes.
 
 Outros recursos reaproveitáveis: `assets/map/door_2.png`, `assets/collectables/key.png`, `assets/collectables/pot.png`, `assets/player/player_hand_white.png`. O briefing menciona 65 PNGs; nesta revisão do Cub3D foram encontrados 64 arquivos `.png` em `assets/`, dos quais 62 são candidatos ao render; `win_game.png` e `end_game.png` ficam fora da tela final, que será HUD traduzida. Faltam desenhos próprios de Mana, Armor, tocha e outro Player. Fechar seus arquivos, dimensões e clipes antes de completar o manifesto.
 
@@ -263,11 +265,11 @@ Fechar FOV e política de resize com documentação oficial e teste visual: o va
 
 ### 5.5 HUD, eventos e término — Render, Netcode e Web
 
-- **Placar:** proposta de alinhar a HUD à lista do protocolo: `{players: Array<{id: number; frags: number}>; timeLeftS: number}`. Alternativa: manter a forma atual e converter explicitamente lista em `frags`. Alterar arquitetura e consumidores no mesmo PR da decisão.
+- **Placar:** decidido em 06/10: a HUD usa a lista do protocolo (§2.6).
 - **Unidades/atualização:** propor `ping` em ms; fechar frequência do `onHud` e valores antes do `welcome`.
 - **Feed:** `player_died` alimenta `{by, victim: player_id, tick}`. A forma atual não representa Kills de Enemy/Boss; decidir se o feed mostra só eliminações de Player ou precisa de uma união de tipos. Duração e limite de linhas também faltam.
-- **Término:** preservar `winner_ids` como `winnerIds`; no `pvp`, um `result: "win"` da Room não significa vitória do Player local. Conferir com [rooms.md](rooms.md). Definir quando chamar `onEnd` para não cortar a morte do Boss.
-- **Efeitos:** Events não têm posições para todo efeito. Definir como localizar entidades e disparar efeitos repetidos sem exigir campos novos do protocolo silenciosamente.
+- **Término:** o `game_over` chega no Tick em que a partida se decide (no `coop`, quando o Boss entra em `dying`), e depois dele o servidor só avança animações ([ws-messages.md](ws-messages.md) §2.6). Decidido em 06/10: o jogo espera `BOSS_DYING_S` antes de chamar `onEnd`, para não cortar a morte do Boss, e `winner_ids` vira `winnerIds`. Falta fechar com a Web se o `result` do `onEnd` é o da Room ou o do Player local (no `pvp`, `win` da Room não é vitória de quem perdeu).
+- **Efeitos:** resolvido em 06/10 sem campo novo: todo Event traz `x, y` ou cita um id presente no Snapshot ([ws-messages.md](ws-messages.md) §2.6).
 
 ### 5.6 Erros e aceite — Render, Netcode e Web
 
