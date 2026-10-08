@@ -162,7 +162,7 @@ Um bloco técnico do projeto com tarefas numeradas: F0 Fundação, F1 Simulation
 _Evitar_: módulo, slice, área
 
 **Checkpoint**:
-Demo de integração no domingo, com critério observável (C1–C5 no plano). Checkpoint não fechado vira o assunto da reunião de segunda.
+Demo de integração na sexta, com critério observável (C1–C5 no plano). Checkpoint não fechado vira o assunto da reunião de segunda.
 _Evitar_: milestone, entrega, sprint review
 
 **Module** (módulo):

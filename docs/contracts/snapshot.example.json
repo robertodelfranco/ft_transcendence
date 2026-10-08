@@ -1,5 +1,5 @@
 {
-  "about": "Exemplo fabricado para o contrato ws-messages.md: cobre todos os campos e estados e não saiu de uma partida real. A grade vem do map.cub do Cub3D, com 5 Spawns, 20 Enemies e M, A, T. Mana e Armor são ilustrativos até rules.md ter os valores.",
+  "about": "Exemplo fabricado para o contrato ws-messages.md: cobre todos os campos e estados e não saiu de uma partida real. A grade vem do map.cub do Cub3D, com 5 Spawns, 20 Enemies e M, A, T. Mana e Armor seguem os valores de partida de rules.md.",
   "welcome": {
     "v": 1,
     "type": "welcome",
@@ -7,11 +7,10 @@
     "room": {
       "match_id": 12,
       "mode": "coop",
+      "map": "example",
       "options": {
-        "map": "example",
         "theme": "dungeon",
         "start_hp": 10,
-        "enemy_density": "normal",
         "pickups": {"potion": true, "mana": true, "armor": true}
       }
     },

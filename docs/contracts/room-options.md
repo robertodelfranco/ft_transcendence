@@ -23,7 +23,7 @@ Tabela da [arquitetura](../catacombs42-web-arquitetura.md) §6.4, considerando a
 | `frag_limit` | inteiro | 3–10 Frags, inclusive | 5 | `pvp` |
 | `time_limit_s` | inteiro | 120–600 segundos, inclusive | 180 | `pvp` |
 
-O `map` aparece como opção na arquitetura e como campo externo a `options` na API de lobby. A localização definitiva e o tratamento no `welcome` precisam ser alinhados (§5.1); não exigir os dois caminhos ao consumidor.
+O `map` é escolha de quem cria a Room, mas **fica fora do objeto `options`**: é campo próprio na criação, no `RoomInfo` e em `welcome.room`, ao lado de `mode`. Decidido em 06/10; a arquitetura e [ws-messages.md](ws-messages.md) já seguem.
 
 ### 2.2 Aplicação
 
@@ -84,7 +84,7 @@ Escolhas explícitas de visual e vida, mantendo o Map no lugar publicado pela AP
 
 ### 5.1 Onde fica Map — Conteúdo, Simulation e Partidas
 
-A arquitetura lista `map` em `RoomOptions`; a API e `RoomInfo` o expõem ao lado de `options`. Proposta: manter `map` fora de `options` na criação e em `RoomInfo`, como a API já faz, e alinhar `welcome.room` e arquitetura. Alternativa: movê-lo para `options` em todos os consumidores. Definir uma origem única antes de fechar o tipo TypeScript/Python.
+Decidido em 06/10: `map` fica fora de `options` em todos os consumidores (§2.1).
 
 Definir também a ordem do catálogo para o default “primeiro da lista” ser determinístico. Proposta: lista explícita por Mode; alternativa: ordem alfabética dos nomes. O endpoint/forma de entrega desse catálogo à Web ainda precisa ser combinado.
 

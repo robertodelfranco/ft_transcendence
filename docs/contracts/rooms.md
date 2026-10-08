@@ -16,8 +16,6 @@ Um Match é identificado pelo `match_id` (inteiro, a PK de `matches`), em todo l
 
 A Room é criada junto com a linha de `matches`, então **o `match_id` existe antes da Room** e é a chave das duas. Um Match sem Room é um Match terminado (ou abortado); uma Room sem Match não existe.
 
-> **Atenção, divergência viva:** a arquitetura (§7.1 e §10.2) e o glossário ([CONTEXT.md](../../CONTEXT.md), entrada *Room*) ainda dizem `room_id` como string, com `RoomManager.create(...) -> room_id` e `/ws/game/{room_id}`. Quem implementar lendo só aqueles dois arquivos constrói a interface errada. Os dois precisam do mesmo ajuste, por PR de quem é dono deles ("Em aberto" 7).
-
 ### 2.2 `RoomManager` — o que o lobby chama
 
 ```python
@@ -87,7 +85,7 @@ class MatchResult:
     mode: Literal["coop", "pvp"]
     result: Literal["win", "loss", "draw"]
     reason: Literal["boss_defeated", "all_dead", "frag_limit",
-                    "time_limit", "forfeit", "server_shutdown"]
+                    "time_limit", "forfeit"]
     started_at: datetime          # timezone-aware, UTC
     ended_at: datetime
     duration_ticks: int
@@ -119,6 +117,14 @@ Quem produz cada número (é o que o Roberto confere ao assinar):
 `duration_ticks` | `room.tick`
 `disconnected_at_end` | `player.connected` no instante do `game_over`
 `started_at`, `ended_at` | `RoomManager`, com `datetime.now(timezone.utc)`
+
+Regras da Simulation que fecham estes números (respostas do Roberto ao assinar, em 06/10):
+
+- **`damage_dealt`** é o HP tirado do Boss no `coop` e de Players no `pvp`. Um Enemy morre com uma fireball e não tem HP ([rules.md](rules.md) §4): conta em `kills`, não em dano. Um contador só basta, porque os dois alvos nunca existem no mesmo Mode.
+- **`survived`** é "vivo no Tick do `game_over`", nos dois Modes.
+- **Quem saiu no meio continua na lista.** O Player cujo Grace period expirou sai do Snapshot, mas a Simulation guarda os contadores dele, e ele entra em `players` com `disconnected_at_end = true`.
+- **`coop` em que todos saem** termina com `result = "loss"` e `reason = "forfeit"`.
+- **Desligamento do backend não produz `MatchResult`.** Por isso `server_shutdown` não está no `reason` acima: quem grava esse valor é o `startup`, direto em `matches` (§2.6).
 
 **Não estão aqui** `elo_before`, `elo_after` e `xp_gained`: a Simulation não conhece Elo nem XP. Eles são calculados dentro de `record_match_result` (F5.5) e gravados em `match_players`.
 
@@ -183,7 +189,7 @@ Tipos de PostgreSQL. Todo carimbo de tempo é `TIMESTAMPTZ` com `datetime.now(ti
 | `ended_at` | `TIMESTAMPTZ` | sim | |
 | `duration_ticks` | `INTEGER` | sim | |
 | `result` | `TEXT` | sim | `CHECK IN ('win','loss','draw')`; nulo enquanto não terminou |
-| `reason` | `TEXT` | sim | `CHECK` na lista de `MatchResult.reason` |
+| `reason` | `TEXT` | sim | `CHECK` na lista de `MatchResult.reason` mais `'server_shutdown'`, que só o `startup` grava |
 
 Índice: `ix_matches_status_created (status, created_at DESC)` — serve a listagem de Matches terminados; Lobby vem da memória.
 
@@ -387,7 +393,7 @@ No empate, `result` é `"draw"`, `reason` é `"time_limit"` e os dois Players t�
 ## 4. Decisões
 
 1. **`result` é o desfecho da Room; quem ganhou é `match_players.won`** (pergunta 1). No `coop` o grupo ganha ou perde junto, então `result` já diz tudo. No `pvp` ele não consegue dizer: um ganha e o outro perde na mesma linha. Então `result` vale `"win"` (alguém venceu) ou `"draw"`, e **toda estatística e todo ranking leem `match_players.won`**, nunca `matches.result`. O campo continua existindo porque é o que a tela de resultado mostra e o que o Event `game_over` já carrega. Casa com a proposta do Roberto em [ws-messages.md](ws-messages.md) §5, item 2.
-2. **O "pronto" de cada Player vive na Room, em memória** (pergunta 2). É estado de partida antes de começar, e o invariante 2 vale para ele: o banco só recebe o Match ao final. Por isso o `RoomManager` ganha `set_ready`, que a arq. §10.2 não tinha, e `RoomInfo.players[].ready` o expõe. Gravar `ready` no banco criaria escrita a cada clique e um estado que o reinício do backend tornaria mentira — as Rooms se perdem no reinício, o `ready` não poderia sobreviver a elas.
+2. **O "pronto" de cada Player vive na Room, em memória** (pergunta 2). É estado de partida antes de começar, e o invariante 2 vale para ele: o banco só recebe o Match ao final. Por isso o `RoomManager` ganha `set_ready`, que a arq. §10.2 não tinha, e `RoomInfo.players[].ready` o expõe. Gravar `ready` no banco criaria escrita a cada clique e um estado que o reinício do backend tornaria mentira — as Rooms se perdem no reinício, o `ready` não poderia sobreviver a elas. Combinado com o Roberto em 06/10: esse estado mora na entrada de Lobby do `RoomManager`, e a Room da Simulation só é criada no `start`.
 3. **Só o host inicia, e o host é sucedido, não eleito** (pergunta 3). `matches.created_by` é o host. Se ele sai do Lobby, o host passa para o Player com o `joined_at` mais antigo que restou, e `created_by` é atualizado — é uma linha de código e evita o Lobby que ninguém consegue iniciar. Lobby que fica sem ninguém é destruído no próprio `leave`, e o Match vira `aborted` na mesma chamada: sem varredura, sem job. Lobby que nunca inicia expira por TTL (valor em "Em aberto" 2).
 4. **Uma migração inicial, cadeia linear, uma cabeça conferida pelo CI** (pergunta 4). Duas pessoas escrevendo migrações na mesma semana produzem duas revisões com o mesmo `down_revision`, e o Alembic passa a ter duas cabeças — `upgrade head` falha e a correção é um `merge` que ninguém quer explicar na defesa. A migração inicial é uma só, escrita por mim a partir de [auth.md](auth.md) e deste arquivo, porque `matches.created_by` precisa de `users`. Depois dela, quem vai gerar revisão avisa no canal e parte da `head` atual; o CI roda `alembic heads` e reprova com mais de uma linha. É mais barato que combinar pastas separadas por Slice (que não resolvem a FK).
 5. **A idempotência é a própria linha do Match, travada no `SELECT ... FOR UPDATE`.** `status = 'running'` é a condição; a segunda chamada não encontra linha e sai sem efeito. Não precisa de tabela de controle nem de chave externa: a transição `running → finished` só pode acontecer uma vez. As PKs de `match_players` e `user_achievements` são a segunda rede.
@@ -404,8 +410,8 @@ No empate, `result` é `"draw"`, `reason` é `"time_limit"` e os dois Players t�
 | 3 | `min_players` por Mode. Proposta: 1 no `coop` (dá para testar sozinho e o módulo *Multiplayer 3+* se demonstra com 3+ de verdade) e 2 no `pvp`. | Rafael (é pergunta 7 dele em [room-options.md](room-options.md)) | reunião 04/10 |
 | 4 | Quem emite `achievement_unlocked`: `record_match_result` devolve a lista e a Room emite, ou a função chama o `ConnectionManager` direto? Proposta: devolve a lista — a função fica sem dependência de rede e testável. | Akita e Augusto | reunião 04/10 |
 | 5 | Fórmula de XP e de level, fórmula de Elo e a lista de ≥ 5 conquistas com o código de cada uma. Sem elas, F5.5 e F5.7 inventariam regra. | Rafael (F4.6) | **início da S3** |
-| 6 | `damage_dealt` no `coop` conta dano em Enemy e Boss; no `pvp`, dano em Player. Confirmar que a Simulation separa os dois contadores ou que a soma basta. | Roberto | reunião 04/10 |
-| 7 | A arq. §7.1/§10.2 e o `CONTEXT.md` ainda descrevem `room_id` como string e `RoomManager` com `room_id`. Enquanto não forem atualizados, cada pessoa pode implementar uma interface diferente. Proposta: PR do Roberto (dono dos dois docs) atualizando as duas seções e a entrada *Room* do glossário, citando este contrato. | Roberto | reunião 04/10 |
+| 6 | Resolvido em 06/10: `damage_dealt` é o HP tirado do Boss (`coop`) ou de Players (`pvp`), num contador só (§2.4). | Roberto | feito |
+| 7 | Resolvido: a arquitetura e o `CONTEXT.md` usam `match_id` desde o PR #14. | Roberto | feito |
 | 8 | O que acontece com `matches` e `match_players` se um User for apagado. Hoje: `RESTRICT`, ou seja, não apaga. Não há tela de exclusão de conta no escopo; se entrar, vira anonimização do `username`, não `DELETE`. | Augusto e Akita | quando a exclusão de conta entrar no escopo |
 
 ---
