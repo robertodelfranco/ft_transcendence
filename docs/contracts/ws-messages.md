@@ -22,7 +22,7 @@ Toda mensagem do socket `/ws/game/{match_id}`, nos dois sentidos. O cliente do j
 |---|---|---|
 | `join` | `match_id: int`, `token: string` (access JWT) | Primeira mensagem. Sem `join` válido em 5 s, fecha com `4401`. `match_id` igual ao do caminho, senão `4400` |
 | `input` | `seq: int`, `keys: {up, down, left, right, rot_left, rot_right, sprint}` (7 booleanos, todos obrigatórios), `mouse_dx: number` (rad) | Um por passo de `1 / TICK_RATE` s do cliente. `seq` começa em 1 e só cresce; recomeça a cada conexão nova. Como o servidor aplica: §2.9 |
-| `action` | `seq: int` (mesmo contador do `input`), `kind: "fire" \| "door"` | Uma por tecla pressionada; entra na mesma fila do `input` (§2.9). Action que não pode acontecer (sem Mana, cooldown, Player morto, nenhuma Door à frente) é ignorada sem resposta |
+| `action` | `seq: int` (mesmo contador do `input`), `kind: "fire" \| "door"` | Uma por tecla pressionada; entra na mesma fila do `input` (§2.9). Action que não pode acontecer (sem Mana, cooldown, Player morto, nenhuma Door fechada à frente) é ignorada sem resposta |
 | `ping` | `t: number` (relógio do cliente, ms) | O servidor devolve o mesmo `t` no `pong` |
 
 **O que cada tecla significa** (pergunta 8). Com frente `f = (dx, dy)` e direita `r = (-dy, dx)`:
@@ -41,7 +41,7 @@ A ligação de tecla a campo é do cliente: `W/S` → `up/down`, `A/D` → `left
 
 | `type` | Campos | Quando |
 |---|---|---|
-| `welcome` | `user_id: int`, `room: {match_id, mode: "coop" \| "pvp", options}`, `map: {grid: string[]}`, `snapshot` | Resposta ao `join`, inclusive na Reconnection |
+| `welcome` | `user_id: int`, `room: {match_id, mode: "coop" \| "pvp", map: string, options}`, `map: {grid: string[]}`, `snapshot` | Resposta ao `join`, inclusive na Reconnection |
 | `snapshot` | ver §2.4 | A cada 2 Ticks (15 Hz) |
 | `event` | `name: string`, `tick: int`, `data: object` | Quando acontece (§2.6) |
 | `pong` | `t: number` | Resposta ao `ping` |
@@ -49,6 +49,7 @@ A ligação de tecla a campo é do cliente: `W/S` → `up/down`, `A/D` → `left
 
 No `welcome`:
 
+- `room.map` é o nome do Map, sem extensão. Fica ao lado de `options`, não dentro, como na API de lobby ([matches-api.md](matches-api.md)).
 - `options` são as RoomOptions completas, com os defaults aplicados ([room-options.md](room-options.md)).
 - `map.grid` é o **Grid inicial da Room**: o Map com as RoomOptions já aplicadas (Pickup desligado vira `0`). As linhas têm todas o mesmo tamanho, e as células de Spawn, Enemy e Boss já vêm como `0`. Caracteres e significado em [map-format.md](map-format.md).
 - `snapshot` é um Snapshot completo (os campos de §2.4, sem `v` e `type`). O Grid atual é `map.grid` com o `grid_delta` dele aplicado.
@@ -74,7 +75,7 @@ No `welcome`:
 | Boss | `x`, `y`, `hp: int`, `state` |
 | Projectile | `id: string`, `kind: "fireball" \| "bullet"`, `owner: int \| null` (user_id; `null` no bullet), `x`, `y`, `dx`, `dy`, `state` |
 | Door | `x: int`, `y: int` (célula), `open: bool`, `locked: bool` |
-| `grid_delta[]` | `x: int`, `y: int`, `c: string` (um caractere: `0` para Pickup coletado, `O` para Door aberta). Uma Door fechada de novo volta a ser igual ao Grid inicial e sai da lista |
+| `grid_delta[]` | `x: int`, `y: int`, `c: string` (um caractere: `0` para Pickup coletado, `O` para Door aberta). A lista só cresce: Pickup coletado não volta, e Door aberta não fecha |
 | `scoreboard` | `players: [{id: int, frags: int}]` em ordem decrescente de `frags`, e `time_left_s: int` |
 
 `doors` e `grid_delta` sempre concordam. A Prediction usa o Grid para colisão; o Renderer usa `doors` para animar a porta e mostrar se está trancada.
@@ -92,7 +93,7 @@ Lista fechada. O cliente anima no próprio relógio e reinicia a animação quan
 | | `dying` | Morrendo, por `ENEMY_DYING_S`; depois sai do Snapshot | `HITED` → `DYING` → `DEAD` |
 | Boss | `idle` | Nenhum Player chegou a `BOSS_SIGHT_RANGE` desde o início | `IDLE` |
 | | `alert` | Viu um Player e se move | `ALERT` |
-| | `attack` | Animação de tiro; o bullet sai ao fim dela | `ATTACK` |
+| | `attack` | Animação de tiro, por `BOSS_ATTACK_WINDUP_S`; o bullet sai ao fim dela | `ATTACK` |
 | | `dying` | Morrendo, por `BOSS_DYING_S`. É o fim do `coop` | `DYING` |
 | Projectile | `moving` | Em voo | `MOVING` |
 | | `hit` | Impacto, parado no ponto do acerto por `PROJECTILE_HIT_S`; depois sai | `HITED` |
@@ -101,25 +102,38 @@ Os estados `HITED` (Enemy), `DAMAGE` e `DEAD` do C duravam um quadro ou marcavam
 
 ### 2.6 Events
 
-`by`, `killer_id`, `owner`, `winner_ids` e `player_id` são sempre `user_id`. Quando o autor é um Enemy ou o Boss, `by` é `null`.
+`by`, `killer_id`, `owner`, `winner_ids` e `player_id` são sempre `user_id`. Quando o autor é um Enemy ou o Boss, `by` é `null`. Todo Event que acontece num lugar ou traz `x, y`, ou cita um id que está no Snapshot do mesmo Tick ou do seguinte; é por aí que o cliente posiciona um efeito.
 
 | `name` | `data` | Quando |
 |---|---|---|
 | `player_joined` | `{player_id, name}` | Primeiro `join` de um Player na Room |
 | `player_disconnected` | `{player_id}` | O socket caiu; começa o Grace period |
 | `player_reconnected` | `{player_id}` | O mesmo User voltou dentro do Grace period |
-| `player_left` | `{player_id}` | Saiu de vez: Grace period expirou no `coop` |
-| `door_opened` / `door_closed` | `{x, y, by}` | Door mudou; `by` é quem apertou |
+| `player_left` | `{player_id}` | Saiu de vez: Grace period expirou no `coop`. O Player sai do Snapshot, mas os números dele continuam valendo para o `MatchResult` |
+| `door_opened` | `{x, y, by}` | Door abriu; `by` é quem apertou. Não existe `door_closed`: Door aberta não fecha |
 | `item_picked` | `{kind: "key" \| "potion" \| "mana" \| "armor", by, x, y}` | Pickup coletado |
 | `player_hit` | `{target, by, source: "enemy" \| "bullet" \| "fireball", amount, absorbed}` | `amount` é o HP perdido e `absorbed` o que a Armor segurou; o dano total é a soma |
 | `enemy_died` | `{enemy_id, killer_id}` | Enemy entrou em `dying` |
 | `boss_died` | `{killer_id}` | Boss entrou em `dying` |
 | `player_died` | `{player_id, by}` | HP chegou a 0. É o kill feed; no `pvp` com `by` preenchido, é um Frag |
 | `player_respawned` | `{player_id, x, y}` | Só no `pvp` |
-| `game_over` | `{result: "win" \| "loss" \| "draw", winner_ids: int[], reason}` | Uma única vez por Room |
+| `game_over` | `{result: "win" \| "loss" \| "draw", winner_ids: int[], reason}` | Uma única vez por Room, no Tick em que a partida se decide (tabela abaixo) |
 | `achievement_unlocked` | `{user_id, code}` | Depois do `game_over` |
 
-`reason` vem do `MatchResult` (arq. §10.2): `boss_defeated`, `all_dead`, `frag_limit`, `time_limit`, `forfeit`, `server_shutdown`.
+`game_over` é o fim da partida, com qualquer desfecho. Quem diz se foi vitória ou derrota é o `result`:
+
+| Mode | Quando sai | `result` | `reason` |
+|---|---|---|---|
+| `coop` | O Boss entra em `dying` | `win` | `boss_defeated` |
+| `coop` | O último Player vivo morre | `loss` | `all_dead` |
+| `coop` | Todos os Players saíram (Grace period expirado para todos) | `loss` | `forfeit` |
+| `pvp` | Um Player chega a `frag_limit` | `win` | `frag_limit` |
+| `pvp` | `time_limit_s` acaba | `win`, ou `draw` com placar igual | `time_limit` |
+| `pvp` | O Grace period do adversário expira | `win` | `forfeit` |
+
+`winner_ids` tem todos os Players da partida no `coop` com `win`, e fica vazio com `loss`. No `pvp`, tem o vencedor, ou fica vazio no `draw`. Cada cliente descobre o próprio desfecho conferindo se o seu id está em `winner_ids`.
+
+Depois do `game_over`, o `step` só avança os tempos de animação (`dying`, `hit`): não aplica Input, Action, movimento nem dano. Os Snapshots continuam até a Room ser removida, e é por eles que o cliente vê o Boss terminar de morrer. Desligamento do backend não gera `game_over`: o socket fecha com `4503`.
 
 ### 2.7 Fechamento e erros
 
@@ -155,7 +169,7 @@ A regra que mantém a Prediction certa: **cada `input` é aplicado uma única ve
 - Cada Player tem uma fila na Room. `input` e `action` entram nela na ordem de chegada, que é a ordem do `seq` (o WebSocket roda sobre TCP).
 - A cada Tick, o servidor consome a fila em ordem até aplicar um `input`. Se ficaram 3 ou mais `input`s esperando, aplica dois nesse Tick, para alcançar o cliente depois de um atraso da rede. Nunca mais que dois por Tick: é o limite de 60 por segundo.
 - **Fila vazia: o Player fica parado nesse Tick.** O servidor não repete o último Input, porque esse passo a mais o cliente não previu.
-- O `mouse_dx` de cada `input` é aplicado junto com ele, cortado em `MOUSE_MAX_ROT_SPEED × dt`.
+- Dentro de um `input`, a ordem é fixa e igual nos dois lados: gira pelo `mouse_dx`, cortado em `MOUSE_MAX_ROT_SPEED × dt`; gira pelas teclas; soma as quatro teclas de andar num vetor de intenção e o normaliza; anda em `x` e depois em `y`, cada eixo validado sozinho; coleta o Pickup da célula nova.
 - Uma `action` é executada com a posição e a direção que o Player tem naquele ponto da fila. Assim a fireball sai para onde o Player olhava quando apertou, mesmo com o servidor alguns Inputs atrás.
 - Player morto: os Inputs são consumidos e ignorados, para o `seq` continuar andando.
 - `last_input_seq` é o `seq` do último `input` aplicado.
@@ -206,14 +220,22 @@ No `pvp`, o `scoreboard` fica assim:
 - **Snapshot pode ser descartado; Event nunca.** A F2.6 descarta Snapshot para cliente lento não travar a Room. Snapshot é estado, e o próximo substitui o perdido; Event é um fato que não se repete (kill feed, `game_over`), então a fila de Events não descarta.
 - **Input aplicado em fila, um por Tick, e nunca repetido** (§2.9). A arq. §5 guardava só o último Input do Player. Com isso, um Tick que recebe 0 ou 2 Inputs (o jitter normal da rede) aplica um passo que o cliente não previu, ou pula um que ele previu, e o erro de 0,12 célula passa do limite de 0,05 da Reconciliation: o Player teleporta. Com a fila, cliente e servidor aplicam exatamente os mesmos passos. Decidido pelo Roberto em 02/10.
 - **Action usa o mesmo contador de `seq` do `input`** e entra na mesma fila. É o que deixa o servidor executar o `fire` no ponto certo da sequência de movimento.
+- **O Player desliza na parede, e a diagonal não é mais rápida.** O C aplicava cada tecla como um passo inteiro e rejeitava o passo todo ao bater, então andar de lado contra a parede travava e a diagonal rendia 1,41 vez a velocidade. Aqui as teclas viram um vetor de intenção normalizado, e o passo é tentado em `x` e depois em `y`: bloqueado num eixo, o Player anda no outro. A ordem dos eixos está em §2.9 porque `sim.py` e `applyInput.ts` precisam da mesma. Decidido em 07/10.
+- **Door aberta não fecha.** No C, `F` abria e fechava (`door_bonus/door_bonus.c:56-57`). Com vários Players, fechar permitiria prender um companheiro na célula ou travar o grupo, e exigiria uma regra de quem bloqueia o fechamento. A Action `door` só abre. Decidido em 07/10.
 - **Action impossível é ignorada sem `error`.** Tentar atirar sem Mana é jogo normal, não erro de protocolo.
+- **`game_over` é um Event só, para vitória e derrota.** O nome diz que a partida acabou; `result` e `reason` dizem como. Matar o Boss é `game_over` com `win`; todos morrerem é `game_over` com `loss`. Dois Events (`game_win`, `game_over`) obrigariam todo consumidor a tratar os dois para saber que a partida terminou.
+- **`result` é o desfecho da Room, igual para todos os destinatários.** No `pvp` ele vale `win` (alguém venceu) ou `draw`, e quem venceu está em `winner_ids`. É a mesma regra de [rooms.md](rooms.md) §4, decisão 1.
+- **Depois do `game_over` o mundo congela, e só as animações andam.** O resultado já está decidido: ninguém morre depois que o Boss morreu. Os tempos de `dying` e `hit` continuam para o cliente mostrar o fim; ele espera `BOSS_DYING_S` antes de trocar de tela ([mount-game.md](mount-game.md)). Decidido em 06/10.
+- **Desligamento não gera `game_over` nem `MatchResult`.** Partida interrompida não tem resultado: o `startup` marca o Match como `aborted` ([rooms.md](rooms.md) §2.6). Por isso `server_shutdown` é código de fechamento, não `reason`.
+- **Quem saiu continua contando.** O Player que saiu some do Snapshot, mas a Simulation guarda os contadores dele para o `MatchResult`. Se todos saem de um `coop`, a partida termina em `loss` por `forfeit`.
+- **`map` fica fora de `options`**, em `welcome.room`, como na API de lobby e no `RoomInfo`. Decidido em 06/10 com o conteúdo e as partidas: um lugar só para todos os consumidores.
+- **Nenhum Event ganha posição só para efeito visual.** O que acontece numa célula traz `x, y`; o que acontece com uma entidade cita o id, e a entidade está no Snapshot (um Enemy morto fica lá em `dying`).
 - **Os números do netcode ficam aqui (§2.8), não em `rules.md`**, porque não são regra de jogo e só o `TICK_RATE` entra na Prediction.
 
 ## 5. Em aberto
 
-1. **Onde a fila de §2.9 mora e quem a enche.** *Roberto e Augusto.* Proposta: a fila fica no `Player` (`state.py`, Roberto); o laço de leitura do socket (Augusto) só valida a mensagem e a coloca na fila; quem consome é o `step`.
-2. **O que significa o `result` do `game_over` no `pvp`?** *Com o Akita, junto da pergunta 1 dele em `rooms.md`.* Proposta: no `coop`, `win` ou `loss` do grupo; no `pvp`, `win` com o vencedor em `winner_ids`, ou `draw` com `winner_ids = []`. Cada cliente compara o próprio id com `winner_ids`, e o evento continua igual para todos.
-3. **O mesmo User abre um segundo socket na Room.** *Augusto.* Proposta: a conexão nova vence e a antiga fecha com um código novo (por exemplo `4408`, "substituída").
-4. **Token vencido durante a partida.** É a pergunta 6 do Augusto e entra em `auth.md`. Se a autenticação valer só no `join`, nada muda aqui.
-5. **`join` numa Room que ainda está no Lobby.** *Augusto e Akita.* Fechar com `4409`, ou aceitar e mandar `welcome` só no início?
-6. **Depois, com resposta neste arquivo:** o Player desliza na parede? A diagonal continua 1,41 vez mais rápida? Qual é a ordem das teclas dentro do Tick? (R2) Uma Door pode fechar com alguém na célula? (R3) O cliente prevê `fire` e `door`, ou só o movimento? (R7)
+1. **Onde a fila de §2.9 mora e quem a enche.** *Roberto e Augusto.* Proposta: a fila fica no `Player` da Room, que passa a existir no `start` ([rooms.md](rooms.md)); o laço de leitura do socket (Augusto) só valida a mensagem e a coloca na fila; quem consome é o `step`.
+2. **O mesmo User abre um segundo socket na Room.** *Augusto.* Proposta: a conexão nova vence e a antiga fecha com um código novo (por exemplo `4408`, "substituída").
+3. **Token vencido durante a partida.** É a pergunta 6 do Augusto e entra em `auth.md`. Se a autenticação valer só no `join`, nada muda aqui.
+4. **`join` numa Room que ainda está no Lobby.** *Augusto e Akita.* Como a Room da Simulation só nasce no `start`, a proposta do Akita é fechar o socket; falta escolher o código (`4409` é "Room cheia").
+5. **Depois, com resposta neste arquivo:** o cliente prevê `fire` e `door`, ou só o movimento? (R7)

@@ -1,6 +1,6 @@
 # Contrato: números das regras (`rules.md`)
 
-**Estado:** rascunho para revisão; valores propostos em §5.3. **Escrevem:** Simulation (nomes e unidades) e Render/conteúdo (valores). **Assina:** Netcode.
+**Estado:** rascunho para revisão; valores de partida aceitos em 06/10 (§2.6). **Escrevem:** Simulation (nomes e unidades) e Render/conteúdo (valores). **Assina:** Netcode.
 
 Base: versão compartilhada da `main`, revisão `7fae52b`. Nomes, unidades e números existentes foram preservados; a contribuição de conteúdo está em §5.3 e §5.4.
 
@@ -30,7 +30,7 @@ Como ler as tabelas:
 | `PLAYER_SPEED` | cél/s | `3.6` ¹ | sim | `0.06` por quadro (`player_bonus/init_player_bonus.c:78`) |
 | `PLAYER_SPRINT_MULT` | multiplicador | `2.0` | novo | `move_speed * 2.0` (`player_bonus/movement_bonus.c:22`) |
 | `PLAYER_ROT_SPEED` | rad/s | `1.8` ¹ | sim | `0.03` rad por quadro (`player_bonus/init_player_bonus.c:79`) |
-| `MOUSE_MAX_ROT_SPEED` | rad/s | a definir (§5.3) | sim | Sem equivalente: o C girava `0.012` rad por evento de cursor nas faixas laterais de 30% da janela (`player_bonus/controls_bonus.c:63-71`) |
+| `MOUSE_MAX_ROT_SPEED` | rad/s | `18.85` (6π) | sim | Limite de giro por mouse, igual nos dois Modes: o servidor e a Prediction cortam `mouse_dx` em `MOUSE_MAX_ROT_SPEED × dt` por Tick. Sem equivalente: o C girava `0.012` rad por evento de cursor nas faixas laterais de 30% da janela (`player_bonus/controls_bonus.c:63-71`) |
 | `PLAYER_RADIUS` | cél | `0.05` | novo | `R`, testado nos 4 cantos contra `1` e `D` (`include/cub3d_bonus.h:27`, `player_bonus/move_utils_bonus.c:100-111`) |
 | `BODY_BLOCK_DISTANCE` | cél | `0.6` | novo | Player não chega a menos disso (`<`) de Enemy, Boss ou outro Player vivo (`player_bonus/move_utils_bonus.c:26` e `:90`) |
 | `FIREBALL_COOLDOWN_S` | s | `0.4` | novo | `attack_delay > 0.4` (`player_bonus/controls_bonus.c:90`) |
@@ -61,7 +61,8 @@ O HP inicial e o teto da poção não são constantes: vêm de `options.start_hp
 | `BOSS_SIGHT_RANGE` | cél | `20` | novo | `distance <= 20.0` vira `ALERT` (`boss_bonus/init_boss_bonus.c:33`) |
 | `BOSS_MIN_RANGE` | cél | `8` ² | novo | Só anda se `distance > 8.0` (`:35`) |
 | `BOSS_ATTACK_RANGE` | cél | `18` ² | novo | `distance <= 18.0` vira `ATTACK` (`:31`); o `16.0` da `:38` nunca é alcançado |
-| `BOSS_ATTACK_COOLDOWN_S` | s | `2.2` ² | novo | Intervalo entre dois bullets. A arq. soma 1 s de espera a 4 quadros de `0.3` s; o código dá cerca de `1.2` s (ponto 1) |
+| `BOSS_ATTACK_WINDUP_S` | s | `1.2` | novo | Tempo em `attack` antes de o bullet sair: 4 quadros de `0.3` s (`boss_bonus/init_boss_bonus.c:43-54` e `:69`) |
+| `BOSS_ATTACK_COOLDOWN_S` | s | `2.2` ² | novo | Intervalo entre dois bullets, contando o `BOSS_ATTACK_WINDUP_S`. A arq. soma 1 s de espera a 4 quadros de `0.3` s; o código dá cerca de `1.2` s (ponto 1) |
 | `BOSS_DYING_S` | s | `1.2` | novo | 3 quadros de `0.4` s até `DEAD` (`:71-76`) |
 | `BULLET_DAMAGE` | HP | `2` | novo | `hp -= 2` (`game_bonus/handle_game_bonus.c:116`) |
 | `FIREBALL_BOSS_DAMAGE` | HP | `10` | novo | `boss->hp -= 10`, 6 acertos (`attack_bonus/render_fireball_bonus.c:99`) |
@@ -79,17 +80,16 @@ O HP inicial e o teto da poção não são constantes: vêm de `options.start_hp
 
 ### 2.6 Valores por Ruleset (conteúdo preenche)
 
-Nada disto existe no C. Cada linha tem um valor para `coop` e outro para `pvp`; a arq. §6.3 pede co-op generoso e PvP apertado. No código, estes valores ficam no `numbers` de cada Ruleset (arq. §6.1), um dicionário com os nomes abaixo; `rules.ts` espelha o mesmo dicionário por Mode.
+Nada disto existe no C. Cada linha tem um valor para `coop` e outro para `pvp`; a arq. §6.3 pede co-op generoso e PvP apertado. No código, estes valores ficam no `numbers` de cada Ruleset (arq. §6.1), um dicionário com os nomes abaixo; `rules.ts` espelha o mesmo dicionário por Mode. Os valores são os pontos de partida propostos pelo conteúdo (§5.3), aceitos em 06/10; mudam jogando.
 
 | Nome | Unidade | `coop` | `pvp` | O que é |
 |---|---|---|---|---|
-| `MANA_MAX` | Mana | | | Teto de Mana do Player |
-| `FIREBALL_MANA_COST` | Mana | | | Quanto uma fireball gasta |
-| `MANA_REGEN_PER_S` | Mana/s | | | Regeneração contínua |
-| `MANA_PICKUP` | Mana | | | Quanto o Pickup de mana devolve |
-| `ARMOR_POINTS` | Armor | | | Quanto o Pickup de armor dá |
-| `RESPAWN_DELAY_S` | s | não se aplica | | Tempo entre morrer e renascer |
-| `MOUSE_MAX_ROT_SPEED` | rad/s | | | Limite de giro por mouse; o servidor corta `mouse_dx` em `MOUSE_MAX_ROT_SPEED × dt` por Tick |
+| `MANA_MAX` | Mana | `100` | `100` | Teto de Mana do Player |
+| `FIREBALL_MANA_COST` | Mana | `10` | `20` | Quanto uma fireball gasta |
+| `MANA_REGEN_PER_S` | Mana/s | `10` | `5` | Regeneração contínua |
+| `MANA_PICKUP` | Mana | `30` | `20` | Quanto o Pickup de mana devolve |
+| `ARMOR_POINTS` | Armor | `3` | `2` | Quanto o Pickup de armor dá |
+| `RESPAWN_DELAY_S` | s | não se aplica | `3` | Tempo entre morrer e renascer |
 
 ### 2.7 O que não entra aqui
 
@@ -130,20 +130,27 @@ Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um
 - **`BODY_BLOCK_DISTANCE` usa `<` para todos.** O C usava `<=` para Enemy e `<` para Boss. Só bloqueia quem está vivo: Enemy em `dying` não bloqueia (o C já fazia assim), e Player morto também não (arq. §5).
 - **Mana é fracionária na Room e inteira no fio.** `MANA_REGEN_PER_S` a 30 Hz soma frações por Tick. A Room guarda o valor exato, o Snapshot manda o arredondamento para baixo, e a fireball exige Mana exata `>= FIREBALL_MANA_COST`.
 - **Os números do netcode** (Snapshot a cada 2 Ticks, Interpolation, Reconciliation, Grace period) ficam em [ws-messages.md](ws-messages.md) §2.8, porque não são regra de jogo. Daqueles números, só o `TICK_RATE` entra aqui, porque a Prediction usa o mesmo `dt` do servidor.
+- **Mana cheia no início e depois do respawn.** O Pickup de mana soma até `MANA_MAX`. Decidido em 06/10.
+- **Armor não acumula.** Pegar o Pickup leva a Armor a `ARMOR_POINTS`; não existe um teto separado nem pilha de Pickups.
+- **Pickup que não serve fica no chão.** Poção com HP cheio, Mana com Mana cheia e Armor com Armor cheia não são coletados, e sobram para um companheiro. O C consumia a poção mesmo com HP cheio (`game_bonus/handle_utils_bonus.c:48-54`). Chave é sempre coletada.
+- **`MOUSE_MAX_ROT_SPEED` é uma constante comum, de 6π rad/s** (três voltas por segundo, 0,63 rad por Tick). A proposta inicial era 2π, com que meia-volta levaria 0,5 s e o mouse look ficaria preso. O valor é igual nos dois Modes, então não entra no `numbers` do Ruleset. Ponto de partida, a ajustar jogando.
+- **`BOSS_ATTACK_WINDUP_S` separa a animação do intervalo.** O Renderer precisa saber quanto dura o `attack` para sincronizar o clipe com o tiro; o cooldown sozinho não diz.
+- **A diagonal não é mais rápida.** As teclas de andar viram um vetor de intenção normalizado, então `PLAYER_SPEED` vale em qualquer direção. No C, `up` e `right` juntos davam 1,41 vez a velocidade. Decidido em 07/10; a forma do passo está em [ws-messages.md](ws-messages.md) §2.9.
+- **A direção do Player é guardada como ângulo.** `PLAYER_ROT_SPEED` e `mouse_dx` somam no ângulo, e o vetor sai dele: `dx = sin(a)`, `dy = -cos(a)`, com norte em zero e `rot_right` aumentando `a`. O C girava o vetor a cada quadro e acumulava erro de arredondamento. No fio continua indo `(dx, dy)`.
 - **Este contrato fecha nomes e unidades agora.** Os valores finais saem do balanceamento de conteúdo (F4.7, S5).
 
 ## 5. Em aberto
 
-1. **Velocidade do Player, velocidade do projétil e comportamento do Boss se decidem jogando.** *Simulation e conteúdo, no primeiro teste com o Boss em rede (S3, até o C3 de 18/10).* Até lá, valem os pontos de partida da tabela, e cada um muda trocando só números:
+1. **Velocidade do Player, velocidade do projétil e comportamento do Boss se decidem jogando.** *Simulation e conteúdo, no primeiro teste com o Boss em rede (S3, até o C3 de 23/10).* Até lá, valem os pontos de partida da tabela, e cada um muda trocando só números:
    - **Player.** `3.6` e `1.8` são o C rodando a 60 fps, o vsync padrão da MLX42 (`MLX42/src/mlx_init.c:111`) num monitor de 60 Hz. Não é preciso medir o fps do Cub3D: o número sai do teste.
    - **Projectile.** O `move_delay` do projétil no C nunca volta a zero (só é somado e comparado), então depois dos primeiros 0,2 s ele salta 0,5 célula a cada quadro: cerca de 30 cél/s a 60 fps. Os `2.5` da arq. são mais lentos que o Player (3,6; 7,2 correndo), que ultrapassaria a própria fireball. O ponto de partida é `12`, acima do sprint e ainda desviável no `pvp`.
    - **Boss.** Depois de atirar, o C faz `attack_delay = 1` (`init_boss_bonus.c:51`) e testa `attack_delay > 1.0`, que passa no quadro seguinte. Por isso o intervalo real entre bullets é de cerca de 1,2 s, e a até 18 células o Boss não anda: os limites `> 8` e `<= 16` não têm efeito. O port implementa a regra que o C pretendia: anda até `BOSS_MIN_RANGE`, atira a até `BOSS_ATTACK_RANGE`, um bullet a cada `BOSS_ATTACK_COOLDOWN_S`. O comportamento real do C é a mesma regra com `BOSS_MIN_RANGE = 18` e `BOSS_ATTACK_COOLDOWN_S = 1.2`, então testar os dois é trocar dois números. O Boss em `idle` leva dano e acorda ao ser atingido; no C ele era invulnerável até ver alguém (`update_fireball_bonus.c:24`).
-2. **Mais tarde, com resposta neste arquivo:** a diagonal continua 1,41 vez mais rápida? (R2) No `pvp`, o que é um Spawn livre e há proteção depois do respawn? (R6)
+2. **Mais tarde, com resposta neste arquivo:** no `pvp`, o que é um Spawn livre e há proteção depois do respawn? (R6)
 
 
 ### 5.3 Valores iniciais por Mode — proposta de conteúdo
 
-Valores propostos para revisão e playtest, não medidos nem aprovados. As células de §2.6 ficam em aberto até a decisão conjunta; depois, os valores aceitos passam para aquela tabela e para os dois arquivos de regras.
+Valores propostos pelo conteúdo e **aceitos em 06/10 como ponto de partida**; já estão em §2.6 e §2.2. Não foram medidos: mudam no playtest. A tabela fica aqui pelo motivo de cada número.
 
 | Nome | Unidade | `coop` proposto | `pvp` proposto | Motivo |
 |---|---|---:|---:|---|
@@ -153,13 +160,13 @@ Valores propostos para revisão e playtest, não medidos nem aprovados. As célu
 | `MANA_PICKUP` | Mana | 30 | 20 | Recupera três disparos no coop e um no PvP, respeitando o teto |
 | `ARMOR_POINTS` | Armor | 3 | 2 | Proteção inicial menor no duelo; conferir com o dano de 2 por fireball |
 | `RESPAWN_DELAY_S` | s | não se aplica | 3 | Pausa curta entre eliminações, a verificar em partida |
-| `MOUSE_MAX_ROT_SPEED` | rad/s | 6.283185307179586 | 6.283185307179586 | Uma volta por segundo como limite inicial igual nos dois Modes |
+| `MOUSE_MAX_ROT_SPEED` | rad/s | 18.85 (6π) | 18.85 (6π) | Três voltas por segundo, igual nos dois Modes. A proposta inicial era 2π (uma volta); trocada em 06/10 porque meia-volta levaria 0,5 s |
 
-O limite de mouse é velocidade angular, não sensibilidade em pixels. Com `TICK_RATE = 30`, a proposta limita o giro horizontal a cerca de 0,20944 rad por Tick. Netcode e Prediction precisam usar o mesmo valor.
+O limite de mouse é velocidade angular, não sensibilidade em pixels. Com `TICK_RATE = 30`, a proposta limita o giro horizontal a cerca de 0,628 rad por Tick. Netcode e Prediction precisam usar o mesmo valor.
 
 ### 5.4 Semânticas que precisam acompanhar os números
 
-**Conteúdo e Simulation:** fechar Mana inicial e após respawn (proposta: cheia); confirmar que Pickup soma até `MANA_MAX`; definir se Armor soma, substitui ou tem teto. `ARMOR_POINTS` sozinho não responde essas perguntas.
+**Conteúdo e Simulation:** decidido em 06/10 e registrado em §4. Mana cheia no início e depois do respawn; o Pickup de mana soma até `MANA_MAX`; Armor não acumula; Pickup que não serve fica no chão.
 
 **Conteúdo e Partidas:** confirmar respawn apenas no `pvp`, critérios de Spawn livre e proteção após renascer, junto do ponto 2 acima. Nenhuma proteção nova foi presumida nesta proposta.
 
