@@ -1,0 +1,13 @@
+# Configuração das ferramentas do backend.
+# As dependências continuam em requirements.txt (produção) e requirements-dev.txt (testes).
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+# "." é a pasta backend/: os testes importam o código como `app.game...`.
+pythonpath = ["."]
+addopts = [
+    "-ra",                      # no fim, lista o motivo de cada teste que não passou
+    "--strict-markers",         # marcador não registrado é erro, não aviso
+    "--import-mode=importlib",  # dois testes podem ter o mesmo nome em pastas diferentes
+]
