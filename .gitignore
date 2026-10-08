@@ -13,3 +13,6 @@ __pycache__/
 
 # OS / editors
 .DS_Store
+
+# front
+node_modules/
