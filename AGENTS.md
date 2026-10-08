@@ -12,8 +12,9 @@ Na defesa oral, cada pessoa explica o que cada módulo que entregou faz e por qu
 - Arquitetura (Room, Simulation, protocolo WebSocket, tick, prediction, contratos entre frentes, schema, monitoring, mapa de migração do C): [docs/catacombs42-web-arquitetura.md](docs/catacombs42-web-arquitetura.md)
 - Texto do subject v19 (critérios de rejeição, módulos e pontos, seções obrigatórias do README): [docs/transcendence.md](docs/transcendence.md)
 - Proposta ampliada, com os módulos que ficaram de fora e o porquê: [docs/catacombs42-ideias-e-modulos.md](docs/catacombs42-ideias-e-modulos.md)
-- Roadmap pessoal do Roberto para o Caminho 1 (milestones R0–R8, perguntas de pesquisa, armadilhas do port do C, trilha de aprendizado): [docs/roadmap-roberto.md](docs/roadmap-roberto.md). Quando divergir, o plano manda.
+- Roadmap do Roberto para o Caminho 1: guia de execução (milestones R0–R8 em passos, lista de testes de cada passo, a porta da Simulation, armadilhas do port do C, trilha de aprendizado): [docs/roadmap-roberto.md](docs/roadmap-roberto.md). Quando divergir, o plano manda.
 - Contratos entre Slices (índice, quem escreve, quem assina, decisões já tomadas): [docs/contracts/README.md](docs/contracts/README.md)
+- Escopo de cada Slice (inventário, o que cada pessoa faz sozinha, dependências nos dois sentidos, com data): [docs/slices/](docs/slices/)
 - Código C original, fonte da matemática a portar: repo `robertodelfranco/42-Cub3D`; na máquina do Roberto em `/home/roberto/workspace/Cub3d` (bonus em `src/bonus/`, mapas em `maps/`, PNGs em `assets/`)
 
 ## Invariantes que nenhum config confessa
@@ -48,3 +49,4 @@ Tabela nova entra por PR revisado por quem é dono do schema: Akita para partida
 - Stack decidida: FastAPI + PostgreSQL (SQLAlchemy + Alembic) + Nginx + Docker Compose; frontend em React + TypeScript (Vite) + framework CSS (a definir em F0.4); jogo em Three.js puro em `frontend/game/`, atrás de `mountGame`; monitoring com Prometheus + Grafana. Infra gratuita e local; nada de serviço pago ou nuvem.
 - Validar uma mudança é do autor (rodando local) e do CI (build + testes a cada PR, `.github/workflows/build-check.yml`). Depois de propor ou aplicar uma mudança, pare aí; rode `docker compose`/curl só quando alguém pedir.
 - `.env` é local e não versionado: leia antes de mexer, e mantenha o arquivo existente.
+- **Agente de IA não faz commit, push nem abre PR neste repositório.** Vale para qualquer agente e qualquer arquivo, inclusive documentação. O agente deixa as mudanças no working tree e entrega a lista de arquivos por commit e por PR, com mensagem sugerida; quem commita e abre o PR é a pessoa.

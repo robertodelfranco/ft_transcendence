@@ -24,7 +24,7 @@ O time escreve os Maps; o carregador da Simulation (F1.1) os lê no servidor, e 
 | `0` | Chão | Livre | `0`: chão e teto do Theme |
 | espaço | Fora do Map | Sólido, como parede; nunca alcançável | Espaço: nada desenhado |
 | `N` `S` `E` `W` | Spawn, com orientação `(0,-1)`, `(0,1)`, `(1,0)`, `(-1,0)` | Onde um Player nasce | `0` |
-| `D` | Door. Toda Door nasce fechada e trancada (`create_door`, `door_bonus.c:90`) | Fechada bloqueia como parede; aberta (`O`) é livre | `D`, e `O` depois de aberta (`grid_delta`) |
+| `D` | Door. Toda Door nasce fechada e trancada (`create_door`, `door_bonus.c:90`) | Fechada bloqueia como parede; aberta (`O`) é livre e não fecha mais | `D`, e `O` depois de aberta (`grid_delta`) |
 | `K` | Pickup de chave | +1 chave a quem pisa | `K` até ser coletado; depois `0` |
 | `P` | Pickup de poção | +`POTION_HEAL` HP, até `start_hp` | `P`, depois `0` |
 | `M` | Pickup de Mana | +`MANA_PICKUP` | `M`, depois `0` |
@@ -33,7 +33,7 @@ O time escreve os Maps; o carregador da Simulation (F1.1) os lê no servidor, e 
 | `B` | Boss (só `coop`) | Posição inicial do Boss | `0`: o Boss vem no Snapshot |
 | `T` | Tocha | Livre, como `0` | `T`: luz do Theme nessa célula |
 
-`O` não aparece no arquivo: só existe durante a partida. Pickup de poção, Mana ou Armor desligado em `options.pickups` vira `0` quando a Room é criada; chave não se desliga, porque as Doors dependem dela.
+`O` não aparece no arquivo: só existe durante a partida. Poção, Mana e Armor só são coletados por quem ainda pode usar; com HP, Mana ou Armor no teto, o Pickup fica no chão ([rules.md](rules.md) §4). Pickup de poção, Mana ou Armor desligado em `options.pickups` vira `0` quando a Room é criada; chave não se desliga, porque as Doors dependem dela.
 
 ### 2.3 O que o carregador entrega
 

@@ -5,11 +5,14 @@
 dist/
 build/
 
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
 # OS / editors
 .DS_Store
-
-# personal
-docs/roadmap-roberto.md
 
 # front
 node_modules/

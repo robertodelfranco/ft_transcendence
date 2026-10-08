@@ -1,4 +1,4 @@
-# Catacombs 42 — plano de tarefas (28/09 → 09/11/2026)
+# Catacombs 42 — plano de tarefas (27/09 → 21/11/2026)
 
 > Guia de execução do projeto. A **parte 1** lista tudo que precisa ser feito, organizado por tarefa e por semana, sem dono. A **parte 2** registra quem faz o quê entre as 5 pessoas. O time usa a parte 1 como checklist até a defesa.
 >
@@ -9,6 +9,8 @@
 > **Revisão de 01/10/2026:** os ciclos passaram a ser de segunda a domingo e todos os marcos andaram 2 dias. O checkpoint saiu da sexta e foi para o domingo; a reunião continua na segunda. A defesa em 09/11 é meta, não data marcada. O C1 passou a ser a reunião de contratos de 04/10 e os critérios técnicos dele foram para o C2; a lista de tarefas de cada semana não mudou. O atraso estimado é de 2 semanas: o PM refaz o calendário de S2 em diante depois da reunião.
 >
 > **Revisão de 02/10/2026:** decisões da preparação da reunião de contratos. O Player é identificado pelo `user_id` e a partida pelo `match_id`; o Snapshot não leva `frame`; o Theme decide todo o visual; o parser com códigos de erro saiu (F1.1 virou um carregador de Map mais um teste dos mapas); `friendly_fire` e `enemy_density` saíram das opções (o Map tem no máximo 20 Enemies). Os contratos passaram a ser escritos por quem produz e assinados por quem consome: índice e donos em [contracts/README.md](contracts/README.md).
+>
+> **Revisão de 06/10/2026:** calendário replanejado pelo PM e aprovado em reunião ([pm/replanejamento-e-board.md](pm/replanejamento-e-board.md)): semana de domingo a sábado, checkpoint na sexta, S1 e S5 com duas semanas, freeze em 14/11 e defesa em 21/11 (a conferir com o prazo da intra). As seções 3 e 6 seguem essas datas; a lista de tarefas de cada semana não mudou. O `map` saiu de `RoomOptions` e virou parâmetro de criação da Room.
 
 ## Sumário
 
@@ -52,7 +54,7 @@ O jogo é o Catacombs 42 em 3D de verdade (Three.js), com a matemática e as reg
 | 13 | **Multiple languages (3)** | Minor | 1 | F7 |
 | | **Total** | | **21** | exigido: 14 |
 
-A margem de 7 pontos é o seguro. Como "módulo pela metade vale zero", a seção 8 define a ordem de corte, caso algum módulo não chegue inteiro em 01/11.
+A margem de 7 pontos é o seguro. Como "módulo pela metade vale zero", a seção 8 define a ordem de corte, caso algum módulo não chegue inteiro em 13/11.
 
 ### 1.1 O que os módulos novos exigem de verdade
 
@@ -109,18 +111,18 @@ Não dão ponto, mas qualquer um ausente reprova o projeto. Cada um tem tarefa n
 
 ## 3. Calendário e checkpoints
 
-Seis semanas, segunda a domingo. Cinco de construção e uma de acabamento. Um **checkpoint** é uma demo de integração no domingo, com todo mundo na chamada e um critério observável. Checkpoint não fechado vira o assunto da reunião de segunda.
+Seis ciclos, de domingo a sábado; S1 e S5 têm duas semanas. Cinco de construção e um de acabamento. Um **checkpoint** é uma demo de integração na sexta, com todo mundo na chamada e um critério observável. Checkpoint não fechado vira o primeiro assunto da reunião de segunda.
 
 | Semana | Datas | Tema | Checkpoint (domingo) |
 |---|---|---|---|
-| **S1** | 28/09 – 04/10 | Fundação e contratos | **C1 · 04/10**: reunião de contratos: todo contrato de `docs/contracts/` tem rascunho e lista de pontos em aberto |
-| **S2** | 05/10 – 11/10 | Jogo de ponta a ponta com 1 jogador | **C2 · 11/10**: um player cria Room no lobby e anda em 3D com movimento decidido pelo servidor, via `wss://`. Herdado do C1: login pelo Nginx com cadeado; carregador de Map e movimento verdes; masmorra em 3D no `dev.html`; casca React com seletor de 3 idiomas |
-| **S3** | 12/10 – 18/10 | Multiplayer, prediction, PvP | **C3 · 18/10**: duas máquinas jogam co-op até o boss morrer com prediction ligada; Match gravado; PvP 1v1 jogável |
-| **S4** | 19/10 – 25/10 | Módulos novos | **C4 · 25/10**: reconexão funciona; Grafana mostra os dashboards do jogo e do backend; opções mudam o jogo; estatísticas, level e conquistas reais; login pela 42 |
-| **S5** | 26/10 – 01/11 | Completar e polir | **C5 · 01/11**: todo módulo da seção 7 demonstrável de ponta a ponta, nos 3 idiomas, com console limpo. **Feature freeze no mesmo domingo, 01/11, ao fim do checkpoint** |
-| **S6** | 02/11 – 08/11 | Bugs, README, ensaio | **Defesa (meta) · seg 09/11** |
+| **S1** | 27/09 – 10/10 | Fundação e contratos | **C1 · sex 09/10**: login pelo Nginx com cadeado; teste do carregador de Map verde; masmorra em 3D no `dev.html`; casca React com seletor de 3 idiomas. A reunião de contratos foi em 04/10 |
+| **S2** | 11/10 – 17/10 | Jogo de ponta a ponta com 1 jogador | **C2 · sex 16/10**: um player cria Room no lobby e anda em 3D com movimento decidido pelo servidor, via `wss://` |
+| **S3** | 18/10 – 24/10 | Multiplayer, prediction, PvP | **C3 · sex 23/10**: duas máquinas jogam co-op até o boss morrer com prediction ligada; Match gravado; PvP 1v1 jogável |
+| **S4** | 25/10 – 31/10 | Módulos novos | **C4 · sex 30/10**: reconexão funciona; Grafana mostra os dashboards do jogo e do backend; opções mudam o jogo; estatísticas, level e conquistas reais; login pela 42 |
+| **S5** | 01/11 – 14/11 | Completar e polir | **C5 · sex 13/11**: todo módulo da seção 7 demonstrável de ponta a ponta, nos 3 idiomas, com console limpo. **Feature freeze no sábado, 14/11** |
+| **S6** | 15/11 – 21/11 | Bugs, README, ensaio | **Defesa · sáb 21/11** (a conferir com o prazo da intra) |
 
-Regra do freeze: depois de 01/11 só entra correção de bug, texto e tradução. Módulo que não passou em C5 sai do README (seção 8).
+Regra do freeze: depois de 14/11 só entra correção de bug, texto e tradução. Módulo que não passou em C5 sai do README (seção 8).
 
 ---
 
@@ -333,45 +335,45 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 
 O que precisa estar **pronto** até cada checkpoint (IDs da seção 5). Tarefa que atravessa semanas aparece onde termina.
 
-### S1 · 28/09 – 04/10 · Fundação e contratos
+### S1 · 27/09 – 10/10 · Fundação e contratos
 - **Todos:** F0.1, F0.2, F0.5, F0.6.
 - **Backend:** F0.3, F5.1, F6.1, F6.2, F6.4.
 - **Jogo:** F1.1, F1.2, F1.3; F3.1, F3.2; F4.1, F4.2.
 - **Web:** F0.4, F7.1, F7.2 (estrutura e seletor), F7.4.
 - **Infra:** F8.1, F8.2.
 - Registrar o app OAuth na intra da 42 (vai ser usado em F6.8).
-- **C1 · dom 04/10:** reunião de contratos: cada contrato de `docs/contracts/` com rascunho e pontos em aberto. Os critérios técnicos originais passaram para o C2.
+- **C1 · sex 09/10:** login pelo Nginx com cadeado; teste do carregador de Map verde; masmorra em 3D no `dev.html`; casca React com seletor de 3 idiomas. A reunião de contratos foi em 04/10.
 
-### S2 · 05/10 – 11/10 · Um jogador de ponta a ponta
+### S2 · 11/10 – 17/10 · Um jogador de ponta a ponta
 - **Jogo:** F1.4, F1.5, F1.6, F1.7; F2.1–F2.5; início de F2.7 (`applyInput.ts` + teste cruzado); F3.3, F3.4; F4.3.
 - **Backend:** F5.2; F6.3, F6.5.
 - **Web:** F7.3; início de F7.6 e F7.7.
 - **Infra:** F8.3, F8.4.
-- **C2 · dom 11/10:** um player entra pelo lobby, cria a Room e anda em 3D com movimento decidido pelo servidor, via `wss://`. Herdado do C1: login pelo Nginx com cadeado; carregador de Map e movimento verdes; masmorra 3D no `dev.html`; casca React em 3 idiomas.
+- **C2 · sex 16/10:** um player entra pelo lobby, cria a Room e anda em 3D com movimento decidido pelo servidor, via `wss://`.
 
-### S3 · 12/10 – 18/10 · Multiplayer, prediction, PvP
+### S3 · 18/10 – 24/10 · Multiplayer, prediction, PvP
 - **Jogo:** F1.8, F1.9; F2.6–F2.9; F3.5; F4.4, F4.5, F4.6.
 - **Backend:** F5.3; F6.6, F6.7.
 - **Web:** F7.5, F7.6.
 - **Infra:** F8.5; F8.7, F8.8.
-- **C3 · dom 18/10:** duas máquinas jogam co-op até o boss morrer com prediction ligada; o Match aparece no banco; PvP 1v1 jogável entre duas pessoas.
+- **C3 · sex 23/10:** duas máquinas jogam co-op até o boss morrer com prediction ligada; o Match aparece no banco; PvP 1v1 jogável entre duas pessoas.
 
-### S4 · 19/10 – 25/10 · Módulos novos
+### S4 · 25/10 – 31/10 · Módulos novos
 - **Jogo:** F2.10; F3.6, F3.7, F3.8, F3.9.
 - **Backend:** F5.4–F5.8; F6.8.
 - **Web:** F7.7 (opções), F7.8.
 - **Infra:** F8.9, F8.11.
-- **C4 · dom 25/10:** fechar a aba e voltar; Grafana com login mostra os dashboards do jogo e do backend; opções e temas mudam o jogo; estatísticas, level, ranking e conquistas reais; login pela 42.
+- **C4 · sex 30/10:** fechar a aba e voltar; Grafana com login mostra os dashboards do jogo e do backend; opções e temas mudam o jogo; estatísticas, level, ranking e conquistas reais; login pela 42.
 
-### S5 · 26/10 – 01/11 · Completar e polir
+### S5 · 01/11 – 14/11 · Completar e polir
 - **Jogo:** F2.12, F2.13; F3.10; F4.7.
 - **Web:** F7.2 (traduções completas), F7.9.
 - **Infra:** F8.6, F8.10.
 - **Todos:** F9.1 começa.
-- **C5 · dom 01/11:** a lista da seção 7 inteira demonstrada, nos 3 idiomas, com console limpo, nas máquinas da demo. **Freeze no mesmo domingo, ao fim do checkpoint.**
+- **C5 · sex 13/11:** a lista da seção 7 inteira demonstrada, nos 3 idiomas, com console limpo, nas máquinas da demo. **Freeze no sábado, 14/11.**
 
-### S6 · 02/11 – 08/11 · Acabamento
-- Só bug, texto e tradução. README fechado até 06/11. F9.2 (ensaio) em 07–08/11. **Defesa (meta) em 09/11.**
+### S6 · 15/11 – 21/11 · Acabamento
+- Só bug, texto e tradução. README fechado até 18/11. F9.2 (ensaio) em 19–20/11. **Defesa em 21/11** (a conferir com o prazo da intra).
 
 ---
 
@@ -513,7 +515,7 @@ F0.1 e F9 são de todos.
 - **Semana a semana:** S1 TLS + CI + Alembic · S2 lobby + compose final · S3 `record_match_result` + README esqueleto + Prometheus e exporters · S4 estatísticas, conquistas, leaderboard, OAuth, dashboards e Grafana atrás do Nginx · S5 alertas + setup da demo.
 - **Aprender antes:** SQLAlchemy 2.0 assíncrono e Alembic; Nginx `proxy_pass` com upgrade de WebSocket; `mkcert`; RFC 6749 §4.1 para o OAuth; Prometheus (`scrape_configs`, PromQL básico, `rate` e `histogram_quantile`, regras de alerta) e provisioning do Grafana.
 - **Explica na defesa:** o schema e suas relações; por que estado de partida nunca vai para o banco; idempotência de `record_match_result`; o fluxo do OAuth com `state`; o que cada dashboard mostra, como o alerta dispara e por que o Prometheus não é acessível de fora.
-- **Papel de PM:** reunião de segunda, checkpoints de domingo, blockers, prazos da seção 3.
+- **Papel de PM:** reunião de segunda, checkpoints de sexta, blockers, prazos da seção 3.
 
 ### Alternativas que o time pode preferir
 
