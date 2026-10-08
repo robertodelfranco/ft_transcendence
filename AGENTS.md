@@ -12,8 +12,9 @@ Na defesa oral, cada pessoa explica o que cada módulo que entregou faz e por qu
 - Arquitetura (Room, Simulation, protocolo WebSocket, tick, prediction, contratos entre frentes, schema, monitoring, mapa de migração do C): [docs/catacombs42-web-arquitetura.md](docs/catacombs42-web-arquitetura.md)
 - Texto do subject v19 (critérios de rejeição, módulos e pontos, seções obrigatórias do README): [docs/transcendence.md](docs/transcendence.md)
 - Proposta ampliada, com os módulos que ficaram de fora e o porquê: [docs/catacombs42-ideias-e-modulos.md](docs/catacombs42-ideias-e-modulos.md)
-- Roadmap pessoal do Roberto para o Caminho 1 (milestones R0–R8, perguntas de pesquisa, armadilhas do port do C, trilha de aprendizado): [docs/roadmap-roberto.md](docs/roadmap-roberto.md). Quando divergir, o plano manda.
+- Roadmap do Roberto para o Caminho 1: guia de execução (milestones R0–R8 em passos, lista de testes de cada passo, a porta da Simulation, armadilhas do port do C, trilha de aprendizado): [docs/roadmap-roberto.md](docs/roadmap-roberto.md). Quando divergir, o plano manda.
 - Contratos entre Slices (índice, quem escreve, quem assina, decisões já tomadas): [docs/contracts/README.md](docs/contracts/README.md)
+- Escopo de cada Slice (inventário, o que cada pessoa faz sozinha, dependências nos dois sentidos, com data): [docs/slices/](docs/slices/)
 - Código C original, fonte da matemática a portar: repo `robertodelfranco/42-Cub3D`; na máquina do Roberto em `/home/roberto/workspace/Cub3d` (bonus em `src/bonus/`, mapas em `maps/`, PNGs em `assets/`)
 
 ## Invariantes que nenhum config confessa
