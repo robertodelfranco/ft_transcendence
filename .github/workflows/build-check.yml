@@ -24,17 +24,22 @@ jobs:
           POSTGRES_DB=transcendence
           POSTGRES_HOST=db_transcendence
           POSTGRES_PORT=5432
-          PROXY_PORT=8080
+          PUBLIC_HOST=localhost:8443
+          PROXY_HTTP_PORT=8080
+          PROXY_HTTPS_PORT=8443
           EOF
         
       - name: Build and start stack
         run: docker compose up -d --build
       
-      - name: Wait for proxy -> frontend and proxy -> backend
+      # Sem mkcert no CI: o proxy gera o self-signed (infra.md, decisão 11) e o
+      # curl valida contra ele com --cacert, em vez de desligar a checagem com -k
+      - name: Wait for proxy -> frontend and proxy -> backend over HTTPS
         run: |
           for i in $(seq 1 30); do
-            if curl -fsS http://localhost:8080/ > /dev/null \
-              && curl -fsS http://localhost:8080/api/health > /dev/null; then
+            if docker compose cp proxy:/etc/nginx/certs/cert.pem ci-cert.pem 2>/dev/null \
+              && curl -fsS --cacert ci-cert.pem https://localhost:8443/ > /dev/null \
+              && curl -fsS --cacert ci-cert.pem https://localhost:8443/api/health > /dev/null; then
               echo "stack is up"
               exit 0
             fi
@@ -43,6 +48,12 @@ jobs:
           echo "timeout waiting for stack"
           exit 1
         
+      - name: HTTP redirects to HTTPS keeping the port
+        run: |
+          got=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' http://localhost:8080/api/health)
+          echo "$got"
+          test "$got" = "301 https://localhost:8443/api/health"
+
       - name: Check database
         run: docker compose exec -T db pg_isready -U ci -d transcendence
 
