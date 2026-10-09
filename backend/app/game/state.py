@@ -67,11 +67,11 @@ class PickupOptions:
 
 @dataclass(frozen=True, slots=True)
 class RoomOptions:
-	theme:		str = "dungeon"
-	start_hp:	int = 10
-	pickups:	PickupOptions = field(default_factory=PickupOptions)
-	frag_limit:	int = 5 # pvp
-	time_limit:	int = 180 # seg, only pvp
+	theme:			str = "dungeon"
+	start_hp:		int = 10
+	pickups:		PickupOptions = field(default_factory=PickupOptions)
+	frag_limit:		int = 5 # pvp
+	time_limit_s:	int = 180 # seg, only pvp
 
 
 @dataclass(slots=True)
