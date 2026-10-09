@@ -1,12 +1,18 @@
+import re
 from dataclasses import dataclass
 from enum import StrEnum
-
+from pathlib import Path
 from app.game.state import Mode
+
+
+MAPS_DIR = Path(__file__).resolve().parents[2] / "maps" # backend/maps
+MAP_NAME = re.compile(r"[a-z0-9_]+")
 
 MAP_CHARS = "10 NSEWDKPMAIBT" # a tabela de map-format.md §2.2
 SOLID_CHARS = "1 D" # o que bloqueia: parede, fora do Map e Door
 MIN_SPAWNS = { Mode.COOP: 5, Mode.PVP: 2 }
 MAX_ENEMIES = 20
+
 SPAWN_DIRECTIONS = {
 	"N": (0.0, -1.0),
 	"S": (0.0, 1.0),
@@ -144,3 +150,25 @@ def check_map(text: str, mode: Mode) -> list[MapProblem]:
 	if chars.count("I") > MAX_ENEMIES:
 		add(MapCheck.TOO_MANY_ENEMIES, f"{chars.count('I')} Enemies, o máximo é {MAX_ENEMIES}")
 	return problems
+
+
+class MapNotFoundError(Exception):
+	pass
+
+
+class InvalidMapError(Exception):
+	pass
+
+
+def load_map(name: str, mode: Mode, *, maps_dir: Path = MAPS_DIR) -> Map:
+	path = maps_dir / mode / f"{name}.txt"
+	# o nome vem do pedido do usuário: só [a-z0-9_]+, para não sair da pasta dos mapas
+	if not MAP_NAME.fullmatch(name) or not path.is_file():
+		raise MapNotFoundError(f"{mode}/{name}")
+	text = path.read_text(encoding="utf-8")
+	problems = check_map(text, mode)
+	if problems:
+		details = "; ".join(problem.detail for problem in problems)
+		raise InvalidMapError(f"{mode}/{name}: {details}")
+	return parse_map(text, name, mode)
+

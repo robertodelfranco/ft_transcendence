@@ -4,7 +4,8 @@ import pytest
 from pathlib import Path
 
 from app.game.state import Mode
-from app.game.world import Map, MapCheck, Spawn, check_map, parse_map
+from app.game.world import (MAP_NAME, MAPS_DIR, InvalidMapError, Map, MapCheck,
+	MapNotFoundError, Spawn, check_map, load_map, parse_map)
 
 
 CONTRACT = Path(__file__).resolve().parents[3] / "docs" / "contracts" / "map-format.md"
@@ -83,3 +84,45 @@ def test_room_grid_is_a_copy_of_the_map_grid():
 	grid_a[1][1] = "0"
 	assert game_map.grid[1][1] == "K"
 	assert grid_b[1][1] == "K"
+
+
+def test_load_map_reads_checks_and_parses(tmp_path):
+	source, _ = contract_example()
+	(tmp_path / "coop").mkdir()
+	(tmp_path / "coop" / "example.txt").write_text(source, encoding="utf-8")
+	game_map = load_map("example", Mode.COOP, maps_dir=tmp_path)
+	assert game_map == parse_map(source, "example", Mode.COOP)
+
+
+def test_load_map_refuses_a_missing_map(tmp_path):
+	with pytest.raises(MapNotFoundError):
+		load_map("nope", Mode.COOP, maps_dir=tmp_path)
+
+
+def test_load_map_refuses_a_name_that_leaves_the_folder(tmp_path):
+	# o arquivo existe em coop/; o nome tenta alcançá-lo a partir de pvp/
+	source, _ = contract_example()
+	(tmp_path / "coop").mkdir()
+	(tmp_path / "pvp").mkdir()
+	(tmp_path / "coop" / "example.txt").write_text(source, encoding="utf-8")
+	with pytest.raises(MapNotFoundError):
+		load_map("../coop/example", Mode.PVP, maps_dir=tmp_path)
+
+
+def test_load_map_refuses_a_map_with_problems():
+	# as fixtures têm a mesma estrutura de pastas dos mapas reais
+	with pytest.raises(InvalidMapError):
+		load_map("open_border", Mode.COOP, maps_dir=FIXTURES)
+
+
+def test_real_maps_pass_every_check():
+	failures = {}
+	for path in sorted(MAPS_DIR.glob("*/*.txt")):
+		problems = check_map(path.read_text(encoding="utf-8"), Mode(path.parent.name))
+		details = [problem.detail for problem in problems]
+		if not MAP_NAME.fullmatch(path.stem):
+			details.append("nome do arquivo fora de [a-z0-9_]+")
+		if details:
+			failures[f"{path.parent.name}/{path.name}"] = details
+	assert failures == {}
+
