@@ -1,6 +1,6 @@
 # Contrato: rotas, host, TLS e `.env` (`infra.md`)
 
-**Estado:** rascunho para a reunião de 04/10. **Escreve:** Akita. **Assina:** todos — é o contrato que diz o que acontece com uma requisição antes de ela chegar ao código de qualquer um.
+**Estado:** proposta para a reunião de 12/10; as decisões 11 e 12 foram tomadas em 08/10. **Escreve:** Akita. **Assina:** todos — é o contrato que diz o que acontece com uma requisição antes de ela chegar ao código de qualquer um.
 
 ## 1. Para que serve
 
@@ -53,9 +53,11 @@ Escrito para quem programa atrás dele.
 
 - Certificado local de CA confiável com [`mkcert`](https://github.com/FiloSottile/mkcert), para o Chrome não mostrar aviso (console limpo é critério de rejeição).
 - O certificado é emitido para o **nome e o IP** da máquina que serve a demo, nos dois: `mkcert <host> <ip>`. Sem o IP no SAN, abrir pelo IP de outra máquina dá aviso.
-- Os arquivos gerados vão para `proxy/certs/` e **não são versionados** (entram no `.gitignore`); quem clona roda o `mkcert` uma vez. O repo documenta o comando, não guarda a chave.
-- Nas outras máquinas da demo: copiar o `rootCA.pem` de `$(mkcert -CAROOT)` da máquina servidora e rodar `mkcert -install` apontando para ele, ou instalar a CA no sistema. Sem isso, as outras máquinas veem aviso.
-- Os clientes acessam por `https://<host>` — e `PUBLIC_HOST` no `.env` precisa bater com o nome do certificado, porque é dele que sai a URL de retorno do OAuth.
+- Os arquivos gerados vão para `proxy/certs/` e **não são versionados** (entram no `.gitignore`; só o `.gitkeep` é versionado, para a pasta existir com o dono certo); quem clona roda o `mkcert` uma vez. O repo documenta o comando, não guarda a chave.
+- **Sem certificado em `proxy/certs/`, o proxy gera um self-signed** para `localhost` dentro do container, e o `docker compose up` de um clone limpo continua funcionando (§4, decisão 11). Com ele, o Chrome mostra a tela de aviso; o cadeado limpo exige o `mkcert`.
+- Nas outras máquinas da demo: importar o `rootCA.pem` (só ele, nunca o `rootCA-key.pem`) de `$(mkcert -CAROOT)` da máquina servidora em Chrome → Configurações → Segurança → Gerenciar certificados → Autoridades. Não precisa de sudo. Sem isso, as outras máquinas veem aviso.
+- **WSL2:** o Docker roda no Linux, mas o Chrome é o do Windows. O `mkcert -install` dentro do WSL não chega ao Chrome; importar o `rootCA.pem` no `certmgr.msc` do Windows (Autoridades de Certificação Raiz Confiáveis, repositório do usuário, sem admin).
+- Os clientes acessam por `https://<PUBLIC_HOST>`. `PUBLIC_HOST` é `<nome-ou-ip>[:<porta>]`: leva a porta quando a HTTPS não é a 443 (por exemplo `c1r2p3.42sp.org.br:8443`), e o nome precisa estar no SAN do certificado. Dele saem o redirect do Nginx, a URL de retorno do OAuth e o `GF_SERVER_ROOT_URL` (§4, decisão 12).
 
 ### 2.5 `.env.example`
 
@@ -120,7 +122,7 @@ postgres-exporter:9187 ───┘   (alerts.yml)
 | Passo | Reprova quando |
 |---|---|
 | `docker compose up -d --build` | build quebra ou container sai |
-| `curl` no `/` e no `/api/health` pelo proxy | a stack não responde em 60 s |
+| redirect `http://` → `https://${PUBLIC_HOST}` e `curl --cacert` no `/` e no `/api/health` pelo proxy, com o certificado copiado de dentro do container | a stack não responde em 60 s ou o TLS não valida |
 | `pg_isready` | o banco não sobe |
 | `pytest` (backend) | teste vermelho |
 | `vitest` (frontend) | teste vermelho |
@@ -131,13 +133,13 @@ Os passos de `pytest`, `vitest` e lint entram conforme F0.3 e F0.4 existirem; os
 
 ## 3. Exemplo
 
-O trecho que resolve as decisões 5 e 6, como vai ficar em `proxy/nginx.conf`:
+O trecho que resolve as decisões 5 e 6, como fica em `proxy/default.conf.template` (a imagem `nginx:alpine` troca `${PUBLIC_HOST}` pelo valor do ambiente ao subir; as variáveis do próprio Nginx, como `$host`, não são tocadas):
 
 ```nginx
 server {
     listen 80;
     server_name _;
-    return 301 https://$host$request_uri;
+    return 301 https://${PUBLIC_HOST}$request_uri;   # envsubst no start do container
 }
 
 server {
@@ -217,11 +219,14 @@ cp "$(mkcert -CAROOT)/rootCA.pem" .          # levar para as outras máquinas
 9. **Certificado fora do git.** Chave privada versionada é chave vazada, mesmo em repo de escola. O comando fica documentado e o `proxy/certs/` entra no `.gitignore`.
 10. **Grafana com `serve_from_sub_path`, sem reescrita no Nginx.** A alternativa (Nginx cortando `/grafana/`) existe na doc do Grafana, mas aí os links que ele gera não sabem do prefixo sem o `root_url` certo de qualquer forma — então o prefixo é configurado uma vez, no Grafana, e o Nginx faz a mesma coisa que faz com o backend.
 
+11. **Sem certificado, o proxy gera um self-signed em vez de não subir.** O subject cobra subir com um comando, e quem avalia clona e roda `docker compose up`; um Nginx que morre sem `cert.pem` reprova isso. O script `proxy/certs.sh` (em `/docker-entrypoint.d/`, recurso nativo da imagem) usa o par do `mkcert` montado em `/certs-host` se existir, senão gera um para `localhost` com `openssl`. O fallback é escrito **dentro** do container: arquivo criado pelo container numa pasta montada fica com dono root no host, e sem sudo (PCs da 42) ninguém o apaga. O CI exercita esse caminho a cada PR.
+12. **`PUBLIC_HOST` é a única fonte do endereço público, com a porta quando ela não é a 443.** O redirect usa `${PUBLIC_HOST}` e não `$host`, porque `$host` perde a porta: com HTTPS em 8443, `return 301 https://$host...` mandaria o navegador para a 443, onde não há nada. A mesma string vira `FT_REDIRECT_URI` e `GF_SERVER_ROOT_URL`, então trocar de máquina (WSL, PC da 42, VM) é uma linha no `.env` e um `mkcert` novo.
+
 ## 5. Em aberto
 
 | # | Questão | Quem decide | Quando |
 |---|---|---|---|
-| 1 | Hostname da demo. Proposta: `catacombs.local` no `/etc/hosts` das máquinas, com o IP também no SAN do certificado, para funcionar pelos dois. | Akita | reunião 04/10 |
+| 1 | Ambiente e endereço da demo: PC da 42 direto ou VM; nome DNS do PC ou IP; portas. `catacombs.local` saiu: as máquinas clientes não têm sudo para editar o `/etc/hosts`. Resposta pelo [roteiro de teste no PC da 42](../infra/roteiro-teste-pc-42.md). | Akita | depois do teste, fim de semana de 10–11/10 |
 | 2 | Onde o avatar fica guardado (pergunta 2 do Caio, dirigida a mim). Proposta: volume do compose montado no `backend` em `MEDIA_DIR`, servido pelo Nginx em `/media/`; o banco guarda só a URL. Alternativa descartada: bytes em coluna do Postgres. | Akita e Caio | reunião 04/10 |
 | 3 | Retenção do Prometheus. Proposta: `7d`. | Akita | S3 |
 | 4 | **Cadastro do app OAuth na intra da 42** (pergunta 8): se a liberação é imediata, as regras da URL de retorno (exige HTTPS? aceita nome local? quantas podem ser cadastradas?) e se o secret expira. Isso **não se responde por dedução** — sai do formulário da intra. Eu cadastro o app hoje e preencho esta linha com o que a intra mostrar, mais o valor de `FT_REDIRECT_URI`. Plano B se travar: 2FA TOTP, mesmo 1 ponto (plano §8.2). | Akita | **hoje, 04/10** |

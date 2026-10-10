@@ -30,10 +30,33 @@ O `.env` **não** é versionado (está no `.gitignore`). Ele é lido pelo
 
 Depois que subir:
 
-- Frontend: <http://localhost:8080>
-- Backend via proxy: <http://localhost:8080/api/> e <http://localhost:8080/api/health>
+- Frontend: <https://localhost>
+- Backend via proxy: <https://localhost/api/health>
+- `http://` redireciona para `https://`
 
-A porta do host é configurável: `PROXY_PORT` no `.env` (default `8080`).
+As portas do host vêm de `PROXY_HTTP_PORT` e `PROXY_HTTPS_PORT` no `.env` (default
+80 e 443). Se a HTTPS não for a 443, o `PUBLIC_HOST` leva a porta
+(`PUBLIC_HOST=localhost:8443`), porque é dele que sai o redirect.
+
+### HTTPS local (cadeado sem aviso)
+
+Sem certificado em `proxy/certs/`, o proxy gera um self-signed e tudo sobe, mas o
+Chrome mostra a tela de aviso. Para o cadeado limpo, use o
+[mkcert](https://github.com/FiloSottile/mkcert) uma vez:
+
+```bash
+mkcert -install                       # cria a CA local e instala nos navegadores desta máquina
+mkcert -cert-file proxy/certs/cert.pem -key-file proxy/certs/key.pem localhost 127.0.0.1
+docker compose up -d --build proxy    # o proxy pega o certificado ao subir
+```
+
+- **WSL2:** o Chrome é o do Windows e não enxerga a CA do Linux. Importe
+  `$(mkcert -CAROOT)/rootCA.pem` no `certmgr.msc` do Windows, em *Autoridades de
+  Certificação Raiz Confiáveis* (repositório do usuário, sem admin).
+- **Outra máquina na rede:** gere o certificado para o nome e o IP dela e importe o
+  `rootCA.pem` no Chrome dos clientes (Configurações → Segurança → Gerenciar
+  certificados → Autoridades). Nunca copie o `rootCA-key.pem`.
+- Os certificados não são versionados (`proxy/certs/` está no `.gitignore`).
 
 ### Comandos do dia a dia
 

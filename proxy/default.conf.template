@@ -1,0 +1,46 @@
+# Template: a imagem nginx:alpine troca ${PUBLIC_HOST} pelo valor do ambiente
+# ao subir e grava o resultado em /etc/nginx/conf.d/default.conf. Variáveis do
+# próprio Nginx ($host, $request_uri...) não são tocadas. Contrato: infra.md.
+
+server {
+    listen 80;
+    server_name _;
+
+    # PUBLIC_HOST e não $host: $host perde a porta (infra.md, decisão 12)
+    return 301 https://${PUBLIC_HOST}$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name _;
+
+    # mkcert de proxy/certs/ ou self-signed gerado pelo certs.sh (decisão 11)
+    ssl_certificate     /etc/nginx/certs/cert.pem;
+    ssl_certificate_key /etc/nginx/certs/key.pem;
+
+    location / {
+        proxy_pass http://frontend:80;
+    }
+
+    location /api/ {
+        proxy_pass http://backend:8000;          # sem barra final: o backend vê /api/... (decisão 5)
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /ws/ {
+        proxy_pass http://backend:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;                # sem isso o Nginx corta socket parado aos 60 s
+        proxy_send_timeout 3600s;
+    }
+}

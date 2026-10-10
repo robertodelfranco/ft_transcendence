@@ -1,6 +1,10 @@
 # Environment
 .env
 
+# Certificados locais (mkcert): só a pasta é versionada
+proxy/certs/*
+!proxy/certs/.gitkeep
+
 # Build output
 dist/
 build/
