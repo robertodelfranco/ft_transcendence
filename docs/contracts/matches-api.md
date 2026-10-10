@@ -23,10 +23,10 @@ O que **não** está aqui: a partida em si, que é WebSocket ([ws-messages.md](w
 
 | Método | Rota | Corpo | Sucesso | Erros (`code`) |
 |---|---|---|---|---|
-| POST | `/api/matches` | `{mode, map, max_players, options}` | 201 `RoomInfo` | 422 `invalid_options` (com `fields`), 404 `map_not_found`, 429 `rate_limited` |
+| POST | `/api/matches` | `{mode, map, max_players, options}` | 201 `RoomInfo` | 422 `invalid_options` (com `fields`), 404 `map_not_found`, 409 `already_in_other_match`, 429 `rate_limited` |
 | GET | `/api/matches` | — (`?mode=`) | 200 `{items: RoomInfo[]}` | — |
 | GET | `/api/matches/{match_id}` | — | 200 `RoomInfo` (Room viva) ou `MatchDetail` (terminada) | 404 `match_not_found` |
-| POST | `/api/matches/{match_id}/join` | — | 200 `RoomInfo` | 404 `match_not_found`, 409 `room_full` / `already_in` / `already_started` |
+| POST | `/api/matches/{match_id}/join` | — | 200 `RoomInfo` | 404 `match_not_found`, 409 `room_full` / `already_in` / `already_in_other_match` / `already_started` |
 | POST | `/api/matches/{match_id}/leave` | — | 204 | 404 `match_not_found`, 409 `not_in_match` / `already_started` |
 | POST | `/api/matches/{match_id}/ready` | `{ready: bool}` | 200 `RoomInfo` | 404 `match_not_found`, 409 `not_in_match` / `already_started` |
 | POST | `/api/matches/{match_id}/start` | — | 204 | 403 `not_host`, 409 `not_enough_players` / `already_started`, 404 `match_not_found` |
@@ -34,6 +34,7 @@ O que **não** está aqui: a partida em si, que é WebSocket ([ws-messages.md](w
 - `POST /api/matches` faz duas coisas na mesma requisição: grava a linha de `matches` com `status = "lobby"` e chama `RoomManager.create`. Quem cria já entra como primeiro Player e é o host.
 - `GET /api/matches` lista **só Rooms em `lobby`**, de `RoomManager.list_open()`. Nunca do banco (§4, decisão 1).
 - `options` é validado contra [room-options.md](room-options.md), com os defaults aplicados: **um corpo com só `{"mode": "coop", "map": "dungeon_map"}` é válido** e produz uma partida jogável — é o "defaults sem escolher nada" que o módulo *Game customization* cobra (plano §7).
+- **Normalização** (decidida em 10/10, [room-options.md](room-options.md) §5.3): um modelo Pydantic por Mode, com `extra="forbid"` e `strict=True`. Campo desconhecido, ou `frag_limit`/`time_limit_s` no `coop`, dá 422 `invalid_options` com `fields: {campo: "invalid_value"}`; `null`, tipo errado e string no lugar de número ou booleano também (sem coerção). `pickups` parcial recebe o default por chave. Os limites são inteiros e inclusivos. O `options` normalizado do `coop` não tem as chaves de `pvp`.
 - `start` não devolve corpo: quem estava no Lobby descobre pelo `match_started` do `/ws/app` e navega para `/play/{match_id}`.
 
 ### 2.3 Histórico, estatísticas e leaderboard
@@ -91,7 +92,7 @@ Todas respondem 404 `user_not_found` para um `user_id` que não existe.
 
 O Caio traduz cada um; código fora desta lista aparece sem tradução, então a lista é fechada aqui e cresce só por PR que muda este arquivo.
 
-`match_not_found`, `user_not_found`, `room_full`, `already_in`, `not_in_match`, `not_host`, `not_enough_players`, `already_started`, `invalid_options`, `map_not_found`, `rate_limited`.
+`match_not_found`, `user_not_found`, `room_full`, `already_in`, `already_in_other_match`, `not_in_match`, `not_host`, `not_enough_players`, `already_started`, `invalid_options`, `map_not_found`, `rate_limited`.
 
 Os `code` de `reason` que aparecem no histórico e na tela de resultado também são traduzíveis: `boss_defeated`, `all_dead`, `frag_limit`, `time_limit`, `forfeit`, `server_shutdown`.
 
@@ -136,7 +137,7 @@ Uma página de histórico:
    "result": "win", "reason": "frag_limit",
    "me": {"kills": 0, "frags": 5, "deaths": 3, "damage_dealt": 10,
           "damage_taken": 6, "xp_gained": 120, "elo_before": 1000, "elo_after": 1016},
-   "others": [{"user_id": 9, "username": "rdel-fra", "avatar_url": null, "won": false}]}
+   "others": [{"user_id": 9, "username": "rdel_fra", "avatar_url": "/media/avatars/default.png", "won": false}]}
 ], "page": 1, "per_page": 20, "total": 37}
 ```
 
@@ -153,7 +154,7 @@ Estatísticas e leaderboard:
 
 ```json
 {"items": [
-  {"rank": 1, "user_id": 9,  "username": "rdel-fra", "avatar_url": null, "value": 1086},
+  {"rank": 1, "user_id": 9,  "username": "rdel_fra", "avatar_url": "/media/avatars/default.png", "value": 1086},
   {"rank": 2, "user_id": 7,  "username": "akita",    "avatar_url": "/media/avatars/7.png", "value": 1032}
 ]}
 ```
@@ -180,4 +181,4 @@ Estatísticas e leaderboard:
 
 ---
 
-> **Links para contratos que ainda não existem:** `auth.md` e `ws-manager.md` (Augusto), `room-options.md` (Rafael), `i18n.md` (Caio) — rascunhos esperados na reunião de 04/10. `ws-messages.md` está na branch `updated-documents`.
+> **Links para contratos que ainda não estão no `main`:** `i18n.md` (Caio, PR #20).
