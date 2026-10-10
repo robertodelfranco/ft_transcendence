@@ -32,7 +32,7 @@
 
 ### F0 e F9
 
-F0.2 (contratos) está escrito. De F0.5 (ADRs), o 001 e o 003 existem; o 002, dos tokens, eu escrevo com o Augusto. F9.1 (minha parte do README) na S5; F9.2 (ensaio) na S6.
+F0.2 (contratos) está escrito. De F0.5 (ADRs), o 001 e o 003 existem; o 002, dos tokens, o Augusto escreveu ([002-tokens.md](../adr/002-tokens.md), status "proposto"). F9.1 (minha parte do README) na S5; F9.2 (ensaio) na S6.
 
 ## 2. O que eu faço sozinho
 
@@ -49,7 +49,7 @@ A Simulation é Python puro: não importa FastAPI, banco nem rede. Por isso quas
 | **F1.8 e F1.9** PvP e opções | os testes usam mapas de fixture; [room-options.md](../contracts/room-options.md) já existe |
 | **F2.7, primeira parte**: `rules.ts`, `applyInput.ts`, teste cruzado, laço de passo fixo | testável com `vitest` e um socket falso; só precisa do projeto TypeScript (§3) |
 | **F2.13, parte da Simulation** | medir `step` com 4 Rooms cheias não precisa de WebSocket |
-| ADR 002, revisão de PRs, pendências de contrato | papel de Tech Lead (§8) |
+| Revisão do ADR 002, revisão de PRs, pendências de contrato | papel de Tech Lead (§8) |
 
 ## 3. De quem eu dependo
 
