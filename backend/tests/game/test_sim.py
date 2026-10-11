@@ -4,9 +4,10 @@ from random import Random
 
 import pytest
 
-from app.game.rules import BOSS_HP, RULESET_NUMBERS
-from app.game.sim import create_room
-from app.game.state import BossState, EnemyState, Mode, RoomOptions
+from app.game.rules import BOSS_HP, PLAYER_SPEED, RULESET_NUMBERS, TICK_RATE
+from app.game.sim import create_room, enqueue, last_input_seq, leave, set_connected, step
+from app.game.state import (Action, ActionKind, BossState, EnemyState, Event, Input, Mode,
+	RoomOptions)
 from app.game.world import parse_map
 
 # 3 Spawns (N, E, S), uma chave, uma Door, um Enemy e o Boss
@@ -63,3 +64,122 @@ def test_seed_feeds_the_room_rng():
 def test_more_players_than_spawns_is_refused():
 	with pytest.raises(ValueError):
 		new_room(players=[(1, "a"), (2, "b"), (3, "c"), (4, "d")])
+
+
+DT = 1 / TICK_RATE
+STEP = PLAYER_SPEED * DT # quanto um Input andando move o Player
+
+
+def make_input(seq, **held):
+	keys = dict.fromkeys(("up", "down", "left", "right", "rot_left", "rot_right", "sprint"), False)
+	keys.update(held)
+	return Input(seq=seq, mouse_dx=0.0, **keys)
+
+
+def enqueue_walking(room, count, first_seq=1):
+	# o Player 7 nasce em (1.5, 1.5) olhando para o norte: up diminui o y
+	for seq in range(first_seq, first_seq + count):
+		enqueue(room, 7, make_input(seq, up=True))
+
+
+def test_one_input_is_applied_per_tick():
+	room = new_room()
+	enqueue_walking(room, 2)
+	step(room, DT)
+	assert room.players[7].y == pytest.approx(1.5 - STEP)
+	assert last_input_seq(room, 7) == 1
+	step(room, DT)
+	assert room.players[7].y == pytest.approx(1.5 - 2 * STEP)
+	assert last_input_seq(room, 7) == 2
+
+
+def test_empty_queue_leaves_the_player_still():
+	room = new_room()
+	enqueue_walking(room, 1)
+	step(room, DT)
+	step(room, DT)
+	assert room.players[7].y == pytest.approx(1.5 - STEP)
+	assert last_input_seq(room, 7) == 1
+
+
+def test_three_waiting_inputs_apply_two_and_never_more():
+	room = new_room()
+	enqueue_walking(room, 5)
+	step(room, DT) # 5 esperando: aplica 2
+	assert last_input_seq(room, 7) == 2
+	assert room.players[7].y == pytest.approx(1.5 - 2 * STEP)
+	step(room, DT) # 3 esperando: aplica 2
+	assert last_input_seq(room, 7) == 4
+	step(room, DT) # 1 esperando: aplica 1
+	assert last_input_seq(room, 7) == 5
+
+
+def test_queue_holds_one_second_and_drops_the_rest():
+	room = new_room()
+	enqueue_walking(room, 40)
+	assert len(room.players[7].input_queue) == 30
+
+
+def test_seq_that_does_not_grow_is_dropped():
+	room = new_room()
+	for seq in (1, 1, 0, 2):
+		enqueue(room, 7, make_input(seq))
+	assert [message.seq for message in room.players[7].input_queue] == [1, 2]
+
+
+def test_action_waits_its_turn_in_the_queue():
+	room = new_room()
+	enqueue(room, 7, make_input(1, up=True))
+	enqueue(room, 7, Action(seq=2, kind=ActionKind.FIRE))
+	enqueue(room, 7, make_input(3, up=True))
+	step(room, DT)
+	assert last_input_seq(room, 7) == 1
+	step(room, DT) # consome a Action e aplica o Input seguinte
+	assert last_input_seq(room, 7) == 3
+	assert len(room.players[7].input_queue) == 0
+
+
+def test_dead_player_consumes_inputs_without_moving():
+	room = new_room()
+	room.players[7].alive = False
+	enqueue_walking(room, 1)
+	step(room, DT)
+	assert room.players[7].y == 1.5
+	assert last_input_seq(room, 7) == 1
+
+
+def test_connection_events_come_out_of_the_next_step():
+	room = new_room()
+	set_connected(room, 7, True)
+	assert step(room, DT) == [Event("player_joined", 1, {"player_id": 7, "name": "roberto"})]
+	set_connected(room, 7, False)
+	assert step(room, DT) == [Event("player_disconnected", 2, {"player_id": 7})]
+	set_connected(room, 7, True)
+	assert step(room, DT) == [Event("player_reconnected", 3, {"player_id": 7})]
+	assert step(room, DT) == []
+
+
+def test_every_accepted_join_resets_queue_and_seq():
+	room = new_room()
+	set_connected(room, 7, True)
+	enqueue_walking(room, 3)
+	step(room, DT)
+	set_connected(room, 7, True) # socket substituído (4408), sem queda antes
+	assert len(room.players[7].input_queue) == 0
+	assert last_input_seq(room, 7) == 0
+	enqueue_walking(room, 1) # o seq do cliente recomeça em 1
+	assert len(room.players[7].input_queue) == 1
+	assert step(room, DT) == [] # socket substituído não gera Event
+
+
+def test_leave_takes_the_player_out_for_good():
+	room = new_room()
+	set_connected(room, 7, True)
+	step(room, DT)
+	leave(room, 7)
+	assert room.players[7].left and not room.players[7].connected
+	assert step(room, DT) == [Event("player_left", 2, {"player_id": 7})]
+	enqueue_walking(room, 1)
+	set_connected(room, 7, True)
+	assert len(room.players[7].input_queue) == 0
+	assert step(room, DT) == []

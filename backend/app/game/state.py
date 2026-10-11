@@ -87,9 +87,11 @@ class Player:
 	keys: 				int = 0
 	alive: 				bool = True
 	connected: 			bool = False # nasce desconectado, vira True no primeiro join
+	joined: 			bool = False # já abriu o socket do jogo alguma vez
 	left: 				bool = False # (saiu) fora do Snapshot, dentro do resultado
 	input_queue: 		deque[Input | Action] = field(default_factory=deque)
 	last_input_seq:		int = 0
+	last_queued_seq:	int = 0 # maior seq que entrou na fila
 	attack_cooldown:	float = 0.0 # seg até poder atirar de novo
 	kills: 				int = 0
 	frags: 				int = 0
@@ -158,4 +160,5 @@ class Room:
 	projectiles:	list[Projectile] = field(default_factory=list)
 	doors: 			list[Door] = field(default_factory=list)
 	result: 		dict | None = None # o data do game_over, None enquanto na partida
+	pending_events:	list[tuple[str, dict]] = field(default_factory=list) # saem no próximo step
 
