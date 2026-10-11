@@ -109,7 +109,7 @@ Em 07/10/2026:
 
 O resto do backend fala com a Simulation só por estas funções. Ninguém de fora lê nem escreve campo da Room. É o que deixa você mudar a Room por dentro sem quebrar o Augusto, e é a mesma porta que os seus testes usam.
 
-Proposta, a fechar com o Augusto até 09/10:
+Proposta, revisada em 09/10; o Augusto confirma ao revisar:
 
 ```python
 # backend/app/game/__init__.py — tudo que o resto do backend importa da Simulation
@@ -122,6 +122,7 @@ def set_connected(room: Room, user_id: int, connected: bool) -> None: ...
 def leave(room: Room, user_id: int) -> None: ...
 def step(room: Room, dt: float) -> list[Event]: ...
 def to_snapshot(room: Room) -> dict: ...
+def initial_grid(room: Room) -> list[str]: ...
 def last_input_seq(room: Room, user_id: int) -> int: ...
 def match_outcome(room: Room) -> MatchOutcome | None: ...
 ```
@@ -129,16 +130,24 @@ def match_outcome(room: Room) -> MatchOutcome | None: ...
 | Função | Quem chama, e quando | O que garante |
 |---|---|---|
 | `load_map` | o lobby, ao validar `POST /api/matches`; o `RoomManager`, no `start` | devolve um `Map` imutável; mapa inexistente ou reprovado levanta erro |
-| `create_room` | o `RoomManager`, no `start`, com os Players do Lobby em ordem de entrada | o enésimo Player nasce no enésimo Spawn; as opções já estão aplicadas ao Grid; `seed` alimenta o `rng` da Room |
+| `create_room` | o `RoomManager`, no `start`, com os Players do Lobby em ordem de entrada | o enésimo Player nasce no enésimo Spawn, desconectado; as opções já estão aplicadas ao Grid; `seed` alimenta o `rng` da Room |
 | `enqueue` | o laço de leitura do socket, a cada `input` ou `action` válido | só guarda; nada acontece antes do próximo `step`. Fila com mais de 1 s descarta o excedente |
-| `set_connected` | o `RoomManager`, quando o socket cai ou volta | zera a fila; o Event sai no próximo `step` |
+| `set_connected` | o `RoomManager`, a cada `join` aceito e a cada queda do socket | zera a fila e o `seq`; o primeiro `True` emite `player_joined`, os seguintes `player_reconnected`, e `False` emite `player_disconnected`, sempre no próximo `step`. `True` repetido (socket substituído, `4408`) conta como conexão nova |
 | `leave` | o `RoomManager`, quando o Grace period expira | o Player sai do Snapshot e continua contando no resultado |
 | `step` | a task da Room, a cada Tick | determinística, sem I/O; **todo Event sai daqui**, de qualquer origem |
 | `to_snapshot` | a task da Room, a cada 2 Ticks | igual para todos os destinatários; não traz `last_input_seq` |
+| `initial_grid` | quem monta o `welcome` | o Grid inicial da Room (`welcome.map.grid`); não muda durante a partida |
 | `last_input_seq` | quem monta a mensagem de cada destinatário | o único dado por destinatário |
 | `match_outcome` | o `RoomManager`, depois do `game_over` | `result`, `reason`, `winner_ids`, `duration_ticks` e os contadores de cada Player; `None` enquanto a partida corre |
 
 O que fica **fora** da porta, de propósito: o relógio do Grace period e o de remoção da Room (são do `RoomManager`); `match_id`, `started_at` e `ended_at` no `MatchResult` (o `RoomManager` junta com o `match_outcome`); validação de mensagem (é do `protocol.py`, que converte para `Input` e `Action`).
+
+Regras de uso, combinadas em 09/10:
+
+- **Todas as funções são síncronas** e rodam no laço de eventos, sem thread. Um `enqueue` nunca acontece no meio de um `step`.
+- **`backend/app/game/__init__.py` é a porta** e só reexporta a Simulation. Ele não importa `rooms.py`, `protocol.py` nem `router.py`, que moram na mesma pasta e são do Netcode. Assim a Simulation continua sem FastAPI e não há importação circular.
+- **`dt` é sempre `1 / TICK_RATE`.** Se um Tick atrasa, o laço da Room compensa o relógio e passa o mesmo `dt`.
+- **Se o `step` levantar exceção**, a proposta é a task da Room registrar no log e seguir, e encerrar a Room depois de 30 falhas seguidas ([ws-messages.md](contracts/ws-messages.md) §5, item 6).
 
 Por dentro, os módulos da arq. §14: `world.py` (Map e carregador), `state.py` (dataclasses), `rules.py` (constantes), `sim.py` (`step` e o movimento), `snapshot.py`, `rulesets/coop.py` e `rulesets/pvp.py`, `cli.py`.
 
