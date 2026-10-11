@@ -86,7 +86,7 @@ class Player:
 	armor: 				int = 0
 	keys: 				int = 0
 	alive: 				bool = True
-	connected: 			bool = True
+	connected: 			bool = False # nasce desconectado, vira True no primeiro join
 	left: 				bool = False # (saiu) fora do Snapshot, dentro do resultado
 	input_queue: 		deque[Input | Action] = field(default_factory=deque)
 	last_input_seq:		int = 0
@@ -149,6 +149,7 @@ class Room:
 	options: 		RoomOptions
 	numbers: 		dict[str, float | None] # RULESET_NUMBERS[mode]
 	rng: 			Random
+	initial_grid:	tuple[str, ...] # o Grid do welcome, não muda
 	grid: 			list[list[str]] # cópia do Map, muda com Door e Pickup
 	tick: 			int = 0
 	players: 		dict[int, Player] = field(default_factory=dict) # user_id, Players
