@@ -3,8 +3,8 @@ from random import Random
 
 from app.game.rules import (BOSS_HP, MOUSE_MAX_ROT_SPEED, PLAYER_ROT_SPEED, PLAYER_SPEED,
 	PLAYER_SPRINT_MULT, RULESET_NUMBERS, TICK_RATE)
-from app.game.state import (Action, Boss, Door, Enemy, Event, Input, Mode, Player, Room,
-	RoomOptions)
+from app.game.state import (Action, Boss, Door, Enemy, Event, Input, MatchOutcome, Mode, Player,
+	Room, RoomOptions)
 from app.game.world import Map
 
 MAX_QUEUE = TICK_RATE # 1 s de mensagens (ws-messages.md §2.9)
@@ -75,6 +75,12 @@ def leave(room: Room, user_id: int) -> None:
 
 def last_input_seq(room: Room, user_id: int) -> int:
 	return room.players[user_id].last_input_seq
+
+def match_outcome(room: Room) -> MatchOutcome | None:
+	if room.result is None:
+		return None
+	raise NotImplementedError("o resultado da partida entra com o Ruleset (R4)")
+
 
 
 def step(room: Room, dt: float) -> list[Event]:

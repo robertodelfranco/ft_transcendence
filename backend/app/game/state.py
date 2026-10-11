@@ -162,3 +162,27 @@ class Room:
 	result: 		dict | None = None # o data do game_over, None enquanto na partida
 	pending_events:	list[tuple[str, dict]] = field(default_factory=list) # saem no próximo step
 
+
+@dataclass(frozen=True, slots=True)
+class PlayerOutcome:
+	user_id:				int
+	won:					bool
+	survived:				bool
+	kills:					int
+	frags:					int
+	deaths:					int
+	damage_dealt:			int
+	damage_taken:			int
+	armor_absorbed:			int
+	keys_collected:			int
+	potions_used:			int
+	disconnected_at_end:	bool
+
+
+@dataclass(frozen=True, slots=True)
+class MatchOutcome:
+	result:			str # win, loss ou draw
+	reason:			str # boss_defeated, all_dead, frag_limit, time_limit ou forfeit
+	winner_ids:		tuple[int, ...]
+	duration_ticks:	int
+	players:		tuple[PlayerOutcome, ...]

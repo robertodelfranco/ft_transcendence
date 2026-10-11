@@ -1,13 +1,18 @@
 # backend/tests/game/test_sim.py
+import json
 import math
+from pathlib import Path
 from random import Random
 
 import pytest
 
+import app.game
 from app.game.rules import BOSS_HP, PLAYER_SPEED, RULESET_NUMBERS, TICK_RATE
-from app.game.sim import create_room, enqueue, last_input_seq, leave, set_connected, step
+from app.game.sim import (create_room, enqueue, last_input_seq, leave, match_outcome,
+	set_connected, step)
+from app.game.snapshot import initial_grid, to_snapshot
 from app.game.state import (Action, ActionKind, BossState, EnemyState, Event, Input, Mode,
-	RoomOptions)
+	Projectile, ProjectileKind, RoomOptions)
 from app.game.world import parse_map
 
 # 3 Spawns (N, E, S), uma chave, uma Door, um Enemy e o Boss
@@ -183,3 +188,80 @@ def test_leave_takes_the_player_out_for_good():
 	set_connected(room, 7, True)
 	assert len(room.players[7].input_queue) == 0
 	assert step(room, DT) == []
+
+
+EXAMPLE = Path(__file__).resolve().parents[3] / "docs" / "contracts" / "snapshot.example.json"
+DOOR_FUNCTIONS = ("load_map", "create_room", "enqueue", "set_connected", "leave", "step",
+	"to_snapshot", "initial_grid", "last_input_seq", "match_outcome")
+
+
+def shape(value):
+	# o desenho das chaves em todos os níveis, sem os valores
+	if isinstance(value, dict):
+		return {key: shape(item) for key, item in value.items()}
+	if isinstance(value, list):
+		return [shape(value[0])] if value else []
+	return None
+
+
+def test_snapshot_has_the_keys_of_the_contract_example():
+	example = json.loads(EXAMPLE.read_text(encoding="utf-8"))["snapshot"]
+	for key in ("v", "type", "last_input_seq"): # quem acrescenta é o Netcode
+		del example[key]
+	room = new_room()
+	# uma Room recém-criada não tem Projectile nem célula alterada; o exemplo tem
+	room.projectiles.append(Projectile(id="f_1", kind=ProjectileKind.FIREBALL, owner_id=7,
+		x=1.5, y=1.5, dx=0.0, dy=-1.0))
+	room.grid[2][1] = "0"
+	assert shape(to_snapshot(room)) == shape(example)
+
+
+def test_snapshot_is_plain_json():
+	snapshot = json.loads(json.dumps(to_snapshot(new_room()), allow_nan=False))
+	assert snapshot["enemies"][0]["state"] == "alert"
+	assert snapshot["boss"]["state"] == "idle"
+
+
+def test_snapshot_values_of_a_new_room():
+	room = new_room()
+	room.players[7].mana = 59.9
+	leave(room, 9)
+	room.grid[2][1] = "0"
+	snapshot = to_snapshot(room)
+	player = snapshot["players"][0]
+	assert snapshot["tick"] == 0
+	assert [entry["id"] for entry in snapshot["players"]] == [7] # quem saiu não aparece
+	assert (player["dx"], player["dy"]) == pytest.approx((0.0, -1.0))
+	assert player["mana"] == 59 # arredondada para baixo no fio
+	assert snapshot["grid_delta"] == [{"x": 1, "y": 2, "c": "0"}]
+	assert snapshot["scoreboard"] is None
+
+
+def test_initial_grid_does_not_follow_the_room_grid():
+	room = new_room()
+	room.grid[2][1] = "0"
+	assert initial_grid(room) == ["1111111", "1000001", "1K0D001", "1000001", "1111111"]
+
+
+def run_script():
+	room = new_room(seed=3)
+	set_connected(room, 7, True)
+	snapshots = []
+	for seq in range(1, 31):
+		enqueue(room, 7, make_input(seq, up=seq % 2 == 0, rot_right=True, sprint=seq > 20))
+		step(room, DT)
+		snapshots.append(to_snapshot(room))
+	return snapshots
+
+
+def test_same_inputs_give_the_same_snapshots():
+	assert run_script() == run_script()
+
+
+def test_match_outcome_is_none_while_the_match_runs():
+	assert match_outcome(new_room()) is None
+
+
+def test_the_door_exposes_every_function():
+	for name in DOOR_FUNCTIONS:
+		assert callable(getattr(app.game, name)), name
