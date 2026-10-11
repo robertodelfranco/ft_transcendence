@@ -1,6 +1,6 @@
 # Contrato: rotas, host, TLS e `.env` (`infra.md`)
 
-**Estado:** proposta para a reunião de 12/10; as decisões 11 e 12 foram tomadas em 08/10. **Escreve:** Akita. **Assina:** todos — é o contrato que diz o que acontece com uma requisição antes de ela chegar ao código de qualquer um.
+**Estado:** proposta para a reunião de 12/10; as decisões 11 e 12 foram tomadas em 08/10; em 10/10, sincronizado com as decisões 1 e 6 de [auth.md](auth.md) (OAuth com a 42 e o Google, cookie com `Path=/api/auth`). **Escreve:** Akita. **Assina:** todos — é o contrato que diz o que acontece com uma requisição antes de ela chegar ao código de qualquer um.
 
 ## 1. Para que serve
 
@@ -32,7 +32,7 @@ Nenhum serviço além do `proxy` publica porta. É isso que torna `/metrics`, o 
 | `http://<host>/*` | — | 301 para `https://<host>/*` |
 | `https://<host>/` | `frontend` | build de produção; SPA, então 404 de rota cai no `index.html` |
 | `https://<host>/api/*` | `backend` | **sem reescrita**: o backend vê `/api/...` |
-| `https://<host>/media/*` | `frontend` ou volume | avatares enviados (ver "Em aberto" 2) |
+| `https://<host>/media/*` | volume `media`, servido pelo próprio Nginx | avatares; o backend escreve, o Nginx lê (§4, decisão 13) |
 | `wss://<host>/ws/app` | `backend` | presença e lobby |
 | `wss://<host>/ws/game/{match_id}` | `backend` | partida |
 | `https://<host>/grafana/*` | `grafana` | TLS + login do Grafana |
@@ -43,11 +43,12 @@ Nenhum serviço além do `proxy` publica porta. É isso que torna `/metrics`, o 
 Escrito para quem programa atrás dele.
 
 1. **O TLS termina no Nginx.** O backend recebe HTTP simples na porta 8000. Mesmo assim o cookie de refresh é `Secure`: quem decide isso é o navegador, que só falou HTTPS. Por isso o backend precisa de `X-Forwarded-Proto` para saber que a origem era segura.
-2. **O caminho não é reescrito.** `proxy_pass http://backend:8000;` **sem barra final**. O backend vê `/api/auth/refresh`, e não `/auth/refresh`. Consequência direta: os routers do FastAPI carregam o prefixo `/api`, e o cookie de refresh usa `Path=/api/auth/refresh` (§4, decisão 5).
+2. **O caminho não é reescrito.** `proxy_pass http://backend:8000;` **sem barra final**. O backend vê `/api/auth/refresh`, e não `/auth/refresh`. Consequência direta: os routers do FastAPI carregam o prefixo `/api`, e o cookie de refresh usa `Path=/api/auth` (§4, decisão 5; o caminho inteiro de `auth`, e não só `/refresh`, para o `/logout` também receber o cookie: [auth.md](auth.md) §4, decisão 6).
 3. **Cabeçalhos.** `Host`, `X-Real-IP`, `X-Forwarded-For` e `X-Forwarded-Proto` são acrescentados. `Authorization` e `Cookie` passam sem precisar de nada — o Nginx só descarta cabeçalhos com `_` no nome, e nenhum nosso tem.
 4. **WebSocket** em `location /ws/`: `proxy_http_version 1.1`, `Upgrade: $http_upgrade`, `Connection: "upgrade"`, `proxy_read_timeout 3600s` e `proxy_send_timeout 3600s`. Sem o timeout longo, o Nginx corta um socket silencioso aos 60 s e a reconexão viraria rotina em vez de exceção.
 5. **Tamanho de corpo:** `client_max_body_size` acompanha o limite de avatar do [i18n.md](i18n.md) (API de usuários). Se o Nginx cortar antes do backend, o front recebe 413 do Nginx em HTML, fora do envelope de erro — então o limite do Nginx é um pouco maior que o do backend, e a mensagem de erro vem sempre do backend.
-6. **`/metrics` não tem `location`.** Uma requisição a `https://<host>/metrics` cai no `location /`, ou seja, no frontend, e dá 404 de arquivo estático. Não existe caminho público para o `/metrics` do backend.
+6. **Log de acesso sem query string.** O callback do OAuth chega com `?code=…&state=…`, e o [auth.md](auth.md) §2.10 proíbe os dois no log. O `log_format` padrão do Nginx grava `$request`, que inclui a query; o nosso grava `$request_method $uri $server_protocol`. Pelo mesmo motivo o `uvicorn` sobe com `--no-access-log`: o middleware de log do backend já registra cada requisição em JSON, com `request_id` e sem a query. Entra no PR de F6.8, antes do primeiro login real.
+7. **`/metrics` não tem `location`.** Uma requisição a `https://<host>/metrics` cai no `location /`, ou seja, no frontend, e dá 404 de arquivo estático. Não existe caminho público para o `/metrics` do backend.
 
 ### 2.4 TLS e a demo em 2–3 máquinas
 
@@ -58,6 +59,7 @@ Escrito para quem programa atrás dele.
 - Nas outras máquinas da demo: importar o `rootCA.pem` (só ele, nunca o `rootCA-key.pem`) de `$(mkcert -CAROOT)` da máquina servidora em Chrome → Configurações → Segurança → Gerenciar certificados → Autoridades. Não precisa de sudo. Sem isso, as outras máquinas veem aviso.
 - **WSL2:** o Docker roda no Linux, mas o Chrome é o do Windows. O `mkcert -install` dentro do WSL não chega ao Chrome; importar o `rootCA.pem` no `certmgr.msc` do Windows (Autoridades de Certificação Raiz Confiáveis, repositório do usuário, sem admin).
 - Os clientes acessam por `https://<PUBLIC_HOST>`. `PUBLIC_HOST` é `<nome-ou-ip>[:<porta>]`: leva a porta quando a HTTPS não é a 443 (por exemplo `c1r2p3.42sp.org.br:8443`), e o nome precisa estar no SAN do certificado. Dele saem o redirect do Nginx, a URL de retorno do OAuth e o `GF_SERVER_ROOT_URL` (§4, decisão 12).
+- **O Google restringe esse nome.** A URL de retorno cadastrada no Google Cloud Console precisa ser HTTPS num domínio público; a única exceção é `localhost`. IP puro (`192.168.0.42`) e nome sem domínio público (`catacombs.local`) são recusados no formulário. Para demonstrar o login pelo Google de outra máquina, o candidato é um nome do [nip.io](https://nip.io), que resolve para o IP embutido nele: `PUBLIC_HOST=192-168-0-42.nip.io:8443`, com o mesmo nome no SAN do `mkcert`. Ele depende de a rede da 42 resolver DNS público ([roteiro](../infra/roteiro-teste-pc-42.md), passo 5) e de o Google aceitar `nip.io` no formulário ("Em aberto" 4).
 
 ### 2.5 `.env.example`
 
@@ -79,10 +81,11 @@ ACCESS_TOKEN_TTL_S=900
 REFRESH_TOKEN_TTL_S=604800
 MEDIA_DIR=/media
 
-# ---------- OAuth 42 ----------
+# ---------- OAuth ----------
 FT_CLIENT_ID=
 FT_CLIENT_SECRET=
-FT_REDIRECT_URI=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 
 # ---------- Borda ----------
 PUBLIC_HOST=
@@ -91,6 +94,7 @@ PROXY_HTTPS_PORT=443
 
 # ---------- Monitoring ----------
 PROM_RETENTION_TIME=7d
+PROM_RETENTION_SIZE=500MB
 GF_SECURITY_ADMIN_USER=
 GF_SECURITY_ADMIN_PASSWORD=
 GF_SERVER_SERVE_FROM_SUB_PATH=true
@@ -100,7 +104,9 @@ GF_AUTH_ANONYMOUS_ENABLED=false
 
 A URL do banco é montada pelo `pydantic-settings` a partir das cinco variáveis de Postgres; não há `DATABASE_URL` separada, para não existirem duas fontes da mesma informação.
 
-Pelo mesmo motivo, **`GF_SERVER_ROOT_URL` não aparece no `.env`**: ela é derivada no compose, no bloco `environment:` do serviço `grafana`, como `https://${PUBLIC_HOST}/grafana/`. `PUBLIC_HOST` é a única fonte do nome público, e ele já precisa bater com o certificado (§2.4). Vale a diferença: o compose **interpola** `${...}` em `environment:`, mas `env_file` entrega o valor literal — por isso a derivação mora no compose, não no `.env`.
+Pelo mesmo motivo não há `FT_REDIRECT_URI`: a URL de retorno do OAuth é derivada no backend, `https://${PUBLIC_HOST}/api/auth/oauth/{provider}/callback`, igual para a 42 e o Google ([auth.md](auth.md) §2.8).
+
+E também por isso **`GF_SERVER_ROOT_URL` não aparece no `.env`**: ela é derivada no compose, no bloco `environment:` do serviço `grafana`, como `https://${PUBLIC_HOST}/grafana/`. `PUBLIC_HOST` é a única fonte do nome público, e ele já precisa bater com o certificado (§2.4). Vale a diferença: o compose **interpola** `${...}` em `environment:`, mas `env_file` entrega o valor literal — por isso a derivação mora no compose, não no `.env`.
 
 ### 2.6 Monitoring
 
@@ -113,7 +119,7 @@ postgres-exporter:9187 ───┘   (alerts.yml)
 - `monitoring/prometheus/prometheus.yml` e `alerts.yml`, `monitoring/grafana/provisioning/{datasources,dashboards}/` — tudo versionado. **Nada criado à mão na UI entra na demo**: o critério é `docker compose down -v && up` e os dashboards voltarem sozinhos.
 - Os nomes e as labels das métricas do backend são contrato do Augusto (`app/core/metrics.py`, F8.7, arq. §12.1). Os dashboards de host e Postgres não dependem dele e sobem antes.
 - Grafana: `serve_from_sub_path` ligado, admin do `.env`, anônimo e signup desligados.
-- Retenção curta (`PROM_RETENTION_TIME`): é demo local, não observabilidade de produção.
+- Retenção curta: `7d` ou `500MB`, o que vier primeiro (`PROM_RETENTION_TIME` e `PROM_RETENTION_SIZE`, §4 decisão 14). É demo local, não observabilidade de produção.
 
 ### 2.7 O que o CI roda a cada PR
 
@@ -184,7 +190,7 @@ server {
 }
 ```
 
-O backend sobe com `uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'`, sem `--workers`.
+O backend sobe com `uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*' --no-access-log`, sem `--workers` (o `--no-access-log` entra com F6.8, §2.3 item 6). O ping de protocolo do WebSocket a cada 20 s ([ws-manager.md](ws-manager.md) §2.7) já é o padrão do `uvicorn` e dispensa flag.
 
 O caminho de uma requisição de login:
 
@@ -194,7 +200,7 @@ navegador  POST https://catacombs.local/api/auth/login
                                X-Forwarded-For: 192.168.0.42
                                X-Forwarded-Proto: https
   → backend rota /api/auth/login, rate limit pela chave 192.168.0.42
-  ← Set-Cookie: refresh=...; HttpOnly; Secure; SameSite=Strict; Path=/api/auth/refresh
+  ← Set-Cookie: refresh_token=...; HttpOnly; Secure; SameSite=Strict; Path=/api/auth
 ```
 
 A demo, do zero:
@@ -220,17 +226,22 @@ cp "$(mkcert -CAROOT)/rootCA.pem" .          # levar para as outras máquinas
 10. **Grafana com `serve_from_sub_path`, sem reescrita no Nginx.** A alternativa (Nginx cortando `/grafana/`) existe na doc do Grafana, mas aí os links que ele gera não sabem do prefixo sem o `root_url` certo de qualquer forma — então o prefixo é configurado uma vez, no Grafana, e o Nginx faz a mesma coisa que faz com o backend.
 
 11. **Sem certificado, o proxy gera um self-signed em vez de não subir.** O subject cobra subir com um comando, e quem avalia clona e roda `docker compose up`; um Nginx que morre sem `cert.pem` reprova isso. O script `proxy/certs.sh` (em `/docker-entrypoint.d/`, recurso nativo da imagem) usa o par do `mkcert` montado em `/certs-host` se existir, senão gera um para `localhost` com `openssl`. O fallback é escrito **dentro** do container: arquivo criado pelo container numa pasta montada fica com dono root no host, e sem sudo (PCs da 42) ninguém o apaga. O CI exercita esse caminho a cada PR.
-12. **`PUBLIC_HOST` é a única fonte do endereço público, com a porta quando ela não é a 443.** O redirect usa `${PUBLIC_HOST}` e não `$host`, porque `$host` perde a porta: com HTTPS em 8443, `return 301 https://$host...` mandaria o navegador para a 443, onde não há nada. A mesma string vira `FT_REDIRECT_URI` e `GF_SERVER_ROOT_URL`, então trocar de máquina (WSL, PC da 42, VM) é uma linha no `.env` e um `mkcert` novo.
+12. **`PUBLIC_HOST` é a única fonte do endereço público, com a porta quando ela não é a 443.** O redirect usa `${PUBLIC_HOST}` e não `$host`, porque `$host` perde a porta: com HTTPS em 8443, `return 301 https://$host...` mandaria o navegador para a 443, onde não há nada. A mesma string vira a URL de retorno do OAuth (42 e Google) e o `GF_SERVER_ROOT_URL`, então trocar de máquina (WSL, PC da 42, VM) é uma linha no `.env` e um `mkcert` novo.
+
+13. **`/media/` servido pelo Nginx direto do volume.** O volume `media` é montado no `backend` em `MEDIA_DIR` (escrita) e no `proxy` em `/media` (`:ro`), com `location /media/ { alias /media/; }`, `X-Content-Type-Options: nosniff` (o arquivo veio de um User) e cache longo, porque o nome do avatar muda a cada envio. O motivo é o worker único do backend: cada lista de lobby e de amigos pede vários avatares, e esse tempo não deve competir com o tick do jogo. O custo é o volume aparecer em dois serviços do compose.
+14. **Retenção do Prometheus: `7d` ou `500MB`, o que vier primeiro.** Sete dias cobrem uma semana de desenvolvimento e a comparação entre dois ensaios. O teto de tamanho protege a cota do home nos PCs da 42 se alguma métrica gerar séries demais (uma label com `user_id`, que a arq. §12.1 proíbe, mas por engano). Na demo, `down -v` zera tudo de qualquer forma.
+15. **Dashboards próprios e pequenos.** Três, todos nossos: Jogo e backend, Host, Postgres, com uns 5–6 painéis cada, montados na UI, exportados em JSON e versionados em `monitoring/grafana/provisioning/dashboards/`. O subject cobra dashboards *custom*, e cada painel precisa de uma consulta que alguém explique na defesa. Os da comunidade (Node Exporter Full, por exemplo) têm dezenas de painéis e usam `${DS_PROMETHEUS}`, que quebra no provisioning por arquivo.
+16. **Alertas no Prometheus, sem Alertmanager.** `monitoring/prometheus/alerts.yml` em PromQL puro (primeiro `up == 0` dos exporters e do backend, depois a latência do tick), visto em *firing* na página `/alerts` do Prometheus e na lista de alertas do Grafana, como regra do datasource. O subject cobra regras de alerta, não notificação; um Alertmanager com webhook seria mais um serviço, mais um segredo e um serviço externo na demo. Disparo ao vivo: `docker compose stop postgres-exporter`.
 
 ## 5. Em aberto
 
 | # | Questão | Quem decide | Quando |
 |---|---|---|---|
-| 1 | Ambiente e endereço da demo: PC da 42 direto ou VM; nome DNS do PC ou IP; portas. `catacombs.local` saiu: as máquinas clientes não têm sudo para editar o `/etc/hosts`. Resposta pelo [roteiro de teste no PC da 42](../infra/roteiro-teste-pc-42.md). | Akita | depois do teste, fim de semana de 10–11/10 |
-| 2 | Onde o avatar fica guardado (pergunta 2 do Caio, dirigida a mim). Proposta: volume do compose montado no `backend` em `MEDIA_DIR`, servido pelo Nginx em `/media/`; o banco guarda só a URL. Alternativa descartada: bytes em coluna do Postgres. | Akita e Caio | reunião 04/10 |
-| 3 | Retenção do Prometheus. Proposta: `7d`. | Akita | S3 |
-| 4 | **Cadastro do app OAuth na intra da 42** (pergunta 8): se a liberação é imediata, as regras da URL de retorno (exige HTTPS? aceita nome local? quantas podem ser cadastradas?) e se o secret expira. Isso **não se responde por dedução** — sai do formulário da intra. Eu cadastro o app hoje e preencho esta linha com o que a intra mostrar, mais o valor de `FT_REDIRECT_URI`. Plano B se travar: 2FA TOTP, mesmo 1 ponto (plano §8.2). | Akita | **hoje, 04/10** |
-| 5 | `/media/` servido pelo Nginx direto do volume ou pelo backend? Proposta: Nginx direto (não gasta worker do backend com arquivo estático), o que exige o volume montado nos dois. | Akita | S3 |
+| 1 | Ambiente e endereço da demo: PC da 42 direto ou VM; nome DNS do PC ou IP; portas. `catacombs.local` saiu: as máquinas clientes não têm sudo para editar o `/etc/hosts`. Resposta pelo [roteiro de teste no PC da 42](../infra/roteiro-teste-pc-42.md), que também testa se o nip.io resolve na rede da 42 (§2.4). | Akita | depois do teste, até sex 17/10; prazo real no C3 (23/10, duas máquinas) |
+| 2 | Resolvido em 10/10: volume do compose em `MEDIA_DIR`, o banco guarda só a URL ([i18n.md](i18n.md), rascunho no PR #20); servido pelo Nginx (§4, decisão 13). | Akita e Caio | feito |
+| 3 | Resolvido em 10/10: §4, decisão 14. | Akita | feito |
+| 4 | **Cadastro dos apps OAuth na intra da 42 e no Google Cloud Console** (pergunta 8; [auth.md](auth.md) §5, itens 1, 2 e 11). Nos dois formulários: se a liberação é imediata, se a URL de retorno aceita IP, porta e `nip.io`, quantas URLs cabem e se o secret expira; na intra, se aceita PKCE; no Google, se a tela de consentimento em "Testing" basta para a avaliação. Isso **não se responde por dedução**: sai dos formulários. Cadastro feito de casa com `https://localhost/api/auth/oauth/{42,google}/callback`; esta linha recebe o que os formulários mostrarem. Com dois provedores, o Plano B de 2FA deixa de ser necessário: se um travar, o outro sozinho fecha o módulo ([auth.md](auth.md) §4, decisão 1). | Akita | antes de qualquer código de F6.8; meta: 17/10 |
+| 5 | Resolvido em 10/10: §4, decisão 13. | Akita | feito |
 
 ---
 
