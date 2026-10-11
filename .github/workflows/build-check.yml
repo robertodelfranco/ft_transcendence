@@ -67,3 +67,26 @@ jobs:
       - name: Dump logs on failure
         if: failure()
         run: docker compose logs
+
+  # Roda em paralelo com o compose-up: os testes do backend não precisam da stack
+  pytest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run pytest
+        run: pytest
