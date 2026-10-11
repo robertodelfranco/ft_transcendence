@@ -86,10 +86,12 @@ class Player:
 	armor: 				int = 0
 	keys: 				int = 0
 	alive: 				bool = True
-	connected: 			bool = True
+	connected: 			bool = False # nasce desconectado, vira True no primeiro join
+	joined: 			bool = False # já abriu o socket do jogo alguma vez
 	left: 				bool = False # (saiu) fora do Snapshot, dentro do resultado
 	input_queue: 		deque[Input | Action] = field(default_factory=deque)
 	last_input_seq:		int = 0
+	last_queued_seq:	int = 0 # maior seq que entrou na fila
 	attack_cooldown:	float = 0.0 # seg até poder atirar de novo
 	kills: 				int = 0
 	frags: 				int = 0
@@ -149,6 +151,7 @@ class Room:
 	options: 		RoomOptions
 	numbers: 		dict[str, float | None] # RULESET_NUMBERS[mode]
 	rng: 			Random
+	initial_grid:	tuple[str, ...] # o Grid do welcome, não muda
 	grid: 			list[list[str]] # cópia do Map, muda com Door e Pickup
 	tick: 			int = 0
 	players: 		dict[int, Player] = field(default_factory=dict) # user_id, Players
@@ -157,4 +160,29 @@ class Room:
 	projectiles:	list[Projectile] = field(default_factory=list)
 	doors: 			list[Door] = field(default_factory=list)
 	result: 		dict | None = None # o data do game_over, None enquanto na partida
+	pending_events:	list[tuple[str, dict]] = field(default_factory=list) # saem no próximo step
 
+
+@dataclass(frozen=True, slots=True)
+class PlayerOutcome:
+	user_id:				int
+	won:					bool
+	survived:				bool
+	kills:					int
+	frags:					int
+	deaths:					int
+	damage_dealt:			int
+	damage_taken:			int
+	armor_absorbed:			int
+	keys_collected:			int
+	potions_used:			int
+	disconnected_at_end:	bool
+
+
+@dataclass(frozen=True, slots=True)
+class MatchOutcome:
+	result:			str # win, loss ou draw
+	reason:			str # boss_defeated, all_dead, frag_limit, time_limit ou forfeit
+	winner_ids:		tuple[int, ...]
+	duration_ticks:	int
+	players:		tuple[PlayerOutcome, ...]
