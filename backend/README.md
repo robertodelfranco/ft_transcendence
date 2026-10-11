@@ -32,4 +32,10 @@ Depois da primeira vez, basta `source .venv/bin/activate` e `pytest`.
 | `tests/fixtures/maps/` | mapas pequenos, um por regra do teste dos mapas |
 | `maps/coop/`, `maps/pvp/` | os Maps do jogo ([formato](../docs/contracts/map-format.md)) |
 
+## A porta da Simulation
+
+`app/game/__init__.py` é a porta: o resto do backend importa a Simulation só por ele (`from app.game import step`) e nunca lê nem escreve campo da Room. A lista das funções está no [roadmap, seção 5](../docs/roadmap-roberto.md#5-a-porta-da-simulation).
+
+O `__init__.py` não importa `rooms.py`, `protocol.py` nem `router.py`, que moram na mesma pasta e são do Netcode. É o que mantém a Simulation sem FastAPI e evita importação circular. Mudança na porta passa pela revisão do Roberto.
+
 A configuração do `pytest` está em `pyproject.toml`. O `.venv/` fica fora do git e fora da imagem Docker.

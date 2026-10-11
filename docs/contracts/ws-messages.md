@@ -14,7 +14,7 @@ Toda mensagem do socket `/ws/game/{match_id}`, nos dois sentidos. O cliente do j
 - **Coordenadas.** `x` é a coluna do Grid e `y` é a linha, em células, a partir do canto superior esquerdo. O centro da célula `(i, j)` é `(i + 0.5, j + 0.5)`. Norte é `y` diminuindo. No Three.js, `x` vira `X`, `y` vira `Z` e o norte é `-Z`.
 - **Direção.** `(dx, dy)` é um vetor unitário. Spawn `N` = `(0, -1)`, `S` = `(0, 1)`, `E` = `(1, 0)`, `W` = `(-1, 0)`. Para a câmera: `yaw = atan2(-dx, -dy)`.
 - **Ids.** Player e Match usam o id inteiro do banco: `user_id` e `match_id`. Enemy e Projectile têm id em texto, único na Room e nunca reaproveitado (`"e_3"`, `"f_41"`, `"b_7"`); o cliente não interpreta o formato.
-- **Números.** Posição e direção são `number` com casas decimais; `hp`, `mana`, `armor`, `keys`, `tick` e `seq` são inteiros. Unidades e constantes em [rules.md](rules.md).
+- **Números.** Posição e direção são `number` com casas decimais; `hp`, `mana`, `armor`, `keys`, `tick` e `seq` são inteiros. Todo número é finito: `NaN` e `Infinity` contam como tipo de campo errado e fecham o socket com `4400`. Unidades e constantes em [rules.md](rules.md).
 
 ### 2.2 Cliente → servidor
 
@@ -146,7 +146,9 @@ Antes de fechar com um código `44xx` ou `4503`, o servidor manda `error` com o 
 | `4401` | `unauthenticated` | Sem `join` em 5 s, ou token inválido |
 | `4403` | `not_a_member` | O User não está nesta Room |
 | `4404` | `room_not_found` | Não existe Room com esse `match_id` |
+| `4408` | `replaced` | O mesmo User abriu outro socket nesta Room; o novo vence ([ws-manager.md](ws-manager.md) §2.6) |
 | `4409` | `room_full` | Room sem vaga |
+| `4429` | `slow_consumer` | Fila de envio cheia: o cliente não está lendo ([ws-manager.md](ws-manager.md) §2.7) |
 | `4503` | `server_shutdown` | Backend encerrando; a Room se perdeu |
 
 ### 2.8 Ritmo
@@ -173,7 +175,9 @@ A regra que mantém a Prediction certa: **cada `input` é aplicado uma única ve
 - Uma `action` é executada com a posição e a direção que o Player tem naquele ponto da fila. Assim a fireball sai para onde o Player olhava quando apertou, mesmo com o servidor alguns Inputs atrás.
 - Player morto: os Inputs são consumidos e ignorados, para o `seq` continuar andando.
 - `last_input_seq` é o `seq` do último `input` aplicado.
-- A fila guarda no máximo 1 s (30 `input`s); o que passar disso é descartado. A fila zera na Reconnection, junto com o `seq`.
+- A fila guarda no máximo 1 s (30 `input`s); o que passar disso é descartado.
+- `input` ou `action` com `seq` menor ou igual ao último que entrou na fila é descartado sem resposta. Sobre TCP isso só acontece com cliente defeituoso.
+- A fila e o `seq` zeram a cada `join` aceito: na Reconnection e também quando o socket novo substitui um que ainda não tinha caído (`4408`).
 
 ## 3. Exemplo
 
@@ -231,11 +235,15 @@ No `pvp`, o `scoreboard` fica assim:
 - **`map` fica fora de `options`**, em `welcome.room`, como na API de lobby e no `RoomInfo`. Decidido em 06/10 com o conteúdo e as partidas: um lugar só para todos os consumidores.
 - **Nenhum Event ganha posição só para efeito visual.** O que acontece numa célula traz `x, y`; o que acontece com uma entidade cita o id, e a entidade está no Snapshot (um Enemy morto fica lá em `dying`).
 - **Os números do netcode ficam aqui (§2.8), não em `rules.md`**, porque não são regra de jogo e só o `TICK_RATE` entra na Prediction.
+- **Número não finito é mensagem inválida.** O `json` do Python aceita `NaN` e `Infinity`, e um `mouse_dx` assim viraria posição `NaN` no Snapshot de todos os Players. O `protocol.py` recusa com `4400`. Decidido pelo Roberto em 09/10.
+- **O Player nasce desconectado.** A Room nasce no `start`, antes de qualquer socket do jogo abrir. `connected` vira `true` no primeiro `join` aceito, que emite `player_joined`; os seguintes emitem `player_reconnected`. Quem nunca abre o socket entra no Grace period a partir do `start`. Decidido pelo Roberto em 09/10.
+- **No socket do jogo, a conexão nova vence** (`4408`), e cliente que não lê é desconectado (`4429`). Os dois códigos vêm de [ws-manager.md](ws-manager.md) §2.6 e §2.7. Cada `join` aceito conta como conexão nova para a Simulation, com fila e `seq` zerados (§2.9).
 
 ## 5. Em aberto
 
 1. **Onde a fila de §2.9 mora e quem a enche.** *Roberto e Augusto.* Proposta: a fila fica no `Player` da Room, que passa a existir no `start` ([rooms.md](rooms.md)); o laço de leitura do socket (Augusto) só valida a mensagem e a coloca na fila; quem consome é o `step`.
-2. **O mesmo User abre um segundo socket na Room.** *Augusto.* Proposta: a conexão nova vence e a antiga fecha com um código novo (por exemplo `4408`, "substituída").
+2. **Resolvido em 09/10: o mesmo User abre um segundo socket na Room.** A conexão nova vence e a antiga fecha com `4408` (§2.7 e Decisões).
 3. **Token vencido durante a partida.** É a pergunta 6 do Augusto e entra em `auth.md`. Se a autenticação valer só no `join`, nada muda aqui.
 4. **`join` numa Room que ainda está no Lobby.** *Augusto e Akita.* Como a Room da Simulation só nasce no `start`, a proposta do Akita é fechar o socket; falta escolher o código (`4409` é "Room cheia").
 5. **Depois, com resposta neste arquivo:** o cliente prevê `fire` e `door`, ou só o movimento? (R7)
+6. **O `step` levanta uma exceção no meio da partida.** *Augusto e Akita.* Proposta do Roberto: uma exceção isolada é registrada no log (com `match_id`, Tick e traceback) e a Room segue no Tick seguinte, para um erro passageiro não derrubar os outros Players; depois de 30 falhas seguidas (1 s), a Room encerra. Falta escolher o código de fechamento e o estado do Match nesse caso. Sugestão: `4503` e `aborted`, como na Room perdida num desligamento.
