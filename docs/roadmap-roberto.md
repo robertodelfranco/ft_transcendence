@@ -96,7 +96,7 @@ Em 07/10/2026:
 
 - **Código:** nenhum. O backend é um `main.py` de duas rotas. `backend/app/` nasce com o Augusto (F0.3) e o projeto TypeScript com o Caio (F0.4); a pasta `backend/app/game/` nasce com você, combinado com o Augusto.
 - **Contratos:** os dez de `docs/contracts/` existem. Faltam `auth.md` e `ws-manager.md` (Augusto) e `i18n.md` (Caio); nenhum trava a Simulation.
-- **R0:** feito. Sobram o ADR 002 (tokens, com o Augusto) e as pendências entre Slices da [seção 5 do documento de Slice](slices/caminho-1-roberto.md#5-decisões-a-travar-antes-de-escrever-código).
+- **R0:** feito. O ADR 002 (tokens) foi escrito pelo Augusto e está em [adr/002-tokens.md](adr/002-tokens.md), com status "proposto". Sobram as pendências entre Slices da [seção 5 do documento de Slice](slices/caminho-1-roberto.md#5-decisões-a-travar-antes-de-escrever-código).
 - **Board:** sem issue de tarefa. As suas, até a S2, estão escritas no [documento de Slice §9](slices/caminho-1-roberto.md#9-issues-prontas-até-a-s2).
 - **CI:** sobe o compose e confere o banco; ainda não roda `pytest` nem `vitest` (F8.2, Akita).
 - **C1 é sexta, 09/10.** A linha que é sua: "teste do carregador de Map verde".
@@ -158,7 +158,7 @@ def apply_input(body: Body, inp: Input, world: CollisionWorld, dt: float) -> Bod
 
 Os três contratos estão na `main` e foram revisados com as decisões de 06 e 07/10. Sobra:
 
-- [ ] ADR 002 (access em memória, refresh em cookie), com o Augusto.
+- [x] ADR 002 (access em memória, refresh em cookie): escrito pelo Augusto em [adr/002-tokens.md](adr/002-tokens.md), status "proposto".
 - [ ] Fechar as pendências entre Slices do documento de Slice §5.
 
 ---

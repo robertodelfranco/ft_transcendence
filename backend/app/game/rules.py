@@ -1,0 +1,57 @@
+TICK_RATE = 30 # Hz
+PLAYER_SPEED = 3.6 # cél/s
+PLAYER_SPRINT_MULT = 2.0 # multiplicador
+PLAYER_ROT_SPEED = 1.8 # rad/s
+MOUSE_MAX_ROT_SPEED = 18.85 # rad/s (6π)
+PLAYER_RADIUS = 0.05 # cél
+BODY_BLOCK_DISTANCE = 0.6 # cél
+FIREBALL_COOLDOWN_S = 0.4 # s
+DOOR_REACH = 1.0 # cél
+POTION_HEAL = 3 # HP
+
+ENEMY_SPEED = 1.5 # cél/s
+ENEMY_RADIUS = 0.2 # cél
+ENEMY_SEPARATION = 0.6 # cél
+ENEMY_ATTACK_RANGE = 0.7 # cél
+ENEMY_ATTACK_INTERVAL_S = 1.4 # s
+ENEMY_DAMAGE = 1 # HP
+ENEMY_DYING_S = 1.5 # s
+
+BOSS_HP = 60 # HP
+BOSS_SPEED = 2.0 # cél/s
+BOSS_RADIUS = 0.2 # cél
+BOSS_SIGHT_RANGE = 20.0 # cél
+BOSS_MIN_RANGE = 8.0 # cél
+BOSS_ATTACK_RANGE = 18.0 # cél
+BOSS_ATTACK_WINDUP_S = 1.2 # s
+BOSS_ATTACK_COOLDOWN_S = 2.2 # s
+BOSS_DYING_S = 1.2 # s
+BULLET_DAMAGE = 2 # HP
+FIREBALL_BOSS_DAMAGE = 10 # HP
+
+PROJECTILE_SPEED = 12.0 # cél/s
+PROJECTILE_HIT_RADIUS = 0.3 # cél
+PROJECTILE_RADIUS = 0.1 # cél
+PROJECTILE_MAX_SUBSTEP = 0.1 # cél
+PROJECTILE_HIT_S = 0.4 # s
+FIREBALL_PLAYER_DAMAGE = 2 # HP
+
+# valores por Ruleset (rules.md §2.6)
+RULESET_NUMBERS = {
+	"coop": {
+		"MANA_MAX": 100, # Mana
+		"FIREBALL_MANA_COST": 10, # Man
+		"MANA_REGEN_PER_S": 10.0, # Mana/s
+		"MANA_PICKUP": 30, # Mana
+		"ARMOR_POINTS": 3, # Armor
+		"RESPAWN_DELAY_S": None, # não existe respawn no coop
+	},
+	"pvp": {
+		"MANA_MAX": 100, # Mana
+		"FIREBALL_MANA_COST": 20, # Mana
+		"MANA_REGEN_PER_S": 5.0, # Mana/s
+		"MANA_PICKUP": 20, # Mana
+		"ARMOR_POINTS": 2, # Armor
+		"RESPAWN_DELAY_S": 3.0, # sec
+	},
+}
