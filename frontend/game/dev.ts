@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 import * as THREE from "three";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game")!;
@@ -29,4 +27,3 @@ sphere2.position.x = 0.8;
 
 scene.add(sphere, sphere2);
 renderer.render(scene, camera);
->>>>>>> a5f623a (test)
