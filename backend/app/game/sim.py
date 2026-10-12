@@ -1,8 +1,8 @@
 import math
 from random import Random
 
-from app.game.rules import (BOSS_HP, MOUSE_MAX_ROT_SPEED, PLAYER_ROT_SPEED, PLAYER_SPEED,
-	PLAYER_SPRINT_MULT, RULESET_NUMBERS, TICK_RATE)
+from app.game.movement import Body, CollisionWorld, apply_input
+from app.game.rules import BOSS_HP, RULESET_NUMBERS, TICK_RATE
 from app.game.state import (Action, Boss, Door, Enemy, Event, Input, MatchOutcome, Mode, Player,
 	Room, RoomOptions)
 from app.game.world import Map
@@ -89,11 +89,11 @@ def step(room: Room, dt: float) -> list[Event]:
 	events = [Event(name, room.tick, data) for name, data in room.pending_events]
 	room.pending_events.clear()
 	for player in room.players.values():
-		_consume_queue(player, dt)
+		_consume_queue(room, player, dt)
 	return events
 
 
-def _consume_queue(player: Player, dt: float) -> None:
+def _consume_queue(room: Room, player: Player, dt: float) -> None:
 	waiting = sum(isinstance(message, Input) for message in player.input_queue)
 	budget = 2 if waiting >= CATCH_UP_FROM else 1
 	while player.input_queue and budget > 0:
@@ -101,25 +101,12 @@ def _consume_queue(player: Player, dt: float) -> None:
 		if isinstance(message, Action):
 			continue # fire e door entram no R3
 		if player.alive:
-			_apply_input(player, message, dt)
+			_move(room, player, message, dt)
 		player.last_input_seq = message.seq
 		budget -= 1
 
 
-def _apply_input(player: Player, inp: Input, dt: float) -> None:
-	# esqueleto: giro e passo, sem colisão (a colisão entra no R2)
-	max_turn = MOUSE_MAX_ROT_SPEED * dt
-	player.angle += max(-max_turn, min(max_turn, inp.mouse_dx))
-	player.angle += (inp.rot_right - inp.rot_left) * PLAYER_ROT_SPEED * dt
-	forward = inp.up - inp.down
-	strafe = inp.right - inp.left
-	length = math.hypot(forward, strafe)
-	if length == 0:
-		return
-	speed = PLAYER_SPEED * (PLAYER_SPRINT_MULT if inp.sprint else 1.0)
-	dir_x, dir_y = math.sin(player.angle), -math.cos(player.angle)
-	# frente = (dir_x, dir_y); direita = (-dir_y, dir_x)
-	move_x = (dir_x * forward - dir_y * strafe) / length
-	move_y = (dir_y * forward + dir_x * strafe) / length
-	player.x += move_x * speed * dt
-	player.y += move_y * speed * dt
+def _move(room: Room, player: Player, inp: Input, dt: float) -> None:
+	world = CollisionWorld(grid=room.grid, bodies=()) # os corpos entram no R2.4
+	body = apply_input(Body(player.x, player.y, player.angle), inp, world, dt)
+	player.x, player.y, player.angle = body.x, body.y, body.angle
