@@ -4,7 +4,8 @@ import math
 import pytest
 
 from app.game.movement import Body, CollisionWorld, apply_input
-from app.game.rules import MOUSE_MAX_ROT_SPEED, PLAYER_ROT_SPEED, TICK_RATE
+from app.game.rules import (MOUSE_MAX_ROT_SPEED, PLAYER_ROT_SPEED, PLAYER_SPEED,
+	PLAYER_SPRINT_MULT, TICK_RATE)
 from app.game.state import Input
 
 DT = 1 / TICK_RATE
@@ -69,3 +70,29 @@ def test_direction_stays_unit_after_many_turns():
 	for _ in range(10_000):
 		body = apply_input(body, make_input(mouse_dx=0.3, rot_right=True), world, DT)
 	assert math.hypot(*direction(body)) == pytest.approx(1.0, abs=TOLERANCE)
+
+
+def test_one_second_forward_covers_player_speed():
+	body = hold(NORTH, 1.0, up=True)
+	assert (body.x, body.y) == pytest.approx((NORTH.x, NORTH.y - PLAYER_SPEED), abs=TOLERANCE)
+
+
+def test_sprint_multiplies_the_distance():
+	body = hold(NORTH, 1.0, up=True, sprint=True)
+	assert NORTH.y - body.y == pytest.approx(PLAYER_SPEED * PLAYER_SPRINT_MULT, abs=TOLERANCE)
+
+
+def test_diagonal_is_not_faster():
+	body = hold(NORTH, 1.0, up=True, right=True)
+	distance = math.hypot(body.x - NORTH.x, body.y - NORTH.y)
+	assert distance == pytest.approx(PLAYER_SPEED, abs=TOLERANCE)
+
+
+@pytest.mark.mirror
+def test_right_from_north_moves_east():
+	assert hold(NORTH, 1.0, right=True).x > NORTH.x
+
+
+def test_opposite_keys_leave_the_player_still():
+	assert hold(NORTH, 1.0, up=True, down=True) == NORTH
+	assert hold(NORTH, 1.0, left=True, right=True) == NORTH
