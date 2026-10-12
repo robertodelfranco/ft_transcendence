@@ -1,6 +1,6 @@
 # Backend
 
-FastAPI em `main.py` (vira o pacote `app/` na F0.3). A Simulation do jogo mora em `app/game/` e é Python puro: não importa FastAPI, banco nem rede, então os testes dela rodam sem subir nada.
+FastAPI no pacote `app/`: `app/main.py` tem o `create_app()`, e o uvicorn sobe `app.main:app`. A Simulation do jogo mora em `app/game/` e é Python puro: não importa FastAPI, banco nem rede, então os testes dela rodam sem subir nada.
 
 ## Rodar os testes na sua máquina
 
@@ -27,7 +27,13 @@ Depois da primeira vez, basta `source .venv/bin/activate` e `pytest`.
 
 | Pasta | Conteúdo |
 |---|---|
+| `app/main.py` | `create_app()`: routers, middleware e handlers de erro |
+| `app/db/base.py` | `Base` do SQLAlchemy, compartilhada por todas as tabelas, e os tipos de coluna reaproveitáveis (`BigIntPK`, `CreatedAt`, `UserFK`) |
+| `app/auth/models.py` | tabelas de usuários ([auth.md §2.9](../docs/contracts/auth.md)) |
+| `app/core/` | configuração (`config.py`), `request_id` e envelope de erro (`errors.py`, [auth.md §2.5](../docs/contracts/auth.md)) |
 | `app/game/` | Simulation: Map, estado da Room, regras, `step`, Snapshot |
+| `tests/conftest.py` | fixtures `app` e `client` (httpx + `ASGITransport`), usadas pelos testes de rota de todas as Slices |
+| `tests/auth/` | testes de auth; `test_models.py` confere as tabelas contra o contrato, sem banco |
 | `tests/game/` | testes da Simulation |
 | `tests/fixtures/maps/` | mapas pequenos, um por regra do teste dos mapas |
 | `maps/coop/`, `maps/pvp/` | os Maps do jogo ([formato](../docs/contracts/map-format.md)) |

@@ -109,10 +109,17 @@ curl -sI http://<hostname-do-servidor>:8080 | head -1
 curl -sI http://<ip-do-servidor>:8080 | head -1
 ```
 
+Ainda no **cliente**, o nome do [nip.io](https://nip.io), que é o candidato para o login pelo Google (o Google recusa IP puro na URL de retorno, [infra.md](../contracts/infra.md) §2.4). Troque os pontos do IP do servidor por hífens:
+
+```bash
+getent hosts <ip-com-hifens>.nip.io             # ex.: getent hosts 10-11-2-3.nip.io
+curl -sI http://<ip-com-hifens>.nip.io:8080 | head -1
+```
+
 Depois, no servidor: `docker rm -f tnet`.
 
-**Anotar:** se responde pelo hostname, pelo IP, pelos dois ou por nenhum (firewall entre máquinas?).
-**Decide:** o que entra no SAN do certificado e o valor de `PUBLIC_HOST`.
+**Anotar:** se responde pelo hostname, pelo IP, pelos dois ou por nenhum (firewall entre máquinas?); se o `getent` devolve o IP do servidor (a rede da 42 resolve DNS público?) e se o `curl` pelo nome do nip.io chega.
+**Decide:** o que entra no SAN do certificado e o valor de `PUBLIC_HOST`; se o login pelo Google pode ser demonstrado de outra máquina ou só pela que serve, por `https://localhost`.
 
 ## 6. Exporters do monitoring
 
@@ -145,7 +152,8 @@ which certutil || echo "sem certutil"    # sem ele, o -install não mexe no Chro
 ~/bin/mkcert -install 2>&1 | tail -3     # esperado: falha no store do sistema; anotar o que diz
 
 mkdir -p "$T/certs" && cd "$T"
-~/bin/mkcert -cert-file certs/cert.pem -key-file certs/key.pem "$(hostname -f)" "$(hostname -I | awk '{print $1}')"
+IP=$(hostname -I | awk '{print $1}')
+~/bin/mkcert -cert-file certs/cert.pem -key-file certs/key.pem "$(hostname -f)" "$IP" "${IP//./-}.nip.io"
 cat > nginx.conf <<'EOF'
 server {
     listen 443 ssl;
@@ -167,10 +175,10 @@ No **cliente**:
 
 1. `google-chrome --version` (ou `chromium --version`). Anotar qual existe.
 2. Chrome → Configurações → Privacidade e segurança → Segurança → **Gerenciar certificados** → **Autoridades** → **Importar** → `/sgoinfre/gyasuhir/transcendence-test/rootCA.pem` → marcar "confiar para identificar sites".
-3. Abrir `https://<hostname-do-servidor>:8443` e depois `https://<ip-do-servidor>:8443`.
+3. Abrir `https://<hostname-do-servidor>:8443`, `https://<ip-do-servidor>:8443` e, se o passo 5b passou, `https://<ip-com-hifens>.nip.io:8443`.
 4. Clicar no cadeado e abrir o DevTools (F12 → Console).
 
-**Anotar:** se o cadeado aparece sem aviso pelo hostname e pelo IP, se o console está limpo e se a importação pela UI funcionou sem sudo.
+**Anotar:** se o cadeado aparece sem aviso pelo hostname, pelo IP e pelo nip.io, se o console está limpo e se a importação pela UI funcionou sem sudo.
 **Decide:** D1 (design) e D2 (como a CA e o certificado chegam à demo); vira o roteiro do F8.6.
 
 Por fim, no servidor: `docker rm -f ttls`.
@@ -193,8 +201,9 @@ rm -rf "$T"                        # mantém ~/bin/mkcert, a CA e $SG/rootCA.pem
 | 3b | Tamanho das imagens da stack; a cota aguentou? | | VM ou PC direto |
 | 3c | Permissão de `/sgoinfre/gyasuhir` (outros leem?) | | o que pode ir para lá |
 | 4 | Postgres com volume no sgoinfre sobe? | | volume `db_data` |
-| 5 | Cliente alcança o servidor por hostname? por IP? | | SAN, `PUBLIC_HOST` |
+| 5a | Cliente alcança o servidor por hostname? por IP? | | SAN, `PUBLIC_HOST` |
+| 5b | `<ip-com-hifens>.nip.io` resolve e responde no cliente? | | OAuth do Google fora do `localhost` |
 | 6 | `node-exporter` funciona? cAdvisor funciona? | | D3 |
 | 7a | `mkcert` roda sem sudo? tem `certutil`? | | D2 |
-| 7b | Cadeado limpo no cliente por hostname e IP, console limpo | | D1, F8.6 |
+| 7b | Cadeado limpo no cliente por hostname, IP e nip.io, console limpo | | D1, F8.6 |
 | 7c | Chrome ou Chromium? Importação de CA pela UI funcionou? | | roteiro do F8.6 |

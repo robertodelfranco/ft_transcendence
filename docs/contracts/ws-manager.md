@@ -1,6 +1,6 @@
 # Contrato: `ConnectionManager` e `/ws/app` (`ws-manager.md`)
 
-**Estado:** rascunho de 07/10/2026. **Escreve:** Augusto. **Assina:** Akita (lobby em tempo real em F5.2: publica `lobby_update`, `lobby_removed` e `match_started` só com a §2.5) e Caio (presença na lista de amigos e lobby vivo na casca, só com a §2.3 e a §2.4).
+**Estado:** rascunho de 07/10/2026, revisado em 12/10 com a leitura do Akita (W1, W3, §2.9 e D-B). **Escreve:** Augusto. **Assina:** Akita (lobby em tempo real em F5.2: publica `lobby_update`, `lobby_removed` e `match_started` só com a §2.5) e Caio (presença na lista de amigos e lobby vivo na casca, só com a §2.3 e a §2.4).
 
 ## 1. Para que serve
 
@@ -51,7 +51,7 @@ class ConnectionManager:
 | `broadcast_all` | para todas as conexões do canal (é como `lobby_update` chega a todo mundo, §2.4) |
 | `droppable=True` | a mensagem pode ser descartada se a conexão estiver atrasada (§2.7). Só o Snapshot do jogo usa |
 | `is_online` / `online_users` | **online = ao menos um socket `app` aberto** (§2.3). O canal `game` não conta |
-| `on_presence_change` | registra um callback chamado com `(user_id, online)` quando a presença muda, já com o atraso da §2.3. É por aqui que o módulo de usuários pode reagir, se precisar |
+| `on_presence_change` | registra um callback chamado com `(user_id, online)` quando a presença muda, já com o atraso da §2.3. Aceita **vários**, chamados na ordem em que foram registrados; se um levantar exceção, ela vai para o log e os seguintes rodam do mesmo jeito. O lobby registra um para tirar da Room quem fica offline ([rooms.md](rooms.md) decisão 10), e o módulo de usuários pode registrar outro |
 | `close_all` | fecha tudo com o código dado; o `lifespan` do app chama com `4503` no desligamento |
 
 `message` como `dict` é serializado pelo manager; como `str`, já vem serializado (o laço da Room serializa o Snapshot uma vez por envio, [ws-messages.md](ws-messages.md) §4).
@@ -96,21 +96,23 @@ Qualquer outra mensagem depois do `join` fecha com `4400`: o `/ws/app` é só de
 
 ### 2.5 O que o lobby chama para publicar
 
-Para o Akita não montar mensagem à mão, F2.1 expõe três funções; o formato do fio fica só neste contrato.
+Para o Akita não montar mensagem à mão, F2.1 expõe três funções; o formato do fio fica só neste contrato. Cada uma recebe o manager como primeiro argumento, e a rota o pega por `Depends(get_connection_manager)`: assim o teste do lobby troca a instância com `dependency_overrides`, sem patch (o override só alcança o que a rota recebe por `Depends`, não uma função chamada direto).
 
 ```python
 # app/ws/app_events.py — implementado por Augusto (F2.1), chamado pelo lobby (F5.2)
-async def publish_lobby_update(info: RoomInfo) -> None: ...                      # broadcast_all
-async def publish_lobby_removed(match_id: int, reason: Literal["started", "aborted"]) -> None: ...
-async def publish_match_started(match_id: int, user_ids: Iterable[int]) -> None: ...
+async def publish_lobby_update(manager: ConnectionManager, info: RoomInfo) -> None: ...  # broadcast_all
+async def publish_lobby_removed(manager: ConnectionManager, match_id: int,
+                                reason: Literal["started", "aborted"]) -> None: ...
+async def publish_match_started(manager: ConnectionManager, match_id: int,
+                                user_ids: Iterable[int]) -> None: ...
 ```
 
 | Momento no lobby (F5.2) | Chamada |
 |---|---|
-| `POST /api/matches` criou a Room | `publish_lobby_update(info)` |
-| `join`, `leave` (com Room ainda viva) ou `ready` | `publish_lobby_update(info)` |
-| `leave` do último Player (Room destruída, Match `aborted`) ou TTL do Lobby | `publish_lobby_removed(match_id, "aborted")` |
-| `start` | `publish_match_started(match_id, players)` e depois `publish_lobby_removed(match_id, "started")` |
+| `POST /api/matches` criou a Room | `publish_lobby_update(manager, info)` |
+| `join`, `leave` (com Room ainda viva) ou `ready` | `publish_lobby_update(manager, info)` |
+| `leave` do último Player (Room destruída, Match `aborted`), inclusive o `leave` feito pelo callback de presença quando ele fica offline | `publish_lobby_removed(manager, match_id, "aborted")` |
+| `start` | `publish_match_started(manager, match_id, players)` e depois `publish_lobby_removed(manager, match_id, "started")` |
 
 As três são chamadas **depois** do `commit` da rota: quem recebe a mensagem e busca por HTTP já encontra o banco atualizado.
 
@@ -157,6 +159,7 @@ Vale para o `/ws/app` (Caio, F7.1) e, fora da partida terminada, para o `/ws/gam
 | `4401` | chama `/api/auth/refresh` uma vez e reconecta com o token novo; se o refresh devolver `authenticated: false` ou `invalid_refresh`, vai para o login |
 | `4408` | não reconecta: outra aba assumiu. Mostra o aviso traduzido |
 | `4400` | não reconecta (é bug); mostra erro |
+| `4403`, `4404`, `4409` | não reconecta: a Room não aceita este User (não é membro, não existe, ou ainda está no Lobby, ou está cheia), e tentar de novo daria o mesmo resultado. Mostra o erro traduzido e volta ao lobby. Só existem no `/ws/game` |
 | `4429`, `4503`, `1006` (queda sem fechamento) e os demais | reconecta com espera crescente: 1, 2, 4, 8, 16 s, depois a cada 30 s, cada uma com até 20 % de variação aleatória para as abas não voltarem juntas |
 
 Durante a reconexão do `/ws/app`, a casca mantém a tela e marca os status online como desconhecidos; o `welcome` seguinte traz o estado inteiro de novo. A tela de lobby refaz o `GET /api/matches` depois de cada `welcome` novo, porque perdeu as mensagens do intervalo.
@@ -220,9 +223,13 @@ Seguido do fechamento com `4401`.
 No lobby (F5.2), depois do `commit` de `POST /api/matches/{id}/join`:
 
 ```python
-info = rooms.join(match_id, user.id, user.username)
-await session.commit()
-await publish_lobby_update(info)
+@router.post("/api/matches/{match_id}/join")
+async def join_match(match_id: int, user: CurrentUser, session: DbSession,
+                     manager: Annotated[ConnectionManager, Depends(get_connection_manager)]) -> RoomInfo:
+    info = rooms.join(match_id, user.id, user.username, avatar_url(user))
+    await session.commit()
+    await publish_lobby_update(manager, info)
+    return info
 ```
 
 ## 4. Decisões
@@ -233,7 +240,7 @@ await publish_lobby_update(info)
 4. **`lobby_update` vai para todo `/ws/app` conectado**, não só para quem está dentro da Room (que é o que a arq. §7.4 dizia). Sem isso, a tela de partidas abertas não veria uma Room nova sendo criada, e o [matches-api.md](matches-api.md) promete uma tela que nunca faz polling. Com menos de 20 Users na demo, mandar para todos custa nada e dispensa inscrição.
 5. **`lobby_removed` é uma mensagem própria**, e não um `lobby_update` com `status` diferente: quando a Room é destruída, não sobra `RoomInfo` para mandar.
 6. **`/ws/app` é só de ida depois do `join`.** Toda ação da casca é HTTP, que já tem validação, envelope de erro, rate limit e `request_id`. Repetir isso no socket seria um segundo protocolo para manter.
-7. **O lobby publica por três funções, não pelo manager.** O formato do fio fica num arquivo só, e o PR que muda uma mensagem muda este contrato e essas funções, sem tocar no código do Akita.
+7. **O lobby publica por três funções, não pelo manager, e elas recebem o manager.** Receber como argumento, em vez de buscar uma instância global, é o que deixa o teste do lobby trocar o manager por `dependency_overrides`. O formato do fio fica num arquivo só, e o PR que muda uma mensagem muda este contrato e essas funções, sem tocar no código do Akita.
 8. **Publicar depois do `commit`.** Quem recebe a mensagem pode chamar HTTP logo em seguida; se a publicação viesse antes, ele leria o banco antigo.
 9. **Um escritor por socket, com fila.** O `ws.send` do Starlette não é seguro para duas tasks ao mesmo tempo, e um cliente lento não pode bloquear quem manda para ele (a task da Room manda para 5 Players a cada Snapshot).
 10. **Descartar só o Snapshot**, e substituindo o anterior na fila: Snapshot é estado e o próximo vale mais que o perdido; Event, presença e lobby são fatos e não se repetem ([ws-messages.md](ws-messages.md) §4).
@@ -244,10 +251,10 @@ await publish_lobby_update(info)
 
 | # | Questão | Quem decide | Quando |
 |---|---|---|---|
-| 1 | Um User pode estar em dois Lobbies ao mesmo tempo, ou em um Lobby e numa partida? O `RoomManager` impede entrar duas vezes na **mesma** Room ([rooms.md](rooms.md), `AlreadyIn`), mas não em Rooms diferentes. Proposta: uma Room por User; `join` em outra devolve um `code` novo (`already_in_other_match`). Isso também simplifica a §2.6 (um socket `game` por User). | Akita | revisão deste contrato |
+| 1 | Resolvido em 10/10 (Akita, D-A): um User, uma Room. Entrar em outra dá 409 `already_in_other_match`, e o `RoomManager` ganha `room_of(user_id)` ([rooms.md](rooms.md) §2.2). | Akita | feito |
 | 2 | Falha ao **abrir** um WebSocket (backend fora do ar) aparece no console do Chrome como erro ("WebSocket connection to … failed"), e não há como suprimir pelo código. Em fluxo normal não acontece, mas na reconexão depois de `4503` sim. Proposta: aceitar (só ocorre com o backend caído) e dizer isso na defesa se aparecer; e não reconectar enquanto a aba está escondida (`document.hidden`), para reduzir as tentativas. | Caio e Augusto | S2 |
 | 3 | A arq. §7.4 precisa mudar para o público do `lobby_update` (decisão 4), para a mensagem `lobby_removed` (decisão 5) e para o formato `{room: RoomInfo}` (ela mostra campos soltos). | Roberto (dono da arquitetura) | junto com a revisão deste contrato |
-| 4 | [ws-messages.md](ws-messages.md) §2.7 ganha `4408` e `4429`, e o item 3 de "Em aberto" dele vira decisão. | Roberto | junto com a revisão deste contrato |
+| 4 | Resolvido: [ws-messages.md](ws-messages.md) §2.7 já tem `4408` e `4429`. Falta registrar lá que o `4503` também fecha uma Room cujo `step` falhou 30 Ticks seguidos, e não só o desligamento do backend. | Roberto | junto com a revisão deste contrato |
 | 5 | `SEND_QUEUE_MAX` = 256 e `PRESENCE_OFFLINE_DELAY_S` = 5 são palpites. Medir no teste de carga (F2.13) e no ensaio. | Augusto | S5 |
 | 6 | A HUD mostra o aviso de `4408` ("a partida foi aberta em outra aba") e de `4429`? Os dois precisam de chave de tradução. | Caio | com [i18n.md](i18n.md) |
 

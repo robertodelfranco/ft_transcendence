@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+  --color-crypt-950: #0b0a0f;
+  --color-crypt-900: #14121c;
+  --color-crypt-700: #2a2638;
+  --color-bone: #e8e2d0;
+  --color-torch: #f2a03d;
+  --color-blood: #b3202a;
+}

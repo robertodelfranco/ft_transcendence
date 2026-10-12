@@ -23,12 +23,14 @@ A Room é criada junto com a linha de `matches`, então **o `match_id` existe an
 class RoomManager:
     def create(self, match_id: int, mode: Mode, max_players: int,
                options: RoomOptions, created_by: int) -> None: ...
-    def join(self, match_id: int, user_id: int, username: str) -> RoomInfo: ...
+    def join(self, match_id: int, user_id: int, username: str,
+             avatar_url: str) -> RoomInfo: ...
     def leave(self, match_id: int, user_id: int) -> RoomInfo | None: ...   # None = Room destruída
     def set_ready(self, match_id: int, user_id: int, ready: bool) -> RoomInfo: ...
     def start(self, match_id: int) -> None: ...
     def info(self, match_id: int) -> RoomInfo: ...
     def list_open(self) -> list[RoomInfo]: ...                            # status == "lobby"
+    def room_of(self, user_id: int) -> int | None: ...                    # match_id da Room do User
 ```
 
 | Exceção | Quando | `code` na API |
@@ -36,6 +38,7 @@ class RoomManager:
 | `RoomNotFound` | não existe Room com esse `match_id` | `match_not_found` |
 | `RoomFull` | `len(players) == max_players` | `room_full` |
 | `AlreadyIn` | o User já está nesta Room | `already_in` |
+| `AlreadyInOtherMatch` | `join` de quem já está em **outra** Room, em `lobby` ou em andamento (§4, decisão 9) | `already_in_other_match` |
 | `NotInRoom` | `leave`, `set_ready` ou `start` de quem não está na Room | `not_in_match` |
 | `AlreadyStarted` | `join`, `leave`, `set_ready` **ou `start`** com `status != "lobby"` | `already_started` |
 | `NotEnoughPlayers` | `start` abaixo do mínimo do Mode | `not_enough_players` |
@@ -43,11 +46,13 @@ class RoomManager:
 Garantias que o lobby assume:
 
 - **`join` é atômico.** Roda num único event loop, sem `await` entre conferir a vaga e inserir o Player. É aí que a corrida "dois usuários na última vaga" se resolve (arq. §10.1), não na rota HTTP.
-- **`create` não inicia nada.** A Room nasce em `status = "lobby"`, sem `asyncio.Task`. A task do tick nasce no `start`.
+- **`create` não inicia nada e não põe ninguém na Room.** A Room nasce vazia, em `status = "lobby"`, sem `asyncio.Task`; a task do tick nasce no `start`. O `POST /api/matches` chama `create` e logo depois `join` do criador, que é quem devolve o `RoomInfo` da resposta ([matches-api.md](matches-api.md) §2.2).
+- **`avatar_url` chega pronto.** O lobby passa a URL já serializada ([auth.md](auth.md) §4, decisão 18: sem avatar enviado, a URL do padrão); a Room só a repete no `RoomInfo`.
 - **`start` só funciona uma vez.** Segunda chamada levanta `AlreadyStarted`, que é o 409 `already_started` de [matches-api.md](matches-api.md) §2.2. Sem isso, um duplo clique ou um retry de rede criaria duas tasks de tick para a mesma Room — dois ticks por tick, movimento e dano aplicados em dobro.
 - **`leave` do último Player destrói a Room** e devolve `None`. Quem chamou grava `matches.status = "aborted"`.
 - **`list_open` é a única fonte de Rooms abertas.** A API nunca lista Lobby a partir do banco (arq. §10.1).
 - **`options` são imutáveis** depois do `create` ([README](README.md#o-que-já-está-decidido)).
+- **Um User, uma Room.** O `RoomManager` guarda o índice `user_id → match_id`, preenchido no `join` e limpo no `leave` e quando a Room termina; `room_of` o expõe. O `POST /api/matches` confere `room_of` **antes** de gravar a linha de `matches`, para não deixar Match órfão.
 
 ### 2.3 `RoomInfo` — o que a tela de lobby recebe
 
@@ -70,7 +75,7 @@ Garantias que o lobby assume:
 |---|---|---|
 | `user_id` | int | |
 | `username` | string | |
-| `avatar_url` | string ou `null` | o avatar padrão também é uma URL |
+| `avatar_url` | string | sempre uma URL; sem avatar enviado, a do padrão ([auth.md](auth.md) §4, decisão 18) |
 | `ready` | bool | **vive na Room, nunca no banco** (§4, decisão 2) |
 | `connected` | bool | `false` durante o Grace period |
 | `joined_at` | string ISO-8601 | a ordem de entrada é a ordem de sucessão do host |
@@ -163,7 +168,7 @@ A função devolve **as conquistas desbloqueadas nesta chamada** (lista vazia se
 |---|---|---|---|
 | — | `lobby` | `POST /api/matches` grava a linha e chama `RoomManager.create` | F5.2 |
 | `lobby` | `running` | `POST /api/matches/{id}/start` → `RoomManager.start`; grava `started_at` | F5.2 |
-| `lobby` | `aborted` | último Player saiu, ou TTL do Lobby expirou | F5.2 |
+| `lobby` | `aborted` | último Player saiu (inclusive por ficar offline, §4 decisão 10) | F5.2 |
 | `running` | `finished` | `game_over` → `record_match_result` | F2.9 → F5.3 |
 | `running` | `aborted` | backend reiniciou: o `startup` marca todo `running` como `aborted`, `reason = "server_shutdown"` | F5.3 |
 
@@ -232,13 +237,14 @@ PK `(user_id, code)` — desbloquear de novo é `DO NOTHING`, sem precisar de ch
 
 ### 2.8 Schema inteiro
 
-As tabelas de usuários são do Augusto ([auth.md](auth.md)); estão aqui porque é deste diagrama que sai a seção obrigatória "Database Schema" do README (subject, cap. VI).
+As tabelas de usuários são do Augusto ([auth.md](auth.md) §2.9, conferido em 10/10); estão aqui porque é deste diagrama que sai a seção obrigatória "Database Schema" do README (subject, cap. VI).
 
 ```mermaid
 erDiagram
     users ||--o{ refresh_tokens : "sessões"
-    users ||--o{ oauth_accounts : "contas 42"
-    users ||--o{ friendships : "amizades"
+    users ||--o{ oauth_accounts : "contas OAuth"
+    users ||--o{ friendships : "adicionou (user_id)"
+    users ||--o{ friendships : "foi adicionado (friend_id)"
     users ||--o{ matches : "criou"
     users ||--o{ match_players : "jogou"
     users ||--o{ player_stats : "agregado por mode"
@@ -261,15 +267,19 @@ erDiagram
         bigint user_id FK
         text token_hash UK
         uuid family_id
+        timestamptz created_at
         timestamptz expires_at
-        timestamptz revoked_at
+        timestamptz rotated_at "base da janela de graça"
         bigint replaced_by FK
+        timestamptz revoked_at
+        text user_agent
     }
     oauth_accounts {
         bigint id PK
         bigint user_id FK
-        text provider
+        text provider "google ou 42"
         text provider_user_id
+        timestamptz created_at
     }
     friendships {
         bigint user_id FK
@@ -394,19 +404,21 @@ No empate, `result` é `"draw"`, `reason` é `"time_limit"` e os dois Players t�
 
 1. **`result` é o desfecho da Room; quem ganhou é `match_players.won`** (pergunta 1). No `coop` o grupo ganha ou perde junto, então `result` já diz tudo. No `pvp` ele não consegue dizer: um ganha e o outro perde na mesma linha. Então `result` vale `"win"` (alguém venceu) ou `"draw"`, e **toda estatística e todo ranking leem `match_players.won`**, nunca `matches.result`. O campo continua existindo porque é o que a tela de resultado mostra e o que o Event `game_over` já carrega. Casa com a proposta do Roberto em [ws-messages.md](ws-messages.md) §5, item 2.
 2. **O "pronto" de cada Player vive na Room, em memória** (pergunta 2). É estado de partida antes de começar, e o invariante 2 vale para ele: o banco só recebe o Match ao final. Por isso o `RoomManager` ganha `set_ready`, que a arq. §10.2 não tinha, e `RoomInfo.players[].ready` o expõe. Gravar `ready` no banco criaria escrita a cada clique e um estado que o reinício do backend tornaria mentira — as Rooms se perdem no reinício, o `ready` não poderia sobreviver a elas. Combinado com o Roberto em 06/10: esse estado mora na entrada de Lobby do `RoomManager`, e a Room da Simulation só é criada no `start`.
-3. **Só o host inicia, e o host é sucedido, não eleito** (pergunta 3). `matches.created_by` é o host. Se ele sai do Lobby, o host passa para o Player com o `joined_at` mais antigo que restou, e `created_by` é atualizado — é uma linha de código e evita o Lobby que ninguém consegue iniciar. Lobby que fica sem ninguém é destruído no próprio `leave`, e o Match vira `aborted` na mesma chamada: sem varredura, sem job. Lobby que nunca inicia expira por TTL (valor em "Em aberto" 2).
+3. **Só o host inicia, e o host é sucedido, não eleito** (pergunta 3). `matches.created_by` é o host. Se ele sai do Lobby, o host passa para o Player com o `joined_at` mais antigo que restou, e `created_by` é atualizado — é uma linha de código e evita o Lobby que ninguém consegue iniciar. Lobby que fica sem ninguém é destruído no próprio `leave`, e o Match vira `aborted` na mesma chamada: sem varredura, sem job. Lobby que nunca inicia não expira por tempo (decisão 10).
 4. **Uma migração inicial, cadeia linear, uma cabeça conferida pelo CI** (pergunta 4). Duas pessoas escrevendo migrações na mesma semana produzem duas revisões com o mesmo `down_revision`, e o Alembic passa a ter duas cabeças — `upgrade head` falha e a correção é um `merge` que ninguém quer explicar na defesa. A migração inicial é uma só, escrita por mim a partir de [auth.md](auth.md) e deste arquivo, porque `matches.created_by` precisa de `users`. Depois dela, quem vai gerar revisão avisa no canal e parte da `head` atual; o CI roda `alembic heads` e reprova com mais de uma linha. É mais barato que combinar pastas separadas por Slice (que não resolvem a FK).
 5. **A idempotência é a própria linha do Match, travada no `SELECT ... FOR UPDATE`.** `status = 'running'` é a condição; a segunda chamada não encontra linha e sai sem efeito. Não precisa de tabela de controle nem de chave externa: a transição `running → finished` só pode acontecer uma vez. As PKs de `match_players` e `user_achievements` são a segunda rede.
 6. **`player_stats` é agregada, não calculada por request.** O leaderboard e o perfil leem muito mais do que o `record_match_result` escreve, e o agregado deixa a leitura em um índice em vez de um `SUM()` sobre `match_players`. O custo é a consistência ficar sob responsabilidade de uma função só — que é idempotente e tem teste com os dois JSON da §3.
 7. **Elo só no `pvp`.** `coop` não tem adversário, então não há o que ranquear: a progressão do `coop` é XP e level. `player_stats.elo` existe nas duas linhas por simetria de schema, mas só muda no `pvp`.
 8. **Nenhuma coluna de partida em `users`.** Vitórias e level moram em `player_stats`, que é minha; `users` é do Augusto. Assim nenhuma das duas Slices precisa migrar a tabela da outra.
+9. **Um User está em no máximo uma Room**, em `lobby` ou em andamento (decidido em 10/10, `ws-manager.md` §5.1). Entrar ou criar outra devolve 409 `already_in_other_match`; o User sai da atual antes. O `ws-manager.md` §2.6 já impõe um socket `game` por User, então duas partidas do mesmo User derrubariam o socket uma da outra (`4408`). A troca automática (entrar em outra tira da anterior) foi descartada: efeito colateral escondido no `join`, e o host que troca de Lobby passaria o host adiante sem querer. Quem está no Grace period continua na Room e, por isso, não entra em outra: é o que protege a Reconnection.
+10. **Lobby sem TTL; quem fica offline sai.** O lobby (F5.2) registra um callback em `ConnectionManager.on_presence_change`; quando um User fica offline (já com os 5 s de atraso do [ws-manager.md](ws-manager.md) §2.3, então recarregar a página não conta), o lobby chama `leave` na Room dele, se ela estiver em `lobby`. Se era o último, a Room é destruída e o Match vira `aborted` (decisão 3). Isso cobre o Lobby abandonado de quem fechou o site, que é o caso que importa na demo: o servidor sobe, o time joga e o servidor desce. Sobra o Lobby de quem deixou a aba aberta e foi embora; um TTL para ele (30 min desde `created_at`, por exemplo) fica para a S5/S6, se sobrar tempo. Em partida (`running`), ficar offline não tira ninguém: aí vale o Grace period.
 
 ## 5. Em aberto
 
 | # | Questão | Quem decide | Quando |
 |---|---|---|---|
 | 1 | `join` no `/ws/game` de uma Room que ainda está em `lobby`: fecha com `4409` ou aceita e manda `welcome` só no `start`? É o item 5 de [ws-messages.md](ws-messages.md) §5. Proposta: fechar, porque a casca só navega para `/play` depois do `match_started`. | Augusto e Akita | reunião 04/10 |
-| 2 | TTL de um Lobby que nunca inicia. Proposta: 30 min desde `created_at`, varrido no mesmo lugar que remove Room terminada. | Akita | reunião 04/10 |
+| 2 | Resolvido em 10/10: sem TTL; quem fica offline sai do Lobby (§4, decisão 10). TTL fica como melhoria para a S5/S6, se sobrar tempo. | Akita | feito |
 | 3 | `min_players` por Mode. Proposta: 1 no `coop` (dá para testar sozinho e o módulo *Multiplayer 3+* se demonstra com 3+ de verdade) e 2 no `pvp`. | Rafael (é pergunta 7 dele em [room-options.md](room-options.md)) | reunião 04/10 |
 | 4 | Quem emite `achievement_unlocked`: `record_match_result` devolve a lista e a Room emite, ou a função chama o `ConnectionManager` direto? Proposta: devolve a lista — a função fica sem dependência de rede e testável. | Akita e Augusto | reunião 04/10 |
 | 5 | Fórmula de XP e de level, fórmula de Elo e a lista de ≥ 5 conquistas com o código de cada uma. Sem elas, F5.5 e F5.7 inventariam regra. | Rafael (F4.6) | **início da S3** |
@@ -414,6 +426,3 @@ No empate, `result` é `"draw"`, `reason` é `"time_limit"` e os dois Players t�
 | 7 | Resolvido: a arquitetura e o `CONTEXT.md` usam `match_id` desde o PR #14. | Roberto | feito |
 | 8 | O que acontece com `matches` e `match_players` se um User for apagado. Hoje: `RESTRICT`, ou seja, não apaga. Não há tela de exclusão de conta no escopo; se entrar, vira anonimização do `username`, não `DELETE`. | Augusto e Akita | quando a exclusão de conta entrar no escopo |
 
----
-
-> **Links para contratos que ainda não existem:** `auth.md` (Augusto) e `room-options.md` (Rafael) — rascunhos esperados na reunião de 04/10. `README.md`, `ws-messages.md` e `map-format.md` estão na branch `updated-documents` e entram na `main` com o PR do Roberto.
