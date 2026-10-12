@@ -4,8 +4,8 @@ import math
 import pytest
 
 from app.game.movement import Body, CollisionWorld, apply_input
-from app.game.rules import (MOUSE_MAX_ROT_SPEED, PLAYER_ROT_SPEED, PLAYER_SPEED,
-	PLAYER_SPRINT_MULT, TICK_RATE)
+from app.game.rules import (MOUSE_MAX_ROT_SPEED, PLAYER_RADIUS, PLAYER_ROT_SPEED,
+	PLAYER_SPEED, PLAYER_SPRINT_MULT, TICK_RATE)
 from app.game.state import Input
 
 DT = 1 / TICK_RATE
@@ -96,3 +96,62 @@ def test_right_from_north_moves_east():
 def test_opposite_keys_leave_the_player_still():
 	assert hold(NORTH, 1.0, up=True, down=True) == NORTH
 	assert hold(NORTH, 1.0, left=True, right=True) == NORTH
+
+
+EAST = Body(x=1.5, y=1.5, angle=math.pi / 2) # no começo de um corredor, olhando para o leste
+
+
+def world_from(*rows):
+	return CollisionWorld(grid=[list(row) for row in rows], bodies=())
+
+
+def walk(body, world, seconds, **held):
+	for _ in range(round(seconds * TICK_RATE)):
+		body = apply_input(body, make_input(**held), world, DT)
+	return body
+
+
+@pytest.mark.parametrize("cell", ["1", "D", " "])
+def test_wall_closed_door_and_space_block(cell):
+	world = world_from("11111", f"10{cell}01", "11111")
+	body = walk(EAST, world, 1.0, up=True)
+	assert 1.5 < body.x <= 2 - PLAYER_RADIUS
+
+
+@pytest.mark.parametrize("cell", ["0", "O", "K"])
+def test_open_door_and_pickups_do_not_block(cell):
+	world = world_from("11111", f"10{cell}01", "11111")
+	body = walk(EAST, world, 1.0, up=True)
+	assert body.x > 3
+
+
+def test_player_slides_along_a_wall():
+	# encostado na parede do norte, andando para o nordeste: o y trava e o x anda
+	start = Body(x=10.5, y=1.06, angle=0.0)
+	body = walk(start, open_world(), 0.5, up=True, right=True)
+	assert body.y == start.y
+	assert body.x == pytest.approx(start.x + 0.5 * PLAYER_SPEED / math.sqrt(2), abs=TOLERANCE)
+
+
+@pytest.mark.parametrize("angle", [0.0, math.pi / 2, math.pi, -math.pi / 2])
+def test_player_never_leaves_the_grid(angle):
+	# um Grid sem parede em volta: a borda precisa bloquear sozinha
+	world = world_from("00", "00")
+	body = walk(Body(x=0.5, y=0.5, angle=angle), world, 1.0, up=True, sprint=True)
+	assert PLAYER_RADIUS <= body.x <= 2 - PLAYER_RADIUS
+	assert PLAYER_RADIUS <= body.y <= 2 - PLAYER_RADIUS
+
+
+def test_grid_with_short_rows_blocks_past_the_end():
+	world = world_from("000", "0")
+	body = walk(Body(x=0.5, y=1.5, angle=math.pi / 2), world, 1.0, up=True)
+	assert body.x <= 1 - PLAYER_RADIUS
+
+
+def test_player_crosses_a_one_cell_corridor_without_sticking():
+	# o ângulo empurra o Player contra a parede do sul; ele desliza e segue pelo corredor
+	world = world_from("1111111", "1000001", "1111111")
+	start = Body(x=1.5, y=1.5, angle=math.pi / 2 + 0.3)
+	body = walk(start, world, 1.0, up=True)
+	assert body.x == pytest.approx(start.x + PLAYER_SPEED * math.cos(0.3), abs=TOLERANCE)
+	assert start.y < body.y <= 2 - PLAYER_RADIUS
