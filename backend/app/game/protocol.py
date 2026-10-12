@@ -117,11 +117,12 @@ def parse_client_message(raw: str | bytes) -> ClientMessage:
 
 # ---------- Servidor → cliente (§2.3) ----------
 
-_dumps = partial(json.dumps, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+# JSON compacto e sempre finito (§2.1); o ConnectionManager usa o mesmo para mensagens em dict
+to_json = partial(json.dumps, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
 
 
 def _frame(type_: str, **fields: Any) -> str:
-	return _dumps({"v": PROTOCOL_VERSION, "type": type_, **fields})
+	return to_json({"v": PROTOCOL_VERSION, "type": type_, **fields})
 
 
 def options_payload(mode: Mode, options: RoomOptions) -> dict[str, Any]:
@@ -148,7 +149,7 @@ def snapshot_encoder(snapshot: Mapping[str, Any]) -> Callable[[int], str]:
 	Só `last_input_seq` muda por destinatário (§2.4): o corpo é serializado uma vez e o
 	campo é posto na frente, sem passar o Snapshot inteiro pelo json de novo para cada Player.
 	"""
-	body = _dumps(snapshot)
+	body = to_json(snapshot)
 	head = f'{{"v":{PROTOCOL_VERSION},"type":"snapshot","last_input_seq":'
 	tail = f",{body[1:]}" if len(body) > 2 else "}" # body[1:] tira o { de abertura
 	return lambda last_input_seq: f"{head}{last_input_seq:d}{tail}"
