@@ -173,6 +173,12 @@ class ConnectionManager:
 		for task in self._background:
 			task.cancel()
 
+	async def close_match(self, match_id: int, code: int, message: str = "") -> None:
+		"""Fecha os sockets game de uma partida só, como a Room que a Simulation derrubou."""
+		connections = [c for (_, channel), sockets in self._sockets.items() if channel == "game"
+			for c in sockets if c.match_id == match_id]
+		await asyncio.gather(*(self.disconnect(c, code, message) for c in connections))
+
 	# ---------- envio ----------
 
 	async def send_to_user(self, user_id: int, message: Message, channel: Channel | None = None,
