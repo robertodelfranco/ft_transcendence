@@ -48,7 +48,7 @@ Escrito para quem programa atrás dele.
 4. **WebSocket** em `location /ws/`: `proxy_http_version 1.1`, `Upgrade: $http_upgrade`, `Connection: "upgrade"`, `proxy_read_timeout 3600s` e `proxy_send_timeout 3600s`. Sem o timeout longo, o Nginx corta um socket silencioso aos 60 s e a reconexão viraria rotina em vez de exceção.
 5. **Tamanho de corpo:** `client_max_body_size` acompanha o limite de avatar do [i18n.md](i18n.md) (API de usuários). Se o Nginx cortar antes do backend, o front recebe 413 do Nginx em HTML, fora do envelope de erro — então o limite do Nginx é um pouco maior que o do backend, e a mensagem de erro vem sempre do backend.
 6. **Log de acesso sem query string.** O callback do OAuth chega com `?code=…&state=…`, e o [auth.md](auth.md) §2.10 proíbe os dois no log. O `log_format` padrão do Nginx grava `$request`, que inclui a query; o nosso grava `$request_method $uri $server_protocol`. Pelo mesmo motivo o `uvicorn` sobe com `--no-access-log`: o middleware de log do backend já registra cada requisição em JSON, com `request_id` e sem a query. Entra no PR de F6.8, antes do primeiro login real.
-7. **`/metrics` não tem `location`.** Uma requisição a `https://<host>/metrics` cai no `location /`, ou seja, no frontend, e dá 404 de arquivo estático. Não existe caminho público para o `/metrics` do backend.
+7. **`/metrics` não tem `location`.** Uma requisição a `https://<host>/metrics` cai no `location /`, ou seja, no frontend, que devolve o `index.html` do SPA (fallback de rota, `frontend/nginx.conf`) e a casca mostra a página de "não encontrado". Não existe caminho público para o `/metrics` do backend.
 
 ### 2.4 TLS e a demo em 2–3 máquinas
 

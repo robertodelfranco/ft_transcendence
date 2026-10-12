@@ -13,7 +13,7 @@ O que **não** está aqui: a partida em si, que é WebSocket ([ws-messages.md](w
 ### 2.1 Convenções
 
 - **Prefixo.** Toda rota começa em `/api`, e **o backend enxerga o caminho inteiro** — o Nginx não reescreve ([infra.md](infra.md) §4, decisão 5). `/api/matches` no navegador é `/api/matches` no FastAPI.
-- **Autenticação.** Toda rota exige `Authorization: Bearer <access>` e usa `CurrentUser` ([auth.md](auth.md)), com três exceções públicas: `GET /api/leaderboard`, `GET /api/users/{id}/stats` e `GET /api/users/{id}/matches` (perfil público é visível sem login, como em qualquer site de jogo; ver "Em aberto" 3).
+- **Autenticação.** Toda rota exige `Authorization: Bearer <access>` e usa `CurrentUser` ([auth.md](auth.md)), sem exceção: perfil, estatística e leaderboard também ([i18n.md](i18n.md) §4, decisão 6).
 - **Erro.** Sempre o envelope do [auth.md](auth.md): `{"error": {"code", "message", "request_id", "fields"}}`. A casca traduz pelo `code`; `message` nunca aparece na tela.
 - **Tempo.** Todo carimbo é ISO-8601 em UTC com `Z` (`"2026-10-04T18:09:47Z"`).
 - **Paginação.** `?page=` (1 em diante) e `?per_page=` (default 20, teto 50). A resposta é `{"items": [...], "page": 1, "per_page": 20, "total": 137}`.
@@ -26,6 +26,7 @@ O que **não** está aqui: a partida em si, que é WebSocket ([ws-messages.md](w
 | POST | `/api/matches` | `{mode, map, max_players, options}` | 201 `RoomInfo` | 422 `invalid_options` (com `fields`), 404 `map_not_found`, 409 `already_in_other_match`, 429 `rate_limited` |
 | GET | `/api/matches` | — (`?mode=`) | 200 `{items: RoomInfo[]}` | — |
 | GET | `/api/matches/{match_id}` | — | 200 `RoomInfo` (Room viva) ou `MatchDetail` (terminada) | 404 `match_not_found` |
+| GET | `/api/maps` | — | 200 `{coop: MapInfo[], pvp: MapInfo[]}` | — |
 | POST | `/api/matches/{match_id}/join` | — | 200 `RoomInfo` | 404 `match_not_found`, 409 `room_full` / `already_in` / `already_in_other_match` / `already_started` |
 | POST | `/api/matches/{match_id}/leave` | — | 204 | 404 `match_not_found`, 409 `not_in_match` / `already_started` |
 | POST | `/api/matches/{match_id}/ready` | `{ready: bool}` | 200 `RoomInfo` | 404 `match_not_found`, 409 `not_in_match` / `already_started` |
@@ -34,7 +35,8 @@ O que **não** está aqui: a partida em si, que é WebSocket ([ws-messages.md](w
 - `POST /api/matches` faz duas coisas na mesma requisição: grava a linha de `matches` com `status = "lobby"` e chama `RoomManager.create`. Quem cria já entra como primeiro Player e é o host.
 - `GET /api/matches` lista **só Rooms em `lobby`**, de `RoomManager.list_open()`. Nunca do banco (§4, decisão 1).
 - `options` é validado contra [room-options.md](room-options.md), com os defaults aplicados: **um corpo com só `{"mode": "coop", "map": "dungeon_map"}` é válido** e produz uma partida jogável — é o "defaults sem escolher nada" que o módulo *Game customization* cobra (plano §7).
-- **Normalização** (decidida em 10/10, [room-options.md](room-options.md) §5.3): um modelo Pydantic por Mode, com `extra="forbid"` e `strict=True`. Campo desconhecido, ou `frag_limit`/`time_limit_s` no `coop`, dá 422 `invalid_options` com `fields: {campo: "invalid_value"}`; `null`, tipo errado e string no lugar de número ou booleano também (sem coerção). `pickups` parcial recebe o default por chave. Os limites são inteiros e inclusivos. O `options` normalizado do `coop` não tem as chaves de `pvp`.
+- **Normalização** (decidida em 10/10, [room-options.md](room-options.md) §5.3): um modelo Pydantic por Mode, com `extra="forbid"` e `strict=True`. Campo desconhecido, ou `frag_limit`/`time_limit_s` no `coop`, dá 422 `invalid_options` com `fields: {campo: "invalid_value"}`; `null`, tipo errado e string no lugar de número ou booleano também (sem coerção). `pickups` parcial recebe o default por chave. Os limites são inteiros e inclusivos. O `options` normalizado do `coop` não tem as chaves de `pvp`. Os **defaults** vêm da dataclass `RoomOptions` da Simulation (`app.game`), que é a fonte única; os modelos Pydantic da API leem os defaults dela e só acrescentam os limites, e a rota converte o resultado para a dataclass. Um teste confere que os dois concordam (roadmap do Roberto, item 20; decidido com o Rafael em 12/10).
+- **`GET /api/maps`** devolve os Maps de cada Mode para o formulário de criação ([i18n.md](i18n.md) §5.5). `MapInfo` é `{name, max_players}`: `name` é o nome do arquivo sem extensão, e `max_players` é o menor entre os Spawns do Map e o teto do Mode (5 no `coop`, 2 no `pvp`). Ordem alfabética; o primeiro de cada lista é o default de `map`. A lista é lida das pastas `backend/maps/{coop,pvp}/` com `load_map` uma vez no startup (um Map quebrado já reprova o PR pelo teste dos mapas). O `POST /api/matches` confere `map` e `max_players` contra essa mesma lista: Map fora dela → 404 `map_not_found`; `max_players` acima → 422 `invalid_options`.
 - `start` não devolve corpo: quem estava no Lobby descobre pelo `match_started` do `/ws/app` e navega para `/play/{match_id}`.
 
 ### 2.3 Histórico, estatísticas e leaderboard
@@ -175,7 +177,7 @@ Estatísticas e leaderboard:
 |---|---|---|---|
 | 1 | Campos que a tela de lobby, a de resultado, a de histórico e a de estatísticas realmente precisam. É a pergunta 5 do briefing do Caio, dirigida a mim: o que falta eu acrescento aqui e indexo no banco. | Caio | reunião 04/10 |
 | 2 | O histórico mostra partidas `aborted`? Proposta: não por default, com `?include_aborted=true` se a tela quiser. Partida abortada não tem `match_players`, então não apareceria de qualquer forma — confirmar que ninguém precisa dela. | Caio e Akita | reunião 04/10 |
-| 3 | Perfil público sem login: o subject pede perfil e status online dos amigos, não exige perfil anônimo. Se o time preferir tudo autenticado, essas três rotas ganham `CurrentUser` e some uma exceção do contrato. | Caio (PO) | reunião 04/10 |
+| 3 | Resolvido em 12/10: tudo autenticado ([i18n.md](i18n.md) §4, decisão 6). | Caio (PO) | feito |
 | 4 | Conquistas: o `catalog` vem desta API ou é constante no front? Proposta: vem da API, porque o catálogo mora no código do backend (F4.6) e o front só traduz o `code`. | Caio e Akita | reunião 04/10 |
 | 5 | `GET /api/matches/{id}` devolve dois formatos diferentes (`RoomInfo` ou `MatchDetail`) dependendo de a Room estar viva. Alternativa: duas rotas. Proposta: manter uma, com `status` dizendo qual formato é — a tela já ramifica por `status`. | Caio | reunião 04/10 |
 
