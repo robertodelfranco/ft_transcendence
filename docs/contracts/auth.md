@@ -1,6 +1,6 @@
 # Contrato: autenticação, envelope de erro e schema de usuários (`auth.md`)
 
-**Estado:** rascunho de 07/10/2026. **Escreve:** Augusto. **Assina:** Caio (monta login, cadastro e o cliente HTTP só com este arquivo) e Akita (escreve a migração `0001_initial` e o diagrama do schema a partir da §2.9, e implementa o login pelo Google e pela 42 em F6.8 com a §2.8).
+**Estado:** rascunho de 07/10/2026, revisado em 12/10 com a leitura do Akita (A2–A6, idioma no OAuth e e-mail da 42). **Escreve:** Augusto. **Assina:** Caio (monta login, cadastro e o cliente HTTP só com este arquivo) e Akita (escreve a migração `0001_initial` e o diagrama do schema a partir da §2.9, e implementa o login pelo Google e pela 42 em F6.8 com a §2.8).
 
 ## 1. Para que serve
 
@@ -28,7 +28,7 @@ As outras Slices não reimplementam nada disto: usam `CurrentUser`, `RateLimit`,
 | POST | `/api/auth/refresh` | cookie | 200 `AuthResponse` (§2.6 diz quando vem cookie novo) **ou** 200 `{"authenticated": false}` | 401 `invalid_refresh` (cookie apagado na mesma resposta); 403 `forbidden` (Origin) |
 | POST | `/api/auth/logout` | cookie | 204, cookie apagado | 403 `forbidden` (Origin) |
 | GET | `/api/auth/me` | Bearer | 200 `PrivateUser` | 401 `unauthorized` |
-| GET | `/api/auth/oauth/{provider}/login` | — | 302 para o provedor + cookie `oauth_state` | 404 `not_found` (provedor desconhecido) |
+| GET | `/api/auth/oauth/{provider}/login` | `?lang` (opcional) | 302 para o provedor + cookie `oauth_state` | 404 `not_found` (provedor desconhecido) |
 | GET | `/api/auth/oauth/{provider}/callback` | `?code&state` (ou `?error`) | 302 para `/` + cookie de refresh | 302 para `/login?error=<code>` |
 
 **`AuthResponse`** (signup, login, refresh):
@@ -219,11 +219,11 @@ OAuth 2.0 Authorization Code, o mesmo fluxo para os dois provedores; só muda a 
 | Escopo | `openid email profile` | `public` |
 | PKCE | sim (S256) | só se a intra aceitar ("Em aberto" 11) |
 | Id do provedor | `sub` (texto) | `id` (inteiro, gravado como texto) |
-| E-mail confiável para vincular | só com `email_verified = true` | o `email` da intra ("Em aberto" 12) |
+| E-mail confiável para vincular | só com `email_verified = true` | o `email` da intra (decisão 20) |
 | `username` sugerido | parte do e-mail antes do `@` | `login` (ex.: `rdel-fra` vira `rdel_fra`) |
 | Credenciais no `.env` | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `FT_CLIENT_ID`, `FT_CLIENT_SECRET` |
 
-1. **`GET /api/auth/oauth/{provider}/login`**: provedor fora da lista → 404 `not_found`. Gera `state` (e `code_verifier`, onde houver PKCE) aleatórios; grava no cookie `oauth_state`, junto com o nome do provedor (assinado com `JWT_SECRET`, `HttpOnly; Secure; SameSite=Lax; Path=/api/auth/oauth; Max-Age=600`), e redireciona para a URL de autorização do provedor com `client_id`, `redirect_uri`, `response_type=code`, `scope`, `state` e, se houver, `code_challenge`.
+1. **`GET /api/auth/oauth/{provider}/login`**: provedor fora da lista → 404 `not_found`. Gera `state` (e `code_verifier`, onde houver PKCE) aleatórios; grava no cookie `oauth_state`, junto com o nome do provedor (assinado com `JWT_SECRET`, `HttpOnly; Secure; SameSite=Lax; Path=/api/auth/oauth; Max-Age=600`), e redireciona para a URL de autorização do provedor com `client_id`, `redirect_uri`, `response_type=code`, `scope`, `state` e, se houver, `code_challenge`. O `?lang` (o idioma da tela, um dos três códigos) vai no mesmo cookie; valor ausente ou fora da lista é ignorado, sem erro.
 2. **`GET /api/auth/oauth/{provider}/callback`**:
    - `?error=access_denied` (o User recusou) → 302 `/login?error=oauth_cancelled`.
    - `state` diferente do cookie, provedor do cookie diferente do caminho, cookie ausente ou vencido → 302 `/login?error=oauth_failed`.
@@ -235,7 +235,8 @@ OAuth 2.0 Authorization Code, o mesmo fluxo para os dois provedores; só muda a 
 | Já existe `oauth_accounts (provider, id)` | entra esse User |
 | Não existe, mas há User com o mesmo e-mail, e o e-mail é confiável (tabela acima) | vincula (`INSERT` em `oauth_accounts`) e entra |
 | Há User com o mesmo e-mail, mas o e-mail não é confiável | 302 `/login?error=oauth_email_conflict`; nada é vinculado |
-| Ninguém com esse e-mail | cria o User: `password_hash = NULL`, `username` a partir do sugerido (§4, decisão 12) |
+| Ninguém com esse e-mail, e o e-mail é confiável | cria o User: `password_hash = NULL`, `username` a partir do sugerido (§4, decisão 12), `preferred_language` do `lang` do cookie `oauth_state` ou, sem ele, `en` |
+| Ninguém com esse e-mail, mas o e-mail não é confiável | 302 `/login?error=oauth_failed`; nada é criado (decisão 19) |
 
 4. Chama `issue_tokens`, apaga o cookie `oauth_state` e redireciona para `/`.
 
@@ -275,7 +276,7 @@ Tipos do PostgreSQL, alinhados com [rooms.md](rooms.md) §2.7 (`BIGINT` para ids
 | `rotated_at` | `TIMESTAMPTZ` | sim | quando foi trocado por um sucessor; base da janela de graça |
 | `replaced_by` | `BIGINT` | sim | FK → `refresh_tokens(id)` `ON DELETE SET NULL` |
 | `revoked_at` | `TIMESTAMPTZ` | sim | logout ou reuso |
-| `user_agent` | `TEXT` | sim | até 255 caracteres; só para depuração |
+| `user_agent` | `TEXT` | sim | cortado em 255 caracteres no código, sem `CHECK` (um User-Agent longo não pode derrubar um login); só para depuração |
 
 **`oauth_accounts`** — dona: F6
 
@@ -302,8 +303,8 @@ PK `(user_id, friend_id)`; `CHECK (user_id <> friend_id)`; índice `ix_friendshi
 ### 2.10 Logging e métrica
 
 - Todo log é JSON em stdout com `request_id` (gerado por requisição, ou o `X-Request-ID` recebido se for um UUID válido), devolvido no cabeçalho `X-Request-ID`.
-- **Nunca vão para o log:** senha, token, valor de cookie, cabeçalho `Authorization`, `code` e `state` do OAuth.
-- Métrica `auth_login_total{result}` (counter, [infra.md](infra.md) §2.6): `result` ∈ `success`, `invalid_credentials`, `rate_limited`, `oauth_success`, `oauth_failed`. Sem label de provedor: o painel de logins falhos (F8.9) não precisa dela, e cada label nova multiplica as séries.
+- **Nunca vão para o log:** senha, token, valor de cookie, cabeçalho `Authorization`, `code` e `state` do OAuth. Por isso o log de requisição grava só o caminho, **nunca a query string** (o callback chega com `?code&state`); o Nginx e o `uvicorn` fazem o mesmo ([infra.md](infra.md) §2.3, item 6).
+- Métrica `auth_login_total{result}` (counter, [infra.md](infra.md) §2.6): `result` ∈ `success`, `invalid_credentials`, `rate_limited`, `oauth_success`, `oauth_failed`. Sem label de provedor: o painel de logins falhos (F8.9) não precisa dela, e cada label nova multiplica as séries. O `oauth_cancelled` não conta em nenhum `result`: o User só desistiu, não errou.
 
 ## 3. Exemplo
 
@@ -389,13 +390,16 @@ Payload de um access token decodificado:
 9. **O WebSocket é autenticado só no `join`** (pergunta 6). O access dura 15 min e uma partida pode durar mais; derrubar o socket no meio da partida por expiração seria pior que o risco, que é pequeno (o User já provou quem é ao abrir).
 10. **Conta só de OAuth que tenta login por senha recebe `invalid_credentials`** (pergunta 8), a mesma resposta de senha errada. Uma mensagem própria ("esta conta usa Google" ou "usa a 42") revelaria que o e-mail está cadastrado. O hash é calculado mesmo sem User ou sem senha, para o tempo de resposta não denunciar nada.
 11. **Logout revoga só o token atual** (pergunta 9). Sair de um navegador não deve deslogar os outros; a família inteira só cai por reuso.
-12. **`username` de conta criada por OAuth vem do provedor, normalizado.** Na 42, o `login`; no Google, que não tem login, a parte do e-mail antes do `@`. Nos dois casos: minúsculas, o que não for `[a-z0-9_]` vira `_` (o `login` da 42 pode ter hífen, como `rdel-fra`), corta em 20 e completa até 3; se já existe, ganha sufixo numérico (`rafael_h`, `rafael_h2`). Pedir um username no meio do fluxo seria mais uma tela.
+12. **`username` de conta criada por OAuth vem do provedor, normalizado.** Na 42, o `login`; no Google, que não tem login, a parte do e-mail antes do `@`. Nos dois casos: minúsculas, o que não for `[a-z0-9_]` vira `_` (o `login` da 42 pode ter hífen, como `rdel-fra`), corta em 20 e completa até 3 com `_`; se já existe, ganha sufixo numérico (`rafael_h`, `rafael_h2`). Pedir um username no meio do fluxo seria mais uma tela.
 13. **Vincular a um User existente só com e-mail confiável.** No Google, `email_verified = true`; sem isso, quem cadastrasse no Google o e-mail de outra pessoa entraria na conta dela. Na 42, o e-mail é administrado pela escola ("Em aberto" 12).
 14. **Dados do User lidos na API do provedor** (`userinfo` no Google, `/v2/me` na 42), não do `id_token` do Google. É o mesmo caminho para os dois provedores e dispensa conferir assinatura com as chaves públicas do Google: a resposta vem por TLS direto do provedor.
 15. **PKCE onde o provedor aceita, mesmo com `client_secret`.** A RFC 9700 §2.1.1 recomenda para todo cliente: protege o `code` se ele vazar no redirecionamento. O `state` continua obrigatório nos dois.
 16. **Signup já faz login.** Devolve o mesmo corpo do login e o cookie (a arq. §9.1 devolvia só `{user}`). Economiza uma requisição e um caminho de erro na tela de cadastro.
 17. **Senha com teto de 128 caracteres.** O Argon2id é caro de propósito; sem teto, uma senha de 1 MB vira ataque de negação de serviço no login.
 18. **`avatar_url` é sempre uma URL na API.** O banco guarda `NULL` para "padrão", e só o serializador sabe qual é a URL padrão; trocar o avatar padrão não exige migração.
+19. **OAuth com e-mail não confiável não cria conta.** Se ninguém tem o e-mail e o provedor não garante que ele é do User, o callback devolve `oauth_failed`. Criar a conta deixaria um e-mail sem dono confirmado preso no banco, e o dono real levaria `email_taken` ao se cadastrar. No Google isso quase nunca acontece (conta Gmail é sempre verificada); a regra fecha a porta.
+20. **O e-mail da 42 é confiável para vincular**, porque é administrado pela escola. Combinado com o Akita em 12/10, com uma condição: no cadastro do app, confirmar que a intra não deixa o aluno trocar o e-mail sem verificação. Se deixar, a decisão volta à mesa e a 42 passa a só criar conta nova.
+21. **O idioma da conta criada por OAuth vem da tela.** A casca manda `?lang` no link de login e ele volta no cookie `oauth_state`, porque o provedor não sabe o idioma do nosso site. Sem `lang`, vale o idioma de reserva, `en`.
 
 ## 5. Em aberto
 
@@ -406,14 +410,14 @@ Payload de um access token decodificado:
 | 3 | **Documentos que ainda dizem só 42**, para cada dono atualizar citando a decisão 1: plano §1 (linha 8), §5 (F6.8), §7 e §8.2 (o Plano B de 2FA vira "o outro provedor"); arq. §4 decisão 6, §9.1 (rotas com `{provider}`), §10.3 e §14 (`oauth42.py` vira `oauth.py`); [infra.md](infra.md) §2.5 (entram `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`; sai `FT_REDIRECT_URI`); [rooms.md](rooms.md) §2.8 (rótulo "contas 42" vira "contas OAuth", e `rotated_at` em `refresh_tokens`); `caminho-5-akita.md` (F6.8 com dois provedores). | Roberto (plano e arq.), Akita (infra, rooms, slice) | junto com a revisão deste contrato |
 | 4 | A foto do provedor (Google ou 42) vira avatar? Proposta: não na primeira versão; o avatar continua sendo o padrão até o User enviar um. Baixar a imagem exige o mesmo caminho de validação do upload (F6.6). | Caio | S3 |
 | 5 | URL do avatar padrão e onde os avatares ficam guardados ([infra.md](infra.md) §5.2). Este contrato só precisa da URL. | Caio e Akita | com [i18n.md](i18n.md) |
-| 6 | Default de `preferred_language` quando o signup não manda o campo (e no login por OAuth, que não manda nada). Proposta: o idioma de reserva de [i18n.md](i18n.md). A casca manda o idioma atual no signup. | Caio | com [i18n.md](i18n.md) |
+| 6 | Resolvido em 12/10: `DEFAULT 'en'`, o idioma de reserva de [i18n.md](i18n.md). A casca manda o idioma atual no signup e no `?lang` do OAuth (decisão 21). | Caio | feito |
 | 7 | Sessão com prazo absoluto? Hoje cada rotação renova os 7 dias, então quem usa o site toda semana nunca é deslogado. Proposta: aceitar (é demo) e escrever no README. | Augusto | S2 |
 | 8 | Limites do rate limit: `signup` e `login` 5/min por IP, `refresh` 30/min por IP. Na demo, várias máquinas atrás do mesmo roteador têm IPs diferentes na rede local, então não dividem o balde. Confirmar no ensaio. | Augusto | S2 |
 | 9 | Exclusão de conta não está no escopo ([rooms.md](rooms.md) §5.8). `ON DELETE CASCADE` em `refresh_tokens`, `oauth_accounts` e `friendships` já deixa o caminho pronto, mas `matches.created_by` é `RESTRICT`. | Augusto e Akita | se entrar no escopo |
 | 10 | Amizade unilateral foi proposta por mim para a tabela; as rotas e a tela são do Caio. Confirmar ao assinar. | Caio | revisão deste contrato |
 | 11 | A intra da 42 aceita PKCE (`code_challenge`)? Se aceitar, os dois provedores ficam iguais; se não, a 42 fica só com `state`, que já basta para o fluxo com `client_secret`. Testar no cadastro do app. | Akita | S1, com o "Em aberto" 1 |
-| 12 | O e-mail da 42 é confiável para vincular a uma conta existente? A API não manda `email_verified`. Proposta: sim, porque o e-mail da intra é administrado pela escola e não muda à vontade do User. Alternativa: nunca vincular pela 42 por e-mail, só criar conta nova. | Augusto e Akita | revisão deste contrato |
-| 13 | F6.8 passa a ter dois provedores: estimativa de 2 d → cerca de 2,5–3 d, na S4 do Akita, que já está acima da capacidade ([caminho-5-akita.md](../slices/caminho-5-akita.md) §5). Proposta: a 42 primeiro (é o login que a avaliação espera ver), o Google em seguida; se a S4 estourar, o Google vem para a minha S5, que tem folga. | Akita e Augusto, na reunião de segunda | reunião de segunda |
+| 12 | Resolvido em 12/10: o e-mail da 42 é confiável para vincular (decisão 20), com a condição de conferir a troca de e-mail na intra. | Augusto e Akita | feito |
+| 13 | Resolvido em 12/10: a 42 primeiro, na S4; o Google em seguida e, se a S4 estourar, na S5 ([caminho-5-akita.md](../slices/caminho-5-akita.md) §5). Com dois provedores, o 2FA deixa de ser o Plano B. | Akita e Augusto | feito |
 
 ---
 
