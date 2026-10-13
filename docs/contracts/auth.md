@@ -81,7 +81,7 @@ Mesmas regras no front (Caio) e no back (Pydantic). O front valida para não ger
 |---|---|---|---|
 | `email` | `strip()` e minúsculas | obrigatório; formato de e-mail; até 254 caracteres | `required`, `invalid_format`, `too_long` |
 | `username` | `strip()` e minúsculas | obrigatório; 3–20 caracteres de `[a-z0-9_]` | `required`, `too_short`, `too_long`, `invalid_format` |
-| `password` (signup) | nenhuma (espaço conta) | obrigatório; 8–128 caracteres; ao menos uma letra e um dígito | `required`, `too_short`, `too_long`, `weak_password` |
+| `password` (signup) | nenhuma (espaço conta) | obrigatório; 8–128 caracteres; ao menos uma letra (de qualquer alfabeto: `ç` e `ã` contam) e um dígito de `0` a `9` (o `\d` do JavaScript) | `required`, `too_short`, `too_long`, `weak_password` |
 | `password` (login) | nenhuma | obrigatório; até 128 caracteres | `required`, `too_long` |
 | `preferred_language` | — | opcional; um dos três códigos | `invalid_value` |
 
@@ -203,7 +203,7 @@ async def create_match(user: CurrentUser, session: DbSession): ...
 | `DbSession` | `AsyncSession` | uma sessão por requisição; commit é de quem escreve |
 | `RateLimit(times, seconds, key)` | dependência | `key="ip"` usa `request.client.host` (o `uvicorn --proxy-headers` já põe o IP real, [infra.md](infra.md) §4 decisão 6); `key="user"` exige `CurrentUser`. Estourou: 429 `rate_limited` com `Retry-After` |
 | `authenticate_ws_token(token: str) -> User` | `async`, abre a própria sessão | token inválido, vencido ou User inexistente: levanta `InvalidToken`. Quem chama fecha o socket com `4401` |
-| `issue_tokens(session, user, response) -> AuthResponse` | `async` | cria o refresh na família nova, grava o cookie em `response` e devolve o corpo. É o que signup, login e o callback do OAuth chamam |
+| `issue_tokens(session, user, request, response, *, providers=None) -> AuthResponse` | `async` | cria o refresh na família nova, grava o cookie e o `Cache-Control: no-store` em `response` e devolve o corpo. Do `request` saem as Settings do app e o `User-Agent`. **Não faz commit**: quem chama faz, na mesma transação que criou o User. `providers` é opcional: quem já sabe a lista (o signup sabe que é vazia) passa e poupa uma consulta. É o que signup, login e o callback do OAuth chamam |
 
 A autenticação do WebSocket vale **só no `join`** (§4, decisão 9). Um socket aberto não cai quando o access vence.
 
