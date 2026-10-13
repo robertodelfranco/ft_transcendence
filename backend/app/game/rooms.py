@@ -29,7 +29,7 @@ MapLoader = Callable[[str, Mode], Map]
 MIN_PLAYERS = {Mode.COOP: 1, Mode.PVP: 2} # rooms.md "Em aberto" 3
 MAX_PLAYERS = {Mode.COOP: 5, Mode.PVP: 2}
 SNAPSHOT_EVERY = 2 # Ticks: 15 Hz (ws-messages.md §2.8)
-MAX_STEP_FAILURES = TICK_RATE # 1 s seguido sem Simulation: a Room fecha com 4503
+MAX_STEP_FAILURES = TICK_RATE # falhas sem um ciclo bom no meio: a Room fecha com 4503
 
 
 # ---------- recusas (rooms.md §2.2) ----------
@@ -244,17 +244,23 @@ class RoomManager:
 		room = entry.room
 		dt = 1 / TICK_RATE
 		failures = 0
+		healthy = 0 # Ticks bons seguidos desde a última falha
 		next_tick = time.monotonic()
 		while room.result is None:
 			try:
 				await self._send(room, step(room, dt))
-				failures = 0
 			except Exception:
 				failures += 1
-				log.exception("step failed", extra={"match_id": room.match_id, "failures": failures})
+				healthy = 0
+				log.exception("tick failed", extra={"match_id": room.match_id, "failures": failures})
 				if failures >= MAX_STEP_FAILURES:
 					await self._abort(entry)
 					return
+			else:
+				# só zera depois de um ciclo inteiro, com Snapshot: um Tick ímpar bom não prova nada
+				healthy += 1
+				if healthy >= SNAPSHOT_EVERY:
+					failures = 0
 			# o próximo Tick é marcado a partir do anterior, não de agora: o atraso não acumula
 			next_tick += dt
 			await asyncio.sleep(max(0.0, next_tick - time.monotonic()))

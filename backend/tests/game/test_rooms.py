@@ -251,7 +251,7 @@ async def test_one_failing_step_is_logged_and_the_room_goes_on(manager, monkeypa
 	manager.start(12)
 	await until(lambda: manager.game_room(12).tick >= 3)
 	assert manager.info(12).status == "running"
-	assert "step failed" in caplog.text
+	assert "tick failed" in caplog.text
 
 
 async def test_repeated_failures_close_the_room_with_4503(manager, connections, fake_ws, monkeypatch):
@@ -274,6 +274,24 @@ async def test_repeated_failures_close_the_room_with_4503(manager, connections, 
 	assert manager.room_of(7) is None
 	with pytest.raises(RoomNotFound):
 		manager.info(12)
+
+
+async def test_a_snapshot_that_always_fails_also_closes_the_room(manager, connections, fake_ws,
+		monkeypatch):
+	# só os Ticks pares montam Snapshot: os ímpares passam e não podem zerar a contagem
+	def broken_snapshot(room):
+		raise ValueError("Out of range float values are not JSON compliant")
+
+	monkeypatch.setattr(rooms, "to_snapshot", broken_snapshot)
+	monkeypatch.setattr(rooms, "MAX_STEP_FAILURES", 3)
+	lobby(manager)
+	ws = fake_ws()
+	await connections.connect(7, "game", ws, match_id=12)
+	manager.start(12)
+	await until(lambda: ws.close_code is not None)
+
+	assert ws.close_code == CloseCode.SERVER_SHUTDOWN
+	assert not any(m["type"] == "snapshot" for m in ws.messages)
 
 
 async def test_close_cancels_every_tick_task(manager):
