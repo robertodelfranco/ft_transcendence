@@ -154,7 +154,7 @@ Room
 │     Player: user_id, name, x, y, dir_x, dir_y,
 │             hp, mana, armor, keys, alive, connected,
 │             input {up, down, left, right, rot_left, rot_right, sprint},
-│             input_queue, last_input_seq, attack_cooldown,
+│             input_queue, last_input_seq, fire_ready_tick,
 │             kills, deaths, frags, damage_dealt, damage_taken, …
 ├── enemies: [ {id, x, y, state, target_player_id} ]
 ├── boss: {x, y, hp, state, target_player_id} | None

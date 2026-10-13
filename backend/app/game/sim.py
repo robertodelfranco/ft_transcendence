@@ -2,13 +2,16 @@ import math
 from random import Random
 
 from app.game.movement import Body, CollisionWorld, apply_input
-from app.game.rules import BOSS_HP, DOOR_REACH, POTION_HEAL, RULESET_NUMBERS, TICK_RATE
+from app.game.rules import (BOSS_HP, DOOR_REACH, FIREBALL_COOLDOWN_S, POTION_HEAL,
+	RULESET_NUMBERS, TICK_RATE)
 from app.game.state import (Action, ActionKind, Boss, BossState, Door, Enemy, EnemyState, Event,
-	Input, MatchOutcome, Mode, Player, Room, RoomOptions)
+	Input, MatchOutcome, Mode, Player, Projectile, ProjectileKind, Room, RoomOptions)
 from app.game.world import Map
 
 MAX_QUEUE = TICK_RATE # 1 s de mensagens (ws-messages.md §2.9)
 CATCH_UP_FROM = 3 # com 3 ou mais Inputs esperando, o Tick aplica 2
+# em Ticks inteiros: somando dt em float, 0.4 - 12 * (1/30) sobra 9.7e-17 e o cooldown vira 13
+FIREBALL_COOLDOWN_TICKS = round(FIREBALL_COOLDOWN_S * TICK_RATE)
 PICKUP_KINDS = {"K": "key", "P": "potion", "M": "mana", "A": "armor"}
 
 
@@ -91,6 +94,7 @@ def step(room: Room, dt: float) -> list[Event]:
 	room.pending_events.clear()
 	for player in room.players.values():
 		_consume_queue(room, player, dt, events)
+	_regen_mana(room, dt)
 	return events
 
 
@@ -162,7 +166,32 @@ def _use_pickup(room: Room, player: Player, kind: str) -> bool:
 def _apply_action(room: Room, player: Player, action: Action, events: list[Event]) -> None:
 	if action.kind == ActionKind.DOOR:
 		_open_door(room, player, events)
-	# fire entra com a fireball (F1.5)
+	else:
+		_fire(room, player)
+
+
+def _fire(room: Room, player: Player) -> None:
+	cost = room.numbers["FIREBALL_MANA_COST"]
+	# a Mana exata decide, não a arredondada do Snapshot (rules.md §4)
+	if room.tick < player.fire_ready_tick or player.mana < cost:
+		return
+	player.mana -= cost
+	player.fire_ready_tick = room.tick + FIREBALL_COOLDOWN_TICKS
+	# nasce na posição do Player, indo para onde ele olha
+	room.projectiles.append(Projectile(id=f"f_{room.next_projectile_id}",
+		kind=ProjectileKind.FIREBALL, owner_id=player.user_id, x=player.x, y=player.y,
+		dx=math.sin(player.angle), dy=-math.cos(player.angle)))
+	room.next_projectile_id += 1
+
+
+def _regen_mana(room: Room, dt: float) -> None:
+	# por Tick, e não por Input: com o catch-up, um Tick aplica 2 Inputs
+	numbers = room.numbers
+	for player in room.players.values():
+		if not player.alive or player.left:
+			continue
+		player.mana = min(player.mana + numbers["MANA_REGEN_PER_S"] * dt,
+			float(numbers["MANA_MAX"]))
 
 
 def _open_door(room: Room, player: Player, events: list[Event]) -> None:

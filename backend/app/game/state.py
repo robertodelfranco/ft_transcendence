@@ -92,7 +92,7 @@ class Player:
 	input_queue: 		deque[Input | Action] = field(default_factory=deque)
 	last_input_seq:		int = 0
 	last_queued_seq:	int = 0 # maior seq que entrou na fila
-	attack_cooldown:	float = 0.0 # seg até poder atirar de novo
+	fire_ready_tick:	int = 0 # Tick a partir do qual pode atirar de novo
 	kills: 				int = 0
 	frags: 				int = 0
 	deaths: 			int = 0
@@ -158,6 +158,7 @@ class Room:
 	enemies: 		list[Enemy] = field(default_factory=list)
 	boss: 			Boss | None = None
 	projectiles:	list[Projectile] = field(default_factory=list)
+	next_projectile_id:	int = 1 # o id de um Projectile nunca se repete na Room
 	doors: 			list[Door] = field(default_factory=list)
 	result: 		dict | None = None # o data do game_over, None enquanto na partida
 	pending_events:	list[tuple[str, dict]] = field(default_factory=list) # saem no próximo step
