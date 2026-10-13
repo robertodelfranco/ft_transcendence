@@ -7,7 +7,7 @@ from random import Random
 import pytest
 
 import app.game
-from app.game.rules import BOSS_HP, PLAYER_SPEED, RULESET_NUMBERS, TICK_RATE
+from app.game.rules import BODY_BLOCK_DISTANCE, BOSS_HP, PLAYER_SPEED, RULESET_NUMBERS, TICK_RATE
 from app.game.sim import (create_room, enqueue, last_input_seq, leave, match_outcome,
 	set_connected, step)
 from app.game.snapshot import initial_grid, to_snapshot
@@ -265,3 +265,55 @@ def test_match_outcome_is_none_while_the_match_runs():
 def test_the_door_exposes_every_function():
 	for name in DOOR_FUNCTIONS:
 		assert callable(getattr(app.game, name)), name
+
+
+SOUTH_OF_7 = (1.5, 2.3) # 0,8 célula ao sul de onde o Player 7 nasce
+
+
+def walk_south(room):
+	# três Inputs para o sul; sem obstáculo, o Player 7 anda 3 passos
+	for seq in (1, 2, 3):
+		enqueue(room, 7, make_input(seq, down=True))
+	for _ in range(3):
+		step(room, DT)
+	return room.players[7].y
+
+
+def stopped_before(y):
+	return SOUTH_OF_7[1] - y >= BODY_BLOCK_DISTANCE
+
+
+def test_nothing_in_the_way_south():
+	assert walk_south(new_room()) == pytest.approx(1.5 + 3 * STEP)
+
+
+@pytest.mark.parametrize("alive, blocks", [(True, True), (False, False)])
+def test_other_player_blocks_only_while_alive(alive, blocks):
+	room = new_room()
+	other = room.players[9]
+	other.x, other.y = SOUTH_OF_7
+	other.alive = alive
+	assert stopped_before(walk_south(room)) == blocks
+
+
+def test_player_who_left_does_not_block():
+	room = new_room()
+	room.players[9].x, room.players[9].y = SOUTH_OF_7
+	leave(room, 9)
+	assert not stopped_before(walk_south(room))
+
+
+@pytest.mark.parametrize("state, blocks", [
+	(EnemyState.ALERT, True), (EnemyState.ATTACK, True), (EnemyState.DYING, False)])
+def test_enemy_blocks_unless_dying(state, blocks):
+	room = new_room()
+	enemy = room.enemies[0]
+	enemy.x, enemy.y = SOUTH_OF_7
+	enemy.state = state
+	assert stopped_before(walk_south(room)) == blocks
+
+
+def test_boss_blocks():
+	room = new_room()
+	room.boss.x, room.boss.y = SOUTH_OF_7
+	assert stopped_before(walk_south(room))

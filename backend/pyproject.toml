@@ -11,3 +11,6 @@ addopts = [
     "--strict-markers",         # marcador não registrado é erro, não aviso
     "--import-mode=importlib",  # dois testes podem ter o mesmo nome em pastas diferentes
 ]
+markers = [
+    "mirror: confere que o mundo não saiu espelhado, como era no Cub3D",
+]
