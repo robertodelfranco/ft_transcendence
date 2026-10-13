@@ -5,7 +5,6 @@ services:
     env_file: .env
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./db/init:/docker-entrypoint-initdb.d:ro
     networks:
       - transcendence
 

@@ -70,16 +70,15 @@ docker compose down -v            # derrubar E apagar o volume do banco
 
 ### Sobre o banco
 
-Os scripts em `db/init/` rodam **apenas na primeira vez** que o Postgres sobe,
-ou seja, quando o volume `db_data` está vazio. Se você alterar o schema e quiser
-reaplicar, precisa recriar o volume:
+O schema é versionado com Alembic (`backend/alembic/versions/`). Para aplicar
+as migrações num banco já de pé:
 
 ```bash
-docker compose down -v && docker compose up --build
+docker compose exec backend alembic upgrade head
 ```
 
-`db/init/001_schema.sql` é o que fica versionado, então todo mundo do time sobe
-o mesmo schema, mas ele NÃO É O SCHEMA REAL, apenas exemplo por enquanto.
+Depois da F8.3, o `entrypoint` do backend roda isso sozinho a cada `up`.
+Para recomeçar do zero: `docker compose down -v && docker compose up --build`.
 
 ## Automação do GitHub Projects
 
