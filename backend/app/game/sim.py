@@ -2,13 +2,14 @@ import math
 from random import Random
 
 from app.game.movement import Body, CollisionWorld, apply_input
-from app.game.rules import BOSS_HP, RULESET_NUMBERS, TICK_RATE
-from app.game.state import (Action, Boss, BossState, Door, Enemy, EnemyState, Event, Input,
-	MatchOutcome, Mode, Player, Room, RoomOptions)
+from app.game.rules import BOSS_HP, DOOR_REACH, POTION_HEAL, RULESET_NUMBERS, TICK_RATE
+from app.game.state import (Action, ActionKind, Boss, BossState, Door, Enemy, EnemyState, Event,
+	Input, MatchOutcome, Mode, Player, Room, RoomOptions)
 from app.game.world import Map
 
 MAX_QUEUE = TICK_RATE # 1 s de mensagens (ws-messages.md §2.9)
 CATCH_UP_FROM = 3 # com 3 ou mais Inputs esperando, o Tick aplica 2
+PICKUP_KINDS = {"K": "key", "P": "potion", "M": "mana", "A": "armor"}
 
 
 def create_room(match_id: int, mode: Mode, game_map: Map, options: RoomOptions,
@@ -89,19 +90,22 @@ def step(room: Room, dt: float) -> list[Event]:
 	events = [Event(name, room.tick, data) for name, data in room.pending_events]
 	room.pending_events.clear()
 	for player in room.players.values():
-		_consume_queue(room, player, dt)
+		_consume_queue(room, player, dt, events)
 	return events
 
 
-def _consume_queue(room: Room, player: Player, dt: float) -> None:
+def _consume_queue(room: Room, player: Player, dt: float, events: list[Event]) -> None:
 	waiting = sum(isinstance(message, Input) for message in player.input_queue)
 	budget = 2 if waiting >= CATCH_UP_FROM else 1
 	while player.input_queue and budget > 0:
 		message = player.input_queue.popleft()
 		if isinstance(message, Action):
-			continue # fire e door entram no R3
+			if player.alive:
+				_apply_action(room, player, message, events)
+			continue
 		if player.alive:
 			_move(room, player, message, dt)
+			_collect_pickup(room, player, events)
 		player.last_input_seq = message.seq
 		budget -= 1
 
@@ -120,3 +124,59 @@ def _blocking_bodies(room: Room, player: Player) -> tuple[tuple[float, float], .
 	if room.boss is not None and room.boss.state != BossState.DYING:
 		bodies.append((room.boss.x, room.boss.y))
 	return tuple(bodies)
+
+
+def _collect_pickup(room: Room, player: Player, events: list[Event]) -> None:
+	# a célula é a da posição nova, depois do passo
+	column, row = math.floor(player.x), math.floor(player.y)
+	kind = PICKUP_KINDS.get(room.grid[row][column])
+	if kind is None or not _use_pickup(room, player, kind):
+		return
+	room.grid[row][column] = "0"
+	data = {"kind": kind, "by": player.user_id, "x": column, "y": row}
+	events.append(Event("item_picked", room.tick, data))
+
+
+def _use_pickup(room: Room, player: Player, kind: str) -> bool:
+	# False quando o Pickup não serve a este Player: ele fica no chão para um companheiro
+	numbers = room.numbers
+	if kind == "key":
+		player.keys += 1
+		player.keys_collected += 1
+	elif kind == "potion":
+		if player.hp >= room.options.start_hp:
+			return False
+		player.hp = min(player.hp + POTION_HEAL, room.options.start_hp)
+		player.potions_used += 1
+	elif kind == "mana":
+		if player.mana >= numbers["MANA_MAX"]:
+			return False
+		player.mana = min(player.mana + numbers["MANA_PICKUP"], float(numbers["MANA_MAX"]))
+	else: # armor: não acumula
+		if player.armor >= numbers["ARMOR_POINTS"]:
+			return False
+		player.armor = numbers["ARMOR_POINTS"]
+	return True
+
+
+def _apply_action(room: Room, player: Player, action: Action, events: list[Event]) -> None:
+	if action.kind == ActionKind.DOOR:
+		_open_door(room, player, events)
+	# fire entra com a fireball (F1.5)
+
+
+def _open_door(room: Room, player: Player, events: list[Event]) -> None:
+	# a célula visada fica a DOOR_REACH à frente do Player
+	column = math.floor(player.x + math.sin(player.angle) * DOOR_REACH)
+	row = math.floor(player.y - math.cos(player.angle) * DOOR_REACH)
+	door = next((door for door in room.doors if (door.x, door.y) == (column, row)), None)
+	if door is None or door.open:
+		return
+	if door.locked:
+		if player.keys == 0:
+			return
+		player.keys -= 1 # a chave gasta é a de quem apertou
+		door.locked = False
+	door.open = True
+	room.grid[row][column] = "O"
+	events.append(Event("door_opened", room.tick, {"x": column, "y": row, "by": player.user_id}))
