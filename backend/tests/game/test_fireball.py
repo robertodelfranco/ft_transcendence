@@ -3,7 +3,7 @@ import math
 
 import pytest
 
-from app.game.rules import FIREBALL_COOLDOWN_S, RULESET_NUMBERS, TICK_RATE
+from app.game.rules import FIREBALL_COOLDOWN_S, PROJECTILE_SPEED, RULESET_NUMBERS, TICK_RATE
 from app.game.sim import create_room, enqueue, step
 from app.game.snapshot import to_snapshot
 from app.game.state import (Action, ActionKind, Input, Mode, ProjectileKind, ProjectileState,
@@ -12,6 +12,7 @@ from app.game.world import parse_map
 
 DT = 1 / TICK_RATE
 COOLDOWN_TICKS = round(FIREBALL_COOLDOWN_S * TICK_RATE) # 12 Ticks
+FIRST_FLIGHT = PROJECTILE_SPEED * DT # a fireball já anda no Tick em que nasce
 # o Player 7 nasce em (1, 2) e o 9 em (3, 2), com chão livre ao norte dos dois
 MAP_TEXT = "11111\n10001\n1S0N1\n10001\n11111\n"
 NO_KEYS = dict.fromkeys(("up", "down", "left", "right", "rot_left", "rot_right", "sprint"), False)
@@ -39,7 +40,8 @@ def test_fire_creates_a_fireball_at_the_player_with_its_owner():
 	events = fire(room)
 	[shot] = room.projectiles
 	assert (shot.kind, shot.owner_id) == (ProjectileKind.FIREBALL, 7)
-	assert (shot.x, shot.y) == (player.x, player.y)
+	# nasce no Player e já voa o primeiro Tick
+	assert (shot.x, shot.y) == pytest.approx((player.x, player.y - FIRST_FLIGHT))
 	assert (shot.dx, shot.dy) == (0.0, -1.0)
 	assert shot.state == ProjectileState.MOVING
 	assert events == [] # o disparo não tem Event: o cliente vê a fireball no Snapshot
@@ -66,7 +68,8 @@ def test_fireball_shows_in_the_snapshot():
 	fire(room)
 	assert to_snapshot(room)["projectiles"] == [{
 		"id": "f_1", "kind": "fireball", "owner": 7,
-		"x": player.x, "y": player.y, "dx": 0.0, "dy": -1.0, "state": "moving",
+		"x": player.x, "y": pytest.approx(player.y - FIRST_FLIGHT),
+		"dx": 0.0, "dy": -1.0, "state": "moving",
 	}]
 
 
@@ -80,7 +83,7 @@ def test_fire_leaves_from_where_the_player_was_at_that_point_of_the_queue():
 	enqueue(room, 7, Input(seq=2, mouse_dx=0.0, **{**NO_KEYS, "up": True}))
 	step(room, DT)
 	[shot] = room.projectiles
-	assert (shot.x, shot.y) == start
+	assert (shot.x, shot.y) == pytest.approx((start[0], start[1] - FIRST_FLIGHT))
 	assert player.y < start[1] # o Player andou no mesmo Tick
 
 

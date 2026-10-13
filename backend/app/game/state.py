@@ -133,7 +133,7 @@ class Projectile:
 	dx: 		float
 	dy: 		float
 	state: 		ProjectileState = ProjectileState.MOVING
-	state_time:	float = 0.0 # seg desde que entrou no state atual
+	state_tick:	int = 0 # Tick em que entrou no state atual
 
 
 @dataclass(slots=True)
