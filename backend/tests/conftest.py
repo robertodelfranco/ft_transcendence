@@ -1,13 +1,22 @@
 # backend/tests/conftest.py
-# Fixtures de todo o backend. A sessão de banco com rollback entra com a F5.1.
+# Fixtures de todo o backend.
 import asyncio
 import json
+import os
+from pathlib import Path
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.core.config import Settings
+from app.db.session import get_session
 from app.main import create_app
+
+ALEMBIC_INI = Path(__file__).parent.parent / "alembic.ini"
 
 
 @pytest.fixture
@@ -63,3 +72,31 @@ class FakeWebSocket:
 def fake_ws():
 	# devolve a classe: cada chamada é um socket novo (várias abas, vários Users)
 	return FakeWebSocket
+
+
+@pytest.fixture(scope="session")
+def migrated_db():
+	# sync de propósito: o env.py roda o próprio asyncio.run, que não pode estar dentro do loop de um teste
+	try:
+		command.upgrade(Config(str(ALEMBIC_INI)), "head")
+	except OSError as error:
+		# no CI o banco é obrigatório; na máquina, sem Postgres, só os testes de banco são pulados
+		if os.environ.get("CI"):
+			raise
+		pytest.skip(f"sem Postgres ({error}): veja backend/README.md")
+
+
+@pytest.fixture
+async def db_session(migrated_db, app, settings):
+	"""Sessão numa transação que sempre sofre rollback; o commit de uma rota vira SAVEPOINT."""
+	# NullPool: cada teste tem o seu event loop, e conexão do asyncpg não passa de um loop para outro
+	engine = create_async_engine(settings.database_url, poolclass=NullPool)
+	async with engine.connect() as connection:
+		await connection.begin()
+		session = AsyncSession(bind=connection, expire_on_commit=False,
+			join_transaction_mode="create_savepoint")
+		app.dependency_overrides[get_session] = lambda: session # as rotas recebem esta mesma sessão
+		yield session
+		await session.close()
+		await connection.rollback()
+	await engine.dispose()
