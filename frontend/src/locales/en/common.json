@@ -1,0 +1,29 @@
+{
+  "app": {
+    "name": "Catacombs 42"
+  },
+  "titles": {
+    "withApp": "{{page}} · {{app}}"
+  },
+  "language": {
+    "label": "Language",
+    "names": {
+      "pt-BR": "Português (Brasil)",
+      "en": "English",
+      "es": "Español"
+    }
+  },
+  "footer": {
+    "navLabel": "Legal information",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  },
+  "home": {
+    "tagline": "A 3D dungeon in your browser: team up with up to 5 friends or duel 1v1."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The address you tried to open doesn't exist.",
+    "back": "Back to home"
+  }
+}

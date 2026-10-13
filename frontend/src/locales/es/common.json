@@ -1,0 +1,29 @@
+{
+  "app": {
+    "name": "Catacombs 42"
+  },
+  "titles": {
+    "withApp": "{{page}} · {{app}}"
+  },
+  "language": {
+    "label": "Idioma",
+    "names": {
+      "pt-BR": "Português (Brasil)",
+      "en": "English",
+      "es": "Español"
+    }
+  },
+  "footer": {
+    "navLabel": "Información legal",
+    "privacy": "Política de Privacidad",
+    "terms": "Términos del Servicio"
+  },
+  "home": {
+    "tagline": "Una mazmorra en 3D en tu navegador: juega con hasta 5 amigos o duela 1 contra 1."
+  },
+  "notFound": {
+    "title": "Página no encontrada",
+    "description": "La dirección que intentaste abrir no existe.",
+    "back": "Volver al inicio"
+  }
+}

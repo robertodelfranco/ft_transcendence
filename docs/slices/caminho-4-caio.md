@@ -193,7 +193,7 @@ No calendário replanejado ([replanejamento-e-board.md](../pm/replanejamento-e-b
 
 Registro aqui e aviso o dono de cada arquivo, em vez de implementar por um documento e descobrir o conflito depois.
 
-1. **A branch `front` (Rafael) cria `package.json` na raiz e versiona `node_modules/`** (≈ 2 600 arquivos). O F0.4 põe o pacote em `frontend/` (§6, decisão 1). Combinar antes de qualquer um dos dois abrir PR.
+1. **A branch `front` (Rafael) cria `package.json` na raiz e versiona `node_modules/`** (≈ 2 600 arquivos). O F0.4 põe o pacote em `frontend/` (§6, decisão 1). Combinar antes de qualquer um dos dois abrir PR. **Resolvido no PR #45 (F0.4):** o pacote único está em `frontend/` e o `game/package.json` foi removido.
 2. **`Path` do cookie de refresh:** `/api/auth` no [auth.md](../contracts/auth.md) §2.6, `/api/auth/refresh` no [infra.md](../contracts/infra.md) §2.3 e no slice do Akita (§4, decisão 2). O logout precisa do cookie, então vale `/api/auth`. Augusto e Akita.
 3. **F6.3 (refresh) foi para a S3** no slice do Augusto, e o "pronto quando" do meu F7.1 depende dele. Não é bloqueio, é data: F7.1 fecha na S3.
 4. **[matches-api.md](../contracts/matches-api.md) §2.1** declara três rotas públicas; a minha resposta ao "Em aberto" 3 dele as torna autenticadas. Akita atualiza.
