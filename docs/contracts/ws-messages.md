@@ -145,11 +145,11 @@ Antes de fechar com um código `44xx` ou `4503`, o servidor manda `error` com o 
 | `4400` | `invalid_message` | Mensagem que não segue este contrato |
 | `4401` | `unauthenticated` | Sem `join` em 5 s, ou token inválido |
 | `4403` | `not_a_member` | O User não está nesta Room |
-| `4404` | `room_not_found` | Não existe Room com esse `match_id` |
+| `4404` | `room_not_found` | Não existe Room com esse `match_id`, ou ela ainda está no Lobby |
 | `4408` | `replaced` | O mesmo User abriu outro socket nesta Room; o novo vence ([ws-manager.md](ws-manager.md) §2.6) |
 | `4409` | `room_full` | Room sem vaga |
 | `4429` | `slow_consumer` | Fila de envio cheia: o cliente não está lendo ([ws-manager.md](ws-manager.md) §2.7) |
-| `4503` | `server_shutdown` | Backend encerrando; a Room se perdeu |
+| `4503` | `server_shutdown` | Backend encerrando, ou o `step` falhou 30 Ticks seguidos; a Room se perdeu |
 
 ### 2.8 Ritmo
 
@@ -238,12 +238,14 @@ No `pvp`, o `scoreboard` fica assim:
 - **Número não finito é mensagem inválida.** O `json` do Python aceita `NaN` e `Infinity`, e um `mouse_dx` assim viraria posição `NaN` no Snapshot de todos os Players. O `protocol.py` recusa com `4400`. Decidido pelo Roberto em 09/10.
 - **O Player nasce desconectado.** A Room nasce no `start`, antes de qualquer socket do jogo abrir. `connected` vira `true` no primeiro `join` aceito, que emite `player_joined`; os seguintes emitem `player_reconnected`. Quem nunca abre o socket entra no Grace period a partir do `start`. Decidido pelo Roberto em 09/10.
 - **No socket do jogo, a conexão nova vence** (`4408`), e cliente que não lê é desconectado (`4429`). Os dois códigos vêm de [ws-manager.md](ws-manager.md) §2.6 e §2.7. Cada `join` aceito conta como conexão nova para a Simulation, com fila e `seq` zerados (§2.9).
+- **`join` numa Room ainda no Lobby fecha com `4404`.** A Room da Simulation só nasce no `start`, então para o socket do jogo ela ainda não existe. O código já existia e dispensa tradução nova. O cliente não reconecta depois de um `4404` ([ws-manager.md](ws-manager.md) §2.9). Decidido na reunião de 12/10.
+- **Exceção no `step`: uma isolada não derruba ninguém; 30 seguidas encerram a Room.** A task da Room registra a exceção no log (com `match_id`, Tick e traceback) e segue no Tick seguinte. Se o `step` falhar 30 Ticks seguidos (1 s), o socket fecha com `4503` e o Match vira `aborted`, como na Room perdida num desligamento: não há resultado confiável para gravar. Proposta do Roberto, aceita na reunião de 12/10.
 
 ## 5. Em aberto
 
-1. **Onde a fila de §2.9 mora e quem a enche.** *Roberto e Augusto.* Proposta: a fila fica no `Player` da Room, que passa a existir no `start` ([rooms.md](rooms.md)); o laço de leitura do socket (Augusto) só valida a mensagem e a coloca na fila; quem consome é o `step`.
+1. **Resolvido em 11/10: onde a fila de §2.9 mora.** Fica no `Player` da Room; o laço de leitura do socket valida a mensagem e chama `enqueue`, e quem consome é o `step` (#42).
 2. **Resolvido em 09/10: o mesmo User abre um segundo socket na Room.** A conexão nova vence e a antiga fecha com `4408` (§2.7 e Decisões).
 3. **Token vencido durante a partida.** É a pergunta 6 do Augusto e entra em `auth.md`. Se a autenticação valer só no `join`, nada muda aqui.
-4. **`join` numa Room que ainda está no Lobby.** *Augusto e Akita.* Como a Room da Simulation só nasce no `start`, a proposta do Akita é fechar o socket; falta escolher o código (`4409` é "Room cheia").
+4. **Resolvido em 12/10: `join` numa Room que ainda está no Lobby.** Fecha com `4404` (§2.7 e Decisões).
 5. **Depois, com resposta neste arquivo:** o cliente prevê `fire` e `door`, ou só o movimento? (R7)
-6. **O `step` levanta uma exceção no meio da partida.** *Augusto e Akita.* Proposta do Roberto: uma exceção isolada é registrada no log (com `match_id`, Tick e traceback) e a Room segue no Tick seguinte, para um erro passageiro não derrubar os outros Players; depois de 30 falhas seguidas (1 s), a Room encerra. Falta escolher o código de fechamento e o estado do Match nesse caso. Sugestão: `4503` e `aborted`, como na Room perdida num desligamento.
+6. **Resolvido em 12/10: o `step` levanta uma exceção no meio da partida.** Uma isolada vai para o log e a Room segue; 30 seguidas fecham com `4503` e o Match vira `aborted` (§2.7 e Decisões).
