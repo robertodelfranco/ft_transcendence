@@ -17,6 +17,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "game"],
-  "exclude": ["game/dev.ts"]
+  "include": ["src", "game"]
 }
