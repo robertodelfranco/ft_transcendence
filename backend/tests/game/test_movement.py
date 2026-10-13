@@ -4,8 +4,8 @@ import math
 import pytest
 
 from app.game.movement import Body, CollisionWorld, apply_input
-from app.game.rules import (MOUSE_MAX_ROT_SPEED, PLAYER_RADIUS, PLAYER_ROT_SPEED,
-	PLAYER_SPEED, PLAYER_SPRINT_MULT, TICK_RATE)
+from app.game.rules import (BODY_BLOCK_DISTANCE, MOUSE_MAX_ROT_SPEED, PLAYER_RADIUS,
+	PLAYER_ROT_SPEED, PLAYER_SPEED, PLAYER_SPRINT_MULT, TICK_RATE)
 from app.game.state import Input
 
 DT = 1 / TICK_RATE
@@ -155,3 +155,33 @@ def test_player_crosses_a_one_cell_corridor_without_sticking():
 	body = walk(start, world, 1.0, up=True)
 	assert body.x == pytest.approx(start.x + PLAYER_SPEED * math.cos(0.3), abs=TOLERANCE)
 	assert start.y < body.y <= 2 - PLAYER_RADIUS
+
+
+def world_with_body(x, y):
+	# a sala aberta, com um corpo parado nesse ponto
+	return CollisionWorld(grid=open_world().grid, bodies=((x, y),))
+
+
+def test_body_blocks_closer_than_the_limit():
+	# um corpo 1 célula ao norte: o Player anda até perto e para antes do limite
+	world = world_with_body(NORTH.x, NORTH.y - 1.0)
+	body = walk(NORTH, world, 1.0, up=True)
+	distance = body.y - (NORTH.y - 1.0)
+	assert BODY_BLOCK_DISTANCE <= distance < BODY_BLOCK_DISTANCE + PLAYER_SPEED * DT
+
+
+def test_player_slides_around_a_body():
+	# o corpo está ao norte; andando para o nordeste, o y trava e o x anda
+	world = world_with_body(NORTH.x, NORTH.y - 0.65)
+	body = apply_input(NORTH, make_input(up=True, right=True), world, DT)
+	assert body.y == NORTH.y
+	assert body.x == pytest.approx(NORTH.x + PLAYER_SPEED * DT / math.sqrt(2), abs=TOLERANCE)
+
+
+def test_player_inside_the_limit_can_walk_away_but_not_closer():
+	# já dentro do limite, o que não deveria acontecer: afastar-se vale, aproximar-se não
+	world = world_with_body(NORTH.x, NORTH.y - 0.3)
+	away = apply_input(NORTH, make_input(down=True), world, DT)
+	closer = apply_input(NORTH, make_input(up=True), world, DT)
+	assert away.y > NORTH.y
+	assert closer.y == NORTH.y

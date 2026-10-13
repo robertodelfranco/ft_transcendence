@@ -1,8 +1,8 @@
 import math
 from dataclasses import dataclass
 
-from app.game.rules import (MOUSE_MAX_ROT_SPEED, PLAYER_RADIUS, PLAYER_ROT_SPEED,
-	PLAYER_SPEED, PLAYER_SPRINT_MULT)
+from app.game.rules import (BODY_BLOCK_DISTANCE, MOUSE_MAX_ROT_SPEED, PLAYER_RADIUS,
+	PLAYER_ROT_SPEED, PLAYER_SPEED, PLAYER_SPRINT_MULT)
 from app.game.state import Input
 from app.game.world import SOLID_CHARS
 
@@ -48,11 +48,15 @@ def _walk(x: float, y: float, angle: float, inp: Input, world: CollisionWorld,
 	step_x = (dir_x * forward - dir_y * strafe) / length * speed * dt
 	step_y = (dir_y * forward + dir_x * strafe) / length * speed * dt
 	# um eixo de cada vez, primeiro o x: bloqueado num, o Player desliza no outro
-	if _fits(world, x + step_x, y):
+	if _can_move(world, x, y, x + step_x, y):
 		x += step_x
-	if _fits(world, x, y + step_y):
+	if _can_move(world, x, y, x, y + step_y):
 		y += step_y
 	return x, y
+
+
+def _can_move(world: CollisionWorld, x: float, y: float, new_x: float, new_y: float) -> bool:
+	return _fits(world, new_x, new_y) and not _blocked_by_body(world, x, y, new_x, new_y)
 
 
 def _fits(world: CollisionWorld, x: float, y: float) -> bool:
@@ -70,3 +74,13 @@ def _is_solid(grid: list[list[str]], x: float, y: float) -> bool:
 	if row < 0 or row >= len(grid) or column < 0 or column >= len(grid[row]):
 		return True
 	return grid[row][column] in SOLID_CHARS
+
+
+def _blocked_by_body(world: CollisionWorld, x: float, y: float, new_x: float,
+		new_y: float) -> bool:
+	for body_x, body_y in world.bodies:
+		new_distance = math.hypot(new_x - body_x, new_y - body_y)
+		# bloqueia quem chegaria perto demais; quem já está perto ainda pode se afastar
+		if new_distance < BODY_BLOCK_DISTANCE and new_distance < math.hypot(x - body_x, y - body_y):
+			return True
+	return False

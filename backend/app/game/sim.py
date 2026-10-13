@@ -3,8 +3,8 @@ from random import Random
 
 from app.game.movement import Body, CollisionWorld, apply_input
 from app.game.rules import BOSS_HP, RULESET_NUMBERS, TICK_RATE
-from app.game.state import (Action, Boss, Door, Enemy, Event, Input, MatchOutcome, Mode, Player,
-	Room, RoomOptions)
+from app.game.state import (Action, Boss, BossState, Door, Enemy, EnemyState, Event, Input,
+	MatchOutcome, Mode, Player, Room, RoomOptions)
 from app.game.world import Map
 
 MAX_QUEUE = TICK_RATE # 1 s de mensagens (ws-messages.md §2.9)
@@ -107,6 +107,16 @@ def _consume_queue(room: Room, player: Player, dt: float) -> None:
 
 
 def _move(room: Room, player: Player, inp: Input, dt: float) -> None:
-	world = CollisionWorld(grid=room.grid, bodies=()) # os corpos entram no R2.4
+	world = CollisionWorld(grid=room.grid, bodies=_blocking_bodies(room, player))
 	body = apply_input(Body(player.x, player.y, player.angle), inp, world, dt)
 	player.x, player.y, player.angle = body.x, body.y, body.angle
+
+
+def _blocking_bodies(room: Room, player: Player) -> tuple[tuple[float, float], ...]:
+	# só bloqueia quem está vivo e na partida (rules.md §4)
+	bodies = [(other.x, other.y) for other in room.players.values()
+		if other is not player and other.alive and not other.left]
+	bodies += [(enemy.x, enemy.y) for enemy in room.enemies if enemy.state != EnemyState.DYING]
+	if room.boss is not None and room.boss.state != BossState.DYING:
+		bodies.append((room.boss.x, room.boss.y))
+	return tuple(bodies)
