@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import example from "../../docs/contracts/snapshot.example.json";
+import example from "./fixtures/snapshot.example.json";
 
 // Demo local da F3.1: usa o welcome fabricado, sem socket ou Simulation.
 const canvas = document.querySelector<HTMLCanvasElement>("#game");
@@ -42,7 +42,10 @@ const wallCount = grid.reduce(
 
 const wallGeometry = new THREE.BoxGeometry(1, 1, 1);
 const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x777777 });
-const walls = new THREE.InstancedMesh(wallGeometry, wallMaterial, wallCount);
+const walls = new THREE.InstancedMesh<
+  THREE.BoxGeometry,
+  THREE.Material | THREE.Material[]
+>(wallGeometry, wallMaterial, wallCount);
 const wallTextures: THREE.Texture[] = [];
 const texturedMaterials: THREE.MeshLambertMaterial[] = [];
 let disposed = false;
@@ -167,10 +170,10 @@ async function loadWallTextures(): Promise<void> {
   });
 
   // BoxGeometry: +X, -X, +Y, -Y, +Z, -Z.
-  // Slots legados do Cub3D: EA, WE, tampas, NO, SO.
+  // Slots legados do Cub3D: WE, EA, tampas, SO, NO.
   walls.material = [
-    texturedMaterials[0], texturedMaterials[1], wallMaterial, wallMaterial,
-    texturedMaterials[2], texturedMaterials[3],
+    texturedMaterials[1], texturedMaterials[0], wallMaterial, wallMaterial,
+    texturedMaterials[3], texturedMaterials[2],
   ];
 }
 
