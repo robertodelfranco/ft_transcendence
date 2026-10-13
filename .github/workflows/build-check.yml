@@ -68,7 +68,8 @@ jobs:
         if: failure()
         run: docker compose logs
 
-  # Roda em paralelo com o compose-up: os testes do backend não precisam da stack
+  # Roda em paralelo com o compose-up: os testes do backend não precisam da stack,
+  # só de um Postgres, que vem como service (sem ele, os testes de banco reprovam no CI)
   pytest:
     runs-on: ubuntu-latest
     permissions:
@@ -76,6 +77,26 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: transcendence
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d transcendence"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      POSTGRES_USER: ci
+      POSTGRES_PASSWORD: ci
+      POSTGRES_DB: transcendence
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
     steps:
       - uses: actions/checkout@v4
 
@@ -87,6 +108,12 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+
+      # A migração sobe do zero, e os modelos batem com ela (rooms.md §4, decisão 4)
+      - name: Alembic upgrade and check
+        run: |
+          alembic upgrade head
+          alembic check
 
       - name: Run pytest
         run: pytest
