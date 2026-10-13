@@ -8,12 +8,14 @@ from app.core.config import Settings, get_settings
 from app.core.errors import install_error_handlers
 from app.core.request_id import RequestIdMiddleware
 from app.game.protocol import CloseCode
+from app.game.rooms import RoomManager
 from app.ws.manager import ConnectionManager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 	yield
+	await app.state.room_manager.close() # nenhuma task de tick sobra
 	# desligamento: todo socket fecha com 4503 e a casca mostra "partida encerrada pelo servidor"
 	await app.state.connection_manager.close_all(CloseCode.SERVER_SHUTDOWN)
 
@@ -31,6 +33,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 	)
 	app.state.settings = settings
 	app.state.connection_manager = ConnectionManager() # uma por processo: um worker só
+	app.state.room_manager = RoomManager(app.state.connection_manager)
 
 	app.add_middleware(RequestIdMiddleware)
 	install_error_handlers(app)
