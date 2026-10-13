@@ -7,8 +7,7 @@ import { importX } from "eslint-plugin-import-x";
 import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
 
 export default tseslint.config(
-  // game/dev.ts está com marcadores de conflito na main (Rafael corrige no F3.1)
-  { ignores: ["dist", "node_modules", "game/dev.ts"] },
+  { ignores: ["dist", "node_modules"] },
 
   js.configs.recommended,
   tseslint.configs.recommended,
