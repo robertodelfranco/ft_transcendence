@@ -3,18 +3,22 @@
 Nenhuma função aqui faz commit: quem escreve é a rota, numa transação só (User e refresh juntos).
 """
 import uuid
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Request, Response
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import HTTPConnection
 
 from app.auth.models import OAuthAccount, Provider, RefreshToken, User
 from app.auth.schemas import DEFAULT_AVATAR_URL, AuthResponse, PrivateUser, SignupIn
-from app.auth.security import create_access_token, hash_password, new_refresh_token, verify_password
+from app.auth.security import (InvalidToken, create_access_token, decode_access_token, hash_password,
+	new_refresh_token, verify_password)
 from app.core.config import get_app_settings
 from app.core.errors import ApiError
+from app.db.session import SessionLocal
 
 
 REFRESH_COOKIE = "refresh_token"
@@ -57,6 +61,29 @@ async def authenticate(session: AsyncSession, email: str, password: str) -> User
 def _constraint_name(error: IntegrityError) -> str | None:
 	# o asyncpg põe o nome na exceção original, que o SQLAlchemy guarda como causa
 	return getattr(error.orig.__cause__, "constraint_name", None)
+
+
+# ---------- quem chama ----------
+
+async def user_from_access_token(session: AsyncSession, token: str, secret: str) -> User:
+	"""O dono de um access token válido. A regra é a mesma no HTTP (deps.py) e nos WebSockets."""
+	user = await session.get(User, decode_access_token(token, secret))
+	if user is None: # conta apagada depois de o token sair
+		raise InvalidToken("user no longer exists")
+	return user
+
+
+async def authenticate_ws_token(connection: HTTPConnection, token: str, *,
+		sessions: Callable[[], AsyncSession] = SessionLocal) -> User:
+	"""O `join` dos WebSockets; InvalidToken vira `4401` em quem chama (auth.md §2.7).
+
+	A sessão é própria e fecha antes de voltar: o socket vive a partida inteira, e segurar uma
+	conexão do pool esse tempo todo esgotaria o pool com poucas Rooms. O User volta desligado da
+	sessão, com as colunas carregadas; relacionamento ele não carrega.
+	"""
+	secret = get_app_settings(connection).jwt_secret.get_secret_value()
+	async with sessions() as session:
+		return await user_from_access_token(session, token, secret)
 
 
 # ---------- tokens ----------
