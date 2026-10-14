@@ -12,7 +12,8 @@ from app.core.request_id import RequestIdMiddleware
 from app.game.protocol import CloseCode
 from app.game.rooms import RoomError, RoomManager
 from app.matches.router import router as matches_router
-from app.matches.service import load_catalog
+from app.db.session import SessionLocal
+from app.matches.service import leave_when_offline, load_catalog
 from app.ws.manager import ConnectionManager
 
 
@@ -44,6 +45,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 	app.state.connection_manager = ConnectionManager() # uma por processo: um worker só
 	app.state.room_manager = RoomManager(app.state.connection_manager)
 	app.state.maps = load_catalog() # GET /api/maps e a validação do POST /api/matches
+	# lê o room_manager na hora do aviso, não agora: o teste troca a instância
+	app.state.connection_manager.on_presence_change(lambda user_id, online:
+		leave_when_offline(app.state.room_manager, SessionLocal, user_id, online))
 
 	app.add_middleware(RequestIdMiddleware)
 	install_error_handlers(app)

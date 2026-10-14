@@ -1,4 +1,5 @@
 """Catálogo de Maps e criação de Match (matches-api.md §2.2, rooms.md §2.2)."""
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -104,3 +105,13 @@ async def start_match(session: AsyncSession, rooms: RoomManager, match_id: int, 
 	await session.execute(update(Match).where(Match.id == match_id)
 		.values(status="running", started_at=now()))
 	await session.commit()
+
+
+async def leave_when_offline(rooms: RoomManager, sessions: Callable[[], AsyncSession],
+		user_id: int, online: bool) -> None:
+	"""Quem fica offline sai do Lobby (rooms.md decisão 10); em partida, vale o Grace period."""
+	match_id = rooms.room_of(user_id)
+	if online or match_id is None or rooms.info(match_id).status != "lobby":
+		return
+	async with sessions() as session: # o __aenter__ não suspende: o status não muda no meio
+		await leave_match(session, rooms, match_id, user_id)

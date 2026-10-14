@@ -260,3 +260,23 @@ async def test_only_the_host_starts_and_only_once(client, db_session, app, rooms
 async def test_pvp_needs_two_to_start(client, db_session, app, rooms):
 	match_id, host = await open_lobby(client, db_session, app, PVP)
 	assert error(await client.post(f"/api/matches/{match_id}/start", headers=host)) == (409, "not_enough_players")
+
+
+# ---------- presença ----------
+
+async def test_going_offline_leaves_the_lobby(client, db_session, app, rooms):
+	match_id, _ = await open_lobby(client, db_session, app)
+	host_id = rooms.info(match_id).created_by
+	await service.leave_when_offline(rooms, lambda: db_session, host_id, True)
+	assert rooms.room_of(host_id) == match_id # voltar online não tira ninguém
+	await service.leave_when_offline(rooms, lambda: db_session, host_id, False)
+	assert rooms.room_of(host_id) is None
+	assert (await match_row(db_session, match_id)).status == "aborted"
+
+
+async def test_going_offline_in_a_running_match_keeps_the_seat(client, db_session, app, rooms):
+	match_id, host = await open_lobby(client, db_session, app)
+	host_id = rooms.info(match_id).created_by
+	await client.post(f"/api/matches/{match_id}/start", headers=host)
+	await service.leave_when_offline(rooms, lambda: db_session, host_id, False)
+	assert rooms.room_of(host_id) == match_id # em partida, vale o Grace period
