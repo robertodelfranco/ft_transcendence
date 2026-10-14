@@ -2,3 +2,5 @@ node_modules
 dist
 Dockerfile
 .dockerignore
+# Worker do MSW: nunca entra na imagem de produção
+public/mockServiceWorker.js
