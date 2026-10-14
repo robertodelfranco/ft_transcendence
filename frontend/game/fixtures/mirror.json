@@ -1,0 +1,56 @@
+{
+  "rules": {
+    "BODY_BLOCK_DISTANCE": 0.6,
+    "BOSS_ATTACK_COOLDOWN_S": 2.2,
+    "BOSS_ATTACK_RANGE": 18.0,
+    "BOSS_ATTACK_WINDUP_S": 1.2,
+    "BOSS_DYING_S": 1.2,
+    "BOSS_HP": 60,
+    "BOSS_MIN_RANGE": 8.0,
+    "BOSS_RADIUS": 0.2,
+    "BOSS_SIGHT_RANGE": 20.0,
+    "BOSS_SPEED": 2.0,
+    "BULLET_DAMAGE": 2,
+    "DOOR_REACH": 1.0,
+    "ENEMY_ATTACK_INTERVAL_S": 1.4,
+    "ENEMY_ATTACK_RANGE": 0.7,
+    "ENEMY_DAMAGE": 1,
+    "ENEMY_DYING_S": 1.5,
+    "ENEMY_RADIUS": 0.2,
+    "ENEMY_SEPARATION": 0.6,
+    "ENEMY_SPEED": 1.5,
+    "FIREBALL_BOSS_DAMAGE": 10,
+    "FIREBALL_COOLDOWN_S": 0.4,
+    "FIREBALL_PLAYER_DAMAGE": 2,
+    "MOUSE_MAX_ROT_SPEED": 18.85,
+    "PLAYER_RADIUS": 0.05,
+    "PLAYER_ROT_SPEED": 1.8,
+    "PLAYER_SPEED": 3.6,
+    "PLAYER_SPRINT_MULT": 2.0,
+    "POTION_HEAL": 3,
+    "PROJECTILE_HIT_RADIUS": 0.3,
+    "PROJECTILE_HIT_S": 0.4,
+    "PROJECTILE_MAX_SUBSTEP": 0.1,
+    "PROJECTILE_RADIUS": 0.1,
+    "PROJECTILE_SPEED": 12.0,
+    "RULESET_NUMBERS": {
+      "coop": {
+        "ARMOR_POINTS": 3,
+        "FIREBALL_MANA_COST": 10,
+        "MANA_MAX": 100,
+        "MANA_PICKUP": 30,
+        "MANA_REGEN_PER_S": 10.0,
+        "RESPAWN_DELAY_S": null
+      },
+      "pvp": {
+        "ARMOR_POINTS": 2,
+        "FIREBALL_MANA_COST": 20,
+        "MANA_MAX": 100,
+        "MANA_PICKUP": 20,
+        "MANA_REGEN_PER_S": 5.0,
+        "RESPAWN_DELAY_S": 3.0
+      }
+    },
+    "TICK_RATE": 30
+  }
+}
