@@ -44,7 +44,10 @@ async def client(app):
 
 
 class FakeWebSocket:
-	"""Socket falso (ws-manager.md §2.11): grava o que recebe e simula queda e lentidão."""
+	"""Socket falso (ws-manager.md §2.11): grava o que recebe e simula queda e lentidão.
+
+	O lado do cliente é `client_send` e `client_close`; o servidor lê com `receive`, no formato ASGI.
+	"""
 
 	def __init__(self) -> None:
 		self.sent: list[str] = []
@@ -52,6 +55,7 @@ class FakeWebSocket:
 		self.broken = False # True: o próximo envio falha, como um socket que caiu
 		self.flowing = asyncio.Event() # clear(): o envio trava, como um cliente que não lê
 		self.flowing.set()
+		self._inbox: asyncio.Queue[dict] = asyncio.Queue()
 
 	async def send_text(self, data: str) -> None:
 		await self.flowing.wait()
@@ -62,6 +66,20 @@ class FakeWebSocket:
 	async def close(self, code: int = 1000, reason: str | None = None) -> None:
 		if self.close_code is None:
 			self.close_code = code
+			self._inbox.put_nowait({"type": "websocket.disconnect", "code": code}) # acorda quem lê
+
+	async def receive(self) -> dict:
+		return await self._inbox.get()
+
+	def client_send(self, message: dict | str | bytes) -> None:
+		if isinstance(message, bytes):
+			self._inbox.put_nowait({"type": "websocket.receive", "bytes": message})
+		else:
+			text = message if isinstance(message, str) else json.dumps(message)
+			self._inbox.put_nowait({"type": "websocket.receive", "text": text})
+
+	def client_close(self, code: int = 1001) -> None:
+		self._inbox.put_nowait({"type": "websocket.disconnect", "code": code})
 
 	@property
 	def messages(self) -> list[dict]:

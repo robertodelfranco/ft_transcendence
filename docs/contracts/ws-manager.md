@@ -41,6 +41,7 @@ class ConnectionManager:
 
     async def close_all(self, code: int) -> None: ...        # desligamento do backend
     async def close_match(self, match_id: int, code: int, message: str = "") -> None: ...  # sockets game de uma partida
+    def in_game(self, user_id: int, match_id: int) -> bool: ...  # tem socket game aberto nesta partida
 ```
 
 | Método | Comportamento |
@@ -51,6 +52,7 @@ class ConnectionManager:
 | `broadcast` | `send_to_user` para cada id da lista, com a mensagem serializada **uma vez** |
 | `broadcast_all` | para todas as conexões do canal (é como `lobby_update` chega a todo mundo, §2.4) |
 | `droppable=True` | a mensagem pode ser descartada se a conexão estiver atrasada (§2.7). Só o Snapshot do jogo usa |
+| `in_game` | se o User tem socket `game` aberto **nesta** partida. O `/ws/game` pergunta isso quando um socket cai: se o User já está num socket novo (o velho saiu com `4408`), ele continua conectado na Room |
 | `is_online` / `online_users` | **online = ao menos um socket `app` aberto** (§2.3). O canal `game` não conta |
 | `on_presence_change` | registra um callback chamado com `(user_id, online)` quando a presença muda, já com o atraso da §2.3. Aceita **vários**, chamados na ordem em que foram registrados; se um levantar exceção, ela vai para o log e os seguintes rodam do mesmo jeito. O lobby registra um para tirar da Room quem fica offline ([rooms.md](rooms.md) decisão 10), e o módulo de usuários pode registrar outro |
 | `close_all` | fecha tudo com o código dado; o `lifespan` do app chama com `4503` no desligamento |

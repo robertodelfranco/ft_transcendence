@@ -145,7 +145,7 @@ Antes de fechar com um código `44xx` ou `4503`, o servidor manda `error` com o 
 | `4400` | `invalid_message` | Mensagem que não segue este contrato |
 | `4401` | `unauthenticated` | Sem `join` em 5 s, ou token inválido |
 | `4403` | `not_a_member` | O User não está nesta Room |
-| `4404` | `room_not_found` | Não existe Room com esse `match_id`, ou ela ainda está no Lobby |
+| `4404` | `room_not_found` | Não existe Room com esse `match_id`, ou ela ainda está no Lobby, ou a partida já acabou (`game_over`) |
 | `4408` | `replaced` | O mesmo User abriu outro socket nesta Room; o novo vence ([ws-manager.md](ws-manager.md) §2.6) |
 | `4409` | `room_full` | Room sem vaga |
 | `4429` | `slow_consumer` | Fila de envio cheia: o cliente não está lendo ([ws-manager.md](ws-manager.md) §2.7) |
