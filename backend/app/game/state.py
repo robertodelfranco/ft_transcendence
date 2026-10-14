@@ -162,6 +162,10 @@ class Room:
 	doors: 			list[Door] = field(default_factory=list)
 	result: 		dict | None = None # o data do game_over, None enquanto na partida
 	pending_events:	list[tuple[str, dict]] = field(default_factory=list) # saem no próximo step
+	# user_id → (célula do Player, passos de cada célula até ela); cache, fora do Snapshot
+	path_fields:	dict[int, tuple[tuple[int, int], dict[tuple[int, int], int]]] = field(
+		default_factory=dict)
+	free_cells:		frozenset[tuple[int, int]] | None = None # cache: sem parede nem Door fechada
 
 
 @dataclass(frozen=True, slots=True)

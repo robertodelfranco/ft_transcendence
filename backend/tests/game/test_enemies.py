@@ -3,11 +3,12 @@ import math
 
 import pytest
 
-from app.game.rules import (ENEMY_ATTACK_INTERVAL_S, ENEMY_ATTACK_RANGE, ENEMY_DAMAGE,
-	ENEMY_DYING_S, ENEMY_SEPARATION, ENEMY_SPEED, TICK_RATE)
-from app.game.sim import create_room, step
+from app.game.rules import (ENEMY_ATTACK_INTERVAL_S, ENEMY_ATTACK_RANGE, ENEMY_CHASE_RANGE,
+	ENEMY_DAMAGE, ENEMY_DYING_S, ENEMY_SEPARATION, ENEMY_SPEED, TICK_RATE)
+from app.game.sim import create_room, enqueue, step
 from app.game.snapshot import to_snapshot
-from app.game.state import (EnemyState, Event, Mode, Projectile, ProjectileKind, RoomOptions)
+from app.game.state import (Action, ActionKind, Enemy, EnemyState, Event, Mode, Projectile,
+	ProjectileKind, RoomOptions)
 from app.game.world import parse_map
 
 DT = 1 / TICK_RATE
@@ -21,6 +22,12 @@ ARENA = ("11111111111\n10000000001\n10000000001\n1E0000I00W1\n"
 TWO_ENEMIES = ARENA.replace("1E0000I00W1", "1E00I0I00W1")
 # o Enemy em (3, 3), uma parede em (4, 3) e o Player 9 atrás dela, em (5, 3)
 BEHIND_A_WALL = "1111111\n1E00001\n1000001\n100I1W1\n1000001\n1000001\n1111111\n"
+# um corredor: os Players em (1, 1) e (2, 1), o Enemy ENEMY_CHASE_RANGE + 1 passos depois do 9
+FAR_ENEMY_CELL = 3 + ENEMY_CHASE_RANGE
+FAR_CORRIDOR = ("1" * (FAR_ENEMY_CELL + 2) + "\n" + "1EW" + "0" * ENEMY_CHASE_RANGE + "I1\n"
+	+ "1" * (FAR_ENEMY_CELL + 2) + "\n")
+# os Players em (1, 1) e (2, 1), uma Door trancada em (3, 1) e o Enemy em (6, 1)
+BEHIND_A_DOOR = "11111111\n1EWD00I1\n11111111\n"
 
 
 def new_room(map_text=ARENA):
@@ -50,6 +57,14 @@ def in_attack(room):
 	place(enemy, room.players[9].x - 0.6)
 	run(room, 1)
 	assert enemy.state == EnemyState.ATTACK
+	return enemy
+
+
+def blocker(room, x, y):
+	# um Enemy parado no meio de um golpe, que só serve de obstáculo
+	enemy = Enemy(id=f"e_{len(room.enemies) + 1}", x=x, y=y, state=EnemyState.ATTACK,
+		state_tick=room.tick)
+	room.enemies.append(enemy)
 	return enemy
 
 
@@ -92,16 +107,61 @@ def test_without_a_target_the_enemy_stands_still():
 	assert enemy.state == EnemyState.ALERT
 
 
-@pytest.mark.parametrize("advantage, target", [(0.9, 9), (1.1, 7)])
-def test_enemy_only_changes_target_with_a_cell_of_advantage(advantage, target):
+@pytest.mark.parametrize("cell, target", [(3, 9), (4, 7)])
+def test_enemy_only_changes_target_with_a_step_of_advantage(cell, target):
+	# o alvo é o 9, a 3 passos; o 7 chega a 3 passos (empate) ou a 2
 	room = new_room()
 	[enemy] = room.enemies
 	run(room, 1)
 	assert enemy.target_player_id == 9
-	# o Player 7 chega mais perto que o alvo atual, por menos e por mais que 1 célula
-	place(room.players[7], enemy.x - (gap(enemy, room.players[9]) - advantage))
+	place(room.players[7], cell + 0.5)
 	run(room, 1)
 	assert enemy.target_player_id == target
+
+
+def test_the_nearest_is_counted_in_path_steps():
+	# o 7 está mais perto em linha reta, mas atrás de uma parede; o 9 está mais perto pelo caminho
+	room = new_room(BEHIND_A_WALL)
+	[enemy] = room.enemies
+	place(room.players[7], 5.5, 3.5) # do outro lado da parede: 1,8 em linha reta, 4 passos
+	place(room.players[9], 3.5, 5.7) # 2,2 em linha reta, 2 passos
+	run(room, 1)
+	assert enemy.target_player_id == 9
+
+
+@pytest.mark.parametrize("cell, chases", [(3, True), (2, False)])
+def test_enemy_only_chases_within_enemy_chase_range(cell, chases):
+	# da célula 3 são ENEMY_CHASE_RANGE passos até o Enemy; da 2, um a mais
+	room = new_room(FAR_CORRIDOR)
+	[enemy] = room.enemies
+	place(room.players[9], cell + 0.5, 1.5)
+	run(room, 1)
+	assert (enemy.target_player_id == 9) == chases
+	assert (enemy.x < FAR_ENEMY_CELL + 0.5) == chases
+
+
+def test_a_closed_door_blocks_the_path_until_it_opens():
+	room = new_room(BEHIND_A_DOOR)
+	[enemy] = room.enemies
+	run(room, 5)
+	assert enemy.target_player_id is None # sem caminho: parado
+	assert (enemy.x, enemy.y) == (6.5, 1.5)
+	opener = room.players[9]
+	opener.angle, opener.keys = math.pi / 2, 1 # de frente para a Door, a leste
+	enqueue(room, 9, Action(seq=1, kind=ActionKind.DOOR))
+	run(room, 1)
+	assert enemy.target_player_id == 9 # no mesmo Tick em que a Door abriu
+	assert enemy.x < 6.5
+
+
+def test_the_path_is_redone_when_the_player_changes_cell():
+	room = new_room()
+	[enemy] = room.enemies
+	run(room, 1)
+	assert enemy.y == ROW_Y
+	place(room.players[9], 9.5, 5.5) # duas células ao sul
+	run(room, 1)
+	assert enemy.y > ROW_Y # já corta na diagonal
 
 
 def test_enemy_walks_enemy_speed_per_second():
@@ -111,23 +171,31 @@ def test_enemy_walks_enemy_speed_per_second():
 	assert (enemy.x, enemy.y) == pytest.approx((6.5 + ENEMY_SPEED, ROW_Y))
 
 
-def test_blocked_by_a_wall_the_enemy_steps_to_one_perpendicular_side():
+def test_behind_a_wall_the_enemy_goes_around():
+	# em linha reta o Enemy ficaria preso na parede; pelo caminho, chega ao alcance do golpe
 	room = new_room(BEHIND_A_WALL)
+	room.players[7].alive = False
 	[enemy] = room.enemies
-	place(enemy, 3.78) # o próximo passo para o leste já toca a parede em x = 4
-	run(room, 1)
+	run(room, 3 * TICK_RATE)
 	assert enemy.target_player_id == 9
-	assert (enemy.x, enemy.y) == pytest.approx((3.78, ROW_Y - STEP)) # um passo para o norte
+	assert enemy.state == EnemyState.ATTACK
+
+
+def test_blocked_by_another_enemy_the_enemy_steps_to_one_perpendicular_side():
+	room = new_room()
+	[enemy] = room.enemies
+	blocker(room, 6.5 + ENEMY_SEPARATION + STEP / 2, ROW_Y) # o passo para o leste fica perto demais
+	run(room, 1)
+	assert (enemy.x, enemy.y) == pytest.approx((6.5, ROW_Y - STEP)) # um passo para o norte
 
 
 def test_with_the_first_side_blocked_the_enemy_steps_to_the_other():
-	room = new_room(BEHIND_A_WALL)
+	room = new_room()
 	[enemy] = room.enemies
-	room.grid[2][3] = "1" # uma parede também ao norte do Enemy
-	place(enemy, 3.78, 3.22)
-	place(room.players[9], 5.5, 3.22) # o alvo na mesma linha: a direção é o leste exato
+	blocker(room, 6.5 + ENEMY_SEPARATION + STEP / 2, ROW_Y)
+	blocker(room, 6.5, ROW_Y - ENEMY_SEPARATION - STEP / 2) # e o norte também
 	run(room, 1)
-	assert (enemy.x, enemy.y) == pytest.approx((3.78, 3.22 + STEP)) # um passo para o sul
+	assert (enemy.x, enemy.y) == pytest.approx((6.5, ROW_Y + STEP)) # um passo para o sul
 
 
 def test_enemy_stays_enemy_separation_away_from_another_enemy():
@@ -190,7 +258,7 @@ def test_a_target_that_left_the_range_is_not_hit():
 	room = new_room()
 	enemy = in_attack(room)
 	target = room.players[9]
-	place(target, enemy.x + 2.0) # afastou-se durante o golpe
+	place(target, enemy.x - 2.0) # afastou-se durante o golpe
 	run(room, ATTACK_TICKS)
 	assert target.hp == 10
 	assert enemy.state == EnemyState.ALERT # voltou a perseguir

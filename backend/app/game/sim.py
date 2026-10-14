@@ -1,15 +1,17 @@
 import math
+from collections import deque
 from random import Random
 
 from app.game.movement import Body, CollisionWorld, apply_input, is_solid
 from app.game.rules import (BOSS_HP, DOOR_REACH, ENEMY_ATTACK_INTERVAL_S, ENEMY_ATTACK_RANGE,
-	ENEMY_DAMAGE, ENEMY_DYING_S, ENEMY_RADIUS, ENEMY_RETARGET_MARGIN, ENEMY_SEPARATION,
-	ENEMY_SPEED, FIREBALL_COOLDOWN_S, POTION_HEAL, PROJECTILE_HIT_RADIUS, PROJECTILE_HIT_S, PROJECTILE_MAX_SUBSTEP, PROJECTILE_RADIUS,
-	PROJECTILE_SPEED, RULESET_NUMBERS, TICK_RATE)
+	ENEMY_CHASE_RANGE, ENEMY_DAMAGE, ENEMY_DYING_S, ENEMY_RADIUS, ENEMY_RETARGET_MARGIN,
+	ENEMY_SEPARATION, ENEMY_SPEED, FIREBALL_COOLDOWN_S, POTION_HEAL, PROJECTILE_HIT_RADIUS,
+	PROJECTILE_HIT_S, PROJECTILE_MAX_SUBSTEP, PROJECTILE_RADIUS, PROJECTILE_SPEED,
+	RULESET_NUMBERS, TICK_RATE)
 from app.game.state import (Action, ActionKind, Boss, BossState, Door, Enemy, EnemyState, Event,
 	Input, MatchOutcome, Mode, Player, Projectile, ProjectileKind, ProjectileState, Room,
 	RoomOptions)
-from app.game.world import Map
+from app.game.world import SOLID_CHARS, Map
 
 MAX_QUEUE = TICK_RATE # 1 s de mensagens (ws-messages.md §2.9)
 CATCH_UP_FROM = 3 # com 3 ou mais Inputs esperando, o Tick aplica 2
@@ -19,6 +21,8 @@ PROJECTILE_HIT_TICKS = round(PROJECTILE_HIT_S * TICK_RATE)
 ENEMY_ATTACK_TICKS = round(ENEMY_ATTACK_INTERVAL_S * TICK_RATE)
 ENEMY_DYING_TICKS = round(ENEMY_DYING_S * TICK_RATE)
 PICKUP_KINDS = {"K": "key", "P": "potion", "M": "mana", "A": "armor"}
+# 8 vizinhas: primeiro as do lado, depois as diagonais
+NEIGHBORS = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 
 
 def create_room(match_id: int, mode: Mode, game_map: Map, options: RoomOptions,
@@ -217,22 +221,114 @@ def _update_enemy(room: Room, enemy: Enemy, dt: float) -> None:
 		# no mesmo Tick do golpe anterior: dois golpes ficam a ENEMY_ATTACK_INTERVAL_S exatos
 		enemy.state, enemy.state_tick = EnemyState.ATTACK, room.tick
 	else:
-		_enemy_walk(room, enemy, dx / distance, dy / distance, ENEMY_SPEED * dt)
+		length = ENEMY_SPEED * dt
+		dir_x, dir_y = _chase_direction(room, enemy, target, length)
+		_enemy_walk(room, enemy, dir_x, dir_y, length)
 
 
 def _pick_target(room: Room, enemy: Enemy) -> Player | None:
-	def distance(player: Player) -> float:
-		return math.hypot(player.x - enemy.x, player.y - enemy.y)
-	candidates = [player for player in room.players.values() if player.alive and not player.left]
-	if not candidates:
+	# o Player com menos passos de caminho; fora de ENEMY_CHASE_RANGE, não é candidato
+	cell = _cell(enemy.x, enemy.y)
+	steps = {}
+	for player in room.players.values():
+		if player.alive and not player.left:
+			path_field = _path_field(room, player)
+			if cell in path_field:
+				steps[player.user_id] = path_field[cell]
+	if not steps:
 		return None
-	nearest = min(candidates, key=distance)
-	current = room.players.get(enemy.target_player_id)
-	# o alvo atual só perde para quem está ENEMY_RETARGET_MARGIN mais perto
-	if (current is not None and current.alive and not current.left
-			and distance(nearest) > distance(current) - ENEMY_RETARGET_MARGIN):
-		return current
-	return nearest
+	nearest = min(steps, key=steps.get)
+	current = enemy.target_player_id
+	# o alvo atual só perde para quem está ENEMY_RETARGET_MARGIN passos mais perto
+	if current in steps and steps[nearest] > steps[current] - ENEMY_RETARGET_MARGIN:
+		return room.players[current]
+	return room.players[nearest]
+
+
+def _chase_direction(room: Room, enemy: Enemy, target: Player,
+		length: float) -> tuple[float, float]:
+	cell = _cell(enemy.x, enemy.y)
+	path_field = _path_field(room, target)
+	if path_field[cell] == 0:
+		return _unit(target.x - enemy.x, target.y - enemy.y) # na célula do alvo: em linha reta
+	next_x, next_y = _downhill(_free_cells(room), path_field, cell, target)
+	direction = _unit(next_x + 0.5 - enemy.x, next_y + 0.5 - enemy.y) # o centro da próxima célula
+	if _touches_wall(room.grid, enemy.x + direction[0] * length, enemy.y + direction[1] * length,
+			ENEMY_RADIUS):
+		# entrou na célula raspando a quina: volta para o centro dela antes de seguir
+		to_center = (cell[0] + 0.5 - enemy.x, cell[1] + 0.5 - enemy.y)
+		if to_center != (0.0, 0.0):
+			direction = _unit(*to_center)
+	return direction
+
+
+def _unit(dx: float, dy: float) -> tuple[float, float]:
+	length = math.hypot(dx, dy)
+	return dx / length, dy / length
+
+
+def _path_field(room: Room, player: Player) -> dict[tuple[int, int], int]:
+	# refeito só quando o Player muda de célula; Door aberta limpa o cache todo
+	cell = _cell(player.x, player.y)
+	cached = room.path_fields.get(player.user_id)
+	if cached is not None and cached[0] == cell:
+		return cached[1]
+	path_field = _bfs(_free_cells(room), cell, ENEMY_CHASE_RANGE)
+	room.path_fields[player.user_id] = (cell, path_field)
+	return path_field
+
+
+def _free_cells(room: Room) -> frozenset[tuple[int, int]]:
+	# consultar um conjunto é bem mais barato que is_solid, chamado até 3 vezes por vizinha na BFS
+	if room.free_cells is None:
+		room.free_cells = frozenset((x, y) for y, row in enumerate(room.grid)
+			for x, char in enumerate(row) if char not in SOLID_CHARS)
+	return room.free_cells
+
+
+def _bfs(free: frozenset[tuple[int, int]], start: tuple[int, int],
+		max_steps: int) -> dict[tuple[int, int], int]:
+	# busca em largura: quantos passos cada célula livre está de start, até max_steps
+	steps = {start: 0}
+	queue = deque([start])
+	while queue:
+		x, y = queue.popleft()
+		if steps[(x, y)] == max_steps:
+			continue
+		for dx, dy in NEIGHBORS:
+			neighbor = (x + dx, y + dy)
+			if neighbor in steps or neighbor not in free or _cuts_corner(free, x, y, dx, dy):
+				continue
+			steps[neighbor] = steps[(x, y)] + 1
+			queue.append(neighbor)
+	return steps
+
+
+def _downhill(free: frozenset[tuple[int, int]], path_field: dict[tuple[int, int], int],
+		cell: tuple[int, int], target: Player) -> tuple[int, int]:
+	# a vizinha com menos passos; existe sempre que a célula atual está a 1 passo ou mais.
+	# No empate, a mais perto do alvo em linha reta: sem isso, a ordem de NEIGHBORS faz
+	# o Enemy andar em L numa sala aberta
+	x, y = cell
+	best, best_key = cell, (path_field[cell], 0.0)
+	for dx, dy in NEIGHBORS:
+		neighbor = (x + dx, y + dy)
+		if neighbor not in path_field or _cuts_corner(free, x, y, dx, dy):
+			continue
+		key = (path_field[neighbor],
+			math.hypot(neighbor[0] + 0.5 - target.x, neighbor[1] + 0.5 - target.y))
+		if key < best_key:
+			best, best_key = neighbor, key
+	return best
+
+
+def _cuts_corner(free: frozenset[tuple[int, int]], x: int, y: int, dx: int, dy: int) -> bool:
+	# na diagonal, as duas células do lado precisam estar livres: o Enemy não raspa a quina
+	return bool(dx and dy) and ((x + dx, y) not in free or (x, y + dy) not in free)
+
+
+def _cell(x: float, y: float) -> tuple[int, int]:
+	return math.floor(x), math.floor(y)
 
 
 def _enemy_walk(room: Room, enemy: Enemy, dir_x: float, dir_y: float, length: float) -> None:
@@ -353,4 +449,7 @@ def _open_door(room: Room, player: Player, events: list[Event]) -> None:
 		door.locked = False
 	door.open = True
 	room.grid[row][column] = "O"
+	# a Door aberta muda os caminhos
+	room.path_fields.clear()
+	room.free_cells = None
 	events.append(Event("door_opened", room.tick, {"x": column, "y": row, "by": player.user_id}))
