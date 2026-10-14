@@ -46,6 +46,7 @@ O HP inicial e o teto da poção não são constantes: vêm de `options.start_hp
 | `ENEMY_SPEED` | cél/s | `1.5` | sim | `0.15` por passo (`enemy_bonus/enemy_images_bonus.c:131`), um passo quando `move_delay > 0.1` s (`enemy_bonus/enemy_manage_bonus.c:63`) |
 | `ENEMY_RADIUS` | cél | `0.2` | novo | 4 cantos a `0.2` do centro (`enemy_bonus/enemy_move_bonus.c:40-50`) |
 | `ENEMY_SEPARATION` | cél | `0.6` | novo | Enemy não chega a menos disso de outro Enemy (`enemy_bonus/enemy_move_bonus.c:30`) |
+| `ENEMY_RETARGET_MARGIN` | cél | `1.0` | sim | Não existe no C, que só tinha um jogador. O Enemy só troca de alvo se o novo estiver esta distância mais perto que o atual (arq. §5) |
 | `ENEMY_ATTACK_RANGE` | cél | `0.7` | novo | `distance <= 0.7` vira `ATTACK` (`enemy_bonus/enemy_manage_bonus.c:62-65`) |
 | `ENEMY_ATTACK_INTERVAL_S` | s | `1.4` | novo | 7 quadros de `0.2` s (`enemy_bonus/enemy_manage_bonus.c:17-23` e `:38`); no C o primeiro golpe saía em 0,8 s |
 | `ENEMY_DAMAGE` | HP | `1` | novo | `hp -= 1` (`enemy_bonus/enemy_manage_bonus.c:21`) |
@@ -139,6 +140,7 @@ Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um
 - **A diagonal não é mais rápida.** As teclas de andar viram um vetor de intenção normalizado, então `PLAYER_SPEED` vale em qualquer direção. No C, `up` e `right` juntos davam 1,41 vez a velocidade. Decidido em 07/10; a forma do passo está em [ws-messages.md](ws-messages.md) §2.9.
 - **A direção do Player é guardada como ângulo.** `PLAYER_ROT_SPEED` e `mouse_dx` somam no ângulo, e o vetor sai dele: `dx = sin(a)`, `dy = -cos(a)`, com norte em zero e `rot_right` aumentando `a`. O C girava o vetor a cada quadro e acumulava erro de arredondamento. No fio continua indo `(dx, dy)`.
 - **Os tempos da Simulation contam em Ticks inteiros.** Cada constante em segundos vira `round(segundos × TICK_RATE)` Ticks, e a Room guarda o Tick, não os segundos acumulados. Somando `dt` em float, `0.4` s nunca fecha em 12 Ticks (sobra `9.7e-17` na contagem regressiva e falta na progressiva), e a regra duraria 13. Vale para `FIREBALL_COOLDOWN_S` e `PROJECTILE_HIT_S`; os tempos de Enemy e Boss seguem a mesma regra quando entrarem. As constantes continuam em segundos nesta tabela. Decidido pelo Roberto em 13/10.
+- **O alvo do Enemy é o Player vivo e na partida mais próximo, em linha reta.** O alvo atual só perde para quem estiver `ENEMY_RETARGET_MARGIN` mais perto. Player desconectado no Grace period continua alvo; morto ou fora da partida, não. Sem alvo, o Enemy fica parado. Durante o `attack` o Enemy não anda nem troca de alvo, e se o alvo continua no alcance depois do golpe o `attack` recomeça no mesmo Tick, para dois golpes ficarem a `ENEMY_ATTACK_INTERVAL_S` exatos. Como no C, Player e Boss não bloqueiam o passo do Enemy. Decidido pelo Roberto em 13/10.
 - **O Projectile já voa no Tick em que nasce**, para o disparo não ter um Tick de atraso. Ele para no último subpasso antes da parede ou do alvo, como no C, e fica ali durante o `hit`. Decidido pelo Roberto em 13/10.
 - **Este contrato fecha nomes e unidades agora.** Os valores finais saem do balanceamento de conteúdo (F4.7, S5).
 
