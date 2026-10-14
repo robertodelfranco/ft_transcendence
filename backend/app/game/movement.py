@@ -63,12 +63,12 @@ def _fits(world: CollisionWorld, x: float, y: float) -> bool:
 	# os 4 cantos da caixa do Player, a PLAYER_RADIUS do centro
 	for corner_x in (x - PLAYER_RADIUS, x + PLAYER_RADIUS):
 		for corner_y in (y - PLAYER_RADIUS, y + PLAYER_RADIUS):
-			if _is_solid(world.grid, corner_x, corner_y):
+			if is_solid(world.grid, corner_x, corner_y):
 				return False
 	return True
 
 
-def _is_solid(grid: list[list[str]], x: float, y: float) -> bool:
+def is_solid(grid: list[list[str]], x: float, y: float) -> bool:
 	column, row = math.floor(x), math.floor(y)
 	# fora do Grid é sólido; sem esta checagem, um índice negativo leria a outra ponta da lista
 	if row < 0 or row >= len(grid) or column < 0 or column >= len(grid[row]):

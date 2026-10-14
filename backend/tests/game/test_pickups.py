@@ -9,6 +9,7 @@ from app.game.world import parse_map
 
 DT = 1 / TICK_RATE
 NUMBERS = RULESET_NUMBERS[Mode.COOP]
+REGEN_TICK = NUMBERS["MANA_REGEN_PER_S"] * DT # a regeneração do Tick vem depois da coleta
 # o Player 7 nasce em (1, 1); na linha de baixo, um Pickup de cada tipo
 MAP_TEXT = "1111111\n1N000S1\n1KPMA01\n1111111\n"
 KEY, POTION, MANA, ARMOR = (1, 2), (2, 2), (3, 2), (4, 2)
@@ -59,12 +60,13 @@ def test_potion_heals_up_to_start_hp(hp, expected):
 	assert [event.data["kind"] for event in events] == ["potion"]
 
 
-@pytest.mark.parametrize("mana, expected", [(50.0, 50.0 + NUMBERS["MANA_PICKUP"]), (90.0, NUMBERS["MANA_MAX"])])
+@pytest.mark.parametrize("mana, expected", [
+	(50.0, 50.0 + NUMBERS["MANA_PICKUP"] + REGEN_TICK), (90.0, NUMBERS["MANA_MAX"])])
 def test_mana_pickup_adds_up_to_mana_max(mana, expected):
 	room = new_room()
 	room.players[7].mana = mana
 	stand_on(room, MANA)
-	assert room.players[7].mana == expected
+	assert room.players[7].mana == pytest.approx(expected)
 	assert cell_char(room, MANA) == "0"
 
 

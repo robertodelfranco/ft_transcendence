@@ -138,6 +138,8 @@ Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um
 - **`BOSS_ATTACK_WINDUP_S` separa a animação do intervalo.** O Renderer precisa saber quanto dura o `attack` para sincronizar o clipe com o tiro; o cooldown sozinho não diz.
 - **A diagonal não é mais rápida.** As teclas de andar viram um vetor de intenção normalizado, então `PLAYER_SPEED` vale em qualquer direção. No C, `up` e `right` juntos davam 1,41 vez a velocidade. Decidido em 07/10; a forma do passo está em [ws-messages.md](ws-messages.md) §2.9.
 - **A direção do Player é guardada como ângulo.** `PLAYER_ROT_SPEED` e `mouse_dx` somam no ângulo, e o vetor sai dele: `dx = sin(a)`, `dy = -cos(a)`, com norte em zero e `rot_right` aumentando `a`. O C girava o vetor a cada quadro e acumulava erro de arredondamento. No fio continua indo `(dx, dy)`.
+- **Os tempos da Simulation contam em Ticks inteiros.** Cada constante em segundos vira `round(segundos × TICK_RATE)` Ticks, e a Room guarda o Tick, não os segundos acumulados. Somando `dt` em float, `0.4` s nunca fecha em 12 Ticks (sobra `9.7e-17` na contagem regressiva e falta na progressiva), e a regra duraria 13. Vale para `FIREBALL_COOLDOWN_S` e `PROJECTILE_HIT_S`; os tempos de Enemy e Boss seguem a mesma regra quando entrarem. As constantes continuam em segundos nesta tabela. Decidido pelo Roberto em 13/10.
+- **O Projectile já voa no Tick em que nasce**, para o disparo não ter um Tick de atraso. Ele para no último subpasso antes da parede ou do alvo, como no C, e fica ali durante o `hit`. Decidido pelo Roberto em 13/10.
 - **Este contrato fecha nomes e unidades agora.** Os valores finais saem do balanceamento de conteúdo (F4.7, S5).
 
 ## 5. Em aberto

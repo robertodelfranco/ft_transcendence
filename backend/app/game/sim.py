@@ -1,14 +1,20 @@
 import math
 from random import Random
 
-from app.game.movement import Body, CollisionWorld, apply_input
-from app.game.rules import BOSS_HP, DOOR_REACH, POTION_HEAL, RULESET_NUMBERS, TICK_RATE
+from app.game.movement import Body, CollisionWorld, apply_input, is_solid
+from app.game.rules import (BOSS_HP, DOOR_REACH, FIREBALL_COOLDOWN_S, POTION_HEAL,
+	PROJECTILE_HIT_RADIUS, PROJECTILE_HIT_S, PROJECTILE_MAX_SUBSTEP, PROJECTILE_RADIUS,
+	PROJECTILE_SPEED, RULESET_NUMBERS, TICK_RATE)
 from app.game.state import (Action, ActionKind, Boss, BossState, Door, Enemy, EnemyState, Event,
-	Input, MatchOutcome, Mode, Player, Room, RoomOptions)
+	Input, MatchOutcome, Mode, Player, Projectile, ProjectileKind, ProjectileState, Room,
+	RoomOptions)
 from app.game.world import Map
 
 MAX_QUEUE = TICK_RATE # 1 s de mensagens (ws-messages.md §2.9)
 CATCH_UP_FROM = 3 # com 3 ou mais Inputs esperando, o Tick aplica 2
+# em Ticks inteiros: somando dt em float, 0.4 - 12 * (1/30) sobra 9.7e-17 e o cooldown vira 13
+FIREBALL_COOLDOWN_TICKS = round(FIREBALL_COOLDOWN_S * TICK_RATE)
+PROJECTILE_HIT_TICKS = round(PROJECTILE_HIT_S * TICK_RATE)
 PICKUP_KINDS = {"K": "key", "P": "potion", "M": "mana", "A": "armor"}
 
 
@@ -91,6 +97,8 @@ def step(room: Room, dt: float) -> list[Event]:
 	room.pending_events.clear()
 	for player in room.players.values():
 		_consume_queue(room, player, dt, events)
+	_update_projectiles(room, dt)
+	_regen_mana(room, dt)
 	return events
 
 
@@ -162,7 +170,86 @@ def _use_pickup(room: Room, player: Player, kind: str) -> bool:
 def _apply_action(room: Room, player: Player, action: Action, events: list[Event]) -> None:
 	if action.kind == ActionKind.DOOR:
 		_open_door(room, player, events)
-	# fire entra com a fireball (F1.5)
+	else:
+		_fire(room, player)
+
+
+def _fire(room: Room, player: Player) -> None:
+	cost = room.numbers["FIREBALL_MANA_COST"]
+	# a Mana exata decide, não a arredondada do Snapshot (rules.md §4)
+	if room.tick < player.fire_ready_tick or player.mana < cost:
+		return
+	player.mana -= cost
+	player.fire_ready_tick = room.tick + FIREBALL_COOLDOWN_TICKS
+	# nasce na posição do Player, indo para onde ele olha
+	room.projectiles.append(Projectile(id=f"f_{room.next_projectile_id}",
+		kind=ProjectileKind.FIREBALL, owner_id=player.user_id, x=player.x, y=player.y,
+		dx=math.sin(player.angle), dy=-math.cos(player.angle)))
+	room.next_projectile_id += 1
+
+
+def _update_projectiles(room: Room, dt: float) -> None:
+	for shot in room.projectiles:
+		if shot.state == ProjectileState.MOVING:
+			_fly(room, shot, dt)
+	# sai da Room quem já ficou PROJECTILE_HIT_S em hit
+	room.projectiles = [shot for shot in room.projectiles
+		if shot.state == ProjectileState.MOVING
+		or room.tick - shot.state_tick < PROJECTILE_HIT_TICKS]
+
+
+def _fly(room: Room, shot: Projectile, dt: float) -> None:
+	distance = PROJECTILE_SPEED * dt
+	# subpassos de no máximo PROJECTILE_MAX_SUBSTEP: o C só testava o ponto de chegada
+	substeps = max(1, math.ceil(distance / PROJECTILE_MAX_SUBSTEP))
+	length = distance / substeps
+	targets = _targets(room, shot)
+	for _ in range(substeps):
+		x, y = shot.x + shot.dx * length, shot.y + shot.dy * length
+		target = _target_at(targets, x, y)
+		if target is not None or _touches_wall(room.grid, x, y):
+			# para no ponto anterior, como no C: o impacto não fica dentro da parede
+			shot.state, shot.state_tick = ProjectileState.HIT, room.tick
+			return # o efeito no alvo entra com Enemy, dano e Boss (R3.5 a R3.7)
+		shot.x, shot.y = x, y
+
+
+def _targets(room: Room, shot: Projectile) -> list[Enemy | Boss | Player]:
+	# quem este Projectile pode acertar; não existe fogo amigo (rules.md §4)
+	players = [player for player in room.players.values() if player.alive and not player.left]
+	if shot.kind == ProjectileKind.BULLET:
+		return players
+	targets = [enemy for enemy in room.enemies if enemy.state != EnemyState.DYING]
+	if room.boss is not None and room.boss.state != BossState.DYING:
+		targets.append(room.boss)
+	if room.mode == Mode.PVP:
+		targets += [player for player in players if player.user_id != shot.owner_id]
+	return targets
+
+
+def _target_at(targets: list[Enemy | Boss | Player], x: float,
+		y: float) -> Enemy | Boss | Player | None:
+	for target in targets:
+		if math.hypot(x - target.x, y - target.y) < PROJECTILE_HIT_RADIUS:
+			return target
+	return None
+
+
+def _touches_wall(grid: list[list[str]], x: float, y: float) -> bool:
+	# os 4 cantos da caixa do Projectile, a PROJECTILE_RADIUS do centro
+	return any(is_solid(grid, corner_x, corner_y)
+		for corner_x in (x - PROJECTILE_RADIUS, x + PROJECTILE_RADIUS)
+		for corner_y in (y - PROJECTILE_RADIUS, y + PROJECTILE_RADIUS))
+
+
+def _regen_mana(room: Room, dt: float) -> None:
+	# por Tick, e não por Input: com o catch-up, um Tick aplica 2 Inputs
+	numbers = room.numbers
+	for player in room.players.values():
+		if not player.alive or player.left:
+			continue
+		player.mana = min(player.mana + numbers["MANA_REGEN_PER_S"] * dt,
+			float(numbers["MANA_MAX"]))
 
 
 def _open_door(room: Room, player: Player, events: list[Event]) -> None:
