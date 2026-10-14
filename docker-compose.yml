@@ -1,31 +1,43 @@
+# Sem container_name: os serviços se acham pelo nome de serviço (infra.md, decisão 7)
 services:
   db:
     image: postgres:16-alpine
-    container_name: db_transcendence
     env_file: .env
     volumes:
       - db_data:/var/lib/postgresql/data
+    # -h localhost: na primeira subida o initdb roda num servidor temporário só no
+    # socket unix; sem o -h, o pg_isready daria "pronto" antes do restart dele
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 2s
+      timeout: 5s
+      retries: 15
     networks:
       - transcendence
 
   backend:
     build: ./backend
-    container_name: backend_transcendence
     env_file: .env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    # a imagem slim não tem curl; o urlopen levanta exceção em resposta que não seja 2xx
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
     networks:
       - transcendence
 
   frontend:
     build: ./frontend
-    container_name: frontend_transcendence
     networks:
       - transcendence
 
   proxy:
     build: ./proxy
-    container_name: proxy_transcendence
     environment:
       PUBLIC_HOST: ${PUBLIC_HOST:-localhost}
     ports:
@@ -34,8 +46,10 @@ services:
     volumes:
       - ./proxy/certs:/certs-host:ro
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
     networks:
       - transcendence
 

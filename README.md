@@ -19,11 +19,14 @@ Pré-requisitos: Docker e Docker Compose v2.
 ```bash
 # 1. criar o seu .env a partir do template (só na primeira vez)
 cp .env.example .env
-# preencha POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB
+# preencha ao menos POSTGRES_USER e POSTGRES_PASSWORD (sem senha o Postgres não inicializa)
 
 # 2. subir tudo
 docker compose up --build
 ```
+
+A ordem de subida é por healthcheck: o `backend` espera o `db` aceitar conexão, migra
+o banco e só então sobe a API; o `proxy` espera o `backend` responder em `/api/health`.
 
 O `.env` **não** é versionado (está no `.gitignore`). Ele é lido pelo
 `docker-compose.yml` e injetado em `db` e `backend` via `env_file`.
@@ -70,14 +73,16 @@ docker compose down -v            # derrubar E apagar o volume do banco
 
 ### Sobre o banco
 
-O schema é versionado com Alembic (`backend/alembic/versions/`). Para aplicar
-as migrações num banco já de pé:
+O schema é versionado com Alembic (`backend/alembic/versions/`). O `entrypoint` do
+backend roda `alembic upgrade head` a cada `up`, antes do `uvicorn`. Se a migração
+quebrar, o backend não sobe: o erro aparece em `docker compose logs backend`.
+
+Para aplicar as migrações sem reiniciar o backend:
 
 ```bash
 docker compose exec backend alembic upgrade head
 ```
 
-Depois da F8.3, o `entrypoint` do backend roda isso sozinho a cada `up`.
 Para recomeçar do zero: `docker compose down -v && docker compose up --build`.
 
 ## Automação do GitHub Projects
