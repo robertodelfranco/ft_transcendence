@@ -104,7 +104,7 @@ def step(room: Room, dt: float) -> list[Event]:
 	room.pending_events.clear()
 	for player in room.players.values():
 		_consume_queue(room, player, dt, events)
-	_update_enemies(room, dt)
+	_update_enemies(room, dt, events)
 	_update_projectiles(room, dt, events)
 	_regen_mana(room, dt)
 	return events
@@ -196,20 +196,20 @@ def _fire(room: Room, player: Player) -> None:
 	room.next_projectile_id += 1
 
 
-def _update_enemies(room: Room, dt: float) -> None:
+def _update_enemies(room: Room, dt: float, events: list[Event]) -> None:
 	for enemy in room.enemies:
 		if enemy.state != EnemyState.DYING:
-			_update_enemy(room, enemy, dt)
+			_update_enemy(room, enemy, dt, events)
 	# sai da Room quem já ficou ENEMY_DYING_S em dying
 	room.enemies = [enemy for enemy in room.enemies
 		if enemy.state != EnemyState.DYING or room.tick - enemy.state_tick < ENEMY_DYING_TICKS]
 
 
-def _update_enemy(room: Room, enemy: Enemy, dt: float) -> None:
+def _update_enemy(room: Room, enemy: Enemy, dt: float, events: list[Event]) -> None:
 	if enemy.state == EnemyState.ATTACK:
 		if room.tick - enemy.state_tick < ENEMY_ATTACK_TICKS:
 			return # golpe em andamento: parado
-		_strike(room, enemy)
+		_strike(room, enemy, events)
 		enemy.state = EnemyState.ALERT
 	target = _pick_target(room, enemy)
 	enemy.target_player_id = None if target is None else target.user_id
@@ -348,18 +348,31 @@ def _enemy_fits(room: Room, enemy: Enemy, x: float, y: float) -> bool:
 		for other in room.enemies if other is not enemy and other.state != EnemyState.DYING)
 
 
-def _strike(room: Room, enemy: Enemy) -> None:
+def _strike(room: Room, enemy: Enemy, events: list[Event]) -> None:
 	# só acerta quem ainda está no alcance; no C o dano saía sem conferir a distância
 	target = room.players.get(enemy.target_player_id)
 	if target is None or not target.alive or target.left:
 		return
 	if math.hypot(target.x - enemy.x, target.y - enemy.y) <= ENEMY_ATTACK_RANGE:
-		_hurt_player(target, ENEMY_DAMAGE)
+		_hurt_player(room, target, ENEMY_DAMAGE, None, "enemy", events)
 
 
-def _hurt_player(player: Player, amount: int) -> None:
-	# Armor, player_hit e a morte entram no R3.6
-	player.hp = max(player.hp - amount, 0)
+def _hurt_player(room: Room, player: Player, amount: int, by: int | None, source: str,
+		events: list[Event]) -> None:
+	# a Armor segura primeiro, ponto por ponto; o resto sai do HP, que não passa de 0
+	absorbed = min(player.armor, amount)
+	lost = min(amount - absorbed, player.hp)
+	player.armor -= absorbed
+	player.hp -= lost
+	player.armor_absorbed += absorbed
+	player.damage_taken += lost
+	events.append(Event("player_hit", room.tick, {"target": player.user_id, "by": by,
+		"source": source, "amount": lost, "absorbed": absorbed}))
+	if player.hp == 0:
+		# morto sai de _blocking_bodies, _pick_target e _targets, que filtram alive
+		player.alive = False
+		player.deaths += 1
+		events.append(Event("player_died", room.tick, {"player_id": player.user_id, "by": by}))
 
 
 def _kill_enemy(room: Room, enemy: Enemy, killer_id: int | None, events: list[Event]) -> None:
