@@ -40,6 +40,7 @@ class ConnectionManager:
     def on_presence_change(self, callback: Callable[[int, bool], Awaitable[None]]) -> None: ...
 
     async def close_all(self, code: int) -> None: ...        # desligamento do backend
+    async def close_match(self, match_id: int, code: int, message: str = "") -> None: ...  # sockets game de uma partida
 ```
 
 | Método | Comportamento |

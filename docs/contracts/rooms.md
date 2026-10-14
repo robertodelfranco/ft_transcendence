@@ -21,7 +21,7 @@ A Room é criada junto com a linha de `matches`, então **o `match_id` existe an
 ```python
 # app/game/rooms.py — implementado por Augusto (F2.3), chamado pelo lobby (F5.2)
 class RoomManager:
-    def create(self, match_id: int, mode: Mode, max_players: int,
+    def create(self, match_id: int, mode: Mode, map_name: str, max_players: int,
                options: RoomOptions, created_by: int) -> None: ...
     def join(self, match_id: int, user_id: int, username: str,
              avatar_url: str) -> RoomInfo: ...
@@ -31,7 +31,11 @@ class RoomManager:
     def info(self, match_id: int) -> RoomInfo: ...
     def list_open(self) -> list[RoomInfo]: ...                            # status == "lobby"
     def room_of(self, user_id: int) -> int | None: ...                    # match_id da Room do User
+    def game_room(self, match_id: int) -> Room | None: ...                # para o /ws/game (F2.4); None em lobby
+    async def close(self) -> None: ...                                    # lifespan: cancela toda task de tick
 ```
+
+`create` recebe o `map_name` já conferido pelo lobby contra a lista do `GET /api/maps` e carrega o Map com `load_map`; `max_players` fora de `min_players`..`min(teto do Mode, Spawns do Map)` é erro de programação (`ValueError`), porque a rota já respondeu `422 invalid_options` antes. Cada exceção carrega `code` e `status_code` (404 para `RoomNotFound`, 409 para as outras), e a rota só repassa: `ApiError(e.status_code, e.code, str(e))`. `RoomInfo.to_payload()` é o JSON da §2.3, o mesmo para a resposta HTTP e para o `lobby_update`.
 
 | Exceção | Quando | `code` na API |
 |---|---|---|

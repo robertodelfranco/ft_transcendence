@@ -88,7 +88,7 @@ Label de prioridade não existe: a semana **é** a prioridade.
 
 ### Colunas
 
-`Backlog → Ready → In Progress → In Review → Done`, mais `Failed` (o workflow usa esse nome quando um PR é fechado sem merge). Uma issue entra em `Ready` quando as dependências dela estão em `Done` e o contrato que ela cita está na `main`.
+`Todo → In Progress → In Review → Done`, mais `Failed` (o workflow usa esse nome quando um PR é fechado sem merge). São as colunas que o board já tem; o time ficou com elas na reunião de 12/10. `Todo` cobre o que antes seria `Backlog` e `Ready`: antes de puxar uma issue, confira se as dependências dela estão em `Done` e se o contrato que ela cita está na `main`.
 
 ## 4. Ritos
 
@@ -103,7 +103,7 @@ Label de prioridade não existe: a semana **é** a prioridade.
 
 1. Este arquivo, quando o calendário mudar.
 2. A tabela de dependências do [caminho-5-akita.md](../slices/caminho-5-akita.md) §3 — e cobrar as dos outros.
-3. O board: nenhuma issue em `In Progress` sem dono, nenhuma em `Ready` com dependência aberta.
+3. O board: nenhuma issue em `In Progress` sem dono, nenhuma em `In Progress` com dependência aberta.
 4. A ordem de corte: se C4 (30/10) falhar em algum módulo, a decisão de cortar é tomada ali, com a tabela do plano §8.3, e o módulo sai do README na hora — não na véspera da defesa.
 
 ## 5. O que eu levo para a reunião de 04/10
