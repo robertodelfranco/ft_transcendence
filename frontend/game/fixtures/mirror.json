@@ -1,0 +1,1117 @@
+{
+  "cases": [
+    {
+      "bodies": [],
+      "end": {
+        "angle": 0.0,
+        "x": 1.5,
+        "y": 2.899999999999997
+      },
+      "name": "walk_straight",
+      "runs": [
+        {
+          "keys": [
+            "up"
+          ],
+          "mouse_dx": 0.0,
+          "ticks": 30
+        }
+      ],
+      "start": {
+        "angle": 0.0,
+        "x": 1.5,
+        "y": 6.5
+      }
+    },
+    {
+      "bodies": [],
+      "end": {
+        "angle": 0.0,
+        "x": 1.5,
+        "y": 2.899999999999997
+      },
+      "name": "sprint",
+      "runs": [
+        {
+          "keys": [
+            "up",
+            "sprint"
+          ],
+          "mouse_dx": 0.0,
+          "ticks": 15
+        }
+      ],
+      "start": {
+        "angle": 0.0,
+        "x": 1.5,
+        "y": 6.5
+      }
+    },
+    {
+      "bodies": [],
+      "end": {
+        "angle": 0.0,
+        "x": 2.7727922061357844,
+        "y": 5.227207793864209
+      },
+      "name": "diagonal",
+      "runs": [
+        {
+          "keys": [
+            "up",
+            "right"
+          ],
+          "mouse_dx": 0.0,
+          "ticks": 15
+        }
+      ],
+      "start": {
+        "angle": 0.0,
+        "x": 1.5,
+        "y": 6.5
+      }
+    },
+    {
+      "bodies": [],
+      "end": {
+        "angle": 2.1000000000000014,
+        "x": 3.5,
+        "y": 6.5
+      },
+      "name": "turn_by_key",
+      "runs": [
+        {
+          "keys": [
+            "rot_right"
+          ],
+          "mouse_dx": 0.0,
+          "ticks": 45
+        },
+        {
+          "keys": [
+            "rot_left"
+          ],
+          "mouse_dx": 0.0,
+          "ticks": 10
+        }
+      ],
+      "start": {
+        "angle": 0.0,
+        "x": 3.5,
+        "y": 6.5
+      }
+    },
+    {
+      "bodies": [],
+      "end": {
+        "angle": 1.6916666666666675,
+        "x": 3.5,
+        "y": 6.5
+      },
+      "name": "turn_by_mouse_cut",
+      "runs": [
+        {
+          "keys": [],
+          "mouse_dx": 2.0,
+          "ticks": 5
+        },
+        {
+          "keys": [],
+          "mouse_dx": -0.3,
+          "ticks": 5
+        },
+        {
+          "keys": [],
+          "mouse_dx": 0.01,
+          "ticks": 5
+        }
+      ],
+      "start": {
+        "angle": 0.0,
+        "x": 3.5,
+        "y": 6.5
+      }
+    },
+    {
+      "bodies": [],
+      "end": {
+        "angle": 0.0,
+        "x": 1.5,
+        "y": 1.0599999999999987
+      },
+      "name": "wall_ahead",
+      "runs": [
+        {
+          "keys": [
+            "up"
+          ],
+          "mouse_dx": 0.0,
+          "ticks": 30
+        }
+      ],
+      "start": {
+        "angle": 0.0,
+        "x": 1.5,
+        "y": 2.5
+      }
+    },
+    {
+      "bodies": [],
+      "end": {
+        "angle": -0.6,
+        "x": 1.093457419155575,
+        "y": 1.1134361669517399
+      },
+      "name": "slide_along_wall",
+      "runs": [
+        {
+          "keys": [
+            "up"
+          ],
+          "mouse_dx": 0.0,
+          "ticks": 30
+        }
+      ],
+      "start": {
+        "angle": -0.6,
+        "x": 1.5,
+        "y": 2.5
+      }
+    },
+    {
+      "bodies": [],
+      "end": {
+        "angle": 0.0,
+        "x": 6.5,
+        "y": 1.0599999999999987
+      },
+      "name": "door_blocks",
+      "runs": [
+        {
+          "keys": [
+            "up"
+          ],
+          "mouse_dx": 0.0,
+          "ticks": 30
+        }
+      ],
+      "start": {
+        "angle": 0.0,
+        "x": 6.5,
+        "y": 2.5
+      }
+    },
+    {
+      "bodies": [
+        [
+          5.5,
+          5.0
+        ]
+      ],
+      "end": {
+        "angle": 0.0,
+        "x": 5.5,
+        "y": 5.659999999999999
+      },
+      "name": "body_blocks",
+      "runs": [
+        {
+          "keys": [
+            "up"
+          ],
+          "mouse_dx": 0.0,
+          "ticks": 30
+        }
+      ],
+      "start": {
+        "angle": 0.0,
+        "x": 5.5,
+        "y": 6.5
+      }
+    },
+    {
+      "bodies": [
+        [
+          5.5,
+          6.0
+        ]
+      ],
+      "end": {
+        "angle": -55.43402020886876,
+        "x": 6.030097593355717,
+        "y": 1.7784566018259573
+      },
+      "name": "thousand_inputs",
+      "runs": [
+        {
+          "keys": [
+            "down",
+            "left",
+            "right"
+          ],
+          "mouse_dx": 0.18098502489807933,
+          "ticks": 3
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "left"
+          ],
+          "mouse_dx": -0.5591187559186066,
+          "ticks": 14
+        },
+        {
+          "keys": [
+            "left",
+            "rot_right",
+            "sprint"
+          ],
+          "mouse_dx": -0.7955794469603026,
+          "ticks": 11
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "left",
+            "right",
+            "rot_left",
+            "sprint"
+          ],
+          "mouse_dx": -0.8423996038430837,
+          "ticks": 13
+        },
+        {
+          "keys": [
+            "up",
+            "right",
+            "rot_left",
+            "rot_right"
+          ],
+          "mouse_dx": 0.9704430413215155,
+          "ticks": 10
+        },
+        {
+          "keys": [
+            "left",
+            "rot_right",
+            "sprint"
+          ],
+          "mouse_dx": 0.4036406269171027,
+          "ticks": 9
+        },
+        {
+          "keys": [
+            "down",
+            "rot_left",
+            "sprint"
+          ],
+          "mouse_dx": -0.560769652059462,
+          "ticks": 18
+        },
+        {
+          "keys": [
+            "up",
+            "left",
+            "sprint"
+          ],
+          "mouse_dx": 0.7527352529453377,
+          "ticks": 19
+        },
+        {
+          "keys": [
+            "up",
+            "left",
+            "rot_right",
+            "sprint"
+          ],
+          "mouse_dx": 0.07795457933458083,
+          "ticks": 18
+        },
+        {
+          "keys": [
+            "right",
+            "rot_right"
+          ],
+          "mouse_dx": 0.7222058193333316,
+          "ticks": 2
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "rot_left"
+          ],
+          "mouse_dx": 0.9421567552272363,
+          "ticks": 9
+        },
+        {
+          "keys": [
+            "down",
+            "rot_right"
+          ],
+          "mouse_dx": -0.4129997427051477,
+          "ticks": 4
+        },
+        {
+          "keys": [
+            "up",
+            "down"
+          ],
+          "mouse_dx": 0.7410371396735338,
+          "ticks": 4
+        },
+        {
+          "keys": [
+            "up",
+            "right"
+          ],
+          "mouse_dx": 0.8369869887914045,
+          "ticks": 17
+        },
+        {
+          "keys": [
+            "left",
+            "right",
+            "sprint"
+          ],
+          "mouse_dx": 0.7560191984080811,
+          "ticks": 8
+        },
+        {
+          "keys": [
+            "down",
+            "right",
+            "sprint"
+          ],
+          "mouse_dx": 0.8936973594099817,
+          "ticks": 16
+        },
+        {
+          "keys": [
+            "up"
+          ],
+          "mouse_dx": -0.20201540000514173,
+          "ticks": 10
+        },
+        {
+          "keys": [
+            "down",
+            "rot_left",
+            "rot_right",
+            "sprint"
+          ],
+          "mouse_dx": -0.539770534806846,
+          "ticks": 18
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "right",
+            "sprint"
+          ],
+          "mouse_dx": -0.44304547207090605,
+          "ticks": 8
+        },
+        {
+          "keys": [
+            "rot_right"
+          ],
+          "mouse_dx": -0.6191801712762446,
+          "ticks": 14
+        },
+        {
+          "keys": [
+            "up"
+          ],
+          "mouse_dx": -0.8787746518459727,
+          "ticks": 4
+        },
+        {
+          "keys": [
+            "left",
+            "right",
+            "rot_right",
+            "sprint"
+          ],
+          "mouse_dx": -0.500387104235799,
+          "ticks": 15
+        },
+        {
+          "keys": [
+            "rot_left"
+          ],
+          "mouse_dx": 0.8527339660162552,
+          "ticks": 3
+        },
+        {
+          "keys": [
+            "down",
+            "right",
+            "rot_right",
+            "sprint"
+          ],
+          "mouse_dx": -0.4695938836556961,
+          "ticks": 13
+        },
+        {
+          "keys": [],
+          "mouse_dx": -0.6202042654647257,
+          "ticks": 5
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "right",
+            "rot_left",
+            "rot_right"
+          ],
+          "mouse_dx": -0.6851345441210335,
+          "ticks": 17
+        },
+        {
+          "keys": [
+            "down",
+            "left",
+            "rot_right",
+            "sprint"
+          ],
+          "mouse_dx": -0.5075693044227503,
+          "ticks": 19
+        },
+        {
+          "keys": [
+            "sprint"
+          ],
+          "mouse_dx": -0.522628094768308,
+          "ticks": 11
+        },
+        {
+          "keys": [
+            "up",
+            "left",
+            "right",
+            "rot_right"
+          ],
+          "mouse_dx": 0.9921928957101889,
+          "ticks": 19
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "left",
+            "sprint"
+          ],
+          "mouse_dx": -0.12363085398458029,
+          "ticks": 6
+        },
+        {
+          "keys": [
+            "down"
+          ],
+          "mouse_dx": 0.8778600078542078,
+          "ticks": 4
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "left",
+            "rot_left"
+          ],
+          "mouse_dx": 0.37499425760266103,
+          "ticks": 7
+        },
+        {
+          "keys": [
+            "left",
+            "rot_left"
+          ],
+          "mouse_dx": -0.9929086218244354,
+          "ticks": 2
+        },
+        {
+          "keys": [
+            "left",
+            "sprint"
+          ],
+          "mouse_dx": 0.8901018780932781,
+          "ticks": 3
+        },
+        {
+          "keys": [
+            "down",
+            "left",
+            "right",
+            "sprint"
+          ],
+          "mouse_dx": 0.79796297748518,
+          "ticks": 12
+        },
+        {
+          "keys": [
+            "right",
+            "rot_left",
+            "rot_right"
+          ],
+          "mouse_dx": 0.947674045274578,
+          "ticks": 14
+        },
+        {
+          "keys": [
+            "left",
+            "right",
+            "rot_right"
+          ],
+          "mouse_dx": 0.4731289435101642,
+          "ticks": 6
+        },
+        {
+          "keys": [
+            "up",
+            "rot_right"
+          ],
+          "mouse_dx": -0.23491655480613138,
+          "ticks": 4
+        },
+        {
+          "keys": [
+            "up",
+            "left",
+            "rot_left"
+          ],
+          "mouse_dx": -0.952671130597097,
+          "ticks": 8
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "rot_left",
+            "sprint"
+          ],
+          "mouse_dx": -0.3377002635711859,
+          "ticks": 18
+        },
+        {
+          "keys": [
+            "up",
+            "left",
+            "rot_right"
+          ],
+          "mouse_dx": 0.4570901213054086,
+          "ticks": 12
+        },
+        {
+          "keys": [
+            "up",
+            "right",
+            "rot_right"
+          ],
+          "mouse_dx": 0.039840697133170844,
+          "ticks": 1
+        },
+        {
+          "keys": [
+            "rot_left"
+          ],
+          "mouse_dx": 0.24631081989281833,
+          "ticks": 11
+        },
+        {
+          "keys": [
+            "down",
+            "rot_right"
+          ],
+          "mouse_dx": -0.7454244018816936,
+          "ticks": 18
+        },
+        {
+          "keys": [
+            "rot_right"
+          ],
+          "mouse_dx": -0.3922501014632924,
+          "ticks": 1
+        },
+        {
+          "keys": [
+            "up",
+            "right"
+          ],
+          "mouse_dx": 0.31770148999684356,
+          "ticks": 6
+        },
+        {
+          "keys": [
+            "up",
+            "right",
+            "rot_right",
+            "sprint"
+          ],
+          "mouse_dx": -0.7052920755084546,
+          "ticks": 7
+        },
+        {
+          "keys": [
+            "up"
+          ],
+          "mouse_dx": -0.011245661979126131,
+          "ticks": 13
+        },
+        {
+          "keys": [
+            "up",
+            "left",
+            "rot_right"
+          ],
+          "mouse_dx": 0.608219712346286,
+          "ticks": 6
+        },
+        {
+          "keys": [
+            "rot_left",
+            "rot_right"
+          ],
+          "mouse_dx": 0.975784906132896,
+          "ticks": 17
+        },
+        {
+          "keys": [],
+          "mouse_dx": -0.10817277584659912,
+          "ticks": 18
+        },
+        {
+          "keys": [
+            "up",
+            "rot_right"
+          ],
+          "mouse_dx": 0.2534968739635626,
+          "ticks": 16
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "left",
+            "right",
+            "rot_left",
+            "sprint"
+          ],
+          "mouse_dx": -0.23392941513732368,
+          "ticks": 8
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "right",
+            "rot_right"
+          ],
+          "mouse_dx": 0.8096769566803539,
+          "ticks": 13
+        },
+        {
+          "keys": [
+            "rot_left",
+            "rot_right",
+            "sprint"
+          ],
+          "mouse_dx": 0.7068959011382092,
+          "ticks": 13
+        },
+        {
+          "keys": [
+            "rot_right",
+            "sprint"
+          ],
+          "mouse_dx": -0.028716012402999258,
+          "ticks": 14
+        },
+        {
+          "keys": [
+            "up"
+          ],
+          "mouse_dx": -0.9460670961897246,
+          "ticks": 18
+        },
+        {
+          "keys": [
+            "up",
+            "left",
+            "rot_left",
+            "sprint"
+          ],
+          "mouse_dx": -0.3452946661165315,
+          "ticks": 13
+        },
+        {
+          "keys": [
+            "down",
+            "right"
+          ],
+          "mouse_dx": -0.9612334258999786,
+          "ticks": 16
+        },
+        {
+          "keys": [
+            "left"
+          ],
+          "mouse_dx": -0.6012786352749342,
+          "ticks": 8
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "left",
+            "rot_right"
+          ],
+          "mouse_dx": -0.6644217132643955,
+          "ticks": 12
+        },
+        {
+          "keys": [
+            "left",
+            "rot_right",
+            "sprint"
+          ],
+          "mouse_dx": 0.15159345682482828,
+          "ticks": 10
+        },
+        {
+          "keys": [
+            "down",
+            "right",
+            "sprint"
+          ],
+          "mouse_dx": 0.7005864781775926,
+          "ticks": 10
+        },
+        {
+          "keys": [
+            "down",
+            "rot_left",
+            "sprint"
+          ],
+          "mouse_dx": 0.29508650811361026,
+          "ticks": 17
+        },
+        {
+          "keys": [
+            "up",
+            "rot_left"
+          ],
+          "mouse_dx": -0.1290257099846459,
+          "ticks": 5
+        },
+        {
+          "keys": [
+            "left"
+          ],
+          "mouse_dx": -0.46320892390154933,
+          "ticks": 19
+        },
+        {
+          "keys": [
+            "left",
+            "rot_left"
+          ],
+          "mouse_dx": -0.3272067602172495,
+          "ticks": 13
+        },
+        {
+          "keys": [
+            "down",
+            "right",
+            "rot_left",
+            "rot_right"
+          ],
+          "mouse_dx": 0.11158205583916758,
+          "ticks": 9
+        },
+        {
+          "keys": [
+            "down",
+            "left",
+            "rot_right"
+          ],
+          "mouse_dx": -0.10365090082685846,
+          "ticks": 16
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "right",
+            "rot_right"
+          ],
+          "mouse_dx": -0.1489923745895705,
+          "ticks": 12
+        },
+        {
+          "keys": [
+            "down",
+            "right",
+            "rot_left",
+            "rot_right",
+            "sprint"
+          ],
+          "mouse_dx": 0.485762127278208,
+          "ticks": 4
+        },
+        {
+          "keys": [
+            "left",
+            "rot_left"
+          ],
+          "mouse_dx": -0.43400259345008996,
+          "ticks": 20
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "left",
+            "right",
+            "rot_left",
+            "sprint"
+          ],
+          "mouse_dx": 0.1067179335972166,
+          "ticks": 2
+        },
+        {
+          "keys": [
+            "down"
+          ],
+          "mouse_dx": -0.3185881348794153,
+          "ticks": 15
+        },
+        {
+          "keys": [
+            "down",
+            "right",
+            "rot_left"
+          ],
+          "mouse_dx": -0.6965459860980872,
+          "ticks": 2
+        },
+        {
+          "keys": [
+            "left",
+            "right"
+          ],
+          "mouse_dx": -0.5486257258699307,
+          "ticks": 20
+        },
+        {
+          "keys": [
+            "rot_right"
+          ],
+          "mouse_dx": 0.9202175548685982,
+          "ticks": 20
+        },
+        {
+          "keys": [
+            "up",
+            "right",
+            "rot_left",
+            "rot_right"
+          ],
+          "mouse_dx": -0.9946485547942285,
+          "ticks": 6
+        },
+        {
+          "keys": [
+            "left",
+            "right"
+          ],
+          "mouse_dx": 0.8478220889650974,
+          "ticks": 8
+        },
+        {
+          "keys": [],
+          "mouse_dx": 0.6532623193001192,
+          "ticks": 9
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "left",
+            "rot_right",
+            "sprint"
+          ],
+          "mouse_dx": 0.3994673699514346,
+          "ticks": 10
+        },
+        {
+          "keys": [
+            "right",
+            "rot_left",
+            "sprint"
+          ],
+          "mouse_dx": -0.9482702152233291,
+          "ticks": 9
+        },
+        {
+          "keys": [
+            "up",
+            "rot_left"
+          ],
+          "mouse_dx": -0.9195366537107676,
+          "ticks": 19
+        },
+        {
+          "keys": [
+            "rot_left"
+          ],
+          "mouse_dx": 0.9381104721314073,
+          "ticks": 16
+        },
+        {
+          "keys": [
+            "left",
+            "right",
+            "rot_left"
+          ],
+          "mouse_dx": 0.6271320694759452,
+          "ticks": 13
+        },
+        {
+          "keys": [
+            "left",
+            "right"
+          ],
+          "mouse_dx": 0.31532077296625793,
+          "ticks": 1
+        },
+        {
+          "keys": [
+            "left",
+            "right"
+          ],
+          "mouse_dx": -0.4658875234541351,
+          "ticks": 7
+        },
+        {
+          "keys": [
+            "up",
+            "down",
+            "rot_left"
+          ],
+          "mouse_dx": -0.3784997232133298,
+          "ticks": 6
+        },
+        {
+          "keys": [
+            "up",
+            "left",
+            "rot_left"
+          ],
+          "mouse_dx": -0.003248990585609457,
+          "ticks": 5
+        },
+        {
+          "keys": [
+            "left",
+            "rot_right"
+          ],
+          "mouse_dx": -0.6187792581041434,
+          "ticks": 13
+        },
+        {
+          "keys": [
+            "left",
+            "right",
+            "sprint"
+          ],
+          "mouse_dx": -0.4656546738661904,
+          "ticks": 17
+        },
+        {
+          "keys": [
+            "up"
+          ],
+          "mouse_dx": -0.30975211661398494,
+          "ticks": 11
+        }
+      ],
+      "start": {
+        "angle": 0.0,
+        "x": 2.5,
+        "y": 2.5
+      }
+    }
+  ],
+  "dt": 0.03333333333333333,
+  "grid": [
+    "111111D1",
+    "10000001",
+    "10000001",
+    "10011001",
+    "10011001",
+    "10000001",
+    "10000001",
+    "11111111"
+  ],
+  "rules": {
+    "BODY_BLOCK_DISTANCE": 0.6,
+    "BOSS_ATTACK_COOLDOWN_S": 2.2,
+    "BOSS_ATTACK_RANGE": 18.0,
+    "BOSS_ATTACK_WINDUP_S": 1.2,
+    "BOSS_DYING_S": 1.2,
+    "BOSS_HP": 60,
+    "BOSS_MIN_RANGE": 8.0,
+    "BOSS_RADIUS": 0.2,
+    "BOSS_SIGHT_RANGE": 20.0,
+    "BOSS_SPEED": 2.0,
+    "BULLET_DAMAGE": 2,
+    "DOOR_REACH": 1.0,
+    "ENEMY_ATTACK_INTERVAL_S": 1.4,
+    "ENEMY_ATTACK_RANGE": 0.7,
+    "ENEMY_CHASE_RANGE": 12,
+    "ENEMY_DAMAGE": 1,
+    "ENEMY_DYING_S": 1.5,
+    "ENEMY_RADIUS": 0.2,
+    "ENEMY_RETARGET_MARGIN": 1.0,
+    "ENEMY_SEPARATION": 0.6,
+    "ENEMY_SPEED": 1.5,
+    "FIREBALL_BOSS_DAMAGE": 10,
+    "FIREBALL_COOLDOWN_S": 0.4,
+    "FIREBALL_PLAYER_DAMAGE": 2,
+    "MOUSE_MAX_ROT_SPEED": 18.85,
+    "PLAYER_RADIUS": 0.05,
+    "PLAYER_ROT_SPEED": 1.8,
+    "PLAYER_SPEED": 3.6,
+    "PLAYER_SPRINT_MULT": 2.0,
+    "POTION_HEAL": 3,
+    "PROJECTILE_HIT_RADIUS": 0.3,
+    "PROJECTILE_HIT_S": 0.4,
+    "PROJECTILE_MAX_SUBSTEP": 0.1,
+    "PROJECTILE_RADIUS": 0.1,
+    "PROJECTILE_SPEED": 12.0,
+    "RULESET_NUMBERS": {
+      "coop": {
+        "ARMOR_POINTS": 3,
+        "FIREBALL_MANA_COST": 10,
+        "MANA_MAX": 100,
+        "MANA_PICKUP": 30,
+        "MANA_REGEN_PER_S": 10.0,
+        "RESPAWN_DELAY_S": null
+      },
+      "pvp": {
+        "ARMOR_POINTS": 2,
+        "FIREBALL_MANA_COST": 20,
+        "MANA_MAX": 100,
+        "MANA_PICKUP": 20,
+        "MANA_REGEN_PER_S": 5.0,
+        "RESPAWN_DELAY_S": 3.0
+      }
+    },
+    "TICK_RATE": 30
+  }
+}
