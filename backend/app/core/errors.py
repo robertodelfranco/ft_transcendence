@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -34,6 +35,8 @@ STATUS_TO_CODE = {
 }
 
 LOCATIONS = {"body", "query", "path", "header", "cookie"}
+
+log = logging.getLogger(__name__)
 
 
 class ApiError(Exception):
@@ -100,7 +103,11 @@ async def handle_http_exception(request: Request, exc: StarletteHTTPException) -
 
 
 async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
-	# sem stack no corpo; o Starlette relança a exceção depois, e o uvicorn grava o traceback no log
+	# sem stack no corpo. O traceback vai para o log daqui, com o request_id: este handler roda fora
+	# do RequestIdMiddleware, e o traceback que o uvicorn grava depois já não tem o id
+	request_id = get_request_id(request)
+	log.error("unhandled error", exc_info=exc,
+		extra={"request_id": request_id, "method": request.method, "path": request.url.path})
 	return error_response(request, 500, "internal_error", "internal server error")
 
 
