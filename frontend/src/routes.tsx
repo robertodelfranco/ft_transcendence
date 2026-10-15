@@ -11,19 +11,19 @@ import RequireAuth from "./components/RequireAuth";
 
 // Layout sem path: cabeçalho e rodapé em toda página, inclusive a 404
 export const routes: RouteObject [] = [
-	{
-		element: <AuthRoot />,
-		children: [
-			{
-				element: <Layout />,
-				children: [
-					{ element: <PublicOnly />, children: [{ index: true, element: <Home /> }] },
-					{ path: "privacy", element: <Privacy />},
-					{ path: "terms", element: <Terms /> },
-					{ element: <RequireAuth />, children: [{ path: "lobby", element: <Lobby /> }] },
-					{ path: "*", element: <NotFound />},
-				],
-			},
-		],
-	},
+  {
+    element: <AuthRoot />,
+    children: [
+      {
+        element: <Layout />,
+        children: [
+          { element: <PublicOnly />, children: [{ index: true, element: <Home /> }] },
+          { path: "privacy", element: <Privacy />},
+          { path: "terms", element: <Terms /> },
+          { element: <RequireAuth />, children: [{ path: "lobby", element: <Lobby /> }] },
+          { path: "*", element: <NotFound />},
+        ],
+      },
+    ],
+  },
 ];
