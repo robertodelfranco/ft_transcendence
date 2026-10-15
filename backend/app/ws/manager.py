@@ -179,6 +179,10 @@ class ConnectionManager:
 			for c in sockets if c.match_id == match_id]
 		await asyncio.gather(*(self.disconnect(c, code, message) for c in connections))
 
+	def in_game(self, user_id: int, match_id: int) -> bool:
+		"""Se o User tem um socket game aberto nesta partida (o que substituiu outro, por exemplo)."""
+		return any(c.match_id == match_id for c in self._sockets.get((user_id, "game"), ()))
+
 	# ---------- envio ----------
 
 	async def send_to_user(self, user_id: int, message: Message, channel: Channel | None = None,

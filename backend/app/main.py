@@ -11,6 +11,7 @@ from app.core.errors import error_response, install_error_handlers
 from app.core.request_id import RequestIdMiddleware
 from app.game.protocol import CloseCode
 from app.game.rooms import RoomError, RoomManager
+from app.game.router import router as game_router
 from app.matches.router import router as matches_router
 from app.db.session import SessionLocal
 from app.matches.service import leave_when_offline, load_catalog
@@ -55,6 +56,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 	app.include_router(health.router)
 	app.include_router(auth_router)
 	app.include_router(matches_router)
+	app.include_router(game_router)
 	return app
 
 

@@ -408,7 +408,7 @@ from app.auth.deps import CurrentUser   # Annotated[User, Depends(get_current_us
 async def list_friends(user: CurrentUser, session: DbSession): ...
 ```
 
-`authenticate_ws_token(token) -> User` é a versão para o `join` dos WebSockets.
+`authenticate_ws_token(websocket, token) -> User` é a versão para o `join` dos WebSockets: o `JWT_SECRET` sai do app pelo `websocket`, e a sessão de banco é aberta e fechada dentro da função ([auth.md](contracts/auth.md) §2.7).
 
 ### 9.2 Middlewares
 

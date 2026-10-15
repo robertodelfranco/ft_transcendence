@@ -22,15 +22,16 @@ jobs:
           POSTGRES_USER=ci
           POSTGRES_PASSWORD=ci
           POSTGRES_DB=transcendence
-          POSTGRES_HOST=db_transcendence
+          POSTGRES_HOST=db
           POSTGRES_PORT=5432
           PUBLIC_HOST=localhost:8443
           PROXY_HTTP_PORT=8080
           PROXY_HTTPS_PORT=8443
           EOF
         
+      # --wait: espera db e backend ficarem healthy; reprova se algum ficar unhealthy ou sair
       - name: Build and start stack
-        run: docker compose up -d --build
+        run: docker compose up -d --build --wait --wait-timeout 120
       
       # Sem mkcert no CI: o proxy gera o self-signed (infra.md, decisão 11) e o
       # curl valida contra ele com --cacert, em vez de desligar a checagem com -k

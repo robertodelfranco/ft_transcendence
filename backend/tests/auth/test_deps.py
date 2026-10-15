@@ -76,7 +76,7 @@ async def test_optional_user_of_a_deleted_user_is_401(client, db_session, secret
 # ---------- authenticate_ws_token ----------
 
 @pytest.fixture
-def released(app, db_session):
+def released():
 	"""As sessões que authenticate_ws_token abriu e já soltou, na ordem."""
 	return []
 
