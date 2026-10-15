@@ -1,11 +1,25 @@
 import { useTranslation } from "react-i18next";
-import { Link, Outlet } from "react-router";
+import { Link, Outlet, useNavigate } from "react-router";
+import { useAuth } from "../auth/AuthContext";
 import LanguageSelector from "./LanguageSelector";
 
 const linkClass = "underline hover:text-torch focus-visible:outline-2 focus-visible:outline-torch";
 
 export default function Layout() {
 	const { t } = useTranslation();
+	const { status, user, logout } = useAuth();
+	const navigate = useNavigate();
+
+	async function handleLogout() {
+		try {
+			await logout();
+		} catch {
+			// a sessão local já foi limpa; o servidor revoga o cookie no próximo uso
+		}
+		// flushSync: troca a rota antes de o RequireAuth da rota antiga renderizar
+		// e redirecionar para /login (sem isso o guarda ganha a corrida)
+		navigate("/", { replace: true, flushSync: true });
+	}
 
 	return (
 		<div className="flex min-h-screen flex-col bg-crypt-950 text-bone">
@@ -16,7 +30,21 @@ export default function Layout() {
 				>
 					{t("app.name")}
 				</Link>
-				<LanguageSelector />
+				<div className="flex items-center gap-4">
+					{status === "authenticated" && (
+						<>
+							<span className="text-sm">{user?.username}</span>
+							<button
+								type="button"
+								onClick={handleLogout}
+								className="rounded border border-crypt-700 px-2 py-1 text-sm hover:text-torch focus-visible:outline-2 focus-visible:outline-torch"
+							>
+								{t("nav.logout")}
+							</button>
+						</>
+					)}
+					<LanguageSelector />
+				</div>
 			</header>
 
 			<main className="flex-1 px-4 py-8">

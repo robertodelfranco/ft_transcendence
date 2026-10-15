@@ -25,5 +25,15 @@
     "title": "Página no encontrada",
     "description": "La dirección que intentaste abrir no existe.",
     "back": "Volver al inicio"
+  },
+  "status": {
+    "loading": "Cargando…"
+  },
+  "lobby": {
+    "title": "Lobby",
+    "greeting": "¡Hola, {{username}}!"
+  },
+  "nav": {
+    "logout": "Cerrar sesión"
   }
 }
