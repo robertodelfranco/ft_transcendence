@@ -5,7 +5,7 @@ import { resetMockSession } from "./src/mocks/handlers";
 import { server } from "./src/mocks/server";
 
 // "error": requisição sem handler derruba o teste, em vez de sair para a rede de verdade
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 
 afterEach(() => {
   // Sem `globals: true`, o Testing Library não registra a limpeza sozinho
