@@ -1,0 +1,2 @@
+{"error": {"code": "validation_error", "message": "request validation failed", "request_id": "b7e2c3d4",
+  "fields": {"username": "invalid_format", "password": "weak_password"}}}

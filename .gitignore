@@ -20,3 +20,6 @@ __pycache__/
 
 # front
 node_modules/
+
+# Worker do MSW: gerado por `npm run mocks:init`, só para dev e testes (nunca no build)
+frontend/public/mockServiceWorker.js
