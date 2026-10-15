@@ -1,11 +1,14 @@
 import math
 from collections import deque
+from collections.abc import Callable
 from random import Random
 
 from app.game.movement import Body, CollisionWorld, apply_input, is_solid
-from app.game.rules import (BOSS_HP, DOOR_REACH, ENEMY_ATTACK_INTERVAL_S, ENEMY_ATTACK_RANGE,
-	ENEMY_CHASE_RANGE, ENEMY_DAMAGE, ENEMY_DYING_S, ENEMY_RADIUS, ENEMY_RETARGET_MARGIN,
-	ENEMY_SEPARATION, ENEMY_SPEED, FIREBALL_COOLDOWN_S, POTION_HEAL, PROJECTILE_HIT_RADIUS,
+from app.game.rules import (BOSS_ATTACK_COOLDOWN_S, BOSS_ATTACK_RANGE, BOSS_ATTACK_WINDUP_S,
+	BOSS_HP, BOSS_MIN_RANGE, BOSS_RADIUS, BOSS_SIGHT_RANGE, BOSS_SPEED, BULLET_DAMAGE, DOOR_REACH,
+	ENEMY_ATTACK_INTERVAL_S, ENEMY_ATTACK_RANGE, ENEMY_CHASE_RANGE, ENEMY_DAMAGE, ENEMY_DYING_S,
+	ENEMY_RADIUS, ENEMY_RETARGET_MARGIN, ENEMY_SEPARATION, ENEMY_SPEED, FIREBALL_BOSS_DAMAGE,
+	FIREBALL_COOLDOWN_S, FIREBALL_PLAYER_DAMAGE, POTION_HEAL, PROJECTILE_HIT_RADIUS,
 	PROJECTILE_HIT_S, PROJECTILE_MAX_SUBSTEP, PROJECTILE_RADIUS, PROJECTILE_SPEED,
 	RULESET_NUMBERS, TICK_RATE)
 from app.game.state import (Action, ActionKind, Boss, BossState, Door, Enemy, EnemyState, Event,
@@ -20,6 +23,8 @@ FIREBALL_COOLDOWN_TICKS = round(FIREBALL_COOLDOWN_S * TICK_RATE)
 PROJECTILE_HIT_TICKS = round(PROJECTILE_HIT_S * TICK_RATE)
 ENEMY_ATTACK_TICKS = round(ENEMY_ATTACK_INTERVAL_S * TICK_RATE)
 ENEMY_DYING_TICKS = round(ENEMY_DYING_S * TICK_RATE)
+BOSS_WINDUP_TICKS = round(BOSS_ATTACK_WINDUP_S * TICK_RATE)
+BOSS_COOLDOWN_TICKS = round(BOSS_ATTACK_COOLDOWN_S * TICK_RATE)
 PICKUP_KINDS = {"K": "key", "P": "potion", "M": "mana", "A": "armor"}
 # 8 vizinhas: primeiro as do lado, depois as diagonais
 NEIGHBORS = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
@@ -105,6 +110,7 @@ def step(room: Room, dt: float) -> list[Event]:
 	for player in room.players.values():
 		_consume_queue(room, player, dt, events)
 	_update_enemies(room, dt, events)
+	_update_boss(room, dt)
 	_update_projectiles(room, dt, events)
 	_regen_mana(room, dt)
 	return events
@@ -223,7 +229,7 @@ def _update_enemy(room: Room, enemy: Enemy, dt: float, events: list[Event]) -> N
 	else:
 		length = ENEMY_SPEED * dt
 		dir_x, dir_y = _chase_direction(room, enemy, target, length)
-		_enemy_walk(room, enemy, dir_x, dir_y, length)
+		_walk(enemy, dir_x, dir_y, length, lambda x, y: _enemy_fits(room, enemy, x, y))
 
 
 def _pick_target(room: Room, enemy: Enemy) -> Player | None:
@@ -331,12 +337,13 @@ def _cell(x: float, y: float) -> tuple[int, int]:
 	return math.floor(x), math.floor(y)
 
 
-def _enemy_walk(room: Room, enemy: Enemy, dir_x: float, dir_y: float, length: float) -> None:
+def _walk(entity: Enemy | Boss, dir_x: float, dir_y: float, length: float,
+		fits: Callable[[float, float], bool]) -> None:
 	# em linha reta; bloqueado, um lado perpendicular e depois o outro (try_move_again do C)
 	for step_x, step_y in ((dir_x, dir_y), (dir_y, -dir_x), (-dir_y, dir_x)):
-		x, y = enemy.x + step_x * length, enemy.y + step_y * length
-		if _enemy_fits(room, enemy, x, y):
-			enemy.x, enemy.y = x, y
+		x, y = entity.x + step_x * length, entity.y + step_y * length
+		if fits(x, y):
+			entity.x, entity.y = x, y
 			return
 
 
@@ -382,6 +389,86 @@ def _kill_enemy(room: Room, enemy: Enemy, killer_id: int | None, events: list[Ev
 	events.append(Event("enemy_died", room.tick, {"enemy_id": enemy.id, "killer_id": killer_id}))
 
 
+def _update_boss(room: Room, dt: float) -> None:
+	boss = room.boss
+	if boss is None or boss.state == BossState.DYING:
+		return
+	if boss.state == BossState.ATTACK:
+		if room.tick - boss.state_tick < BOSS_WINDUP_TICKS:
+			return # mirando: parado
+		_boss_shoot(room, boss)
+		boss.state = BossState.ALERT
+	# escolhe o alvo antes e aplica as distâncias a ele; senão o state oscila com dois Players
+	target = _boss_target(room, boss)
+	boss.target_player_id = None if target is None else target.user_id
+	if target is None:
+		boss.state = BossState.IDLE
+		return
+	boss.state = BossState.ALERT
+	dx, dy = target.x - boss.x, target.y - boss.y
+	distance = math.hypot(dx, dy)
+	if distance <= BOSS_ATTACK_RANGE and room.tick >= boss.attack_ready_tick:
+		# o cooldown conta do início do attack: dois bullets ficam a BOSS_ATTACK_COOLDOWN_S
+		boss.state, boss.state_tick = BossState.ATTACK, room.tick
+		boss.attack_ready_tick = room.tick + BOSS_COOLDOWN_TICKS
+	elif distance > BOSS_MIN_RANGE:
+		_walk(boss, dx / distance, dy / distance, BOSS_SPEED * dt,
+			lambda x, y: _boss_fits(room, x, y))
+
+
+def _boss_target(room: Room, boss: Boss) -> Player | None:
+	# quem o Boss já viu segue alvo até morrer ou sair; alvo novo precisa estar a BOSS_SIGHT_RANGE
+	current = room.players.get(boss.target_player_id)
+	if current is not None and current.alive and not current.left:
+		return current
+	return min(_in_sight(room, boss),
+		key=lambda player: math.hypot(player.x - boss.x, player.y - boss.y), default=None)
+
+
+def _in_sight(room: Room, boss: Boss) -> list[Player]:
+	# só distância, sem linha de visão: como no C, o Boss vê através de parede
+	return [player for player in room.players.values() if player.alive and not player.left
+		and math.hypot(player.x - boss.x, player.y - boss.y) <= BOSS_SIGHT_RANGE]
+
+
+def _boss_shoot(room: Room, boss: Boss) -> None:
+	target = room.players.get(boss.target_player_id)
+	if target is None or not target.alive or target.left:
+		return # o alvo morreu ou saiu durante a mira: o tiro se perde
+	dx, dy = target.x - boss.x, target.y - boss.y
+	distance = math.hypot(dx, dy)
+	room.projectiles.append(Projectile(id=f"b_{room.next_projectile_id}",
+		kind=ProjectileKind.BULLET, owner_id=None, x=boss.x, y=boss.y,
+		dx=dx / distance, dy=dy / distance))
+	room.next_projectile_id += 1
+	# rodízio: o próximo tiro vai no Player seguinte, por user_id, entre os que o Boss vê
+	in_sight = sorted(player.user_id for player in _in_sight(room, boss))
+	following = [user_id for user_id in in_sight if user_id > target.user_id] or in_sight
+	if following:
+		boss.target_player_id = following[0]
+
+
+def _boss_fits(room: Room, x: float, y: float) -> bool:
+	if _touches_wall(room.grid, x, y, BOSS_RADIUS):
+		return False
+	# no C o retorno deste teste era ignorado, e o Boss atravessava Enemies
+	return all(math.hypot(x - enemy.x, y - enemy.y) >= ENEMY_SEPARATION
+		for enemy in room.enemies if enemy.state != EnemyState.DYING)
+
+
+def _hurt_boss(room: Room, boss: Boss, by: int, events: list[Event]) -> None:
+	dealt = min(FIREBALL_BOSS_DAMAGE, boss.hp)
+	boss.hp -= dealt
+	room.players[by].damage_dealt += dealt
+	if boss.hp == 0:
+		boss.state, boss.state_tick = BossState.DYING, room.tick
+		room.players[by].kills += 1
+		events.append(Event("boss_died", room.tick, {"killer_id": by}))
+	elif boss.state == BossState.IDLE:
+		# no C, em idle era invulnerável; aqui leva dano e acorda mirando em quem atirou
+		boss.state, boss.target_player_id = BossState.ALERT, by
+
+
 def _update_projectiles(room: Room, dt: float, events: list[Event]) -> None:
 	for shot in room.projectiles:
 		if shot.state == ProjectileState.MOVING:
@@ -406,7 +493,13 @@ def _fly(room: Room, shot: Projectile, dt: float, events: list[Event]) -> None:
 			shot.state, shot.state_tick = ProjectileState.HIT, room.tick
 			if isinstance(target, Enemy):
 				_kill_enemy(room, target, shot.owner_id, events)
-			return # o dano em Player e Boss entra nos R3.6 e R3.7
+			elif isinstance(target, Boss):
+				_hurt_boss(room, target, shot.owner_id, events)
+			elif target is not None:
+				damage = (BULLET_DAMAGE if shot.kind == ProjectileKind.BULLET
+					else FIREBALL_PLAYER_DAMAGE)
+				_hurt_player(room, target, damage, shot.owner_id, shot.kind, events)
+			return
 		shot.x, shot.y = x, y
 
 
