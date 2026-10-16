@@ -1,4 +1,8 @@
-import * as THREE from "three";
+import { AssetLoader } from "./src/render/assets";
+import type { Assets } from "./src/render/assets";
+import { ThreeRenderer } from "./src/render/renderer";
+import type { ViewState } from "./src/render/renderer";
+import type { WelcomeMessage } from "./src/types";
 import example from "./fixtures/snapshot.example.json";
 
 // Demo local da F3.1: usa o welcome fabricado, sem socket ou Simulation.
@@ -11,96 +15,39 @@ canvas.style.display = "block";
 canvas.style.width = "100vw";
 canvas.style.height = "100vh";
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 100);
-
-// Theme dungeon: cores e slots de parede de mount-game.md §5.3.
-const theme = {
-  floor: 0x545454,
-  ceiling: 0x161e00,
-  walls: {
-    no: "/assets/map/dungeon_wall_1.png",
-    so: "/assets/map/dungeon_wall_9.png",
-    we: "/assets/map/dungeon_wall_2.png",
-    ea: "/assets/map/dungeon_wall_10.png",
-  },
-};
-scene.background = new THREE.Color(theme.ceiling);
-scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-const light = new THREE.DirectionalLight(0xffffff, 1.5);
-light.position.set(2, 4, 1);
-scene.add(light);
-
-const grid = example.welcome.map.grid;
-const width = grid[0].length;
-const depth = grid.length;
-const wallCount = grid.reduce(
-  (total, row) => total + [...row].filter(cell => cell === "1").length,
-  0,
-);
-
-const wallGeometry = new THREE.BoxGeometry(1, 1, 1);
-const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x777777 });
-const walls = new THREE.InstancedMesh<
-  THREE.BoxGeometry,
-  THREE.Material | THREE.Material[]
->(wallGeometry, wallMaterial, wallCount);
-const wallTextures: THREE.Texture[] = [];
-const texturedMaterials: THREE.MeshLambertMaterial[] = [];
-let disposed = false;
-const transform = new THREE.Object3D();
-let index = 0;
-
-grid.forEach((row, y) => {
-  [...row].forEach((cell, x) => {
-    if (cell !== "1") return;
-
-    // Centro da célula; Grid y vira Z, altura vira Y.
-    transform.position.set(x + 0.5, 0.5, y + 0.5);
-    transform.updateMatrix();
-    walls.setMatrixAt(index++, transform.matrix);
-  });
-});
-walls.instanceMatrix.needsUpdate = true;
-scene.add(walls);
-
-const surfaceGeometry = new THREE.PlaneGeometry(width, depth);
-const floorMaterial = new THREE.MeshLambertMaterial({ color: theme.floor });
-const ceilingMaterial = new THREE.MeshLambertMaterial({ color: theme.ceiling });
-const floor = new THREE.Mesh(surfaceGeometry, floorMaterial);
-floor.rotation.x = -Math.PI / 2;
-floor.position.set(width / 2, 0, depth / 2);
-const ceiling = new THREE.Mesh(surfaceGeometry, ceilingMaterial);
-ceiling.rotation.x = Math.PI / 2;
-ceiling.position.set(width / 2, 1, depth / 2);
-scene.add(floor, ceiling);
-
-const player = example.welcome.snapshot.players.find(
-  candidate => candidate.id === example.welcome.user_id,
-);
+const welcome = example.welcome as WelcomeMessage;
+const player = welcome.snapshot.players.find(candidate => candidate.id === welcome.user_id);
 if (!player) throw new Error("local_player_missing");
-
-// Altura 0.5 e sensibilidade são escolhas locais desta demonstração.
-camera.position.set(player.x, 0.5, player.y);
-camera.rotation.order = "YXZ";
+const view: ViewState = {
+  localPlayer: player,
+  otherPlayers: welcome.snapshot.players.filter(candidate => candidate.id !== player.id),
+  enemies: welcome.snapshot.enemies,
+  boss: welcome.snapshot.boss,
+  projectiles: welcome.snapshot.projectiles,
+  doors: welcome.snapshot.doors,
+  grid: welcome.map.grid,
+  camera: { x: player.x, y: player.y, dx: player.dx, dy: player.dy, pitch: 0 },
+};
+let renderer: ThreeRenderer | undefined;
+let assets: Assets | undefined;
+let disposed = false;
+let frame = 0;
 let yaw = Math.atan2(-player.dx, -player.dy);
 let pitch = 0;
 const pitchLimit = Math.PI / 3;
 const mouseSensitivity = 0.002;
-camera.rotation.set(pitch, yaw, 0);
-
 function look(event: MouseEvent): void {
   if (document.pointerLockElement !== canvas) return;
 
   // Só a câmera da demo gira; o yaw real será decidido pelo servidor.
   yaw -= event.movementX * mouseSensitivity;
-  pitch = THREE.MathUtils.clamp(
+  pitch = Math.max(-pitchLimit, Math.min(
     pitch - event.movementY * mouseSensitivity,
-    -pitchLimit,
     pitchLimit,
-  );
-  camera.rotation.set(pitch, yaw, 0);
+  ));
+  view.camera.dx = -Math.sin(yaw);
+  view.camera.dy = -Math.cos(yaw);
+  view.camera.pitch = pitch;
 }
 
 function showPointerLockError(): void {
@@ -108,18 +55,21 @@ function showPointerLockError(): void {
 }
 
 // Catálogo local da página de desenvolvimento: o jogo não importa a casca.
-// A integração destes erros com HudState/React pertence à F3.2.
+// A casca recebe os mesmos códigos para apresentar o estado de erro.
 const messages = {
   "pt-BR": {
     asset_load_failed: "Não foi possível carregar as texturas das paredes. Recarregue a página.",
+    renderer_init_failed: "Não foi possível iniciar o renderizador.",
     pointer_lock_failed: "Não foi possível capturar o mouse. Clique na cena para tentar novamente.",
   },
   en: {
     asset_load_failed: "The wall textures could not be loaded. Reload the page.",
+    renderer_init_failed: "Renderer initialization failed.",
     pointer_lock_failed: "The mouse could not be captured. Click the scene to try again.",
   },
   es: {
     asset_load_failed: "No se pudieron cargar las texturas de las paredes. Recarga la página.",
+    renderer_init_failed: "No se pudo iniciar el renderizador.",
     pointer_lock_failed: "No se pudo capturar el ratón. Haz clic en la escena para volver a intentarlo.",
   },
 };
@@ -134,47 +84,10 @@ errorPanel.hidden = true;
 document.body.append(errorPanel);
 
 function showError(code: keyof typeof messages.en): void {
+  errorPanel.dataset.status = "error";
   errorPanel.dataset.code = code;
   errorPanel.textContent = messages[language][code];
   errorPanel.hidden = false;
-}
-
-async function loadWallTextures(): Promise<void> {
-  const loader = new THREE.TextureLoader();
-  const results = await Promise.allSettled(
-    [theme.walls.ea, theme.walls.we, theme.walls.no, theme.walls.so]
-      .map(url => loader.loadAsync(url)),
-  );
-
-  // Libera inclusive cargas parciais se a página sair durante o carregamento.
-  if (disposed || results.some(result => result.status === "rejected")) {
-    results.forEach(result => {
-      if (result.status === "fulfilled") result.value.dispose();
-    });
-    if (!disposed) {
-      renderer.setAnimationLoop(null);
-      showError("asset_load_failed");
-    }
-    return;
-  }
-
-  results.forEach(result => {
-    if (result.status !== "fulfilled") return;
-    const texture = result.value;
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.magFilter = THREE.NearestFilter;
-    texture.minFilter = THREE.NearestFilter;
-    texture.generateMipmaps = false;
-    wallTextures.push(texture);
-    texturedMaterials.push(new THREE.MeshLambertMaterial({ map: texture }));
-  });
-
-  // BoxGeometry: +X, -X, +Y, -Y, +Z, -Z.
-  // Slots legados do Cub3D: WE, EA, tampas, SO, NO.
-  walls.material = [
-    texturedMaterials[1], texturedMaterials[0], wallMaterial, wallMaterial,
-    texturedMaterials[3], texturedMaterials[2],
-  ];
 }
 
 async function lockPointer(): Promise<void> {
@@ -194,16 +107,13 @@ function updatePointerLock(): void {
 }
 
 function resize(): void {
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight, false);
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+  renderer?.resize(window.innerWidth, window.innerHeight);
 }
 
 function dispose(): void {
   if (disposed) return;
   disposed = true;
-  renderer.setAnimationLoop(null);
+  cancelAnimationFrame(frame);
   canvas!.removeEventListener("click", lockPointer);
   document.removeEventListener("mousemove", look);
   document.removeEventListener("pointerlockerror", showPointerLockError);
@@ -211,16 +121,36 @@ function dispose(): void {
   window.removeEventListener("resize", resize);
   window.removeEventListener("pagehide", dispose);
   if (document.pointerLockElement === canvas) document.exitPointerLock();
-  walls.dispose();
-  wallGeometry.dispose();
-  wallMaterial.dispose();
-  texturedMaterials.forEach(material => material.dispose());
-  wallTextures.forEach(texture => texture.dispose());
-  surfaceGeometry.dispose();
-  floorMaterial.dispose();
-  ceilingMaterial.dispose();
-  renderer.dispose();
+  renderer?.dispose();
+  assets?.dispose();
   errorPanel.remove();
+}
+
+async function start(): Promise<void> {
+  try {
+    assets = await new AssetLoader().load();
+    if (disposed) {
+      assets.dispose();
+      return;
+    }
+    renderer = new ThreeRenderer(canvas!);
+    await renderer.init(welcome.map, assets);
+    if (disposed) return;
+    resize();
+    let previous = performance.now();
+    function draw(now: number): void {
+      if (disposed) return;
+      renderer!.render(view, (now - previous) / 1000);
+      previous = now;
+      frame = requestAnimationFrame(draw);
+    }
+    frame = requestAnimationFrame(draw);
+  } catch (error) {
+    renderer?.dispose();
+    assets?.dispose();
+    if (!disposed) showError(error instanceof Error && error.message === "asset_load_failed"
+      ? "asset_load_failed" : "renderer_init_failed");
+  }
 }
 
 canvas.addEventListener("click", lockPointer);
@@ -229,8 +159,5 @@ document.addEventListener("pointerlockerror", showPointerLockError);
 document.addEventListener("pointerlockchange", updatePointerLock);
 window.addEventListener("resize", resize);
 window.addEventListener("pagehide", dispose);
-resize();
-renderer.setAnimationLoop(() => renderer.render(scene, camera));
-void loadWallTextures();
-
+void start();
 if (import.meta.hot) import.meta.hot.dispose(dispose);
