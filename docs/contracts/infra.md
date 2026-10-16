@@ -166,7 +166,7 @@ server {
         proxy_pass http://backend:8000;          # sem barra final: o path chega inteiro
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For   $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
@@ -177,7 +177,7 @@ server {
         proxy_set_header Connection        "upgrade";
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For   $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
@@ -190,7 +190,7 @@ server {
 }
 ```
 
-O backend sobe com `uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*' --no-access-log`, sem `--workers` (o `--no-access-log` entra com F6.8, §2.3 item 6). O ping de protocolo do WebSocket a cada 20 s ([ws-manager.md](ws-manager.md) §2.7) já é o padrão do `uvicorn` e dispensa flag.
+O backend sobe com `uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*' --no-access-log`, sem `--workers`. O `--no-access-log` ficou dispensável com a F6.5: o backend desliga o `uvicorn.access` no `configure_logging` e grava a própria linha de acesso, em JSON, com `request_id` e sem a query (§2.3 item 6). O ping de protocolo do WebSocket a cada 20 s ([ws-manager.md](ws-manager.md) §2.7) já é o padrão do `uvicorn` e dispensa flag.
 
 O caminho de uma requisição de login:
 
@@ -219,7 +219,7 @@ cp "$(mkcert -CAROOT)/rootCA.pem" .          # levar para as outras máquinas
 > A numeração começa em **5** de propósito: os itens 5, 6 e 7 são as respostas às perguntas 5, 6 e 7 do meu briefing em [README.md](README.md), e manter o número facilita conferir na reunião. As perguntas 1 a 4 são respondidas em [rooms.md](rooms.md) §4; a 8, na §5 deste arquivo.
 
 5. **O backend enxerga o caminho inteiro** (pergunta 5). `proxy_pass http://backend:8000;` sem barra final mantém `/api/...`. O motivo é que o prefixo aparece em quatro lugares que precisam concordar: a rota do FastAPI, o `Path` do cookie de refresh, a rota que vai no log com `request_id` e a label `route` do Prometheus. Com reescrita, três deles passam a usar um caminho que ninguém digita, e todo bug de cookie vira uma investigação. O repo hoje tem `proxy_pass http://backend:8000/;` com barra — muda no PR de F8.1.
-6. **O IP real chega em `X-Forwarded-For`** (pergunta 6), com `X-Real-IP` e `X-Forwarded-Proto` ao lado, e o `uvicorn` roda com `--proxy-headers` para que `request.client.host` já seja o IP do cliente — é a chave do rate limit por IP do Augusto, que sem isso jogaria todos os usuários no mesmo balde. O backend confia nesses cabeçalhos **porque não é alcançável de fora do compose**: a confiança vem da topologia, não do cabeçalho. Se algum dia o backend publicasse porta, essa confiança virava um bypass de rate limit.
+6. **O IP real chega em `X-Forwarded-For`** (pergunta 6), com `X-Real-IP` e `X-Forwarded-Proto` ao lado, e o `uvicorn` roda com `--proxy-headers` para que `request.client.host` já seja o IP do cliente — é a chave do rate limit por IP do Augusto, que sem isso jogaria todos os usuários no mesmo balde. O backend confia nesses cabeçalhos **porque não é alcançável de fora do compose**: a confiança vem da topologia, não do cabeçalho. Se algum dia o backend publicasse porta, essa confiança virava um bypass de rate limit. **O Nginx substitui o `X-Forwarded-For` (`$remote_addr`), nunca acrescenta (`$proxy_add_x_forwarded_for`):** com `--forwarded-allow-ips='*'`, o `uvicorn` usa o primeiro IP da lista, e com o acréscimo esse primeiro seria o que o cliente mandou. Um script trocaria o IP a cada tentativa e passaria pelo rate limit (F6.5, conferido com o `uvicorn` 0.30.6).
 7. **Nome de serviço, não nome de container** (pergunta 7). `POSTGRES_HOST=db`. Sai o `container_name` do compose, que é o que hoje faz `db_transcendence` resolver; nome de serviço é o que o Docker resolve sempre, e é o que a arq. §12 já pedia. Três lugares mudam no mesmo PR: o `compose`, o `.env.example` (que também perde o comentário no fim da linha, que `env_file` gravaria dentro do valor) e o `.env` gerado pelo CI em `build-check.yml`.
 8. **Um worker de `uvicorn`**, documentado como limitação consciente (ADR 10): `ConnectionManager` e `RoomManager` são dicionários em processo. Escalar exigiria Redis pub/sub e é decisão do Tech Lead.
 9. **Certificado fora do git.** Chave privada versionada é chave vazada, mesmo em repo de escola. O comando fica documentado e o `proxy/certs/` entra no `.gitignore`.

@@ -8,6 +8,8 @@ from app import health
 from app.auth.router import router as auth_router
 from app.core.config import Settings, get_settings
 from app.core.errors import error_response, install_error_handlers
+from app.core.logging import AccessLogMiddleware, configure_logging
+from app.core.ratelimit import RateLimitStore
 from app.core.request_id import RequestIdMiddleware
 from app.game.protocol import CloseCode
 from app.game.rooms import RoomError, RoomManager
@@ -45,11 +47,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 	app.state.settings = settings
 	app.state.connection_manager = ConnectionManager() # uma por processo: um worker só
 	app.state.room_manager = RoomManager(app.state.connection_manager)
+	app.state.rate_limits = RateLimitStore() # por app: cada teste começa com a contagem zerada
 	app.state.maps = load_catalog() # GET /api/maps e a validação do POST /api/matches
 	# lê o room_manager na hora do aviso, não agora: o teste troca a instância
 	app.state.connection_manager.on_presence_change(lambda user_id, online:
 		leave_when_offline(app.state.room_manager, SessionLocal, user_id, online))
 
+	# o último é o de fora: o request_id já existe quando a linha de acesso é escrita
+	app.add_middleware(AccessLogMiddleware)
 	app.add_middleware(RequestIdMiddleware)
 	install_error_handlers(app)
 	app.add_exception_handler(RoomError, handle_room_error)
@@ -60,4 +65,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 	return app
 
 
+# depois do logging do uvicorn, que já rodou antes de importar o app: o JSON vale para ele também
+configure_logging(get_settings().log_level)
 app = create_app() # é o que o uvicorn sobe: app.main:app
