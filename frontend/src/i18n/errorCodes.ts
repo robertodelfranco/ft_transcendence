@@ -32,3 +32,5 @@ export const ERROR_CODES = [
 export const FIELD_ERROR_CODES = [
   "required", "invalid_format", "too_short", "too_long", "weak_password", "invalid_value",
 ] as const;
+
+export type FieldErrorCode = (typeof FIELD_ERROR_CODES)[number];
