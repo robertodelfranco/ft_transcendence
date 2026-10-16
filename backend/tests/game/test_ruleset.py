@@ -1,6 +1,6 @@
 from app.game.rules import (BOSS_DYING_S, BULLET_DAMAGE, ENEMY_DYING_S, FIREBALL_BOSS_DAMAGE,
 	TICK_RATE)
-from app.game.sim import create_room, enqueue, match_outcome, set_connected, step
+from app.game.sim import create_room, enqueue, leave, match_outcome, set_connected, step
 from app.game.state import (Action, ActionKind, BossState, Enemy, EnemyState, Input, Mode,
 	Projectile, ProjectileKind, ProjectileState, RoomOptions)
 from app.game.world import parse_map
@@ -83,6 +83,26 @@ def test_boss_and_last_player_dying_on_the_same_tick_is_a_win():
 	assert boss_died.tick == player_died.tick # o cenário aconteceu mesmo
 	[over] = named(events, "game_over")
 	assert over.data["result"] == "win"
+
+
+def test_everyone_leaving_ends_the_match_with_a_forfeit():
+	room = new_room()
+	leave(room, 7)
+	assert named(run(room, 1), "game_over") == []
+	leave(room, 9)
+	events = run(room, 1)
+	[left] = named(events, "player_left")
+	[over] = named(events, "game_over")
+	assert over.tick == left.tick
+	assert over.data == {"result": "loss", "winner_ids": [], "reason": "forfeit"}
+
+
+def test_everyone_disconnecting_does_not_end_the_match():
+	room = new_room()
+	for user_id in (7, 9):
+		set_connected(room, user_id, True)
+		set_connected(room, user_id, False)
+	assert named(run(room, 30), "game_over") == []
 
 
 def test_game_over_comes_out_only_once():

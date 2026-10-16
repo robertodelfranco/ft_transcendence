@@ -16,6 +16,9 @@ class CoopRuleset:
 		if room.boss is not None and room.boss.state == BossState.DYING:
 			# vitória de grupo: entra todo mundo, inclusive quem morreu ou saiu
 			return {"result": "win", "winner_ids": sorted(room.players), "reason": "boss_defeated"}
+		# todos saíram (Grace period expirado para todos): vem antes, porque também não sobra ninguém vivo
+		if all(player.left for player in room.players.values()):
+			return {"result": "loss", "winner_ids": [], "reason": "forfeit"}
 		if not any(player.alive and not player.left for player in room.players.values()):
 			return {"result": "loss", "winner_ids": [], "reason": "all_dead"}
 		return None
