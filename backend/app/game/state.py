@@ -119,8 +119,9 @@ class Boss:
 	y: 					float
 	hp: 				int
 	state: 				BossState = BossState.IDLE
-	state_time: 		float = 0.0 # seg desde que entrou no state atual
+	state_tick: 		int = 0 # Tick em que entrou no state atual
 	target_player_id:	int | None = None
+	attack_ready_tick:	int = 0 # antes dele, o Boss não começa outro attack
 
 
 @dataclass(slots=True)
