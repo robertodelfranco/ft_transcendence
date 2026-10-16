@@ -146,7 +146,7 @@ Tudo que no C estava espalhado em `t_game` vira o estado de **uma Room**, com a 
 Room
 ├── match_id (é o id da Room), mode ("coop" | "pvp"), status ("running" | "finished")
 ├── options: RoomOptions             ← customização, com defaults (seção 6.4)
-├── ruleset: CoopRuleset | PvpRuleset
+├── numbers: dict                     ← o numbers do Ruleset; o Ruleset em si não fica na Room (sem estado, achado por mode em RULESETS)
 ├── tick: int                         ← relógio oficial, vai em todo Snapshot
 ├── rng: random.Random(seed)          ← nunca o random global
 ├── grid: list[list[str]]             ← MUTÁVEL: portas D/O, pickups somem

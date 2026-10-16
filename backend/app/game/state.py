@@ -150,7 +150,7 @@ class Room:
 	match_id: 		int
 	mode: 			Mode
 	options: 		RoomOptions
-	numbers: 		dict[str, float | None] # RULESET_NUMBERS[mode]
+	numbers: 		dict[str, float | None] # o numbers do Ruleset do Mode
 	rng: 			Random
 	initial_grid:	tuple[str, ...] # o Grid do welcome, não muda
 	grid: 			list[list[str]] # cópia do Map, muda com Door e Pickup
@@ -162,6 +162,7 @@ class Room:
 	next_projectile_id:	int = 1 # o id de um Projectile nunca se repete na Room
 	doors: 			list[Door] = field(default_factory=list)
 	result: 		dict | None = None # o data do game_over, None enquanto na partida
+	outcome: 		"MatchOutcome | None" = None # congelado no Tick do game_over
 	pending_events:	list[tuple[str, dict]] = field(default_factory=list) # saem no próximo step
 	# user_id → (célula do Player, passos de cada célula até ela); cache, fora do Snapshot
 	path_fields:	dict[int, tuple[tuple[int, int], dict[tuple[int, int], int]]] = field(

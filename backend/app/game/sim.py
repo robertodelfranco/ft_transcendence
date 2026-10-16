@@ -9,11 +9,11 @@ from app.game.rules import (BOSS_ATTACK_COOLDOWN_S, BOSS_ATTACK_RANGE, BOSS_ATTA
 	ENEMY_ATTACK_INTERVAL_S, ENEMY_ATTACK_RANGE, ENEMY_CHASE_RANGE, ENEMY_DAMAGE, ENEMY_DYING_S,
 	ENEMY_RADIUS, ENEMY_RETARGET_MARGIN, ENEMY_SEPARATION, ENEMY_SPEED, FIREBALL_BOSS_DAMAGE,
 	FIREBALL_COOLDOWN_S, FIREBALL_PLAYER_DAMAGE, POTION_HEAL, PROJECTILE_HIT_RADIUS,
-	PROJECTILE_HIT_S, PROJECTILE_MAX_SUBSTEP, PROJECTILE_RADIUS, PROJECTILE_SPEED,
-	RULESET_NUMBERS, TICK_RATE)
+	PROJECTILE_HIT_S, PROJECTILE_MAX_SUBSTEP, PROJECTILE_RADIUS, PROJECTILE_SPEED, TICK_RATE)
+from app.game.rulesets import RULESETS
 from app.game.state import (Action, ActionKind, Boss, BossState, Door, Enemy, EnemyState, Event,
-	Input, MatchOutcome, Mode, Player, Projectile, ProjectileKind, ProjectileState, Room,
-	RoomOptions)
+	Input, MatchOutcome, Mode, Player, PlayerOutcome, Projectile, ProjectileKind,
+	ProjectileState, Room, RoomOptions)
 from app.game.world import SOLID_CHARS, Map
 
 MAX_QUEUE = TICK_RATE # 1 s de mensagens (ws-messages.md §2.9)
@@ -34,7 +34,8 @@ def create_room(match_id: int, mode: Mode, game_map: Map, options: RoomOptions,
 		players: list[tuple[int, str]], seed: int) -> Room:
 	if len(players) > len(game_map.spawns):
 		raise ValueError(f"{len(players)} Players para {len(game_map.spawns)} Spawns")
-	numbers = RULESET_NUMBERS[mode]
+	ruleset = RULESETS[mode]
+	numbers = ruleset.numbers
 	room = Room(match_id=match_id, mode=mode, options=options, numbers=numbers,
 		rng=Random(seed), initial_grid=game_map.grid, grid=game_map.new_grid())
 	# o enésimo Player nasce no enésimo Spawn, olhando para onde a letra aponta
@@ -49,6 +50,7 @@ def create_room(match_id: int, mode: Mode, game_map: Map, options: RoomOptions,
 		room.boss = Boss(x=boss_x, y=boss_y, hp=BOSS_HP)
 	for x, y in game_map.doors:
 		room.doors.append(Door(x=x, y=y))
+	ruleset.on_start(room)
 	return room
 
 
@@ -96,9 +98,7 @@ def last_input_seq(room: Room, user_id: int) -> int:
 	return room.players[user_id].last_input_seq
 
 def match_outcome(room: Room) -> MatchOutcome | None:
-	if room.result is None:
-		return None
-	raise NotImplementedError("o resultado da partida entra com o Ruleset (R4)")
+	return room.outcome # None antes do game_over
 
 
 
@@ -107,13 +107,54 @@ def step(room: Room, dt: float) -> list[Event]:
 	# o que aconteceu fora do step (conexão, saída) sai aqui, com o Tick atual
 	events = [Event(name, room.tick, data) for name, data in room.pending_events]
 	room.pending_events.clear()
-	for player in room.players.values():
-		_consume_queue(room, player, dt, events)
-	_update_enemies(room, dt, events)
-	_update_boss(room, dt)
-	_update_projectiles(room, dt, events)
-	_regen_mana(room, dt)
+	# depois do game_over, só as animações andam (ws-messages.md §2.6)
+	if room.result is None:
+		for player in room.players.values():
+			_consume_queue(room, player, dt, events)
+		_update_enemies(room, dt, events)
+		_update_boss(room, dt)
+		_update_projectiles(room, dt, events)
+		_regen_mana(room, dt)
+		_apply_ruleset(room, events)
+	_expire_animations(room)
 	return events
+
+
+def _apply_ruleset(room: Room, events: list[Event]) -> None:
+	ruleset = RULESETS[room.mode]
+	# a lista sai antes do laço: on_player_death pode emitir Events (o respawn do pvp)
+	dead = [event.data["player_id"] for event in events if event.name == "player_died"]
+	for user_id in dead:
+		ruleset.on_player_death(room, room.players[user_id], events)
+	result = ruleset.check_end(room)
+	if result is None:
+		return
+	room.result = result
+	room.outcome = _freeze_outcome(room, result)
+	events.append(Event("game_over", room.tick, result))
+
+
+def _freeze_outcome(room: Room, result: dict) -> MatchOutcome:
+	# no Tick do game_over: depois dele, o Tick continua andando e um Player ainda pode cair
+	winners = tuple(result["winner_ids"])
+	players = tuple(PlayerOutcome(user_id=player.user_id, won=player.user_id in winners,
+		survived=player.alive and not player.left, kills=player.kills, frags=player.frags,
+		deaths=player.deaths, damage_dealt=player.damage_dealt, damage_taken=player.damage_taken,
+		armor_absorbed=player.armor_absorbed, keys_collected=player.keys_collected,
+		potions_used=player.potions_used, disconnected_at_end=not player.connected)
+		for player in room.players.values())
+	return MatchOutcome(result=result["result"], reason=result["reason"], winner_ids=winners,
+		duration_ticks=room.tick, players=players)
+
+
+def _expire_animations(room: Room) -> None:
+	# sai da Room o Enemy que já ficou ENEMY_DYING_S em dying e o Projectile que já ficou
+	# PROJECTILE_HIT_S em hit; fora do _update_*, porque continua depois do game_over
+	room.enemies = [enemy for enemy in room.enemies
+		if enemy.state != EnemyState.DYING or room.tick - enemy.state_tick < ENEMY_DYING_TICKS]
+	room.projectiles = [shot for shot in room.projectiles
+		if shot.state == ProjectileState.MOVING
+		or room.tick - shot.state_tick < PROJECTILE_HIT_TICKS]
 
 
 def _consume_queue(room: Room, player: Player, dt: float, events: list[Event]) -> None:
@@ -206,9 +247,6 @@ def _update_enemies(room: Room, dt: float, events: list[Event]) -> None:
 	for enemy in room.enemies:
 		if enemy.state != EnemyState.DYING:
 			_update_enemy(room, enemy, dt, events)
-	# sai da Room quem já ficou ENEMY_DYING_S em dying
-	room.enemies = [enemy for enemy in room.enemies
-		if enemy.state != EnemyState.DYING or room.tick - enemy.state_tick < ENEMY_DYING_TICKS]
 
 
 def _update_enemy(room: Room, enemy: Enemy, dt: float, events: list[Event]) -> None:
@@ -473,10 +511,6 @@ def _update_projectiles(room: Room, dt: float, events: list[Event]) -> None:
 	for shot in room.projectiles:
 		if shot.state == ProjectileState.MOVING:
 			_fly(room, shot, dt, events)
-	# sai da Room quem já ficou PROJECTILE_HIT_S em hit
-	room.projectiles = [shot for shot in room.projectiles
-		if shot.state == ProjectileState.MOVING
-		or room.tick - shot.state_tick < PROJECTILE_HIT_TICKS]
 
 
 def _fly(room: Room, shot: Projectile, dt: float, events: list[Event]) -> None:
