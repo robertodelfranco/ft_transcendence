@@ -1,21 +1,11 @@
 // Do Snapshot do servidor para o que o Renderer desenha e a casca mostra (mount-game.md §2.2 e §5.1).
 // Funções puras: sem socket, sem relógio, sem Three.js.
 import type { HudState, HudStatus } from "../api";
+import type { ViewState } from "../render/renderer";
 import { RULESET_NUMBERS } from "../rules";
-import type { GridCell, Mode, PlayerSnapshot, RoomOptions, Snapshot } from "../types";
+import type { GridCell, Mode, RoomOptions, Snapshot } from "../types";
 
-// Mesma forma do ViewState do Renderer (PR #105); quando ele entrar, importar de lá
-export type CameraView = Pick<PlayerSnapshot, "x" | "y" | "dx" | "dy"> & { pitch: number };
-export interface ViewState {
-  localPlayer: PlayerSnapshot;
-  otherPlayers: PlayerSnapshot[];
-  enemies: Snapshot["enemies"];
-  boss: Snapshot["boss"];
-  projectiles: Snapshot["projectiles"];
-  doors: Snapshot["doors"];
-  grid: string[];
-  camera: CameraView;
-}
+export type { ViewState }; // o tipo é do Renderer (mount-game.md §5.1); o net/ só o preenche
 
 export type Killfeed = HudState["killfeed"];
 
