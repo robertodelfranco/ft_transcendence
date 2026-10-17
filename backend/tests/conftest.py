@@ -92,6 +92,29 @@ def fake_ws():
 	return FakeWebSocket
 
 
+class FakeFriendGraph:
+	"""FriendGraph falso (app/ws/app_events.py): friends[a] = quem a adicionou, como em friendships."""
+
+	def __init__(self, friends: dict[int, set[int]] | None = None) -> None:
+		self.friends = friends or {}
+		self.seen: list[int] = []
+
+	async def friends_of(self, user_id: int) -> list[int]:
+		return sorted(self.friends.get(user_id, ()))
+
+	async def watchers_of(self, user_id: int) -> list[int]:
+		return sorted(uid for uid, added in self.friends.items() if user_id in added)
+
+	async def mark_seen(self, user_id: int) -> None:
+		self.seen.append(user_id)
+
+
+@pytest.fixture
+def fake_friends():
+	# devolve a classe, como o fake_ws: cada teste monta a amizade que precisa
+	return FakeFriendGraph
+
+
 @pytest.fixture(scope="session")
 def migrated_db():
 	# sync de propósito: o env.py roda o próprio asyncio.run, que não pode estar dentro do loop de um teste

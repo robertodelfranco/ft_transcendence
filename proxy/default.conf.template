@@ -27,7 +27,7 @@ server {
         proxy_pass http://backend:8000;          # sem barra final: o backend vê /api/... (decisão 5)
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For   $remote_addr;   # substitui, não acrescenta: o uvicorn lê o 1º IP, que o cliente forjaria
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
@@ -38,7 +38,7 @@ server {
         proxy_set_header Connection        "upgrade";
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For   $remote_addr;   # substitui, não acrescenta: o uvicorn lê o 1º IP, que o cliente forjaria
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 3600s;                # sem isso o Nginx corta socket parado aos 60 s
         proxy_send_timeout 3600s;

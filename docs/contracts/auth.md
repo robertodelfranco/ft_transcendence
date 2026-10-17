@@ -46,7 +46,10 @@ Regras que valem para as rotas acima:
 - **`/refresh` sem cookie não é erro.** Responde 200 `{"authenticated": false}`: é o caso normal de quem abre o site sem sessão, e um 401 apareceria em vermelho no console do Chrome (§4, decisão 4).
 - **`/logout` sempre responde 204**, com ou sem cookie, com cookie válido ou não. Sair duas vezes não é erro.
 - **`/refresh` e `/logout` conferem o cabeçalho `Origin`**: precisa ser `https://${PUBLIC_HOST}`. Sem ele, ou com outro valor, 403 `forbidden`. É a segunda barreira contra CSRF, depois do `SameSite` (arq. §4, decisão 1).
-- **Rate limit** (dependência `RateLimit`, §2.7): `signup` e `login` 5 por minuto por IP; `refresh` 30 por minuto por IP. O sexto login em um minuto dá 429 com `Retry-After` (é o "pronto quando" de F6.5).
+- **Rate limit** (§2.7), por IP, que protege o que é caro (o Argon2) e o que é perigoso (errar a senha), e não o uso normal: várias abas na mesma máquina não esbarram nele.
+  - `login`: 5 senhas **erradas** por minuto, mais um teto de 30 tentativas de qualquer tipo. A vaga é reservada antes do Argon2 e devolvida quando a senha confere, para tentativas simultâneas não passarem juntas. A sexta senha errada em um minuto dá 429 com `Retry-After` (é o "pronto quando" de F6.5), mesmo que a sétima esteja certa.
+  - `signup`: 5 pedidos **válidos** por minuto. Um 422 não chega ao Argon2 e não conta.
+  - `refresh`: 30 por minuto.
 - **O callback do OAuth nunca devolve token no endereço.** Ele grava o cookie de refresh e redireciona para `/`; a casca chama `/refresh` como em qualquer carregamento de página e recebe o access por ali (§2.8).
 
 ### 2.3 O objeto User
@@ -180,7 +183,7 @@ A lista é fechada aqui e cresce só por PR que muda este arquivo. Os `code` de 
 ```python
 from app.auth.deps import CurrentUser, OptionalUser   # Annotated[User, Depends(...)]
 from app.db.session import DbSession                  # Annotated[AsyncSession, Depends(...)]
-from app.core.ratelimit import RateLimit
+from app.core.ratelimit import Limit, RateLimit
 from app.auth.service import authenticate_ws_token, issue_tokens
 
 
@@ -202,6 +205,7 @@ async def create_match(user: CurrentUser, session: DbSession): ...
 | `OptionalUser` | `User \| None` | igual, mas sem token devolve `None` em vez de 401 (token presente e inválido continua 401) |
 | `DbSession` | `AsyncSession` | uma sessão por requisição; commit é de quem escreve |
 | `RateLimit(times, seconds, key)` | dependência | `key="ip"` usa `request.client.host` (o `uvicorn --proxy-headers` já põe o IP real, [infra.md](infra.md) §4 decisão 6); `key="user"` exige `CurrentUser`. Estourou: 429 `rate_limited` com `Retry-After` |
+| `Limit(times, seconds)` | chamado dentro da rota: `hit(request, key)` e `refund(request, key)` | para quando nem toda requisição conta: o login devolve a vaga com a senha certa, o signup só conta depois da validação. `RateLimit` usa o mesmo `Limit` por dentro
 | `authenticate_ws_token(connection, token, *, sessions=SessionLocal) -> User` | `async`, abre a própria sessão e a fecha antes de voltar | token inválido, vencido ou User inexistente: levanta `InvalidToken` (de `app.auth.security`). Quem chama fecha o socket com `4401`. `connection` é o próprio `WebSocket`, de onde sai o `JWT_SECRET` do app; `sessions` só muda no teste. O User volta desligado da sessão: as colunas estão carregadas, os relacionamentos não |
 | `issue_tokens(session, user, request, response, *, providers=None) -> AuthResponse` | `async` | cria o refresh na família nova, grava o cookie e o `Cache-Control: no-store` em `response` e devolve o corpo. Do `request` saem as Settings do app e o `User-Agent`. **Não faz commit**: quem chama faz, na mesma transação que criou o User. `providers` é opcional: quem já sabe a lista (o signup sabe que é vazia) passa e poupa uma consulta. É o que signup, login e o callback do OAuth chamam |
 
