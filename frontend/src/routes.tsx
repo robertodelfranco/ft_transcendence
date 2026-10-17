@@ -8,6 +8,7 @@ import AuthRoot from "./auth/AuthRoot";
 import Lobby from "./pages/Lobby";
 import PublicOnly from "./components/PublicOnly";
 import RequireAuth from "./components/RequireAuth";
+import Login from "./pages/Login";
 
 // Layout sem path: cabeçalho e rodapé em toda página, inclusive a 404
 export const routes: RouteObject [] = [
@@ -17,7 +18,12 @@ export const routes: RouteObject [] = [
       {
         element: <Layout />,
         children: [
-          { element: <PublicOnly />, children: [{ index: true, element: <Home /> }] },
+          { element: <PublicOnly />, 
+            children: [
+              { index: true, element: <Home /> },
+              { path: "login", element: <Login /> },
+            ], 
+          },
           { path: "privacy", element: <Privacy />},
           { path: "terms", element: <Terms /> },
           { element: <RequireAuth />, children: [{ path: "lobby", element: <Lobby /> }] },

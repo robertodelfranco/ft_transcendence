@@ -1,10 +1,10 @@
 import type { TFunction } from "i18next";
-import { ERROR_CODES, FIELD_ERROR_CODES, type FieldErrorCode } from "./errorCodes";;
+import { ERROR_CODES, FIELD_ERROR_CODES, type FieldErrorCode } from "./errorCodes";
 
 type ErrorCode = (typeof ERROR_CODES)[number];
 
 function isErrorCode(code: string): code is ErrorCode {
-  return (ERROR_CODES as readonly string[]). includes(code);
+  return (ERROR_CODES as readonly string[]).includes(code);
 }
 
 // Um code de campo fora da lista ainda é erro naquele campo, só que sem detalhe
@@ -18,5 +18,5 @@ export function toFieldErrorCode(code: string): FieldErrorCode {
 export function errorMessage(t: TFunction, code: string, requestId: string | null = null): string {
   if (isErrorCode(code))
     return t(`errors:${code}`);
-  return requestId ? t("erros:unknownWithRef", { requestId }) : t("errors.unknown");
+  return requestId ? t("errors:unknownWithRef", { requestId }) : t("errors:unknown");
 }

@@ -59,7 +59,7 @@ export function useAuthForm<F extends string>(validators: Record<F, Validator>) 
       ref: (input: HTMLInputElement | null) => {
         inputs.current[name] = input;
       },
-      onchange: (value: string) => {
+      onChange: (value: string) => {
         setValues((current) => ({ ...current, [name]: value }));
         // campo que já mostra erro revalida a cada tecla: o erro some some assim que o valor fica certo
         if (errors[name])

@@ -24,7 +24,7 @@ export default function TextField({
 
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor="id" className="text-sm">
+      <label htmlFor={id} className="text-sm">
         {label}
       </label>
       <input
