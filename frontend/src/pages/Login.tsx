@@ -8,6 +8,7 @@ import { normalize, validateEmail, validateLoginPassword } from "../auth/validat
 import TextField from "../components/TextField";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { errorMessage } from "../i18n/errorMessage";
+import OAuthButtons from "../components/OAuthButtons";
 
 interface FormError {
   code: string;
@@ -83,6 +84,8 @@ export default function Login() {
         </button>
       </form>
 
+      <OAuthButtons />
+      
       <p className="text-sm">
         {t("login.noAccount")}{" "}
         <Link to={signupTo} className="underline hover:text-torch focus-visible:outline-2 focus-visible:outline-torch">

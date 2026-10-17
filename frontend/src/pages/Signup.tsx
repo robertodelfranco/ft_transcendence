@@ -10,6 +10,7 @@ import {
 import TextField from "../components/TextField";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { errorMessage } from "../i18n/errorMessage";
+import OAuthButtons from "../components/OAuthButtons";
 
 interface FormError {
   code: string;
@@ -93,6 +94,8 @@ export default function Signup() {
           {submitting ? t("signup.submitting") : t("signup.submit")}
         </button>
       </form>
+
+      <OAuthButtons />
 
       <p className="text-sm">
         {t("signup.haveAccount")}{" "}
