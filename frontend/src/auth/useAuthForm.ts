@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { FieldErrorCode } from "../i18n/errorCodes";
-import { toFieldErrorCode } from "../i18n/errorMessage";
+import { toFieldErrorCode, type FieldError } from "../i18n/errorMessage";
 
 type Validator = (value: string) => FieldErrorCode | null;
 
@@ -12,16 +12,16 @@ export function useAuthForm<F extends string>(validators: Record<F, Validator>) 
   const [values, setValues] = useState(
     () => Object.fromEntries(fields.map((fields) => [fields, ""])) as Record<F, string>,
   );
-  const [errors, setErrors] = useState<Partial<Record<F, FieldErrorCode | null >>>({});
+  const [errors, setErrors] = useState<Partial<Record<F, FieldError | null >>>({});
   const inputs = useRef<Partial<Record<F, HTMLInputElement | null >>>({});
 
-  function setError(field: F, code: FieldErrorCode | null) {
+  function setError(field: F, code: FieldError | null) {
     setErrors((current) => ({ ...current, [field]: code }));
   }
 
   // flushSync: o aria-describedby já aponta para a mensagem quando o leitor de tela anuncia o
   // campo que recebeu o foco
-  function show(found: Partial<Record<F, FieldErrorCode>>): boolean {
+  function show(found: Partial<Record<F, FieldError>>): boolean {
     flushSync(() => setErrors(found));
     const first = fields.find((field) => found[field]);
     if (first)
@@ -50,6 +50,11 @@ export function useAuthForm<F extends string>(validators: Record<F, Validator>) 
     return show(found);
   }
 
+  // 409: o conflito aponta para um campo só
+  function showConflict(field: F, code: FieldError): void {
+    show({ [field]: code } as Partial<Record<F, FieldError>>);
+  }
+
   // As props de um <TextField>
   function field(name: F) {
     return {
@@ -72,5 +77,6 @@ export function useAuthForm<F extends string>(validators: Record<F, Validator>) 
       },
     };
   }
-  return { values, field, validateAll, showServerErrors };
+
+  return { values, field, validateAll, showServerErrors, showConflict };
 }

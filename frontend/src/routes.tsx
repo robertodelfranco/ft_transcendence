@@ -9,6 +9,7 @@ import Lobby from "./pages/Lobby";
 import PublicOnly from "./components/PublicOnly";
 import RequireAuth from "./components/RequireAuth";
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 
 // Layout sem path: cabeçalho e rodapé em toda página, inclusive a 404
 export const routes: RouteObject [] = [
@@ -22,6 +23,7 @@ export const routes: RouteObject [] = [
             children: [
               { index: true, element: <Home /> },
               { path: "login", element: <Login /> },
+              { path: "signup", element: <Signup /> },
             ], 
           },
           { path: "privacy", element: <Privacy />},

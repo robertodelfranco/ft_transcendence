@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
-import type { FieldErrorCode } from "../i18n/errorCodes";
+import { fieldErrorMessage, type FieldError } from "../i18n/errorMessage";
 
 interface TextFieldProps {
   name: string;
@@ -8,7 +8,7 @@ interface TextFieldProps {
   type?: "text" | "email" | "password";
   autoComplete: string;
   value: string;
-  error: FieldErrorCode | null;
+  error: FieldError | null;
   onChange: (value: string) => void;
   onBlur: () => void;
   ref: (input: HTMLInputElement | null) => void;
@@ -42,7 +42,7 @@ export default function TextField({
       />
       {error && (
         <p id={errorId} className="text-sm text-red-400">
-          {t(`errors:fields.${error}`)}
+          {fieldErrorMessage(t, error)}
         </p>
       )}
     </div>

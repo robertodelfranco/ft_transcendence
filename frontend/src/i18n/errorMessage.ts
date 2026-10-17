@@ -20,3 +20,12 @@ export function errorMessage(t: TFunction, code: string, requestId: string | nul
     return t(`errors:${code}`);
   return requestId ? t("errors:unknownWithRef", { requestId }) : t("errors:unknown");
 }
+
+// O que pode aparecer junto de um campo: o code do 422 ou um conflito do 409 (auth.md §2.2)
+export type FieldError = FieldErrorCode | "email_taken" | "username_taken";
+
+export function fieldErrorMessage(t: TFunction, error: FieldError): string {
+  return error === "email_taken" || error === "username_taken"
+    ? t(`errors:${error}`)
+    : t(`errors:fields.${error}`);
+}
