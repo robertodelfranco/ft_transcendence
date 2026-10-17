@@ -1,6 +1,6 @@
 # Contrato: `ConnectionManager` e `/ws/app` (`ws-manager.md`)
 
-**Estado:** rascunho de 07/10/2026, revisado em 12/10 com a leitura do Akita (W1, W3, §2.9 e D-B). **Escreve:** Augusto. **Assina:** Akita (lobby em tempo real em F5.2: publica `lobby_update`, `lobby_removed` e `match_started` só com a §2.5) e Caio (presença na lista de amigos e lobby vivo na casca, só com a §2.3 e a §2.4).
+**Estado:** rascunho de 07/10/2026, revisado em 12/10 com a leitura do Akita (W1, W3, §2.9 e D-B). Em 16/10 o `/ws/app` foi implementado (F2.1 parte 2, #86): a ordem do `welcome` entrou na §2.4 e na decisão 13. **Escreve:** Augusto. **Assina:** Akita (lobby em tempo real em F5.2: publica `lobby_update`, `lobby_removed` e `match_started` só com a §2.5) e Caio (presença na lista de amigos e lobby vivo na casca, só com a §2.3 e a §2.4).
 
 ## 1. Para que serve
 
@@ -95,6 +95,10 @@ Qualquer outra mensagem depois do `join` fecha com `4400`: o `/ws/app` é só de
 
 `RoomInfo` é o de [rooms.md](rooms.md) §2.3, inteiro, e não um delta ([matches-api.md](matches-api.md) §4, decisão 3).
 
+**O `welcome` pode não ser a primeira mensagem.** Uma `presence` ou um `lobby_update` podem chegar antes dele (decisão 13). O cliente pode ignorar tudo o que chega antes do `welcome`, sem perder nada: a presença já está refletida em `online_friends`, e a tela de lobby refaz o `GET /api/matches` depois de cada `welcome` (§2.9).
+
+O formato do fio está em `app/ws/messages.py`; o endpoint, em `app/ws/router.py`.
+
 **Como a tela de lobby usa isto** (Caio, F7.7): o `/ws/app` já está aberto desde o login. Ao abrir a tela, ela chama `GET /api/matches` e guarda as mensagens de lobby que chegarem enquanto a resposta não vem; quando ela chega, aplica a lista e depois as mensagens guardadas, na ordem. Daí em diante, `lobby_update` substitui a Room pelo `match_id` (ou acrescenta, se é nova) e `lobby_removed` tira da lista. Nada de polling.
 
 ### 2.5 O que o lobby chama para publicar
@@ -148,7 +152,7 @@ Mesma numeração de [ws-messages.md](ws-messages.md) §2.7, com dois códigos n
 | `4401` | `unauthenticated` | os dois | sem `join` em 5 s, ou token inválido |
 | `4408` | `replaced` | `game` | o mesmo User abriu outro socket da partida (§2.6) |
 | `4429` | `slow_consumer` | os dois | fila de envio cheia (§2.7) |
-| `4503` | `server_shutdown` | os dois | backend encerrando |
+| `4503` | `server_shutdown` | os dois | backend encerrando; no `/ws/app`, também uma falha interna ao montar o `welcome` (o banco caiu): o cliente reconecta com espera crescente, o que o `1000` não faria |
 
 Os códigos `4403`, `4404` e `4409` são só do `/ws/game` e estão em [ws-messages.md](ws-messages.md).
 
@@ -249,6 +253,8 @@ async def join_match(match_id: int, user: CurrentUser, session: DbSession,
 10. **Descartar só o Snapshot**, e substituindo o anterior na fila: Snapshot é estado e o próximo vale mais que o perdido; Event, presença e lobby são fatos e não se repetem ([ws-messages.md](ws-messages.md) §4).
 11. **No canal `game`, a conexão nova vence** (`4408`). Na Reconnection, o socket antigo muitas vezes ainda parece aberto para o servidor; recusar o novo travaria o User fora da própria partida até o ping de 20 s perceber.
 12. **Heartbeat é do `uvicorn`**, por ping de protocolo. O navegador responde sozinho, e o tráfego a cada 20 s também impede o Nginx de achar o socket ocioso.
+13. **O `/ws/app` registra o socket antes de ler os amigos online, e manda o `welcome` por último** (16/10). Na ordem inversa, um amigo que entrasse entre a consulta e o registro nunca seria anunciado, e o User o veria offline até a próxima mudança. Nesta ordem, nada se perde, e o `welcome`, montado por último, é o estado mais novo; o custo é uma `presence` ou um `lobby_update` poderem chegar antes dele, o que a §2.4 já cobre. O `welcome` e o `pong` vão só para o socket que fez o pedido, e não para todas as abas do User.
+14. **A consulta de amizade fica atrás de um `FriendGraph`** (`app/ws/app_events.py`), no `app.state`, como o `authenticate` do `join`. O socket e a presença se testam com um dicionário, sem banco, e só as duas consultas SQL precisam do Postgres. Cada consulta abre e fecha a própria sessão: o socket vive horas e não pode segurar uma conexão do pool.
 
 ## 5. Em aberto
 

@@ -17,7 +17,9 @@ from app.game.router import router as game_router
 from app.matches.router import router as matches_router
 from app.db.session import SessionLocal
 from app.matches.service import leave_when_offline, load_catalog
+from app.ws.app_events import DbFriendGraph, notify_presence
 from app.ws.manager import ConnectionManager
+from app.ws.router import router as app_socket_router
 
 
 @asynccontextmanager
@@ -52,6 +54,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 	# lê o room_manager na hora do aviso, não agora: o teste troca a instância
 	app.state.connection_manager.on_presence_change(lambda user_id, online:
 		leave_when_offline(app.state.room_manager, SessionLocal, user_id, online))
+	# presença para os amigos e last_seen_at (ws-manager.md §2.3); também lido na hora do aviso
+	app.state.friend_graph = DbFriendGraph(SessionLocal)
+	app.state.connection_manager.on_presence_change(lambda user_id, online:
+		notify_presence(app.state.connection_manager, app.state.friend_graph, user_id, online))
 
 	# o último é o de fora: o request_id já existe quando a linha de acesso é escrita
 	app.add_middleware(AccessLogMiddleware)
@@ -62,6 +68,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 	app.include_router(auth_router)
 	app.include_router(matches_router)
 	app.include_router(game_router)
+	app.include_router(app_socket_router)
 	return app
 
 
