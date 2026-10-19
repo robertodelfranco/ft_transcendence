@@ -14,10 +14,14 @@ import {
   type Language,
 } from "./languages";
 
+import authPtBR from "../locales/pt-BR/auth.json";
+import authEn from "../locales/en/auth.json";
+import authEs from "../locales/es/auth.json";
+
 const resources = {
-  "pt-BR": { common: commonPtBR, errors: errorsPtBR },
-  en: { common: commonEn, errors: errorsEn },
-  es: { common: commonEs, errors: errorsEs },
+  "pt-BR": { auth: authPtBR, common: commonPtBR, errors: errorsPtBR },
+  en: { auth: authEn, common: commonEn, errors: errorsEn },
+  es: { auth: authEs, common: commonEs, errors: errorsEs },
 };
 
 // <html lang> acompanha o idioma atual (leitor de tela e hifenização dependem dele)
