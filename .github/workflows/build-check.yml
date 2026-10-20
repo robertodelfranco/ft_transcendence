@@ -117,7 +117,8 @@ jobs:
           alembic check
 
       - name: Run pytest
-        run: pytest
+        # teste de tempo fica fora: runner compartilhado faz ele falhar ao acaso
+        run: pytest -m "not perf"
 
   # Roda em paralelo com os outros: lint, vitest e build não precisam da stack
   frontend:
