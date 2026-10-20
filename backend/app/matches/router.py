@@ -11,18 +11,21 @@ from app.game.rooms import RoomManager, get_room_manager
 from app.matches import service
 from app.matches.schemas import CreateMatchIn, ReadyIn
 from app.matches.service import Catalog, get_catalog
+from app.ws.app_events import publish_lobby_update
+from app.ws.manager import ConnectionManager, get_connection_manager
 
 
 router = APIRouter(prefix="/api", tags=["matches"])
 
 Rooms = Annotated[RoomManager, Depends(get_room_manager)]
 Maps = Annotated[Catalog, Depends(get_catalog)]
+Connections = Annotated[ConnectionManager, Depends(get_connection_manager)]
 
 
 @router.post("/matches", status_code=status.HTTP_201_CREATED)
 async def create_match(body: CreateMatchIn, user: CurrentUser, session: DbSession,
-		rooms: Rooms, catalog: Maps) -> dict[str, Any]:
-	info = await service.create_match(session, rooms, catalog, user, body)
+		rooms: Rooms, connections: Connections, catalog: Maps) -> dict[str, Any]:
+	info = await service.create_match(session, rooms, connections, catalog, user, body)
 	return info.to_payload()
 
 
@@ -40,24 +43,32 @@ async def get_match(match_id: int, _: CurrentUser, rooms: Rooms) -> dict[str, An
 
 
 @router.post("/matches/{match_id}/join")
-async def join_match(match_id: int, user: CurrentUser, rooms: Rooms) -> dict[str, Any]:
+async def join_match(match_id: int, user: CurrentUser, rooms: Rooms,
+		connections: Connections) -> dict[str, Any]:
 	avatar_url = user.avatar_url or DEFAULT_AVATAR_URL
-	return rooms.join(match_id, user.id, user.username, avatar_url).to_payload()
+	info = rooms.join(match_id, user.id, user.username, avatar_url)
+	await publish_lobby_update(connections, info) # join e ready não tocam o banco: nada a esperar
+	return info.to_payload()
 
 
 @router.post("/matches/{match_id}/leave", status_code=status.HTTP_204_NO_CONTENT)
-async def leave_match(match_id: int, user: CurrentUser, session: DbSession, rooms: Rooms) -> None:
-	await service.leave_match(session, rooms, match_id, user.id)
+async def leave_match(match_id: int, user: CurrentUser, session: DbSession, rooms: Rooms,
+		connections: Connections) -> None:
+	await service.leave_match(session, rooms, connections, match_id, user.id)
 
 
 @router.post("/matches/{match_id}/ready")
-async def set_ready(match_id: int, body: ReadyIn, user: CurrentUser, rooms: Rooms) -> dict[str, Any]:
-	return rooms.set_ready(match_id, user.id, body.ready).to_payload()
+async def set_ready(match_id: int, body: ReadyIn, user: CurrentUser, rooms: Rooms,
+		connections: Connections) -> dict[str, Any]:
+	info = rooms.set_ready(match_id, user.id, body.ready)
+	await publish_lobby_update(connections, info)
+	return info.to_payload()
 
 
 @router.post("/matches/{match_id}/start", status_code=status.HTTP_204_NO_CONTENT)
-async def start_match(match_id: int, user: CurrentUser, session: DbSession, rooms: Rooms) -> None:
-	await service.start_match(session, rooms, match_id, user.id)
+async def start_match(match_id: int, user: CurrentUser, session: DbSession, rooms: Rooms,
+		connections: Connections) -> None:
+	await service.start_match(session, rooms, connections, match_id, user.id)
 
 
 @router.get("/maps")
