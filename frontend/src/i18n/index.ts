@@ -17,11 +17,23 @@ import {
 import authPtBR from "../locales/pt-BR/auth.json";
 import authEn from "../locales/en/auth.json";
 import authEs from "../locales/es/auth.json";
+import gamePtBR from "../locales/pt-BR/game.json";
+import gameEn from "../locales/en/game.json";
+import gameEs from "../locales/es/game.json";
+import hudPtBR from "../locales/pt-BR/hud.json";
+import hudEn from "../locales/en/hud.json";
+import hudEs from "../locales/es/hud.json";
+import lobbyPtBR from "../locales/pt-BR/lobby.json";
+import lobbyEn from "../locales/en/lobby.json";
+import lobbyEs from "../locales/es/lobby.json";
 
 const resources = {
-  "pt-BR": { auth: authPtBR, common: commonPtBR, errors: errorsPtBR },
-  en: { auth: authEn, common: commonEn, errors: errorsEn },
-  es: { auth: authEs, common: commonEs, errors: errorsEs },
+  "pt-BR": {
+    auth: authPtBR, common: commonPtBR, errors: errorsPtBR,
+    game: gamePtBR, hud: hudPtBR, lobby: lobbyPtBR,
+  },
+  en: { auth: authEn, common: commonEn, errors: errorsEn, game: gameEn, hud: hudEn, lobby: lobbyEn },
+  es: { auth: authEs, common: commonEs, errors: errorsEs, game: gameEs, hud: hudEs, lobby: lobbyEs },
 };
 
 // <html lang> acompanha o idioma atual (leitor de tela e hifenização dependem dele)
