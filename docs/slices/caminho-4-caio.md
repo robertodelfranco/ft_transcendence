@@ -208,6 +208,7 @@ Registro aqui e aviso o dono de cada arquivo, em vez de implementar por um docum
 9. **O `start` não exige todos prontos** (20/10). O backend confere só `min_players`; a pauta de 12/10 (item 6) propôs exigir todos prontos. A casca espelha o servidor até a decisão ([rooms.md](../contracts/rooms.md) "Em aberto" 3). Rafael e Akita.
 10. **Nenhum Map de `pvp`** em `backend/maps/pvp/` (20/10): o `GET /api/maps` devolve `pvp: []`, e o formulário mostra o Mode sem Map. Rafael e Roberto.
 11. **Falha de conexão do WebSocket aparece no console do Chrome** quando o backend está fora, como o 401 do login ([i18n.md](../contracts/i18n.md) "Em aberto" 7). A espera crescente limita; a demo é feita com a stack no ar.
+12. **Nomes dos Maps na tela são provisórios** (20/10). O `game.json` traz `dungeon_map`, `enemy` e `enemy_sewer` traduzidos ("Masmorra", "Salões inimigos", "Salões do esgoto") para o lobby não mostrar nome de arquivo. Conteúdo é do Rafael: ele confirma ou troca, nos três idiomas. Map sem chave mostra o nome do arquivo ([i18n.md](../contracts/i18n.md) §2.2).
 
 ## 10. O que eu explico na defesa
 
