@@ -169,7 +169,7 @@ A lista é fechada aqui e cresce só por PR que muda este arquivo. Os `code` de 
 | Já rotacionado há **menos de 10 s**, com o sucessor ainda válido | 200 `AuthResponse` **sem `Set-Cookie`** | nenhum (janela de graça, §4 decisão 5) |
 | Já rotacionado há 10 s ou mais, **ou** há menos de 10 s mas com o sucessor revogado ou vencido | 401 `invalid_refresh`, cookie apagado | **reuso**: todos os tokens da `family_id` recebem `revoked_at = now`; log de aviso |
 
-A janela de graça é a única exceção à rotação estrita: o token velho só vale se o sucessor ainda vale (um logout logo depois da rotação, por exemplo, tira a graça). Dois `/refresh` simultâneos com o mesmo cookie não abrem dois sucessores: o servidor lê a linha com `SELECT … FOR UPDATE`, e o segundo cai na janela de graça.
+A janela de graça é a única exceção à rotação estrita: o token velho só vale se o sucessor ainda vale (um logout logo depois da rotação, por exemplo, tira a graça). Rotação e revogação da mesma família rodam em fila, com um advisory lock de transação do Postgres (`pg_advisory_xact_lock`) por `family_id`, e o token é relido depois do lock. Assim dois `/refresh` com o mesmo cookie não abrem dois sucessores (o segundo cai na janela de graça), e um reuso que chega enquanto outra transação rotaciona espera o commit dela e revoga também o sucessor novo. Um `FOR UPDATE` na linha não bastaria: ele trava um token, não a família, e o `UPDATE` da revogação não enxerga a linha que outra transação inseriu depois de ele começar.
 
 **Logout** revoga só o token do cookie (`revoked_at = now`) e apaga o cookie. As outras sessões do mesmo User, em outros navegadores, continuam.
 

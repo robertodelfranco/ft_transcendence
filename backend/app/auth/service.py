@@ -8,7 +8,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Request, Response
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import HTTPConnection
@@ -110,11 +110,17 @@ async def rotate_refresh(session: AsyncSession, token: str, request: Request,
 	Quem chama faz o commit também no None: o reuso revoga a família, e essa revogação precisa ficar
 	gravada mesmo com a resposta de erro.
 	"""
-	now = datetime.now(timezone.utc)
-	# FOR UPDATE: dois refresh com o mesmo cookie entram em fila na linha. O segundo já vê o
-	# rotated_at do primeiro e cai na janela de graça, em vez de abrir um segundo sucessor
+	token_hash = hash_refresh_token(token)
+	family_id = await session.scalar(
+		select(RefreshToken.family_id).where(RefreshToken.token_hash == token_hash))
+	if family_id is None:
+		return None
+	await _lock_family(session, family_id)
+	# relido depois do lock: quem o segurava pode ter rotacionado este token (o segundo de dois
+	# refresh com o mesmo cookie cai na janela de graça) ou revogado a família inteira
 	current = await session.scalar(select(RefreshToken)
-		.where(RefreshToken.token_hash == hash_refresh_token(token)).with_for_update())
+		.where(RefreshToken.token_hash == token_hash).execution_options(populate_existing=True))
+	now = datetime.now(timezone.utc) # depois da espera pelo lock
 	if current is None or current.revoked_at is not None or current.expires_at <= now:
 		return None
 	user = await session.get(User, current.user_id)
@@ -146,6 +152,18 @@ def clear_refresh_cookie(response: Response) -> None:
 	# o navegador só apaga o cookie com o mesmo nome e o mesmo Path com que ele foi gravado
 	response.delete_cookie(REFRESH_COOKIE, path=REFRESH_COOKIE_PATH, secure=True, httponly=True,
 		samesite="strict")
+
+
+async def _lock_family(session: AsyncSession, family_id: uuid.UUID) -> None:
+	"""Põe em fila a rotação e a revogação da mesma família, até o commit ou o rollback.
+
+	O FOR UPDATE trava uma linha, não a família: um reuso que revoga enquanto outra transação insere
+	o sucessor deixaria esse sucessor de fora, porque o UPDATE só enxerga as linhas do snapshot em
+	que começou. Com o lock, o UPDATE da revogação só começa depois do commit de quem rotacionou.
+	"""
+	# os primeiros 64 bits do UUID são a chave; uma colisão só põe em fila duas famílias sem relação
+	key = int.from_bytes(family_id.bytes[:8], "big", signed=True)
+	await session.execute(select(func.pg_advisory_xact_lock(key)))
 
 
 async def _open_refresh(session: AsyncSession, user: User, request: Request, response: Response, *,
