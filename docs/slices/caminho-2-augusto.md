@@ -44,7 +44,7 @@
 | F2.3 | `RoomManager` + uma `asyncio.Task` por Room, tick fixo 30 Hz com compensação de deriva, Snapshot a cada 2 ticks; `join` atômico | 2 | F1.6 | S2 | Room criada, iniciada e cancelada sem vazar task | ✅ #68 (PR #74) |
 | F2.4 | `WS /ws/game/{match_id}`: `join` com token em ≤ 5 s, `welcome`, laço de leitura, códigos `44xx` | 1,5 | F2.3, F6.4 | S2 | Testes de `join` sem token, válido e malformado | ✅ #71 (PR #95) |
 | F2.5 | Cliente: socket, `mountGame`, `ViewState` montado do último Snapshot (sem prediction ainda), envio de Input e Action | 1,5 | F2.4 | S2 | C2: 1 player anda com movimento decidido pelo servidor | 🔄 #72, PR rascunho #109: socket, input, `ViewState` e `createMountGame`; falta o `index.ts` (espera o Renderer, PR #105) e a prova no navegador |
-| F2.6 | N players; limite de 60 Inputs/s; `dt` do servidor; `Seq` monotônico; fila por conexão com descarte | 1 | F2.5 | S3 | 5 abas numa Room sem travar | ⏳ #89 |
+| F2.6 | N players; limite de 60 Inputs/s; `dt` do servidor; `Seq` monotônico; fila por conexão com descarte | 1 | F2.5 | S3 | 5 abas numa Room sem travar | 🔄 #89, implementada na branch `89-f2-6-n-players`: limite de 60 mensagens/s com rajada de 120 por socket, testes com 5 sockets e com cliente lento |
 | F2.8 | Interpolation dos outros a `now − 100 ms` | 1 | F2.6 | S3 | Outro player desliza sem saltos | ⏳ #90 |
 | F2.9 | Fim de partida: chamar `record_match_result` uma vez, remover a Room após 60 s, `4503` no desligamento | 1 | F5.3 | S3 | Teste: `game_over` → uma chamada, mesmo com ticks depois | ⏳ #91 |
 | F2.10 | Grace period de 30 s e Reconnection com Snapshot completo; no PvP, grace expirada conta derrota | 2 | F2.7 | S4 | Fechar a aba e voltar em 20 s mantém HP e chaves | ⏳ #107 |

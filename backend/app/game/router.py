@@ -5,6 +5,8 @@ laço de leitura. O laço só valida e enfileira: quem aplica Input e Action é 
 """
 import asyncio
 import logging
+import time
+from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
@@ -22,9 +24,50 @@ from app.ws.manager import ConnectionManager, get_connection_manager
 log = logging.getLogger(__name__)
 
 # JOIN_TIMEOUT_S e get_authenticate continuam importáveis daqui: os testes do /ws/game os usam
-__all__ = ["JOIN_TIMEOUT_S", "get_authenticate", "router", "serve"]
+__all__ = ["JOIN_TIMEOUT_S", "MESSAGE_BURST", "MESSAGES_PER_S", "MessageBudget", "get_authenticate",
+	"router", "serve"]
+
+# o cliente honesto manda 30 input/s, algumas action e um ping de vez em quando; 60/s é também o
+# máximo que o Tick aplica (2 por Tick, ws-messages.md §2.9)
+MESSAGES_PER_S = 60.0
+# o TCP entrega de uma vez o que ficou represado numa retransmissão: 2 s de mensagens cabem
+MESSAGE_BURST = 120
 
 router = APIRouter()
+
+
+class MessageBudget:
+	"""Token bucket por socket: `rate` mensagens por segundo, com rajada de até `burst`.
+
+	Conta o frame antes do parse, que é o trabalho caro: um cliente que inunda o socket não gasta
+	CPU do event loop que também roda o tick de todas as Rooms. O ritmo e a rajada são separados de
+	propósito: uma janela fixa de "60 em 1 s" derrubaria o cliente honesto logo depois de um soluço
+	da rede, quando as mensagens represadas chegam juntas.
+	"""
+
+	__slots__ = ("_rate", "_burst", "_tokens", "_clock", "_last")
+
+	def __init__(self, rate: float = MESSAGES_PER_S, burst: int = MESSAGE_BURST, *,
+			clock: Callable[[], float] = time.monotonic) -> None:
+		if rate <= 0 or burst < 1:
+			raise ValueError("a budget needs rate > 0 and burst >= 1")
+		self._rate = rate
+		self._burst = float(burst)
+		self._tokens = float(burst) # começa cheio: quem acabou de reconectar pode despejar a fila
+		self._clock = clock
+		self._last = clock()
+
+	def take(self) -> bool:
+		"""Gasta uma vaga. False: o socket passou do limite. O(1), sem alocar."""
+		now = self._clock()
+		# monotonic não volta, mas um relógio injetado poderia: tempo negativo não tira vaga
+		elapsed = max(0.0, now - self._last)
+		self._last = now
+		self._tokens = min(self._burst, self._tokens + elapsed * self._rate)
+		if self._tokens < 1.0:
+			return False
+		self._tokens -= 1.0
+		return True
 
 
 @router.websocket("/ws/game/{match_id}")
@@ -52,7 +95,7 @@ async def serve(ws: ServerSocket, match_id: int, *, rooms: RoomManager, connecti
 	set_connected(room, user_id, True)
 	await connections.send_to_user(user_id, _welcome(rooms, room, match_id, user_id), "game")
 	try:
-		await _read(ws, room, user_id, connections)
+		await _read(ws, room, user_id, connections, MessageBudget())
 	except Refused as refusal:
 		await connections.disconnect(connection, refusal.close, str(refusal))
 	except WebSocketDisconnect:
@@ -102,10 +145,17 @@ def _welcome(rooms: RoomManager, room: Room, match_id: int, user_id: int) -> str
 		last_input_seq=last_input_seq(room, user_id))
 
 
-async def _read(ws: ServerSocket, room: Room, user_id: int, connections: ConnectionManager) -> None:
+async def _read(ws: ServerSocket, room: Room, user_id: int, connections: ConnectionManager,
+		budget: MessageBudget) -> None:
 	while True:
+		frame = await receive(ws)
+		if not budget.take():
+			# 4400 e não um código novo: só um cliente com defeito ou malicioso chega aqui, e o
+			# cliente não reconecta depois de um 4400
+			log.warning("game socket flooded", extra={"match_id": room.match_id, "user_id": user_id})
+			raise Refused(CloseCode.INVALID_MESSAGE, "too many messages")
 		try:
-			message = parse_client_message(await receive(ws))
+			message = parse_client_message(frame)
 		except InvalidMessage as error:
 			raise Refused(CloseCode.INVALID_MESSAGE, str(error)) from None
 		match message:

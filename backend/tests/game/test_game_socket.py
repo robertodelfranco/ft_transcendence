@@ -13,7 +13,7 @@ from app.auth.security import InvalidToken
 from app.game import Mode, RoomOptions
 from app.game.protocol import CloseCode
 from app.game.rooms import RoomManager
-from app.game.router import JOIN_TIMEOUT_S, get_authenticate, serve
+from app.game.router import JOIN_TIMEOUT_S, MESSAGE_BURST, get_authenticate, serve
 from app.game.world import parse_map
 from app.ws.manager import ConnectionManager
 
@@ -202,6 +202,103 @@ async def test_a_newer_socket_replaces_the_old_one_and_the_player_stays_connecte
 	assert old.close_code == CloseCode.REPLACED
 	await until(lambda: any(m["type"] == "welcome" for m in new.messages))
 	assert player(rooms, 7).connected
+
+
+# ---------- N Players e limite de mensagens (F2.6) ----------
+
+FIVE = (7, 9, 15, 21, 33)
+
+
+def ping(t: float = 1.0) -> dict:
+	return {"v": 1, "type": "ping", "t": t}
+
+
+def snapshots(ws) -> list[dict]:
+	return [m for m in ws.messages if m["type"] == "snapshot"]
+
+
+@pytest.fixture
+async def five(fake_ws):
+	"""Uma Room coop cheia, com o próprio manager: os testes daqui mexem no tamanho da fila."""
+	opened: list[asyncio.Task] = []
+
+	async def start(**manager_options):
+		connections = ConnectionManager(close_timeout_s=0.05, **manager_options)
+		rooms = RoomManager(connections, load=lambda name, mode: parse_map(GRID, name, mode))
+		rooms.create(MATCH, Mode.COOP, "arena", 5, RoomOptions(), created_by=FIVE[0])
+		for user_id in FIVE:
+			rooms.join(MATCH, user_id, f"user{user_id}", "/media/avatars/default.png")
+		rooms.start(MATCH)
+		sockets = {}
+		for user_id in FIVE:
+			ws = sockets[user_id] = fake_ws()
+			ws.task = asyncio.create_task(serve(ws, MATCH, rooms=rooms, connections=connections,
+				authenticate=authenticate))
+			opened.append(ws.task)
+			ws.client_send(join(user_id))
+		managers.append((rooms, connections))
+		return rooms, sockets
+
+	managers: list[tuple[RoomManager, ConnectionManager]] = []
+	yield start
+	for task in opened:
+		task.cancel()
+	for rooms, connections in managers:
+		await rooms.close()
+		await connections.close_all(1000)
+
+
+@pytest.mark.anyio
+async def test_five_players_each_get_snapshots_with_their_own_last_input_seq(five):
+	rooms, sockets = await five()
+	for user_id, ws in sockets.items():
+		for seq in range(1, user_id % 10 + 2): # cada um com uma quantidade diferente de Inputs
+			ws.client_send({"v": 1, "type": "input", "seq": seq, "keys": KEYS, "mouse_dx": 0.0})
+
+	expected = {user_id: user_id % 10 + 1 for user_id in FIVE}
+	await until(lambda: all(snapshots(ws) and snapshots(ws)[-1]["last_input_seq"] == expected[uid]
+		for uid, ws in sockets.items()), timeout=2.0)
+	for ws in sockets.values():
+		assert ws.messages[0]["type"] == "welcome"
+		assert ws.close_code is None
+		assert {p["id"] for p in snapshots(ws)[-1]["players"]} == set(FIVE)
+
+
+@pytest.mark.anyio
+async def test_a_flood_closes_only_that_socket_with_4400(five):
+	rooms, sockets = await five()
+	flooder, others = sockets[FIVE[0]], [sockets[uid] for uid in FIVE[1:]]
+	await until(lambda: all(snapshots(ws) for ws in sockets.values()))
+	for _ in range(MESSAGE_BURST + 50): # tudo de uma vez, sem tempo de repor vaga
+		flooder.client_send(ping())
+
+	await flooder.task
+	assert flooder.close_code == CloseCode.INVALID_MESSAGE
+	assert flooder.messages[-1] == {"v": 1, "type": "error", "code": "invalid_message",
+		"message": "too many messages"}
+	assert not rooms.game_room(MATCH).players[FIVE[0]].connected
+
+	seen = [len(snapshots(ws)) for ws in others]
+	await until(lambda: all(len(snapshots(ws)) > n for ws, n in zip(others, seen)))
+	assert all(ws.close_code is None for ws in others)
+
+
+@pytest.mark.anyio
+async def test_a_client_that_does_not_read_is_closed_without_holding_the_others(five):
+	# fila pequena para o teste não precisar de 256 mensagens, mas com folga para os Events de
+	# entrada dos 5 Players, que chegam juntos no mesmo Tick
+	rooms, sockets = await five(send_queue_max=16)
+	slow, others = sockets[FIVE[0]], [sockets[uid] for uid in FIVE[1:]]
+	await until(lambda: all(snapshots(ws) for ws in sockets.values()))
+	slow.flowing.clear() # para de ler: o envio trava
+	for t in range(40): # pong não é descartável, então enche a fila
+		slow.client_send(ping(t))
+
+	await slow.task
+	assert slow.close_code == CloseCode.SLOW_CONSUMER
+	seen = [len(snapshots(ws)) for ws in others]
+	await until(lambda: all(len(snapshots(ws)) >= n + 3 for ws, n in zip(others, seen)))
+	assert all(ws.close_code is None for ws in others)
 
 
 # ---------- a rota de verdade, com o TestClient ----------
