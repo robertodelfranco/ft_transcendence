@@ -148,13 +148,14 @@ export function createMountGame(deps: GameDeps) {
 
     function onSnapshot(next: Snapshot): void {
       if (welcome === null) return;
+      loop.onSnapshot(next);
       applySnapshot(next);
       emitHud();
     }
 
     function applySnapshot(next: Snapshot): void {
       if (welcome === null || trackGrid === null) return;
-      // sem Prediction ainda: o Player local é desenhado onde o servidor diz (F2.7 troca isto)
+      // O Snapshot abastece o mundo e a HUD; o frame aplica a pose prevista do Player local.
       view = buildViewState(next, trackGrid(next.grid_delta), welcome.user_id, welcome.room.mode);
       snapshot = next;
     }
@@ -186,7 +187,25 @@ export function createMountGame(deps: GameDeps) {
       lastFrameMs = nowMs;
       const mouseDx = input.takeMouseDx(); // lido sempre, para não acumular giro fora da partida
       if (status === "running" && ending === null) loop.frame(dtS, input.keys, mouseDx);
-      if (rendererReady && view !== null) renderer.render(view, dtS);
+      if (rendererReady && view !== null) {
+        const predicted = ending === null && status !== "finished"
+          ? loop.localPlayer()
+          : null;
+
+        const drawing = predicted === null ? view : {
+          ...view,
+          localPlayer: predicted,
+          camera: predicted.alive ? {
+            ...view.camera,
+            x: predicted.x,
+            y: predicted.y,
+            dx: predicted.dx,
+            dy: predicted.dy,
+          } : view.camera,
+        };
+
+        renderer.render(drawing, dtS);
+      }
     }
 
     emitHud();

@@ -202,3 +202,76 @@ test("unmount releases everything and is safe to call twice", async () => {
   ws.receive({ v: 1, type: "snapshot", ...WELCOME.snapshot, tick: 4 });
   expect(huds).toHaveLength(count);
 });
+
+test("frames draw predicted movement before a new Snapshot arrives", async () => {
+  await connect();
+  await runFrame(0);
+  window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+  await runFrame(100);
+  window.dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+
+  const view = renderer.views.at(-1);
+  expect(view?.localPlayer.y).toBeLessThan(1.5);
+  expect(view?.camera.y).toBe(view?.localPlayer.y);
+  expect(lastHud().hp).toBe(10);
+});
+
+test("a Snapshot corrects the pose while preserving unconfirmed movement", async () => {
+  await connect();
+  await runFrame(0);
+  window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+  await runFrame(100);
+  window.dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+
+  ws.receive({
+    v: 1, type: "snapshot", ...WELCOME.snapshot,
+    tick: 2, last_input_seq: 1,
+    players: [{ ...WELCOME.snapshot.players[0], x: 2.5, hp: 7 }],
+  });
+  await runFrame(116);
+
+  const view = renderer.views.at(-1);
+  expect(view?.localPlayer.x).toBeCloseTo(2.5);
+  expect(view?.localPlayer.y).toBeLessThan(1.5);
+  expect(view?.camera.y).toBe(view?.localPlayer.y);
+  expect(lastHud().hp).toBe(7);
+});
+
+test("a dead coop Player watches a living teammate", async () => {
+  await connect();
+  ws.receive({
+    v: 1, type: "snapshot", ...WELCOME.snapshot, tick: 2,
+    players: [
+      { ...WELCOME.snapshot.players[0], alive: false, hp: 0 },
+      { ...WELCOME.snapshot.players[0], id: 9, x: 2.5, y: 2.5 },
+    ],
+  });
+  await runFrame(0);
+
+  const view = renderer.views.at(-1);
+  expect(view?.localPlayer).toMatchObject({ id: 7, alive: false, hp: 0 });
+  expect(view?.camera).toMatchObject({ x: 2.5, y: 2.5 });
+});
+
+test("game_over draws the final authoritative pose without pending movement", async () => {
+  await connect();
+  await runFrame(0);
+  window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+  await runFrame(100);
+  window.dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+
+  ws.receive({
+    v: 1, type: "event", tick: 4, name: "game_over",
+    data: { result: "win", winner_ids: [7], reason: "boss_defeated" },
+  });
+  ws.receive({
+    v: 1, type: "snapshot", ...WELCOME.snapshot,
+    tick: 4, last_input_seq: 1,
+    players: [{ ...WELCOME.snapshot.players[0], x: 2, y: 2 }],
+  });
+  await runFrame(116);
+
+  const view = renderer.views.at(-1);
+  expect(view?.localPlayer).toMatchObject({ x: 2, y: 2 });
+  expect(view?.camera).toMatchObject({ x: 2, y: 2 });
+});
