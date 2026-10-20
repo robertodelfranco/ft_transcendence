@@ -1,11 +1,11 @@
 import { AssetLoader } from "./src/render/assets";
 import type { Assets } from "./src/render/assets";
 import { ThreeRenderer } from "./src/render/renderer";
-import type { ViewState } from "./src/render/renderer";
-import type { WelcomeMessage } from "./src/types";
+import { applyGridDelta, buildViewState } from "./src/net/viewstate";
+import type { Snapshot, WelcomeMessage } from "./src/types";
 import example from "./fixtures/snapshot.example.json";
 
-// Demo local da F3.1: usa o welcome fabricado, sem socket ou Simulation.
+// Demo local: lê welcome e Snapshot da fixture, sem socket.
 const canvas = document.querySelector<HTMLCanvasElement>("#game");
 if (!canvas) throw new Error("game_canvas_missing");
 
@@ -16,18 +16,17 @@ canvas.style.width = "100vw";
 canvas.style.height = "100vh";
 
 const welcome = example.welcome as WelcomeMessage;
-const player = welcome.snapshot.players.find(candidate => candidate.id === welcome.user_id);
-if (!player) throw new Error("local_player_missing");
-const view: ViewState = {
-  localPlayer: player,
-  otherPlayers: welcome.snapshot.players.filter(candidate => candidate.id !== player.id),
-  enemies: welcome.snapshot.enemies,
-  boss: welcome.snapshot.boss,
-  projectiles: welcome.snapshot.projectiles,
-  doors: welcome.snapshot.doors,
-  grid: welcome.map.grid,
-  camera: { x: player.x, y: player.y, dx: player.dx, dy: player.dy, pitch: 0 },
-};
+const snapshot = example.snapshot as Snapshot;
+const grid = applyGridDelta(welcome.map.grid, snapshot.grid_delta);
+const initialView = buildViewState(
+  snapshot,
+  grid,
+  welcome.user_id,
+  welcome.room.mode,
+);
+if (!initialView) throw new Error("local_player_missing");
+const view = initialView;
+const player = view.localPlayer;
 let renderer: ThreeRenderer | undefined;
 let assets: Assets | undefined;
 let disposed = false;
