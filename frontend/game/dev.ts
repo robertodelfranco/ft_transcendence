@@ -2,8 +2,13 @@ import * as THREE from "three";
 import example from "./fixtures/snapshot.example.json";
 import { Doors } from "./src/render/doors";
 import { HandOverlay } from "./src/render/handOverlay";
+import { Billboards } from "./src/render/billboards";
+import { BILLBOARD_URLS, createBillboardAssets } from "./src/render/billboardAssets";
+import { fixtureView, galleryCamera, galleryView } from "./fixtures/billboards";
+import type { GalleryKind } from "./fixtures/billboards";
+import type { Snapshot } from "./src/types";
 
-// Demo local F3.1/F3.4: alterna fixtures, sem socket ou Simulation.
+// Demo local F3.1/F3.3/F3.4: fixtures, sem socket ou Simulation.
 const canvas = document.querySelector<HTMLCanvasElement>("#game");
 if (!canvas) throw new Error("game_canvas_missing");
 
@@ -52,6 +57,12 @@ const textures: THREE.Texture[] = [];
 let doors: Doors | undefined;
 let handOverlay: HandOverlay | undefined;
 let doorView = example.welcome.snapshot.doors;
+let billboards: Billboards | undefined;
+const userId = example.welcome.user_id;
+const initialView = fixtureView(example.welcome.snapshot as Snapshot, grid, userId);
+let billboardView = initialView;
+let galleryKind: GalleryKind | undefined;
+let galleryElapsed = 0;
 const texturedMaterials: THREE.MeshLambertMaterial[] = [];
 let disposed = false;
 const transform = new THREE.Object3D();
@@ -116,22 +127,43 @@ function showPointerLockError(): void {
 // A integração destes erros com HudState/React pertence à F3.2.
 const messages = {
   "pt-BR": {
+    gallery_label: "Galeria de entidades",
+    original_snapshot: "Snapshot original",
+    enemy: "Enemy",
+    boss: "Boss",
+    pickups: "Pickups",
+    projectiles: "Fireball e bullet",
+    players: "Outros Players",
     asset_load_failed: "Não foi possível carregar os recursos da cena. Recarregue a página.",
-    demo_description: "Demo F3.4: alterne as fixtures para observar a porta. Clique na cena para olhar ao redor.",
+    demo_description: "Demo F3.3/F3.4: selecione uma entidade para observar os clipes. Clique na cena para olhar ao redor.",
     closed_door: "Ver porta fechada",
     apply_snapshot: "Aplicar Snapshot",
     pointer_lock_failed: "Não foi possível capturar o mouse. Clique na cena para tentar novamente.",
   },
   en: {
+    gallery_label: "Entity gallery",
+    original_snapshot: "Original Snapshot",
+    enemy: "Enemy",
+    boss: "Boss",
+    pickups: "Pickups",
+    projectiles: "Fireball and bullet",
+    players: "Other Players",
     asset_load_failed: "The scene assets could not be loaded. Reload the page.",
-    demo_description: "F3.4 demo: switch fixtures to observe the door. Click the scene to look around.",
+    demo_description: "F3.3/F3.4 demo: select an entity to observe its clips. Click the scene to look around.",
     closed_door: "View closed door",
     apply_snapshot: "Apply Snapshot",
     pointer_lock_failed: "The mouse could not be captured. Click the scene to try again.",
   },
   es: {
+    gallery_label: "Galería de entidades",
+    original_snapshot: "Snapshot original",
+    enemy: "Enemy",
+    boss: "Boss",
+    pickups: "Pickups",
+    projectiles: "Fireball y bullet",
+    players: "Otros Players",
     asset_load_failed: "No se pudieron cargar los recursos de la escena. Recarga la página.",
-    demo_description: "Demo F3.4: alterna los ejemplos para observar la puerta. Haz clic en la escena para mirar alrededor.",
+    demo_description: "Demo F3.3/F3.4: selecciona una entidad para observar los clips. Haz clic en la escena para mirar alrededor.",
     closed_door: "Ver puerta cerrada",
     apply_snapshot: "Aplicar Snapshot",
     pointer_lock_failed: "No se pudo capturar el ratón. Haz clic en la escena para volver a intentarlo.",
@@ -166,9 +198,44 @@ const snapshotButton = document.createElement("button");
 snapshotButton.textContent = messages[language].apply_snapshot;
 closedButton.disabled = snapshotButton.disabled = true;
 controls.append(closedButton, snapshotButton);
+const galleryLabel = document.createElement("label");
+galleryLabel.textContent = messages[language].gallery_label;
+const gallerySelect = document.createElement("select");
+const galleryOptions = ["original_snapshot", "enemy", "boss", "pickups", "projectiles", "players"] as const;
+galleryOptions.forEach(value => {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = messages[language][value];
+  gallerySelect.append(option);
+});
+gallerySelect.disabled = true;
+galleryLabel.append(gallerySelect);
+controls.append(galleryLabel);
 document.body.append(controls);
 
+function selectGallery(): void {
+  const selected = gallerySelect.value;
+  galleryElapsed = 0;
+  if (selected === "original_snapshot") {
+    galleryKind = undefined;
+    billboardView = initialView;
+    doorView = example.welcome.snapshot.doors;
+    camera.position.set(player!.x, 0.5, player!.y);
+    yaw = Math.atan2(-player!.dx, -player!.dy);
+  } else {
+    galleryKind = selected as GalleryKind;
+    camera.position.set(galleryCamera.x, 0.5, galleryCamera.y);
+    yaw = 0;
+  }
+  pitch = 0;
+  camera.rotation.set(pitch, yaw, 0);
+}
+gallerySelect.addEventListener("change", selectGallery);
+
 function showClosedDoor(): void {
+  galleryKind = undefined;
+  gallerySelect.value = "original_snapshot";
+  billboardView = initialView;
   doorView = example.welcome.snapshot.doors;
   // Recria para retornar instantaneamente ao estado inicial da fixture.
   if (doors) {
@@ -188,6 +255,9 @@ function showClosedDoor(): void {
 }
 
 function applySnapshot(): void {
+  galleryKind = undefined;
+  gallerySelect.value = "original_snapshot";
+  billboardView = fixtureView(example.snapshot as Snapshot, grid, userId);
   doorView = example.snapshot.doors;
 }
 
@@ -196,12 +266,12 @@ snapshotButton.addEventListener("click", applySnapshot);
 
 async function loadAssets(): Promise<void> {
   const loader = new THREE.TextureLoader();
-  const results = await Promise.allSettled(
-    [theme.walls.ea, theme.walls.we, theme.walls.no, theme.walls.so,
-      "/assets/map/door_2.png", "/assets/player/player_hand_white.png",
-      "/assets/player/fireball_1.png"]
-      .map(url => loader.loadAsync(url)),
-  );
+  const assetUrls = [...new Set([
+    theme.walls.ea, theme.walls.we, theme.walls.no, theme.walls.so,
+    "/assets/map/door_2.png", "/assets/player/player_hand_white.png",
+    "/assets/player/fireball_1.png", ...BILLBOARD_URLS,
+  ])];
+  const results = await Promise.allSettled(assetUrls.map(url => loader.loadAsync(url)));
 
   // Libera inclusive cargas parciais se a página sair durante o carregamento.
   if (disposed || results.some(result => result.status === "rejected")) {
@@ -225,6 +295,16 @@ async function loadAssets(): Promise<void> {
     textures.push(texture);
   });
 
+  try {
+    const loaded = new Map(assetUrls.map((url, i) => [url, textures[i]]));
+    billboards = new Billboards(createBillboardAssets(loaded));
+    scene.add(billboards.object);
+  } catch {
+    renderer.setAnimationLoop(null);
+    showError("asset_load_failed");
+    return;
+  }
+
   textures.slice(0, 4).forEach(texture => {
     texturedMaterials.push(new THREE.MeshLambertMaterial({ map: texture }));
   });
@@ -232,7 +312,7 @@ async function loadAssets(): Promise<void> {
   scene.add(doors.object);
   handOverlay = new HandOverlay(textures[5], textures[6]);
   handOverlay.resize(window.innerWidth, window.innerHeight);
-  closedButton.disabled = snapshotButton.disabled = false;
+  closedButton.disabled = snapshotButton.disabled = gallerySelect.disabled = false;
 
   // BoxGeometry: +X, -X, +Y, -Y, +Z, -Z.
   // Slots legados do Cub3D: WE, EA, tampas, SO, NO.
@@ -279,7 +359,9 @@ function dispose(): void {
   if (document.pointerLockElement === canvas) document.exitPointerLock();
   closedButton.removeEventListener("click", showClosedDoor);
   snapshotButton.removeEventListener("click", applySnapshot);
+  gallerySelect.removeEventListener("change", selectGallery);
   controls.remove();
+  billboards?.dispose();
   doors?.dispose();
   handOverlay?.dispose();
   walls.dispose();
@@ -306,6 +388,11 @@ renderer.setAnimationLoop((time: number) => {
   const dt = previousTime === undefined ? 0 : (time - previousTime) / 1000;
   previousTime = time;
   doors?.update(doorView, dt);
+  if (galleryKind) {
+    galleryElapsed += dt;
+    billboardView = galleryView(initialView, galleryKind, galleryElapsed);
+  }
+  billboards?.update(billboardView, dt);
   renderer.render(scene, camera);
   handOverlay?.render(renderer);
 });
