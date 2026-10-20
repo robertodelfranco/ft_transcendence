@@ -419,7 +419,7 @@ Payload de um access token decodificado:
 | 8 | Limites do rate limit: `signup` e `login` 5/min por IP, `refresh` 30/min por IP. Na demo, várias máquinas atrás do mesmo roteador têm IPs diferentes na rede local, então não dividem o balde. Confirmar no ensaio. | Augusto | S2 |
 | 9 | Exclusão de conta não está no escopo ([rooms.md](rooms.md) §5.8). `ON DELETE CASCADE` em `refresh_tokens`, `oauth_accounts` e `friendships` já deixa o caminho pronto, mas `matches.created_by` é `RESTRICT`. | Augusto e Akita | se entrar no escopo |
 | 10 | Amizade unilateral foi proposta por mim para a tabela; as rotas e a tela são do Caio. Confirmar ao assinar. | Caio | revisão deste contrato |
-| 11 | A intra da 42 aceita PKCE (`code_challenge`)? Se aceitar, os dois provedores ficam iguais; se não, a 42 fica só com `state`, que já basta para o fluxo com `client_secret`. Testar no cadastro do app. | Akita | S1, com o "Em aberto" 1 |
+| 11 | ~~A intra da 42 aceita PKCE (`code_challenge`)?~~ **Resolvido (19/10/2026): não.** A intra aceita o `code_challenge` no authorize sem reclamar e emite o token mesmo com um `code_verifier` errado: ignora o PKCE. A 42 fica só com `state`, que basta para o fluxo com `client_secret`. Mandar o `code_challenge` não quebra nada, mas não protege nada; o adaptador da 42 não manda. Teste em [infra.md](infra.md) "Em aberto" 4. | Akita | feito |
 | 12 | Resolvido em 12/10: o e-mail da 42 é confiável para vincular (decisão 20), com a condição de conferir a troca de e-mail na intra. | Augusto e Akita | feito |
 | 13 | Resolvido em 12/10: a 42 primeiro, na S4; o Google em seguida e, se a S4 estourar, na S5 ([caminho-5-akita.md](../slices/caminho-5-akita.md) §5). Com dois provedores, o 2FA deixa de ser o Plano B. | Akita e Augusto | feito |
 
