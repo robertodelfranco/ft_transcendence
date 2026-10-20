@@ -10,6 +10,8 @@ import PublicOnly from "./components/PublicOnly";
 import RequireAuth from "./components/RequireAuth";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Play from "./pages/Play";
+import WaitingRoom from "./pages/WaitingRoom";
 
 // Layout sem path: cabeçalho e rodapé em toda página, inclusive a 404
 export const routes: RouteObject [] = [
@@ -28,7 +30,14 @@ export const routes: RouteObject [] = [
           },
           { path: "privacy", element: <Privacy />},
           { path: "terms", element: <Terms /> },
-          { element: <RequireAuth />, children: [{ path: "lobby", element: <Lobby /> }] },
+          {
+            element: <RequireAuth />,
+            children: [
+              { path: "lobby", element: <Lobby /> },
+              { path: "lobby/:matchId", element: <WaitingRoom /> },
+              { path: "play/:matchId", element: <Play /> },
+            ],
+          },
           { path: "*", element: <NotFound />},
         ],
       },
