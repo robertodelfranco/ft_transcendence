@@ -1,5 +1,6 @@
 import { http, HttpResponse } from "msw";
 import type { CreateMatchInput, MapCatalog, Mode, RoomInfo, RoomOptions, RoomPlayer } from "../api/types";
+import { publish } from "./appSocketHandlers";
 import authResponse from "./fixtures/authResponse.json";
 import maps from "./fixtures/maps.json";
 import roomsFixture from "./fixtures/rooms.json";
@@ -23,6 +24,8 @@ function defaultOptions(mode: Mode): RoomOptions {
   };
   return mode === "pvp" ? { ...coop, frag_limit: 5, time_limit_s: 180 } : coop;
 }
+
+// Cada mudança publica no /ws/app do mock como o lobby do backend (#128), depois de mudar o estado
 
 // Envelope de erro do auth.md §2.5; `message` é texto de log, aqui só repete o code
 function apiError(status: number, code: string) {
@@ -77,6 +80,7 @@ export const lobbyHandlers = [
       created_at: new Date().toISOString(), players: [asPlayer()],
     };
     rooms.push(room);
+    publish({ type: "lobby_update", room });
     return HttpResponse.json(room, { status: 201 });
   }),
 
@@ -93,6 +97,7 @@ export const lobbyHandlers = [
     if (room.players.length >= room.max_players)
       return apiError(409, "room_full");
     room.players.push(asPlayer());
+    publish({ type: "lobby_update", room });
     return HttpResponse.json(room);
   }),
 
@@ -106,10 +111,14 @@ export const lobbyHandlers = [
     if (!isIn(room))
       return apiError(409, "not_in_match");
     room.players = room.players.filter((player) => player.user_id !== me.id);
-    if (room.players.length === 0)
+    if (room.players.length === 0) {
       rooms = rooms.filter((other) => other !== room);
-    else if (room.created_by === me.id)
-      room.created_by = room.players[0].user_id;
+      publish({ type: "lobby_removed", match_id: room.match_id, reason: "aborted" });
+    } else {
+      if (room.created_by === me.id)
+        room.created_by = room.players[0].user_id;
+      publish({ type: "lobby_update", room });
+    }
     return new HttpResponse(null, { status: 204 });
   }),
 
@@ -124,6 +133,7 @@ export const lobbyHandlers = [
       return apiError(409, "not_in_match");
     const body = (await request.json()) as { ready: boolean };
     player.ready = body.ready;
+    publish({ type: "lobby_update", room });
     return HttpResponse.json(room);
   }),
 
@@ -138,6 +148,10 @@ export const lobbyHandlers = [
     if (room.players.length < room.min_players)
       return apiError(409, "not_enough_players");
     room.status = "running";
+    // como o #128: o match_started (no servidor, só para quem joga) vem antes do lobby_removed.
+    // O mock tem um User só, então manda os dois para todo socket
+    publish({ type: "match_started", match_id: room.match_id });
+    publish({ type: "lobby_removed", match_id: room.match_id, reason: "started" });
     return new HttpResponse(null, { status: 204 });
   }),
 ];

@@ -69,7 +69,8 @@ describe("RequireAuth", () => {
     const router = renderAt("/lobby");
     await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
     expect(router.state.location.search).toBe("?next=%2Flobby");
-    expect(screen.getByText("tela de login")).toBeInTheDocument();
+    // a URL muda antes de o React desenhar a tela nova: findBy espera
+    expect(await screen.findByText("tela de login")).toBeInTheDocument();
   });
 
   it("enquanto o /refresh não responde, mostra carregando e não redireciona", async () => {
@@ -85,10 +86,11 @@ describe("RequireAuth", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
   });
 
-  it("com sessão: abre a rota e mostra o nome do User", async () => {
+  it("com sessão: abre a rota protegida", async () => {
     await reloadWithSession();
     renderAt("/lobby");
-    expect(await screen.findByRole("heading", { name: /augusto/ })).toBeInTheDocument();
+    // o nome do User fica no cabeçalho, conferido no Layout.test
+    expect(await screen.findByRole("heading", { name: "Lobby", level: 1 })).toBeInTheDocument();
   });
 });
 
