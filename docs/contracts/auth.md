@@ -167,7 +167,9 @@ A lista é fechada aqui e cresce só por PR que muda este arquivo. Os `code` de 
 | Não existe, vencido, ou revogado | 401 `invalid_refresh`, cookie apagado | nenhum |
 | Válido e nunca usado | 200 `AuthResponse` + **cookie novo** | o token recebido ganha `rotated_at = now` e `replaced_by = novo`; nasce um token novo na mesma `family_id` |
 | Já rotacionado há **menos de 10 s**, com o sucessor ainda válido | 200 `AuthResponse` **sem `Set-Cookie`** | nenhum (janela de graça, §4 decisão 5) |
-| Já rotacionado há 10 s ou mais | 401 `invalid_refresh`, cookie apagado | **reuso**: todos os tokens da `family_id` recebem `revoked_at = now`; log de aviso |
+| Já rotacionado há 10 s ou mais, **ou** há menos de 10 s mas com o sucessor revogado ou vencido | 401 `invalid_refresh`, cookie apagado | **reuso**: todos os tokens da `family_id` recebem `revoked_at = now`; log de aviso |
+
+A janela de graça é a única exceção à rotação estrita: o token velho só vale se o sucessor ainda vale (um logout logo depois da rotação, por exemplo, tira a graça). Dois `/refresh` simultâneos com o mesmo cookie não abrem dois sucessores: o servidor lê a linha com `SELECT … FOR UPDATE`, e o segundo cai na janela de graça.
 
 **Logout** revoga só o token do cookie (`revoked_at = now`) e apaga o cookie. As outras sessões do mesmo User, em outros navegadores, continuam.
 
@@ -415,7 +417,7 @@ Payload de um access token decodificado:
 | 4 | A foto do provedor (Google ou 42) vira avatar? Proposta: não na primeira versão; o avatar continua sendo o padrão até o User enviar um. Baixar a imagem exige o mesmo caminho de validação do upload (F6.6). | Caio | S3 |
 | 5 | URL do avatar padrão e onde os avatares ficam guardados ([infra.md](infra.md) §5.2). Este contrato só precisa da URL. | Caio e Akita | com [i18n.md](i18n.md) |
 | 6 | Resolvido em 12/10: `DEFAULT 'en'`, o idioma de reserva de [i18n.md](i18n.md). A casca manda o idioma atual no signup e no `?lang` do OAuth (decisão 21). | Caio | feito |
-| 7 | Sessão com prazo absoluto? Hoje cada rotação renova os 7 dias, então quem usa o site toda semana nunca é deslogado. Proposta: aceitar (é demo) e escrever no README. | Augusto | S2 |
+| 7 | Resolvido em 20/10, na F6.3: sem prazo absoluto. Cada rotação renova os 7 dias, então quem usa o site toda semana nunca é deslogado; aceito para a demo, e vai para o README (F9.1). | Augusto | feito |
 | 8 | Limites do rate limit: `signup` e `login` 5/min por IP, `refresh` 30/min por IP. Na demo, várias máquinas atrás do mesmo roteador têm IPs diferentes na rede local, então não dividem o balde. Confirmar no ensaio. | Augusto | S2 |
 | 9 | Exclusão de conta não está no escopo ([rooms.md](rooms.md) §5.8). `ON DELETE CASCADE` em `refresh_tokens`, `oauth_accounts` e `friendships` já deixa o caminho pronto, mas `matches.created_by` é `RESTRICT`. | Augusto e Akita | se entrar no escopo |
 | 10 | Amizade unilateral foi proposta por mim para a tabela; as rotas e a tela são do Caio. Confirmar ao assinar. | Caio | revisão deste contrato |

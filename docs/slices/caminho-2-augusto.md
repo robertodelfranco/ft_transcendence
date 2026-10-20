@@ -32,7 +32,7 @@
 | F6.1 | Migrações `users`, `refresh_tokens`, `oauth_accounts`, `friendships` (com F5.1) | 0,5 | F5.1 | S1 | Sobem junto com as de F5 | ✅ modelos (#51, PR #52); migração na `0001_initial` do Akita (#29, PR #78) |
 | F6.2 | Signup, login e `me`: Argon2id, JWT de acesso, validação Pydantic, mesma mensagem para e-mail e senha errados | 2 | F6.1 | S1 | C2: signup → login → `me` pelo Nginx com HTTPS | ✅ #69 (PR #81) |
 | F6.4 | `get_current_user` e `authenticate_ws_token` | 0,5 | F6.2 | S1 | Outras frentes usam `CurrentUser` | ✅ #70 (PR #93) |
-| F6.3 | Refresh com rotação e detecção de reuso; logout | 1,5 | F6.2 | S2 | Reuso de refresh antigo revoga a família | ⏳ #87 |
+| F6.3 | Refresh com rotação e detecção de reuso; logout | 1,5 | F6.2 | S2 | Reuso de refresh antigo revoga a família | 🔄 #87, implementada na branch `87-f6-3-refresh-logout` (com o limite de 30/min no refresh, que a F6.5 não tinha como pôr antes da rota existir) |
 | F6.5 | Middlewares: logging JSON com `request_id`, handlers de erro no envelope, `RateLimit` como dependência | 2 | F0.3 | S2 | 6 logins errados em 1 min dão 429 | ✅ #88 (PR #96) |
 
 ### F2 — netcode, servidor e cliente (15 d)
