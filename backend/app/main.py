@@ -53,7 +53,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 	app.state.maps = load_catalog() # GET /api/maps e a validação do POST /api/matches
 	# lê o room_manager na hora do aviso, não agora: o teste troca a instância
 	app.state.connection_manager.on_presence_change(lambda user_id, online:
-		leave_when_offline(app.state.room_manager, SessionLocal, user_id, online))
+		leave_when_offline(app.state.room_manager, app.state.connection_manager, SessionLocal,
+			user_id, online))
 	# presença para os amigos e last_seen_at (ws-manager.md §2.3); também lido na hora do aviso
 	app.state.friend_graph = DbFriendGraph(SessionLocal)
 	app.state.connection_manager.on_presence_change(lambda user_id, online:
