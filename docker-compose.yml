@@ -18,6 +18,8 @@ services:
   backend:
     build: ./backend
     env_file: .env
+    volumes:
+      - media:/media # MEDIA_DIR: avatares enviados (infra.md, decisão 13)
     depends_on:
       db:
         condition: service_healthy
@@ -45,6 +47,7 @@ services:
       - "${PROXY_HTTPS_PORT:-443}:443"
     volumes:
       - ./proxy/certs:/certs-host:ro
+      - media:/media:ro # o Nginx serve os avatares sem passar pelo backend
     depends_on:
       backend:
         condition: service_healthy
@@ -55,6 +58,7 @@ services:
 
 volumes:
   db_data:
+  media:
 
 networks:
   transcendence:
