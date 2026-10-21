@@ -11,5 +11,14 @@
   "themes": {
     "dungeon": "Dungeon",
     "sewer": "Sewer"
+  },
+  "outcomes": { "win": "Victory!", "loss": "Defeat", "draw": "Draw" },
+  "reasons": {
+    "boss_defeated": "The Boss was defeated.",
+    "all_dead": "All players died.",
+    "frag_limit": "A player reached the Frag limit.",
+    "time_limit": "Time is up.",
+    "forfeit": "The match ended by forfeit.",
+    "server_shutdown": "The server was restarted."
   }
 }

@@ -1,4 +1,15 @@
 {
   "title": "Match",
-  "connecting": "Connecting to match #{{matchId}}…"
+  "connecting": "Connecting to match #{{matchId}}…",
+  "reconnecting": "Connection lost. Reconnecting…",
+  "finished": "The match is over.",
+  "view": "Game view",
+  "stats": {
+    "label": "Your status",
+    "hp": "Health",
+    "mana": "Mana",
+    "armor": "Armor",
+    "keys": "Keys",
+    "ofMax": "{{value}}/{{max}}"
+  }
 }
