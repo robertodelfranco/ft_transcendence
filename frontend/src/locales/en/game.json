@@ -1,0 +1,15 @@
+{
+  "modes": {
+    "coop": "Co-op",
+    "pvp": "PvP 1v1"
+  },
+  "maps": {
+    "dungeon_map": "Dungeon",
+    "enemy": "Enemy halls",
+    "enemy_sewer": "Sewer halls"
+  },
+  "themes": {
+    "dungeon": "Dungeon",
+    "sewer": "Sewer"
+  }
+}

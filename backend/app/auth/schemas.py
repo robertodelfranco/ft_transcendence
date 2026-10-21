@@ -96,6 +96,11 @@ class PrivateUser(PublicUser):
 	providers: list[Provider] # em ordem alfabética
 
 
+class Unauthenticated(BaseModel):
+	"""/refresh sem cookie: o estado normal de quem chega, não um erro (decisão 4)."""
+	authenticated: Literal[False] = False
+
+
 class AuthResponse(BaseModel):
 	authenticated: Literal[True] = True
 	access_token: str

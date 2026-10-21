@@ -1,4 +1,8 @@
-"""Catálogo de Maps e criação de Match (matches-api.md §2.2, rooms.md §2.2)."""
+"""Catálogo de Maps e criação de Match (matches-api.md §2.2, rooms.md §2.2).
+
+Cada mudança no lobby vai para todo /ws/app pelas funções `publish_*`, sempre **depois** do
+commit: quem recebe o aviso e busca por HTTP já acha o banco atualizado (ws-manager.md §2.5).
+"""
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +20,8 @@ from app.game.rooms import MAX_PLAYERS, MIN_PLAYERS, RoomInfo, RoomManager, now
 from app.game.world import MAPS_DIR
 from app.matches.models import Match
 from app.matches.schemas import CreateMatchIn, parse_options
+from app.ws.app_events import publish_lobby_removed, publish_lobby_update, publish_match_started
+from app.ws.manager import ConnectionManager
 
 
 @dataclass(frozen=True)
@@ -45,8 +51,8 @@ def get_catalog(request: Request) -> Catalog:
 
 # ---------- criar Match ----------
 
-async def create_match(session: AsyncSession, rooms: RoomManager, catalog: Catalog,
-		user: User, body: CreateMatchIn) -> RoomInfo:
+async def create_match(session: AsyncSession, rooms: RoomManager, connections: ConnectionManager,
+		catalog: Catalog, user: User, body: CreateMatchIn) -> RoomInfo:
 	"""Grava a linha de `matches` e abre a Room, na mesma requisição.
 
 	Ordem: INSERT + flush → create + join (síncronos, sem await entre eles) → commit. A Room
@@ -80,24 +86,33 @@ async def create_match(session: AsyncSession, rooms: RoomManager, catalog: Catal
 	except Exception:
 		rooms.leave(match_id, user_id) # último a sair: a Room é destruída
 		raise
+	await publish_lobby_update(connections, info)
 	return info
 
 
 # ---------- sair e iniciar ----------
 
-async def leave_match(session: AsyncSession, rooms: RoomManager, match_id: int, user_id: int) -> None:
+async def leave_match(session: AsyncSession, rooms: RoomManager, connections: ConnectionManager,
+		match_id: int, user_id: int) -> None:
 	"""O último a sair grava aborted; o host que sai passa o created_by adiante (rooms.md decisão 3).
 
-	A Room muda antes do banco e sem await: ninguém entra entre a saída e a gravação.
+	A Room muda antes do banco e sem await: ninguém entra entre a saída e a gravação. A saída por
+	presença (leave_when_offline) também passa por aqui, e por isso publica do mesmo jeito.
 	"""
 	info = rooms.leave(match_id, user_id)
 	values = {"status": "aborted"} if info is None else {"created_by": info.created_by}
 	await session.execute(update(Match).where(Match.id == match_id).values(**values))
 	await session.commit()
+	if info is None:
+		await publish_lobby_removed(connections, match_id, "aborted")
+	else:
+		await publish_lobby_update(connections, info)
 
 
-async def start_match(session: AsyncSession, rooms: RoomManager, match_id: int, user_id: int) -> None:
-	if rooms.info(match_id).created_by != user_id:
+async def start_match(session: AsyncSession, rooms: RoomManager, connections: ConnectionManager,
+		match_id: int, user_id: int) -> None:
+	info = rooms.info(match_id)
+	if info.created_by != user_id:
 		raise ApiError(403, "not_host", f"user {user_id} is not the host of match {match_id}")
 	rooms.start(match_id) # AlreadyStarted no segundo clique: uma task de tick só
 	# ponytail: se este commit falhar, a Room roda com o banco em lobby e o record_match_result
@@ -105,13 +120,16 @@ async def start_match(session: AsyncSession, rooms: RoomManager, match_id: int, 
 	await session.execute(update(Match).where(Match.id == match_id)
 		.values(status="running", started_at=now()))
 	await session.commit()
+	# o match_started só para quem joga (a casca abre /play); o lobby_removed para todos
+	await publish_match_started(connections, match_id, [player.user_id for player in info.players])
+	await publish_lobby_removed(connections, match_id, "started")
 
 
-async def leave_when_offline(rooms: RoomManager, sessions: Callable[[], AsyncSession],
-		user_id: int, online: bool) -> None:
+async def leave_when_offline(rooms: RoomManager, connections: ConnectionManager,
+		sessions: Callable[[], AsyncSession], user_id: int, online: bool) -> None:
 	"""Quem fica offline sai do Lobby (rooms.md decisão 10); em partida, vale o Grace period."""
 	match_id = rooms.room_of(user_id)
 	if online or match_id is None or rooms.info(match_id).status != "lobby":
 		return
 	async with sessions() as session: # o __aenter__ não suspende: o status não muda no meio
-		await leave_match(session, rooms, match_id, user_id)
+		await leave_match(session, rooms, connections, match_id, user_id)

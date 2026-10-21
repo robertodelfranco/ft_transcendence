@@ -5,6 +5,7 @@ Tudo roda num único event loop (um worker só, arq. §2) e nenhum método públ
 instância por processo, criada no `create_app()` e entregue por `get_room_manager`.
 """
 import asyncio
+import contextvars
 import logging
 import random
 import time
@@ -210,7 +211,9 @@ class RoomManager:
 			seed=random.randrange(2**32))
 		entry.status = "running"
 		entry.started_at = now()
-		entry.task = asyncio.create_task(self._run(entry), name=f"room-{match_id}")
+		# contexto vazio: a task vive a partida inteira e não pode levar o request_id do POST /start
+		entry.task = asyncio.create_task(self._run(entry), name=f"room-{match_id}",
+			context=contextvars.Context())
 
 	# ---------- leitura ----------
 

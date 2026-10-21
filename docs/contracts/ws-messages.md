@@ -159,6 +159,7 @@ Antes de fechar com um código `44xx` ou `4503`, o servidor manda `error` com o 
 | Snapshot | a cada 2 Ticks (15 Hz) | arq. §6.2 |
 | `join` | até 5 s depois de abrir o socket | arq. §4, decisão 5 |
 | Input | o cliente manda 1 por passo de 1/30 s; o servidor aplica 1 por Tick, ou 2 para alcançar (no máximo 60 por segundo) | §2.9; arq. §7.2 |
+| Mensagens do cliente depois do `join` | até 60 por segundo por socket, com rajada de 120 (token bucket, contado antes do parse); acima disso, `error` + `4400`. A rajada cobre 2 s de mensagens represadas por retransmissão do TCP | F2.6 |
 | Grace period | 30 s | arq. §7.3 |
 | Remoção da Room | 60 s depois do `game_over` | arq. §10.1 |
 | Interpolation | os outros desenhados a `now − 100 ms`; sem Snapshot por mais de 2 intervalos, congela | arq. §7.2 |

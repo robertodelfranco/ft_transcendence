@@ -1,5 +1,7 @@
 # backend/tests/matches/test_lobby.py
 # Rotas de lobby e GET /api/maps (matches-api.md §2.2) contra o Postgres, com a Room em memória.
+import asyncio
+
 import pytest
 from sqlalchemy import func, select
 
@@ -33,6 +35,30 @@ async def rooms(app):
 	app.state.maps = CATALOG
 	yield app.state.room_manager
 	await app.state.room_manager.close() # o start liga a task do tick
+
+
+WATCHER_ID = 10_000 # só olha o lobby; não é User do banco, e o manager não consulta ninguém
+
+
+@pytest.fixture
+async def watcher(app, fake_ws, fake_friends):
+	"""Uma aba /ws/app de quem não está na Room: recebe todo lobby_update e lobby_removed."""
+	app.state.friend_graph = fake_friends() # a presença do connect não vai ao banco
+	ws = fake_ws()
+	await app.state.connection_manager.connect(WATCHER_ID, "app", ws)
+	yield ws
+	await app.state.connection_manager.close_all(1000)
+
+
+async def received(ws, count: int) -> list[dict]:
+	"""Espera `count` mensagens (cada conexão escreve na própria task) e confere que não veio outra."""
+	async with asyncio.timeout(1):
+		while len(ws.sent) < count:
+			await asyncio.sleep(0)
+	for _ in range(10):
+		await asyncio.sleep(0)
+	assert len(ws.sent) == count
+	return ws.messages
 
 
 async def new_user(db_session, app, name: str = "akita") -> dict[str, str]:
@@ -122,7 +148,7 @@ async def test_a_user_in_a_room_cannot_create_another(client, db_session, app, r
 	assert len(rooms.list_open()) == 1
 
 
-async def test_a_failed_commit_leaves_no_room(client, db_session, app, rooms, monkeypatch):
+async def test_a_failed_commit_leaves_no_room(client, db_session, app, rooms, watcher, monkeypatch):
 	headers = await new_user(db_session, app)
 
 	async def broken_commit():
@@ -133,6 +159,7 @@ async def test_a_failed_commit_leaves_no_room(client, db_session, app, rooms, mo
 	assert response.status_code == 500
 	assert rooms.list_open() == [] # a Room nunca vive sem linha
 	assert rooms.room_of(1) is None
+	assert await received(watcher, 0) == [] # nada publicado antes do commit
 
 
 @pytest.mark.parametrize("headers", [{}, {"Authorization": "Bearer not-a-jwt"}])
@@ -262,21 +289,66 @@ async def test_pvp_needs_two_to_start(client, db_session, app, rooms):
 	assert error(await client.post(f"/api/matches/{match_id}/start", headers=host)) == (409, "not_enough_players")
 
 
+# ---------- lobby ao vivo (ws-manager.md §2.5) ----------
+
+async def test_create_join_and_ready_reach_every_tab(client, db_session, app, rooms, watcher):
+	match_id, _ = await open_lobby(client, db_session, app)
+	guest = await new_user(db_session, app, "rdel")
+	await client.post(f"/api/matches/{match_id}/join", headers=guest)
+	await client.post(f"/api/matches/{match_id}/ready", json={"ready": True}, headers=guest)
+	assert error(await client.post(f"/api/matches/{match_id}/join", headers=guest)) == (409, "already_in")
+
+	created, joined, ready = await received(watcher, 3) # o join recusado não publica
+	assert {m["type"] for m in (created, joined, ready)} == {"lobby_update"}
+	assert created["room"]["match_id"] == match_id
+	assert [p["username"] for p in joined["room"]["players"]] == ["akita", "rdel"]
+	assert ready["room"]["players"][1]["ready"] is True
+
+
+async def test_leaving_updates_the_room_and_the_last_one_out_removes_it(client, db_session, app,
+		rooms, watcher):
+	match_id, host = await open_lobby(client, db_session, app)
+	guest = await new_user(db_session, app, "rdel")
+	guest_id = (await client.post(f"/api/matches/{match_id}/join", headers=guest)).json()["players"][1]["user_id"]
+	await client.post(f"/api/matches/{match_id}/leave", headers=host)
+	await client.post(f"/api/matches/{match_id}/leave", headers=guest)
+
+	*_, host_left, last_left = await received(watcher, 4)
+	assert host_left["type"] == "lobby_update" and host_left["room"]["created_by"] == guest_id
+	assert last_left == {"v": 1, "type": "lobby_removed", "match_id": match_id, "reason": "aborted"}
+
+
+async def test_start_tells_the_players_and_removes_the_room_for_everyone(client, db_session, app,
+		rooms, watcher, fake_ws):
+	match_id, host = await open_lobby(client, db_session, app)
+	player_tab = fake_ws()
+	await app.state.connection_manager.connect(rooms.info(match_id).created_by, "app", player_tab)
+	await client.post(f"/api/matches/{match_id}/start", headers=host)
+
+	started, removed = await received(player_tab, 2)
+	assert started == {"v": 1, "type": "match_started", "match_id": match_id}
+	assert removed == {"v": 1, "type": "lobby_removed", "match_id": match_id, "reason": "started"}
+	assert (await received(watcher, 2))[1] == removed # quem não joga não recebe o match_started
+
+
 # ---------- presença ----------
 
-async def test_going_offline_leaves_the_lobby(client, db_session, app, rooms):
+async def test_going_offline_leaves_the_lobby(client, db_session, app, rooms, watcher):
 	match_id, _ = await open_lobby(client, db_session, app)
 	host_id = rooms.info(match_id).created_by
-	await service.leave_when_offline(rooms, lambda: db_session, host_id, True)
+	connections = app.state.connection_manager
+	await service.leave_when_offline(rooms, connections, lambda: db_session, host_id, True)
 	assert rooms.room_of(host_id) == match_id # voltar online não tira ninguém
-	await service.leave_when_offline(rooms, lambda: db_session, host_id, False)
+	await service.leave_when_offline(rooms, connections, lambda: db_session, host_id, False)
 	assert rooms.room_of(host_id) is None
 	assert (await match_row(db_session, match_id)).status == "aborted"
+	assert (await received(watcher, 2))[1]["reason"] == "aborted" # some da lista de todos
 
 
 async def test_going_offline_in_a_running_match_keeps_the_seat(client, db_session, app, rooms):
 	match_id, host = await open_lobby(client, db_session, app)
 	host_id = rooms.info(match_id).created_by
 	await client.post(f"/api/matches/{match_id}/start", headers=host)
-	await service.leave_when_offline(rooms, lambda: db_session, host_id, False)
+	await service.leave_when_offline(rooms, app.state.connection_manager, lambda: db_session,
+		host_id, False)
 	assert rooms.room_of(host_id) == match_id # em partida, vale o Grace period

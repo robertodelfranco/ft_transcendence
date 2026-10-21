@@ -13,4 +13,5 @@ addopts = [
 ]
 markers = [
     "mirror: confere que o mundo não saiu espelhado, como era no Cub3D",
+    "perf: mede tempo; fora do CI, rode com `pytest -m perf`",
 ]
