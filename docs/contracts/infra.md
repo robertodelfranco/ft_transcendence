@@ -1,6 +1,6 @@
 # Contrato: rotas, host, TLS e `.env` (`infra.md`)
 
-**Estado:** proposta para a reunião de 12/10; as decisões 11 e 12 foram tomadas em 08/10; em 10/10, sincronizado com as decisões 1 e 6 de [auth.md](auth.md) (OAuth com a 42 e o Google, cookie com `Path=/api/auth`). **Escreve:** Akita. **Assina:** todos — é o contrato que diz o que acontece com uma requisição antes de ela chegar ao código de qualquer um.
+**Estado:** proposta para a reunião de 12/10; as decisões 11 e 12 foram tomadas em 08/10; em 10/10, sincronizado com as decisões 1 e 6 de [auth.md](auth.md) (OAuth com a 42 e o Google, cookie com `Path=/api/auth`). Em 19/10, o teste num PC da 42 ([resultados de 17/10](../infra/resultados-teste-pc-42-2026-10-17.md)) entrou na §2.1, na §2.4, na §2.6 e no "Em aberto" 1. **Escreve:** Akita. **Assina:** todos — é o contrato que diz o que acontece com uma requisição antes de ela chegar ao código de qualquer um.
 
 ## 1. Para que serve
 
@@ -14,7 +14,7 @@ Um `docker compose up` sobe tudo (requisito do subject, cap. III). Todos na rede
 
 | Serviço | Imagem / build | Porta publicada | Papel |
 |---|---|---|---|
-| `proxy` | `./proxy` (nginx:alpine) | **80 e 443** | única porta que sai para o host; termina o TLS |
+| `proxy` | `./proxy` (nginx:alpine) | **80 e 443** (no PC da 42: **8080 e 8443**, §2.4) | única porta que sai para o host; termina o TLS |
 | `frontend` | `./frontend` | — | build estático do React servido por nginx |
 | `backend` | `./backend` | — | FastAPI, `uvicorn`, **um worker** |
 | `db` | `postgres:16-alpine` | — | volume `db_data` |
@@ -57,6 +57,13 @@ Escrito para quem programa atrás dele.
 - Os arquivos gerados vão para `proxy/certs/` e **não são versionados** (entram no `.gitignore`; só o `.gitkeep` é versionado, para a pasta existir com o dono certo); quem clona roda o `mkcert` uma vez. O repo documenta o comando, não guarda a chave.
 - **Sem certificado em `proxy/certs/`, o proxy gera um self-signed** para `localhost` dentro do container, e o `docker compose up` de um clone limpo continua funcionando (§4, decisão 11). Com ele, o Chrome mostra a tela de aviso; o cadeado limpo exige o `mkcert`.
 - Nas outras máquinas da demo: importar o `rootCA.pem` (só ele, nunca o `rootCA-key.pem`) de `$(mkcert -CAROOT)` da máquina servidora em Chrome → Configurações → Segurança → Gerenciar certificados → Autoridades. Não precisa de sudo. Sem isso, as outras máquinas veem aviso.
+- **Chrome 155** (o dos PCs da 42 em 17/10), que tem gerenciador de certificados novo: `chrome://settings/certificates` → Certificados locais → Personalizado → Instalados por você → Certificados confiáveis → Importar. Plano B sem sudo: `TRUST_STORES=nss mkcert -install` (o PC tem `certutil`).
+- **Demo direto no PC da 42, sem VM** (testado num PC em 17/10). O Docker de lá é rootless, e isso fixa três coisas:
+  - **portas `PROXY_HTTP_PORT=8080` e `PROXY_HTTPS_PORT=8443`**, com `PUBLIC_HOST=<hostname-do-PC>:8443`, porque o rootless não abre porta abaixo de 1024;
+  - **`data-root` no goinfre** (`~/.config/docker/daemon.json`), porque o home tem 11 GB e o sgoinfre (NFS) não deixa o Docker iniciar. O goinfre é local de cada PC: trocar de PC custa ~1 min de pull e build e um `mkcert` novo;
+  - **override do `slirp4netns`** em quem serve, porque sem ele o Nginx vê todo cliente como `172.18.0.1` e o rate limit por IP vira global.
+
+  Os comandos estão no [teste-2-pcs.md](../infra/teste-2-pcs.md) §1.3 e §1.4. Numa máquina com Docker como root, nada disso é preciso.
 - **WSL2:** o Docker roda no Linux, mas o Chrome é o do Windows. O `mkcert -install` dentro do WSL não chega ao Chrome; importar o `rootCA.pem` no `certmgr.msc` do Windows (Autoridades de Certificação Raiz Confiáveis, repositório do usuário, sem admin).
 - Os clientes acessam por `https://<PUBLIC_HOST>`. `PUBLIC_HOST` é `<nome-ou-ip>[:<porta>]`: leva a porta quando a HTTPS não é a 443 (por exemplo `c1r2p3.42sp.org.br:8443`), e o nome precisa estar no SAN do certificado. Dele saem o redirect do Nginx, a URL de retorno do OAuth e o `GF_SERVER_ROOT_URL` (§4, decisão 12).
 - **O Google restringe esse nome.** A URL de retorno cadastrada no Google Cloud Console precisa ser HTTPS num domínio público; a única exceção é `localhost`. IP puro (`192.168.0.42`) e nome sem domínio público (`catacombs.local`) são recusados no formulário. Para demonstrar o login pelo Google de outra máquina, o candidato é um nome do [nip.io](https://nip.io), que resolve para o IP embutido nele: `PUBLIC_HOST=192-168-0-42.nip.io:8443`, com o mesmo nome no SAN do `mkcert`. Ele depende de a rede da 42 resolver DNS público ([roteiro](../infra/roteiro-teste-pc-42.md), passo 5) e de o Google aceitar `nip.io` no formulário ("Em aberto" 4).
@@ -119,6 +126,7 @@ postgres-exporter:9187 ───┘   (alerts.yml)
 - `monitoring/prometheus/prometheus.yml` e `alerts.yml`, `monitoring/grafana/provisioning/{datasources,dashboards}/` — tudo versionado. **Nada criado à mão na UI entra na demo**: o critério é `docker compose down -v && up` e os dashboards voltarem sozinhos.
 - Os nomes e as labels das métricas do backend são contrato do Augusto (`app/core/metrics.py`, F8.7, arq. §12.1). Os dashboards de host e Postgres não dependem dele e sobem antes.
 - Grafana: `serve_from_sub_path` ligado, admin do `.env`, anônimo e signup desligados.
+- Host só pelo `node-exporter`, sem cAdvisor: os dois funcionaram no PC da 42 em 17/10, mas o cAdvisor no rootless precisa dos sockets em `/run/user/$UID` e do `data-root` de cada usuário, caminhos que mudam por login e por PC.
 - Retenção curta: `7d` ou `500MB`, o que vier primeiro (`PROM_RETENTION_TIME` e `PROM_RETENTION_SIZE`, §4 decisão 14). É demo local, não observabilidade de produção.
 
 ### 2.7 O que o CI roda a cada PR
@@ -237,10 +245,10 @@ cp "$(mkcert -CAROOT)/rootCA.pem" .          # levar para as outras máquinas
 
 | # | Questão | Quem decide | Quando |
 |---|---|---|---|
-| 1 | Ambiente e endereço da demo: PC da 42 direto ou VM; nome DNS do PC ou IP; portas. `catacombs.local` saiu: as máquinas clientes não têm sudo para editar o `/etc/hosts`. Resposta pelo [roteiro de teste no PC da 42](../infra/roteiro-teste-pc-42.md), que também testa se o nip.io resolve na rede da 42 (§2.4). | Akita | depois do teste, até sex 17/10; prazo real no C3 (23/10, duas máquinas) |
+| 1 | Ambiente e endereço da demo. **Resolvido num PC (17/10):** PC da 42 direto, sem VM; portas 8080/8443; `PUBLIC_HOST=<hostname>:8443`; certificado com hostname, IP, `<ip-com-hifens>.nip.io` e `localhost` no SAN; o `nip.io` resolve na rede da 42 (§2.4). **Falta, e depende de um 2º PC:** outro PC alcançar o servidor pelos três nomes (D1), a CA num Chrome de outro login (D2) e o rate limit separar os dois IPs (D4). Passo a passo: [teste-2-pcs.md](../infra/teste-2-pcs.md). Se a D1 falhar, a demo em duas máquinas muda de forma, e a decisão é do time com o Tech Lead. | Akita | D1 antes do C3 (23/10); quem vai à 42 sai da reunião de 19/10 |
 | 2 | Resolvido em 10/10: volume do compose em `MEDIA_DIR`, o banco guarda só a URL ([i18n.md](i18n.md), rascunho no PR #20); servido pelo Nginx (§4, decisão 13). | Akita e Caio | feito |
 | 3 | Resolvido em 10/10: §4, decisão 14. | Akita | feito |
-| 4 | **Cadastro dos apps OAuth na intra da 42 e no Google Cloud Console** (pergunta 8; [auth.md](auth.md) §5, itens 1, 2 e 11). Nos dois formulários: se a liberação é imediata, se a URL de retorno aceita IP, porta e `nip.io`, quantas URLs cabem e se o secret expira; na intra, se aceita PKCE; no Google, se a tela de consentimento em "Testing" basta para a avaliação. Isso **não se responde por dedução**: sai dos formulários. Cadastro feito de casa com `https://localhost/api/auth/oauth/{42,google}/callback`; esta linha recebe o que os formulários mostrarem. Com dois provedores, o Plano B de 2FA deixa de ser necessário: se um travar, o outro sozinho fecha o módulo ([auth.md](auth.md) §4, decisão 1). | Akita | antes de qualquer código de F6.8; meta: 17/10 |
+| 4 | **Cadastro dos apps OAuth na intra da 42 e no Google Cloud Console** (pergunta 8; [auth.md](auth.md) §5, itens 1, 2 e 11). Nos dois formulários: se a liberação é imediata, se a URL de retorno aceita IP, porta e `nip.io`, quantas URLs cabem e se o secret expira; na intra, se aceita PKCE; no Google, se a tela de consentimento em "Testing" basta para a avaliação. Isso **não se responde por dedução**: sai dos formulários. Cadastro feito de casa com `https://localhost/api/auth/oauth/{42,google}/callback`; esta linha recebe o que os formulários mostrarem. Com dois provedores, o Plano B de 2FA deixa de ser necessário: se um travar, o outro sozinho fecha o módulo ([auth.md](auth.md) §4, decisão 1).<br><br>**42, testado em 19/10** (fluxo manual, sem código da F6.8):<br>- o app existe, e a URL de retorno `https://localhost/api/auth/oauth/42/callback` funciona; o token vem com escopo `public` e access de 2 h;<br>- `/v2/me` traz `id`, `login`, `email` (`@student.42sp.org.br`), `image.link` e `kind`;<br>- **PKCE ignorado** ([auth.md](auth.md) "Em aberto" 11);<br>- a intra devolve o mesmo access token a um segundo login do mesmo User enquanto ele vale. Não muda nada para a F6.8, que não guarda o token do provedor;<br>- **o secret vence em 06/11/2026, antes da defesa (21/11): renovar na intra antes e atualizar o `FT_CLIENT_SECRET` de quem serve a demo.**<br><br>Falta: se a intra aceita a URL de retorno com porta, IP ou `nip.io` (a da demo no PC da 42).<br><br>**Google:** fica para depois da 42 (decisão do Akita em 19/10); a F6.8 sai só com a 42, que fecha o módulo sozinha. | Akita | 42: feito, exceto a URL da demo. Google: depois da F6.8 |
 | 5 | Resolvido em 10/10: §4, decisão 13. | Akita | feito |
 
 ---

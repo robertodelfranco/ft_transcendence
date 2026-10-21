@@ -17,6 +17,10 @@ hostname -f; hostname -I; date
 
 **Anotar:** hostname completo do servidor, IP e data.
 
+> **Antes de qualquer `docker run`** (achado de 17/10): o `data-root` do Docker rootless não vem no goinfre por padrão, e sem ele ~5 GB de imagens vão para o home (11 GB no total). Configure como no [teste-2-pcs.md](teste-2-pcs.md) §1.3. O sgoinfre **não** serve de `data-root`: é NFS, recusa o `chown` e o Docker nem inicia.
+>
+> **O goinfre e o certificado são por PC.** Trocar de PC custa refazer o pull e o build (~1 min) e um `mkcert` novo (passo 7). A CA e o `mkcert` ficam no home e acompanham o login.
+
 ## 1. Que Docker é este?
 
 ```bash
@@ -129,15 +133,19 @@ docker run -d --name tne --pid host -v /proc:/host/proc:ro -v /sys:/host/sys:ro 
 sleep 3; docker exec tne wget -qO- localhost:9100/metrics | grep -c '^node_' ; docker logs tne 2>&1 | grep -i -E 'err|warn' | head -5
 docker rm -f tne
 
+# rootless: o socket do Docker e o do containerd ficam em /run/user/$UID, e as imagens no goinfre;
+# sem o socket do containerd, as métricas saem só por cgroup, sem o nome do container
 docker run -d --name tca --privileged -v /:/rootfs:ro -v /var/run:/var/run:ro -v /sys:/sys:ro \
-  -v /var/lib/docker/:/var/lib/docker:ro gcr.io/cadvisor/cadvisor
+  -v /run/user/$UID/docker.sock:/var/run/docker.sock:ro \
+  -v /run/user/$UID/docker/containerd/containerd.sock:/run/containerd/containerd.sock:ro \
+  -v /goinfre/$USER/docker/:/var/lib/docker:ro gcr.io/cadvisor/cadvisor
 sleep 5; docker logs tca 2>&1 | tail -5
 docker exec tca wget -qO- localhost:8080/metrics | grep -c '^container_'
 docker rm -f tca
 ```
 
 **Anotar:** quantas métricas `node_*` e `container_*` vieram, e os erros de log.
-**Decide:** D3 (só `node-exporter`, `node-exporter` + cAdvisor, ou só cAdvisor).
+**Decide:** D3 (só `node-exporter`, `node-exporter` + cAdvisor, ou só cAdvisor). Resultado de 17/10: os dois funcionam, e a recomendação é só `node-exporter`, porque os caminhos do cAdvisor mudam por usuário e por PC.
 
 ## 7. `mkcert` sem sudo e o cadeado de ponta a ponta
 
@@ -167,14 +175,21 @@ docker run -d --name ttls -p $HTTPS_PORT:443 \
   -v "$T/nginx.conf:/etc/nginx/conf.d/default.conf:ro" -v "$T/certs:/certs:ro" nginx:alpine
 docker logs ttls 2>&1 | tail -3
 cp "$(~/bin/mkcert -CAROOT)/rootCA.pem" "$SG/rootCA.pem"    # só o certificado público vai para o sgoinfre
+# o /sgoinfre/<login> nasce drwx------: sem isto, o cliente não lê o rootCA.pem
+chmod 711 "/sgoinfre/$USER" && chmod 755 "$SG" && chmod 644 "$SG/rootCA.pem"
 ```
+
+Se preferir não abrir o sgoinfre, mande o `rootCA.pem` por Slack: é público, só a `rootCA-key.pem` é segredo.
 
 **A CA fica no home, não no sgoinfre.** O `rootCA-key.pem` é a chave que assina certificados em que o seu Chrome confia. No sgoinfre, outros alunos poderiam lê-la. O home da 42 já acompanha você entre os PCs e a CA ocupa dois arquivos pequenos. Para os clientes, só o `rootCA.pem` (público) vai para o sgoinfre.
 
 No **cliente**:
 
 1. `google-chrome --version` (ou `chromium --version`). Anotar qual existe.
-2. Chrome → Configurações → Privacidade e segurança → Segurança → **Gerenciar certificados** → **Autoridades** → **Importar** → `/sgoinfre/gyasuhir/transcendence-test/rootCA.pem` → marcar "confiar para identificar sites".
+2. Importar o `rootCA.pem` (`/sgoinfre/gyasuhir/transcendence-test/rootCA.pem`):
+   - **Chrome 155 (o dos PCs em 17/10):** `chrome://settings/certificates` → **Certificados locais** → **Personalizado** → **Instalados por você** → **Certificados confiáveis** → **Importar**.
+   - **Chrome antigo:** Configurações → Privacidade e segurança → Segurança → **Gerenciar certificados** → **Autoridades** → **Importar** → marcar "confiar para identificar sites".
+   - **Plano B:** `TRUST_STORES=nss ~/bin/mkcert -install`, porque o PC tem `certutil`.
 3. Abrir `https://<hostname-do-servidor>:8443`, `https://<ip-do-servidor>:8443` e, se o passo 5b passou, `https://<ip-com-hifens>.nip.io:8443`.
 4. Clicar no cadeado e abrir o DevTools (F12 → Console).
 
@@ -219,6 +234,21 @@ No **cliente** (o Chrome que já tem a CA do passo 7):
 
 Por fim, no servidor: `docker compose down` (os dados deste PC são descartáveis, mas o `-v` não é necessário: o `rm -rf "$T"` da limpeza já tira o clone).
 
+### 8.1 O IP de origem chega ao Nginx?
+
+Antes do `down`: faça uma requisição pelo hostname e outra pelo `localhost`, e olhe o IP de cada uma no log.
+
+```bash
+curl -sk -o /dev/null "https://$(hostname -f):$HTTPS_PORT/api/health"
+curl -sk -o /dev/null "https://localhost:$HTTPS_PORT/api/health"
+docker compose logs proxy | tail -4
+```
+
+- **IPs diferentes (o do PC e `10.0.2.2`):** ok.
+- **Os dois são `172.18.0.1`:** é o driver `builtin` do rootlesskit, e o rate limit vira global (5 senhas erradas em qualquer PC travam todos). Aplique o override do `slirp4netns` do [teste-2-pcs.md](teste-2-pcs.md) §1.4, que fica no home e não precisa de sudo, e repita. Numa máquina com Docker como root, o IP chega certo sem nada.
+
+**Anotar:** os IPs antes e depois do override.
+
 ## 9. Limpeza
 
 ```bash
@@ -247,3 +277,4 @@ rm -rf "$T"                        # mantém ~/bin/mkcert, a CA e $SG/rootCA.pem
 | 8a | A stack subiu com clone limpo + `.env` + `docker compose up`? Quanto tempo levou? | | F8.3 numa máquina real |
 | 8b | Casca com cadeado e console limpo, `/api/health`, textura em `/assets`, redirect com porta, cadastro e login | | demo no PC da 42, fecha o #31 |
 | 8c | Espaço ocupado depois do build (`docker system df`) | | cota, VM ou PC direto |
+| 8.1 | IP de origem no log do `proxy`, antes e depois do `slirp4netns` | | rate limit por IP na demo |
