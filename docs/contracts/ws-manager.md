@@ -173,7 +173,7 @@ Durante a reconexão do `/ws/app`, a casca mantém a tela e marca os status onli
 
 ### 2.10 Métrica
 
-`ws_connections{channel}` (gauge, [infra.md](infra.md) §2.6): sobe no `connect`, desce no `disconnect`. `channel` ∈ `app`, `game`. Sem `user_id` nem `match_id` em label (arq. §12.1).
+`ws_connections{channel}` (gauge, [infra.md](infra.md) §2.6): o número de sockets registrados, lido do `ConnectionManager` (`counts()`) a cada coleta do Prometheus, e não mantido com `inc`/`dec`; assim um caminho de saída esquecido não deixa o gauge errado para sempre. Os dois canais aparecem sempre, mesmo zerados. `channel` ∈ `app`, `game`. Sem `user_id` nem `match_id` em label (arq. §12.1).
 
 ### 2.11 Testes
 

@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from app.auth import service
 from app.auth.deps import CurrentUser
 from app.auth.schemas import AuthResponse, LoginIn, PrivateUser, SignupIn
+from app.core.errors import ApiError
+from app.core.metrics import get_metrics
 from app.core.ratelimit import Limit, RateLimit, client_ip
 from app.db.session import DbSession
 
@@ -29,17 +31,36 @@ async def signup(body: SignupIn, request: Request, response: Response,
 	return tokens
 
 
-@router.post("/login", dependencies=[Depends(LOGIN_ATTEMPTS)])
+async def login_attempts(request: Request) -> None:
+	# o teto conta antes da validação do corpo, como dependência; o 429 dele também é um login recusado
+	try:
+		await LOGIN_ATTEMPTS(request)
+	except ApiError:
+		get_metrics(request).login("rate_limited")
+		raise
+
+
+@router.post("/login", dependencies=[Depends(login_attempts)])
 async def login(body: LoginIn, request: Request, response: Response,
 		session: DbSession) -> AuthResponse:
+	metrics = get_metrics(request)
 	ip = client_ip(request)
-	# a vaga é reservada antes do Argon2 e devolvida se a senha confere: contar só depois do erro
-	# deixaria 50 tentativas simultâneas passarem juntas pela conferência
-	LOGIN_FAILURES.hit(request, ip)
-	user = await service.authenticate(session, body.email, body.password) # senha errada: a vaga fica
+	try:
+		# a vaga é reservada antes do Argon2 e devolvida se a senha confere: contar só depois do
+		# erro deixaria 50 tentativas simultâneas passarem juntas pela conferência
+		LOGIN_FAILURES.hit(request, ip)
+	except ApiError:
+		metrics.login("rate_limited")
+		raise
+	try:
+		user = await service.authenticate(session, body.email, body.password) # senha errada: a vaga fica
+	except ApiError:
+		metrics.login("invalid_credentials")
+		raise
 	LOGIN_FAILURES.refund(request, ip)
 	tokens = await service.issue_tokens(session, user, request, response)
 	await session.commit()
+	metrics.login("success") # depois do commit: login que falhou ao gravar não é sucesso
 	return tokens
 
 
