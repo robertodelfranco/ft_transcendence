@@ -3,6 +3,8 @@ import authResponse from "./fixtures/authResponse.json";
 import emailTaken from "./fixtures/emailTaken.json";
 import invalidCredentials from "./fixtures/invalidCredentials.json";
 import unauthorized from "./fixtures/unauthorized.json";
+import { appSocketHandlers } from "./appSocketHandlers";
+import { lobbyHandlers } from "./lobbyHandlers";
 
 // Senha aceita pelo mock (a do exemplo do auth §3)
 export const MOCK_PASSWORD = "osDda42";
@@ -50,4 +52,7 @@ export const handlers = [
         ? HttpResponse.json(authResponse.user)
         : HttpResponse.json(unauthorized, { status: 401 }),
   ),
+
+  ...lobbyHandlers,
+  ...appSocketHandlers,
 ];

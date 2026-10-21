@@ -1,10 +1,13 @@
-"""Rotas de cadastro, login e do próprio User (auth.md §2.2). /refresh e /logout entram na F6.3."""
-from fastapi import APIRouter, Depends, Request, Response, status
+"""Rotas de cadastro, login, sessão e do próprio User (auth.md §2.2)."""
+from typing import Annotated
+
+from fastapi import APIRouter, Cookie, Depends, Request, Response, status
+from fastapi.responses import JSONResponse
 
 from app.auth import service
-from app.auth.deps import CurrentUser
-from app.auth.schemas import AuthResponse, LoginIn, PrivateUser, SignupIn
-from app.core.errors import ApiError
+from app.auth.deps import CurrentUser, same_origin
+from app.auth.schemas import AuthResponse, LoginIn, PrivateUser, SignupIn, Unauthenticated
+from app.core.errors import error_response, ApiError
 from app.core.metrics import get_metrics
 from app.core.ratelimit import Limit, RateLimit, client_ip
 from app.db.session import DbSession
@@ -17,6 +20,9 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 SIGNUPS = Limit(5, 60) # pedidos válidos: o 422 não chega ao Argon2 e não conta
 LOGIN_FAILURES = Limit(5, 60) # senhas erradas
 LOGIN_ATTEMPTS = RateLimit(30, 60) # teto de tudo: login certo repetido também gasta Argon2
+REFRESHES = RateLimit(30, 60)
+
+RefreshCookie = Annotated[str | None, Cookie(alias=service.REFRESH_COOKIE)]
 
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
@@ -62,6 +68,31 @@ async def login(body: LoginIn, request: Request, response: Response,
 	await session.commit()
 	metrics.login("success") # depois do commit: login que falhou ao gravar não é sucesso
 	return tokens
+
+
+@router.post("/refresh", dependencies=[Depends(same_origin), Depends(REFRESHES)],
+		response_model=AuthResponse | Unauthenticated)
+async def refresh(request: Request, response: Response, session: DbSession,
+		refresh_token: RefreshCookie = None) -> AuthResponse | Unauthenticated | JSONResponse:
+	if not refresh_token:
+		return Unauthenticated()
+	tokens = await service.rotate_refresh(session, refresh_token, request, response)
+	await session.commit() # também no None: o reuso revogou a família
+	if tokens is not None:
+		return tokens
+	# a sessão acabou: o cookie sai na mesma resposta, e a casca vai para o login
+	error = error_response(request, 401, "invalid_refresh", "invalid or expired refresh token")
+	service.clear_refresh_cookie(error)
+	return error
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(same_origin)])
+async def logout(response: Response, session: DbSession, refresh_token: RefreshCookie = None) -> None:
+	# sempre 204: sair sem sessão, ou duas vezes, não é erro
+	if refresh_token:
+		await service.revoke_refresh(session, refresh_token)
+		await session.commit()
+	service.clear_refresh_cookie(response)
 
 
 @router.get("/me")

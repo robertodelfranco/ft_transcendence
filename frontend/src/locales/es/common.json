@@ -29,10 +29,6 @@
   "status": {
     "loading": "Cargando…"
   },
-  "lobby": {
-    "title": "Lobby",
-    "greeting": "¡Hola, {{username}}!"
-  },
   "nav": {
     "logout": "Cerrar sesión"
   }

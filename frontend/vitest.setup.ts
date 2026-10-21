@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { resetMockSession } from "./src/mocks/handlers";
+import { resetMockLobby } from "./src/mocks/lobbyHandlers";
 import { server } from "./src/mocks/server";
 
 // "error": requisição sem handler derruba o teste, em vez de sair para a rede de verdade
@@ -14,6 +15,7 @@ afterEach(() => {
   server.resetHandlers();
   // O "cookie" do mock volta a deslogado
   resetMockSession();
+  resetMockLobby();
 });
 
 afterAll(() => server.close());
