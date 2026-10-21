@@ -31,6 +31,11 @@ export function setSessionLostHandler(handler: (() => void) | null): void {
   onSessionLost = handler;
 }
 
+// O socket do /ws/app também descobre que a sessão acabou (4401 que nem o refresh resolve)
+export function reportSessionLost(): void {
+  onSessionLost?.();
+}
+
 function isUnauthorized(error: unknown): error is ApiError {
   return error instanceof ApiError && error.code === "unauthorized";
 }
