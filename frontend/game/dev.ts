@@ -1,11 +1,12 @@
 import { AssetLoader } from "./src/render/assets";
 import type { Assets } from "./src/render/assets";
-import { ThreeRenderer } from "./src/render/renderer";
+import { ThreeRenderer, type ViewState } from "./src/render/renderer";
+import { galleryCamera, galleryView, type GalleryKind } from "./fixtures/billboards";
 import { applyGridDelta, buildViewState } from "./src/net/viewstate";
 import type { Snapshot, WelcomeMessage } from "./src/types";
 import example from "./fixtures/snapshot.example.json";
 
-// Demo local F3.4: usa o Snapshot da Simulation e alterna fixtures, sem socket.
+// Demo local F3.3/F3.4: usa o Snapshot da Simulation e uma galeria visual, sem socket.
 const canvas = document.querySelector<HTMLCanvasElement>("#game");
 if (!canvas) throw new Error("game_canvas_missing");
 
@@ -25,7 +26,10 @@ const initialView = buildViewState(
   welcome.room.mode,
 );
 if (!initialView) throw new Error("local_player_missing");
-let view = initialView;
+const baseView = initialView;
+let view: ViewState = { ...baseView, camera: { ...baseView.camera } };
+let galleryKind: GalleryKind | undefined;
+let galleryElapsed = 0;
 const player = view.localPlayer;
 let renderer: ThreeRenderer | undefined;
 let assets: Assets | undefined;
@@ -57,24 +61,45 @@ function showPointerLockError(): void {
 // A casca recebe os mesmos códigos para apresentar o estado de erro.
 const messages = {
   "pt-BR": {
+    gallery_label: "Galeria de entidades",
+    original_snapshot: "Snapshot original",
+    enemy: "Enemy",
+    boss: "Boss",
+    pickups: "Pickups",
+    projectiles: "Fireball e bullet",
+    players: "Outros Players",
     asset_load_failed: "Não foi possível carregar os recursos da cena. Recarregue a página.",
-    demo_description: "Demo F3.4: alterne as fixtures para observar a porta. Clique na cena para olhar ao redor.",
+    demo_description: "Demo F3.3/F3.4: selecione uma entidade para observar os clipes. Clique na cena para olhar ao redor.",
     closed_door: "Ver porta fechada",
     apply_snapshot: "Aplicar Snapshot",
     renderer_init_failed: "Não foi possível iniciar o renderizador.",
     pointer_lock_failed: "Não foi possível capturar o mouse. Clique na cena para tentar novamente.",
   },
   en: {
+    gallery_label: "Entity gallery",
+    original_snapshot: "Original Snapshot",
+    enemy: "Enemy",
+    boss: "Boss",
+    pickups: "Pickups",
+    projectiles: "Fireball and bullet",
+    players: "Other Players",
     asset_load_failed: "The scene assets could not be loaded. Reload the page.",
-    demo_description: "F3.4 demo: switch fixtures to observe the door. Click the scene to look around.",
+    demo_description: "F3.3/F3.4 demo: select an entity to observe its clips. Click the scene to look around.",
     closed_door: "View closed door",
     apply_snapshot: "Apply Snapshot",
     renderer_init_failed: "Renderer initialization failed.",
     pointer_lock_failed: "The mouse could not be captured. Click the scene to try again.",
   },
   es: {
+    gallery_label: "Galería de entidades",
+    original_snapshot: "Snapshot original",
+    enemy: "Enemy",
+    boss: "Boss",
+    pickups: "Pickups",
+    projectiles: "Fireball y bullet",
+    players: "Otros Players",
     asset_load_failed: "No se pudieron cargar los recursos de la escena. Recarga la página.",
-    demo_description: "Demo F3.4: alterna los ejemplos para observar la puerta. Haz clic en la escena para mirar alrededor.",
+    demo_description: "Demo F3.3/F3.4: selecciona una entidad para observar los clips. Haz clic en la escena para mirar alrededor.",
     closed_door: "Ver puerta cerrada",
     apply_snapshot: "Aplicar Snapshot",
     renderer_init_failed: "No se pudo iniciar el renderizador.",
@@ -111,7 +136,37 @@ const snapshotButton = document.createElement("button");
 snapshotButton.textContent = messages[language].apply_snapshot;
 closedButton.disabled = snapshotButton.disabled = true;
 controls.append(closedButton, snapshotButton);
+const galleryLabel = document.createElement("label");
+galleryLabel.textContent = messages[language].gallery_label;
+const gallerySelect = document.createElement("select");
+const galleryOptions = ["original_snapshot", "enemy", "boss", "pickups", "projectiles", "players"] as const;
+galleryOptions.forEach(value => {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = messages[language][value];
+  gallerySelect.append(option);
+});
+gallerySelect.disabled = true;
+galleryLabel.append(gallerySelect);
+controls.append(galleryLabel);
 document.body.append(controls);
+
+function selectGallery(): void {
+  galleryElapsed = 0;
+  const selected = gallerySelect.value;
+  if (selected === "original_snapshot") {
+    galleryKind = undefined;
+    view = { ...baseView, camera: { ...baseView.camera } };
+    yaw = Math.atan2(-view.camera.dx, -view.camera.dy);
+  } else {
+    galleryKind = selected as GalleryKind;
+    view.camera = { x: galleryCamera.x, y: galleryCamera.y, dx: 0, dy: -1, pitch: 0 };
+    yaw = 0;
+  }
+  pitch = 0;
+  view.camera.pitch = pitch;
+}
+gallerySelect.addEventListener("change", selectGallery);
 
 async function initRenderer(): Promise<void> {
   if (!assets || disposed) return;
@@ -126,14 +181,16 @@ function showInitError(error: unknown): void {
   cancelAnimationFrame(frame);
   renderer?.dispose();
   assets?.dispose();
-  closedButton.disabled = snapshotButton.disabled = true;
+  closedButton.disabled = snapshotButton.disabled = gallerySelect.disabled = true;
   if (!disposed) showError(error instanceof Error && error.message === "asset_load_failed"
     ? "asset_load_failed" : "renderer_init_failed");
 }
 
 async function showClosedDoor(): Promise<void> {
   if (!assets || disposed) return;
-  closedButton.disabled = snapshotButton.disabled = true;
+  galleryKind = undefined;
+  gallerySelect.value = "original_snapshot";
+  closedButton.disabled = snapshotButton.disabled = gallerySelect.disabled = true;
   try {
     const closed = buildViewState(
       welcome.snapshot,
@@ -157,13 +214,15 @@ async function showClosedDoor(): Promise<void> {
     }
     // Recria só o Renderer com os assets já carregados: a Door volta fechada imediatamente.
     await initRenderer();
-    if (!disposed) closedButton.disabled = snapshotButton.disabled = false;
+    if (!disposed) closedButton.disabled = snapshotButton.disabled = gallerySelect.disabled = false;
   } catch (error) {
     showInitError(error);
   }
 }
 
 function applySnapshot(): void {
+  galleryKind = undefined;
+  gallerySelect.value = "original_snapshot";
   const next = buildViewState(
     snapshot,
     applyGridDelta(welcome.map.grid, snapshot.grid_delta),
@@ -209,6 +268,7 @@ function dispose(): void {
   if (document.pointerLockElement === canvas) document.exitPointerLock();
   closedButton.removeEventListener("click", showClosedDoor);
   snapshotButton.removeEventListener("click", applySnapshot);
+  gallerySelect.removeEventListener("change", selectGallery);
   controls.remove();
   renderer?.dispose();
   assets?.dispose();
@@ -224,11 +284,26 @@ async function start(): Promise<void> {
     }
     await initRenderer();
     if (disposed) return;
-    closedButton.disabled = snapshotButton.disabled = false;
+    closedButton.disabled = snapshotButton.disabled = gallerySelect.disabled = false;
     let previous = performance.now();
     function draw(now: number): void {
       if (disposed) return;
-      renderer!.render(view, (now - previous) / 1000);
+      const dt = (now - previous) / 1000;
+      let renderedView = view;
+      if (galleryKind) {
+        galleryElapsed += dt;
+        // Somente a demo fabrica os estados; o Renderer recebe um ViewState completo.
+        const gallery = galleryView(baseView, galleryKind, galleryElapsed);
+        renderedView = {
+          ...view,
+          otherPlayers: [...gallery.otherPlayers],
+          enemies: [...gallery.enemies],
+          boss: gallery.boss,
+          projectiles: [...gallery.projectiles],
+          grid: [...gallery.grid],
+        };
+      }
+      renderer!.render(renderedView, dt);
       previous = now;
       frame = requestAnimationFrame(draw);
     }

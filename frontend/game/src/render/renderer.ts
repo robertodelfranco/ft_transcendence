@@ -3,6 +3,7 @@ import type { Snapshot, PlayerSnapshot } from "../types";
 import type { Assets } from "./assets";
 import { Doors } from "./doors";
 import { HandOverlay } from "./handOverlay";
+import { Billboards } from "./billboards";
 
 export type GameMap = { grid: string[] };
 export type CameraView = Pick<PlayerSnapshot, "x" | "y" | "dx" | "dy"> & { pitch: number };
@@ -31,6 +32,7 @@ export class ThreeRenderer implements Renderer {
   private doorTexture: THREE.Texture | null = null;
   private doors: Doors | null = null;
   private handOverlay: HandOverlay | null = null;
+  private billboards: Billboards | null = null;
   private resources: Array<{ dispose(): void }> = [];
   private disposed = false;
 
@@ -104,6 +106,9 @@ export class ThreeRenderer implements Renderer {
       ceiling.position.set(width / 2, 1, depth / 2);
       scene.add(floor, ceiling);
 
+      this.billboards = new Billboards(assets.billboards);
+      this.resources.push(this.billboards);
+      scene.add(this.billboards.object);
       this.initialGrid = grid;
       this.doorTexture = assets.door;
       this.handOverlay = new HandOverlay(assets.hand, assets.fireball);
@@ -132,6 +137,7 @@ export class ThreeRenderer implements Renderer {
       THREE.MathUtils.clamp(pitch, -Math.PI / 3, Math.PI / 3),
       Math.atan2(-dx, -dy), 0,
     );
+    this.billboards?.update(view, dt);
     this.doors?.update(view.doors, dt);
     this.renderer.render(this.scene, this.camera);
     this.handOverlay?.render(this.renderer);
@@ -158,6 +164,7 @@ export class ThreeRenderer implements Renderer {
     this.doorTexture = null;
     this.doors = null;
     this.handOverlay = null;
+    this.billboards = null;
     this.renderer.dispose();
   }
 }

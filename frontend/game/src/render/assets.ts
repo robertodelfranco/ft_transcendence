@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { BILLBOARD_URLS, createBillboardAssets, type BillboardAssets } from "./billboardAssets";
 
 export const dungeonTheme = {
   floor: 0x545454,
@@ -18,6 +19,7 @@ export interface Assets {
   door: THREE.Texture;
   hand: THREE.Texture;
   fireball: THREE.Texture;
+  billboards: BillboardAssets;
   dispose(): void;
 }
 
@@ -30,10 +32,11 @@ export class AssetLoader {
       hand: "/assets/player/player_hand_white.png",
       fireball: "/assets/player/fireball_1.png",
     };
-    const slots = ["no", "so", "we", "ea", "door", "hand", "fireball"] as const;
+    // A fireball da mão também é um quadro dos billboards: uma carga e um proprietário por URL.
+    const assetUrls = [...new Set([...Object.values(urls), ...BILLBOARD_URLS])];
     const loader = new THREE.TextureLoader();
     const results = await Promise.allSettled(
-      slots.map(slot => loader.loadAsync(urls[slot])),
+      assetUrls.map(url => loader.loadAsync(url)),
     );
     if (results.some(result => result.status === "rejected")) {
       results.forEach(result => {
@@ -41,7 +44,7 @@ export class AssetLoader {
       });
       throw new Error("asset_load_failed");
     }
-    const textures = {} as Record<typeof slots[number], THREE.Texture>;
+    const textures = new Map<string, THREE.Texture>();
     results.forEach((result, index) => {
       if (result.status !== "fulfilled") return;
       const texture = result.value;
@@ -49,20 +52,29 @@ export class AssetLoader {
       texture.magFilter = THREE.NearestFilter;
       texture.minFilter = THREE.NearestFilter;
       texture.generateMipmaps = false;
-      textures[slots[index]] = texture;
+      textures.set(assetUrls[index], texture);
     });
+    let billboards: BillboardAssets;
+    try {
+      billboards = createBillboardAssets(textures);
+    } catch (error) {
+      textures.forEach(texture => texture.dispose());
+      throw new Error("asset_load_failed", { cause: error });
+    }
+    const texture = (slot: keyof typeof urls) => textures.get(urls[slot])!;
     let disposed = false;
     return {
       floor: theme.floor,
       ceiling: theme.ceiling,
-      walls: { no: textures.no, so: textures.so, we: textures.we, ea: textures.ea },
-      door: textures.door,
-      hand: textures.hand,
-      fireball: textures.fireball,
+      walls: { no: texture("no"), so: texture("so"), we: texture("we"), ea: texture("ea") },
+      door: texture("door"),
+      hand: texture("hand"),
+      fireball: texture("fireball"),
+      billboards,
       dispose() {
         if (disposed) return;
         disposed = true;
-        Object.values(textures).forEach(texture => texture.dispose());
+        textures.forEach(texture => texture.dispose());
       },
     };
   }
