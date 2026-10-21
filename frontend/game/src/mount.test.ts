@@ -119,6 +119,23 @@ test("frames send Inputs and draw the Player where the server put it", async () 
   expect(renderer.views.at(-1)?.localPlayer.x).toBe(2);
 });
 
+test("frames draw the other Players interpolated between Snapshots", async () => {
+  const clock = vi.spyOn(performance, "now").mockReturnValue(0);
+  const other = { ...WELCOME.snapshot.players[0], id: 8, name: "bia", x: 1.5, y: 2.5 };
+  const welcome = { ...WELCOME, snapshot: { ...WELCOME.snapshot,
+    players: [...WELCOME.snapshot.players, other] } };
+  ws.open();
+  await vi.advanceTimersByTimeAsync(0);
+  ws.receive(welcome);
+  await vi.advanceTimersByTimeAsync(0);
+  clock.mockReturnValue(1000 / 15);
+  ws.receive({ v: 1, type: "snapshot", ...welcome.snapshot, tick: 2,
+    players: [welcome.snapshot.players[0], { ...other, x: 2.5 }] });
+  await runFrame(100 + 1000 / 30); // metade do caminho entre os dois, 100 ms atrás
+  expect(renderer.views.at(-1)?.otherPlayers[0].x).toBeCloseTo(2);
+  clock.mockRestore();
+});
+
 test("a second welcome after a reconnection does not init the Renderer again", async () => {
   await connect();
   ws.drop(1006);
