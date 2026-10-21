@@ -175,7 +175,7 @@ Estatísticas e leaderboard:
 
 | # | Questão | Quem decide | Quando |
 |---|---|---|---|
-| 1 | Campos que a tela de lobby, a de resultado, a de histórico e a de estatísticas realmente precisam. É a pergunta 5 do briefing do Caio, dirigida a mim: o que falta eu acrescento aqui e indexo no banco. | Caio | reunião 04/10 |
+| 1 | Campos que a tela de lobby, a de resultado, a de histórico e a de estatísticas realmente precisam. É a pergunta 5 do briefing do Caio, dirigida a mim: o que falta eu acrescento aqui e indexo no banco. **Lobby e sala de espera resolvidos (20/10, Caio):** o `RoomInfo` atual basta, sem campo novo: `players.length` / `max_players` na lista, `options` (com `theme`) e `map` no cartão, `ready` e `connected` por Player, `created_by` para mostrar "Iniciar" só ao host e `min_players` para habilitá-lo. O formulário de criação usa só o `GET /api/maps`. **Ainda em aberto:** resultado, histórico e estatísticas (ver [caminho-4-caio.md](../slices/caminho-4-caio.md) §7: `MatchDetail` assim que o Match termina, `xp_gained`/`elo_before`/`elo_after` e `match_id` nas conquistas). | Caio | lobby: feito · demais telas: S4 (F7.8) |
 | 2 | O histórico mostra partidas `aborted`? Proposta: não por default, com `?include_aborted=true` se a tela quiser. Partida abortada não tem `match_players`, então não apareceria de qualquer forma — confirmar que ninguém precisa dela. | Caio e Akita | reunião 04/10 |
 | 3 | Resolvido em 12/10: tudo autenticado ([i18n.md](i18n.md) §4, decisão 6). | Caio (PO) | feito |
 | 4 | Conquistas: o `catalog` vem desta API ou é constante no front? Proposta: vem da API, porque o catálogo mora no código do backend (F4.6) e o front só traduz o `code`. | Caio e Akita | reunião 04/10 |

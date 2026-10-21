@@ -8,6 +8,7 @@ Na defesa oral, cada pessoa explica o que cada módulo que entregou faz e por qu
 
 ## Documentos-fonte (leia quando o tema aparecer)
 
+- Ao iniciar uma tarefa com Roberto, se existir, leia [docs/combinados-locais-roberto.md](docs/combinados-locais-roberto.md): preferências de acompanhamento e ponto de retomada local, ignorados pelo Git.
 - Plano (escopo de 21 pontos, tarefas F0–F9 com IDs, checkpoints C1–C5, ordem de corte, quem faz o quê): [docs/catacombs42-plano-de-tarefas.md](docs/catacombs42-plano-de-tarefas.md)
 - Arquitetura (Room, Simulation, protocolo WebSocket, tick, prediction, contratos entre frentes, schema, monitoring, mapa de migração do C): [docs/catacombs42-web-arquitetura.md](docs/catacombs42-web-arquitetura.md)
 - Texto do subject v19 (critérios de rejeição, módulos e pontos, seções obrigatórias do README): [docs/transcendence.md](docs/transcendence.md)

@@ -10,21 +10,21 @@ Issue: #122. Branch: `122-f3.4-porta-mao-fireball`.
 
 `frontend/game/src/render/handOverlay.ts` desenha mão e fireball numa segunda cena com câmera ortográfica. A proporção das imagens é preservada, e `resize` reposiciona o conjunto. Após desenhar o mundo, a passagem limpa apenas a profundidade e preserva a cor, mantendo a mão visível sobre as paredes e fixa em relação à câmera FPS. `autoClear` é restaurado ao terminar.
 
-Os componentes liberam suas geometrias e materiais em `dispose`. As texturas pertencem ao chamador: a demo as libera, inclusive quando uma carga termina depois de encerrar a página ou quando outra imagem falha.
+Os componentes liberam suas geometrias e materiais em `dispose`. As texturas pertencem ao chamador: o `AssetLoader` entrega um `Assets` que libera tanto as paredes quanto Door, mão e fireball. Cargas parciais também são liberadas quando outra imagem falha; se a página encerrar durante a carga, a demo descarta o resultado ao recebê-lo.
 
 ## Integração disponível
 
-A demo `frontend/game/dev.ts` carrega os recursos e usa as fixtures locais. Os controles, descrições e erros têm traduções pt-BR, en e es, seguindo o catálogo local já usado pela demo.
+A resolução do merge com a `main` preserva o `AssetLoader` e o `ThreeRenderer` da F3.2. A demo `frontend/game/dev.ts` usa `buildViewState` e `applyGridDelta` para consumir o Snapshot exportado pela Simulation. Os controles, descrições e erros têm traduções pt-BR, en e es, seguindo o catálogo local já usado pela demo.
 
-A F3.2 ainda não está implementada nesta branch. Quando seu Renderer/AssetLoader estiver disponível, deve assumir o carregamento das texturas e chamar:
+1. O `AssetLoader` carrega as quatro texturas de parede e os três recursos da F3.4, com o mesmo tratamento de falha e descarte.
+2. O `ThreeRenderer` constrói `Doors` no primeiro `render`, usando o Grid inicial e `view.doors`. Uma Door que já chega aberta começa recolhida.
+3. `doors.update(view.doors, dt)` roda antes do desenho do mundo; `handOverlay.render(renderer)` roda depois.
+4. O `resize` e o `dispose` do Renderer também alcançam os dois componentes. As texturas continuam pertencendo ao `Assets`, liberado depois do Renderer.
+5. **Ver porta fechada** usa o Snapshot do `welcome` e recria o Renderer com os mesmos assets, para reiniciar a demonstração imediatamente. **Aplicar Snapshot** recompõe o Grid a partir da base, preserva a câmera da demonstração e aplica o Snapshot final.
 
-1. Construção de `Doors` com o Grid inicial, as Doors iniciais e a textura; adicionar `doors.object` à cena.
-2. `doors.update(view.doors, dt)` antes do desenho do mundo.
-3. `handOverlay.render(renderer)` após o desenho do mundo, quando a mão deve ser exibida.
-4. `handOverlay.resize(width, height)` ao iniciar e redimensionar.
-5. `doors.dispose()` e `handOverlay.dispose()` ao encerrar; liberar as texturas no proprietário dos assets.
+O adapter existente de `mountGame` usa o mesmo Renderer e AssetLoader. A demo continua sem socket ou Action; o Netcode produz o ViewState e apresenta falhas de inicialização por HudState na integração com a casca.
 
-O recebimento de ViewState e a apresentação de erro por HudState pertencem a essa integração. A demo não abre socket nem executa Action.
+Os resultados de validação abaixo pertencem à implementação original, antes desta resolução do merge. A integração descrita nesta seção ainda precisa da validação local do autor e do CI.
 
 ## Validação local pelo autor
 

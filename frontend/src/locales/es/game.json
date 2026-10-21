@@ -1,0 +1,15 @@
+{
+  "modes": {
+    "coop": "Cooperativo",
+    "pvp": "PvP 1c1"
+  },
+  "maps": {
+    "dungeon_map": "Mazmorra",
+    "enemy": "Salones enemigos",
+    "enemy_sewer": "Salones de la cloaca"
+  },
+  "themes": {
+    "dungeon": "Mazmorra",
+    "sewer": "Cloaca"
+  }
+}

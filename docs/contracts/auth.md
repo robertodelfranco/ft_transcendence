@@ -46,7 +46,10 @@ Regras que valem para as rotas acima:
 - **`/refresh` sem cookie não é erro.** Responde 200 `{"authenticated": false}`: é o caso normal de quem abre o site sem sessão, e um 401 apareceria em vermelho no console do Chrome (§4, decisão 4).
 - **`/logout` sempre responde 204**, com ou sem cookie, com cookie válido ou não. Sair duas vezes não é erro.
 - **`/refresh` e `/logout` conferem o cabeçalho `Origin`**: precisa ser `https://${PUBLIC_HOST}`. Sem ele, ou com outro valor, 403 `forbidden`. É a segunda barreira contra CSRF, depois do `SameSite` (arq. §4, decisão 1).
-- **Rate limit** (dependência `RateLimit`, §2.7): `signup` e `login` 5 por minuto por IP; `refresh` 30 por minuto por IP. O sexto login em um minuto dá 429 com `Retry-After` (é o "pronto quando" de F6.5).
+- **Rate limit** (§2.7), por IP, que protege o que é caro (o Argon2) e o que é perigoso (errar a senha), e não o uso normal: várias abas na mesma máquina não esbarram nele.
+  - `login`: 5 senhas **erradas** por minuto, mais um teto de 30 tentativas de qualquer tipo. A vaga é reservada antes do Argon2 e devolvida quando a senha confere, para tentativas simultâneas não passarem juntas. A sexta senha errada em um minuto dá 429 com `Retry-After` (é o "pronto quando" de F6.5), mesmo que a sétima esteja certa.
+  - `signup`: 5 pedidos **válidos** por minuto. Um 422 não chega ao Argon2 e não conta.
+  - `refresh`: 30 por minuto.
 - **O callback do OAuth nunca devolve token no endereço.** Ele grava o cookie de refresh e redireciona para `/`; a casca chama `/refresh` como em qualquer carregamento de página e recebe o access por ali (§2.8).
 
 ### 2.3 O objeto User
@@ -164,7 +167,9 @@ A lista é fechada aqui e cresce só por PR que muda este arquivo. Os `code` de 
 | Não existe, vencido, ou revogado | 401 `invalid_refresh`, cookie apagado | nenhum |
 | Válido e nunca usado | 200 `AuthResponse` + **cookie novo** | o token recebido ganha `rotated_at = now` e `replaced_by = novo`; nasce um token novo na mesma `family_id` |
 | Já rotacionado há **menos de 10 s**, com o sucessor ainda válido | 200 `AuthResponse` **sem `Set-Cookie`** | nenhum (janela de graça, §4 decisão 5) |
-| Já rotacionado há 10 s ou mais | 401 `invalid_refresh`, cookie apagado | **reuso**: todos os tokens da `family_id` recebem `revoked_at = now`; log de aviso |
+| Já rotacionado há 10 s ou mais, **ou** há menos de 10 s mas com o sucessor revogado ou vencido | 401 `invalid_refresh`, cookie apagado | **reuso**: todos os tokens da `family_id` recebem `revoked_at = now`; log de aviso |
+
+A janela de graça é a única exceção à rotação estrita: o token velho só vale se o sucessor ainda vale (um logout logo depois da rotação, por exemplo, tira a graça). Rotação e revogação da mesma família rodam em fila, com um advisory lock de transação do Postgres (`pg_advisory_xact_lock`) por `family_id`, e o token é relido depois do lock. Assim dois `/refresh` com o mesmo cookie não abrem dois sucessores (o segundo cai na janela de graça), e um reuso que chega enquanto outra transação rotaciona espera o commit dela e revoga também o sucessor novo. Um `FOR UPDATE` na linha não bastaria: ele trava um token, não a família, e o `UPDATE` da revogação não enxerga a linha que outra transação inseriu depois de ele começar.
 
 **Logout** revoga só o token do cookie (`revoked_at = now`) e apaga o cookie. As outras sessões do mesmo User, em outros navegadores, continuam.
 
@@ -180,7 +185,7 @@ A lista é fechada aqui e cresce só por PR que muda este arquivo. Os `code` de 
 ```python
 from app.auth.deps import CurrentUser, OptionalUser   # Annotated[User, Depends(...)]
 from app.db.session import DbSession                  # Annotated[AsyncSession, Depends(...)]
-from app.core.ratelimit import RateLimit
+from app.core.ratelimit import Limit, RateLimit
 from app.auth.service import authenticate_ws_token, issue_tokens
 
 
@@ -202,6 +207,7 @@ async def create_match(user: CurrentUser, session: DbSession): ...
 | `OptionalUser` | `User \| None` | igual, mas sem token devolve `None` em vez de 401 (token presente e inválido continua 401) |
 | `DbSession` | `AsyncSession` | uma sessão por requisição; commit é de quem escreve |
 | `RateLimit(times, seconds, key)` | dependência | `key="ip"` usa `request.client.host` (o `uvicorn --proxy-headers` já põe o IP real, [infra.md](infra.md) §4 decisão 6); `key="user"` exige `CurrentUser`. Estourou: 429 `rate_limited` com `Retry-After` |
+| `Limit(times, seconds)` | chamado dentro da rota: `hit(request, key)` e `refund(request, key)` | para quando nem toda requisição conta: o login devolve a vaga com a senha certa, o signup só conta depois da validação. `RateLimit` usa o mesmo `Limit` por dentro
 | `authenticate_ws_token(connection, token, *, sessions=SessionLocal) -> User` | `async`, abre a própria sessão e a fecha antes de voltar | token inválido, vencido ou User inexistente: levanta `InvalidToken` (de `app.auth.security`). Quem chama fecha o socket com `4401`. `connection` é o próprio `WebSocket`, de onde sai o `JWT_SECRET` do app; `sessions` só muda no teste. O User volta desligado da sessão: as colunas estão carregadas, os relacionamentos não |
 | `issue_tokens(session, user, request, response, *, providers=None) -> AuthResponse` | `async` | cria o refresh na família nova, grava o cookie e o `Cache-Control: no-store` em `response` e devolve o corpo. Do `request` saem as Settings do app e o `User-Agent`. **Não faz commit**: quem chama faz, na mesma transação que criou o User. `providers` é opcional: quem já sabe a lista (o signup sabe que é vazia) passa e poupa uma consulta. É o que signup, login e o callback do OAuth chamam |
 
@@ -411,11 +417,11 @@ Payload de um access token decodificado:
 | 4 | A foto do provedor (Google ou 42) vira avatar? Proposta: não na primeira versão; o avatar continua sendo o padrão até o User enviar um. Baixar a imagem exige o mesmo caminho de validação do upload (F6.6). | Caio | S3 |
 | 5 | URL do avatar padrão e onde os avatares ficam guardados ([infra.md](infra.md) §5.2). Este contrato só precisa da URL. | Caio e Akita | com [i18n.md](i18n.md) |
 | 6 | Resolvido em 12/10: `DEFAULT 'en'`, o idioma de reserva de [i18n.md](i18n.md). A casca manda o idioma atual no signup e no `?lang` do OAuth (decisão 21). | Caio | feito |
-| 7 | Sessão com prazo absoluto? Hoje cada rotação renova os 7 dias, então quem usa o site toda semana nunca é deslogado. Proposta: aceitar (é demo) e escrever no README. | Augusto | S2 |
+| 7 | Resolvido em 20/10, na F6.3: sem prazo absoluto. Cada rotação renova os 7 dias, então quem usa o site toda semana nunca é deslogado; aceito para a demo, e vai para o README (F9.1). | Augusto | feito |
 | 8 | Limites do rate limit: `signup` e `login` 5/min por IP, `refresh` 30/min por IP. Na demo, várias máquinas atrás do mesmo roteador têm IPs diferentes na rede local, então não dividem o balde. Confirmar no ensaio. | Augusto | S2 |
 | 9 | Exclusão de conta não está no escopo ([rooms.md](rooms.md) §5.8). `ON DELETE CASCADE` em `refresh_tokens`, `oauth_accounts` e `friendships` já deixa o caminho pronto, mas `matches.created_by` é `RESTRICT`. | Augusto e Akita | se entrar no escopo |
 | 10 | Amizade unilateral foi proposta por mim para a tabela; as rotas e a tela são do Caio. Confirmar ao assinar. | Caio | revisão deste contrato |
-| 11 | A intra da 42 aceita PKCE (`code_challenge`)? Se aceitar, os dois provedores ficam iguais; se não, a 42 fica só com `state`, que já basta para o fluxo com `client_secret`. Testar no cadastro do app. | Akita | S1, com o "Em aberto" 1 |
+| 11 | ~~A intra da 42 aceita PKCE (`code_challenge`)?~~ **Resolvido (19/10/2026): não.** A intra aceita o `code_challenge` no authorize sem reclamar e emite o token mesmo com um `code_verifier` errado: ignora o PKCE. A 42 fica só com `state`, que basta para o fluxo com `client_secret`. Mandar o `code_challenge` não quebra nada, mas não protege nada; o adaptador da 42 não manda. Teste em [infra.md](infra.md) "Em aberto" 4. | Akita | feito |
 | 12 | Resolvido em 12/10: o e-mail da 42 é confiável para vincular (decisão 20), com a condição de conferir a troca de e-mail na intra. | Augusto e Akita | feito |
 | 13 | Resolvido em 12/10: a 42 primeiro, na S4; o Google em seguida e, se a S4 estourar, na S5 ([caminho-5-akita.md](../slices/caminho-5-akita.md) §5). Com dois provedores, o 2FA deixa de ser o Plano B. | Akita e Augusto | feito |
 

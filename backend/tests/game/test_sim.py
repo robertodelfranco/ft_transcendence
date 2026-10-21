@@ -190,7 +190,46 @@ def test_leave_takes_the_player_out_for_good():
 	assert step(room, DT) == []
 
 
-EXAMPLE = Path(__file__).resolve().parents[3] / "docs" / "contracts" / "snapshot.example.json"
+FIVE_SPAWNS = "11111111\n1NESWN01\n100000B1\n11111111\n"
+
+
+def test_five_players_take_five_spawns_in_join_order():
+	game_map = parse_map(FIVE_SPAWNS, "t", Mode.COOP)
+	players = [(5, "a"), (3, "b"), (8, "c"), (1, "d"), (4, "e")]
+	room = create_room(12, Mode.COOP, game_map, RoomOptions(), players, seed=1)
+	assert [(room.players[user_id].x, room.players[user_id].y) for user_id, _ in players] == [
+		(1.5, 1.5), (2.5, 1.5), (3.5, 1.5), (4.5, 1.5), (5.5, 1.5)]
+
+
+def test_disconnected_player_stands_still_and_can_be_hit():
+	room = new_room()
+	set_connected(room, 7, True)
+	step(room, DT)
+	enqueue_walking(room, 3)
+	set_connected(room, 7, False)
+	assert len(room.players[7].input_queue) == 0
+	player = room.players[7]
+	room.projectiles.append(Projectile(id="t_7", kind=ProjectileKind.BULLET, owner_id=None,
+		x=player.x + 1.0, y=player.y, dx=-1.0, dy=0.0))
+	events = step(room, DT) + step(room, DT) + step(room, DT)
+	assert Event("player_disconnected", 2, {"player_id": 7}) in events
+	assert (player.x, player.y) == (1.5, 1.5)
+	assert any(event.name == "player_hit" and event.data["target"] == 7 for event in events)
+
+
+def test_player_who_left_leaves_the_snapshot_but_keeps_its_counters():
+	room = new_room()
+	room.players[7].kills = 2
+	leave(room, 7)
+	step(room, DT)
+	assert [player["id"] for player in to_snapshot(room)["players"]] == [9]
+	leave(room, 9) # fecha a partida para ter match_outcome
+	step(room, DT)
+	players = {player.user_id: player for player in match_outcome(room).players}
+	assert players[7].kills == 2 and not players[7].survived
+
+
+EXAMPLE =Path(__file__).resolve().parents[3] / "docs" / "contracts" / "snapshot.example.json"
 DOOR_FUNCTIONS = ("load_map", "create_room", "enqueue", "set_connected", "leave", "step",
 	"to_snapshot", "initial_grid", "last_input_seq", "match_outcome")
 

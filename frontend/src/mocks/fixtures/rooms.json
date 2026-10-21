@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "match_id": 12, "mode": "coop", "map": "dungeon_map",
+      "max_players": 5, "min_players": 1, "status": "lobby", "created_by": 15,
+      "options": {"theme": "dungeon", "start_hp": 10,
+            "pickups": {"potion": true, "mana": true, "armor": true}},
+      "created_at": "2026-10-20T18:00:03Z",
+      "players": [
+        {"user_id": 15, "username": "akita", "avatar_url": "/media/avatars/default.png",
+        "ready": false, "connected": true, "joined_at": "2026-10-20T18:00:03Z"}
+      ]
+    },
+    {
+      "match_id": 13, "mode": "coop", "map": "enemy_sewer",
+      "max_players": 3, "min_players": 1, "status": "lobby", "created_by": 9,
+      "options": {"theme": "sewer", "start_hp": 15,
+                  "pickups": {"potion": true, "mana": true, "armor": false }},
+      "created_at": "2026-10-20T18:05:41Z",
+      "players": [
+        {"user_id": 9, "username": "caio", "avatar_url": "/media/avatars/default.png",
+         "ready": true, "connected": true, "joined_at": "2026-10-20T18:05:41Z"},
+        {"user_id": 11, "username": "rafael", "avatar_url": "/media/avatars/default.png",
+         "ready": false, "connected": true, "joined_at": "2026-10-20T18:06:10Z"}
+      ]
+    }
+  ]
+}

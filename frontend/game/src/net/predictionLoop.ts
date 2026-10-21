@@ -2,7 +2,9 @@
 // é o mesmo dt que o servidor usa, então a Prediction anda igual (ws-messages.md §2.9).
 import { applyInput, type Body, type CollisionWorld, type MoveInput } from "../applyInput";
 import { TICK_RATE } from "../rules";
-import type { ActionKind, ClientMessage, Keys, PlayerSnapshot, WelcomeMessage } from "../types";
+import type { ActionKind, ClientMessage, Keys, PlayerSnapshot, Snapshot, WelcomeMessage } from "../types";
+import { reconcilePlayer, type PendingInput } from "./reconciliation";
+import { applyGridDelta } from "./viewstate";
 
 const STEP_S = 1 / TICK_RATE;
 // aba que volta do segundo plano não despeja centenas de Inputs: 5 passos são ~166 ms de jogo
@@ -10,6 +12,7 @@ export const MAX_STEPS_PER_FRAME = 5;
 
 export interface PredictionLoop {
   start(welcome: WelcomeMessage): void;
+  onSnapshot(snapshot: Snapshot): void;
   frame(frameDtS: number, keys: Keys, mouseDx: number): void; // a cada requestAnimationFrame
   action(kind: ActionKind): void;
   localPlayer(): PlayerSnapshot | null; // interpolado entre os dois últimos passos
@@ -17,10 +20,34 @@ export interface PredictionLoop {
 
 interface Running {
   player: PlayerSnapshot; // hp, mana etc. do último estado do servidor
+  baseGrid: string[];
   world: CollisionWorld;
   previous: Body;
   current: Body;
-  pending: { seq: number; input: MoveInput }[]; // o R7 reaplica estes depois de cada Snapshot
+  pending: PendingInput[];
+}
+
+function worldFromSnapshot(
+  snapshot: Snapshot,
+  grid: string[],
+  userId: number,
+): CollisionWorld {
+  const bodies: [number, number][] = [];
+
+  for (const player of snapshot.players) {
+    if (player.id !== userId && player.alive) {
+      bodies.push([player.x, player.y]);
+    }
+  }
+  for (const enemy of snapshot.enemies) {
+    if (enemy.state !== "dying") bodies.push([enemy.x, enemy.y]);
+  }
+  const boss = snapshot.boss;
+  if (boss !== null && boss.state !== "dying") {
+    bodies.push([boss.x, boss.y]);
+  }
+
+  return { grid, bodies };
 }
 
 export function createPredictionLoop(send: (message: ClientMessage) => void): PredictionLoop {
@@ -34,7 +61,9 @@ export function createPredictionLoop(send: (message: ClientMessage) => void): Pr
     mouseDx = 0;
     seq += 1;
     state.previous = state.current;
-    state.current = applyInput(state.current, input, state.world, STEP_S);
+    if (state.player.alive) {
+      state.current = applyInput(state.current, input, state.world, STEP_S);
+    }
     state.pending.push({ seq, input });
     send({ v: 1, type: "input", seq, keys: input.keys, mouse_dx: input.mouse_dx });
   }
@@ -43,14 +72,55 @@ export function createPredictionLoop(send: (message: ClientMessage) => void): Pr
     start(welcome) {
       const me = welcome.snapshot.players.find((player) => player.id === welcome.user_id);
       if (me === undefined) throw new Error("welcome without the local player");
-      // dx = sin(angle), dy = -cos(angle)  →  angle = atan2(dx, -dy)
-      const body: Body = { x: me.x, y: me.y, angle: Math.atan2(me.dx, -me.dy) };
-      // corpos e grid_delta entram no R7, com o onSnapshot
-      run = { player: me, world: { grid: welcome.map.grid, bodies: [] },
-        previous: body, current: body, pending: [] };
+      const grid = applyGridDelta(welcome.map.grid, welcome.snapshot.grid_delta);
+      const world = worldFromSnapshot(welcome.snapshot, grid, me.id);
+      const { body } = reconcilePlayer(
+        me, welcome.snapshot.last_input_seq, [], world,
+      );
+
+      run = {
+        player: me,
+        baseGrid: welcome.map.grid,
+        world,
+        previous: body,
+        current: body,
+        pending: [],
+      };
       seq = 0; // recomeça a cada conexão (ws-messages.md §2.2)
       accumulatorS = 0;
       mouseDx = 0;
+    },
+
+    onSnapshot(snapshot) {
+      const state = run;
+      if (state === null) return;
+
+      const me = snapshot.players.find(player => player.id === state.player.id);
+      if (me === undefined) throw new Error("snapshot without the local player");
+
+      const grid = applyGridDelta(state.baseGrid, snapshot.grid_delta);
+      const world = worldFromSnapshot(snapshot, grid, me.id);
+      const { body, pending } = reconcilePlayer(
+        me, snapshot.last_input_seq, state.pending, world,
+      );
+      const correction = {
+        x: body.x - state.current.x,
+        y: body.y - state.current.y,
+        angle: body.angle - state.current.angle,
+      };
+
+      run = {
+        ...state,
+        player: me,
+        world,
+        current: body,
+        pending,
+        previous: me.alive === state.player.alive ? {
+          x: state.previous.x + correction.x,
+          y: state.previous.y + correction.y,
+          angle: state.previous.angle + correction.angle,
+        } : body,
+      };
     },
 
     frame(frameDtS, keys, frameMouseDx) {

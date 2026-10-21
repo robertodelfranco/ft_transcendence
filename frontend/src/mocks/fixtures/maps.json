@@ -1,0 +1,8 @@
+{
+	"coop": [
+		{"name": "dungeon_map", "max_players": 5},
+		{"name": "enemy", "max_players": 5},
+		{"name": "enemy_sewer", "max_players": 5}
+	],
+	"pvp": []
+}

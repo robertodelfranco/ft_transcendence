@@ -33,14 +33,21 @@ Os caminhos relativos foram preservados dentro de `frontend/public/assets/`. Man
 
 ## Demo e integração
 
-`frontend/game/dev.ts` carrega texturas com `Promise.allSettled`, trata falhas na tela e mantém os controles desabilitados se algum recurso falhar. O componente libera materiais e objetos; as texturas pertencem à demo e são liberadas por ela, inclusive em cargas parciais após encerramento. A geometria compartilhada interna de `THREE.Sprite` não é descartada por cada entidade.
+A resolução do merge com a `main` integra os billboards ao `AssetLoader` e ao `ThreeRenderer`, preservando a F3.4 que já foi integrada:
+
+- O `AssetLoader` junta as URLs de paredes, Door, mão e billboards, sem duplicar a textura de fireball compartilhada. Ele prepara os metadados de transparência antes de entregar `Assets.billboards`.
+- Falha na carga ou na preparação dos sprites vira `asset_load_failed`, com descarte das texturas carregadas. A demo apresenta o erro e mantém os controles desabilitados.
+- O `ThreeRenderer` adiciona o grupo de billboards à cena, chama `billboards.update(view, dt)` antes do desenho do mundo e libera os materiais em seu `dispose`. O `Assets` continua proprietário das texturas e as libera depois do Renderer. A geometria compartilhada interna de `THREE.Sprite` não é descartada por cada entidade.
+- O adapter de `mountGame` usa os mesmos componentes. A demo monta o ViewState com `buildViewState` e `applyGridDelta`; o seletor **Snapshot original** retorna ao Snapshot final da fixture da Simulation.
 
 `frontend/game/fixtures/billboards.ts` contém apenas dados da demonstração:
 
-- `fixtureView` aplica `grid_delta` sobre uma cópia da grade inicial e exclui o Player local de `otherPlayers`.
+- `fixtureView` permanece disponível como helper para as fixtures de billboards. Na demo integrada, o preparo do estado usa `buildViewState` e `applyGridDelta`, os mesmos do Netcode.
 - `galleryView` fabrica uma sequência visual numa área livre da fixture: Enemy e Boss mudam de estado; Pickups desaparecem; dois Projectiles avançam, mostram `hit` e desaparecem; outro Player desconecta e morre.
 
-Essas sequências não são regras de jogo. O Renderer de produção deve receber ViewState montado pelo Netcode/Prediction. F3.2 continua pendente nesta branch; F3.8 fará a seleção completa entre Themes.
+Essas sequências não são regras de jogo: a demo adapta a saída da galeria para um ViewState completo, preservando o Player local, a câmera e as Doors. No jogo, esse estado vem do Netcode/Prediction. F3.8 fará a seleção completa entre Themes.
+
+Os resultados de validação abaixo pertencem à implementação original, antes desta resolução do merge. A integração descrita nesta seção ainda precisa da validação local do autor e do CI.
 
 ## Validação local
 
@@ -91,6 +98,6 @@ Mensagem: `feat(game): render animated entity billboards (F3.3)`.
 
 PR: `F3.3 — Billboards animados das entidades`. Descrever o render por estado, a galeria e as artes provisórias; registrar a validação realizada pelo autor; incluir `Closes #123`.
 
-Como esta branch parte da F3.4, conferir a base do PR: se a F3.4 ainda não foi integrada, usar a branch dela para revisar apenas a F3.3. Depois de integrar a F3.4, conferir o diff ao direcionar para a branch de integração do time.
+A F3.4 já está integrada à `main`. O merge preparado nesta branch preserva essa integração; o diff do PR deve conter os billboards e sua ligação ao Renderer, ao AssetLoader e à galeria.
 
 `docs/maps-coop-f4.1.md` é um arquivo preexistente de outra tarefa e fica fora desta entrega.

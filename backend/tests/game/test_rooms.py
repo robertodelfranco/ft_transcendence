@@ -13,6 +13,7 @@ from app.game import Mode, RoomOptions, set_connected
 from app.game.protocol import CloseCode
 from app.game.rooms import (AlreadyIn, AlreadyInOtherMatch, AlreadyStarted, NotEnoughPlayers,
 	NotInRoom, RoomError, RoomFull, RoomManager, RoomNotFound, get_room_manager)
+from app.core.request_id import current_request_id
 from app.game.world import parse_map
 from app.ws.manager import ConnectionManager
 
@@ -292,6 +293,18 @@ async def test_a_snapshot_that_always_fails_also_closes_the_room(manager, connec
 
 	assert ws.close_code == CloseCode.SERVER_SHUTDOWN
 	assert not any(m["type"] == "snapshot" for m in ws.messages)
+
+
+async def test_the_tick_task_does_not_carry_the_request_id_of_the_start(manager):
+	# o start roda dentro do POST /start; o log do tick não pode sair com o id daquela requisição
+	lobby(manager)
+	token = current_request_id.set("3f2b9c00-0000-4000-8000-000000000000")
+	try:
+		manager.start(12)
+	finally:
+		current_request_id.reset(token)
+	(task,) = room_tasks()
+	assert current_request_id not in task.get_context()
 
 
 async def test_close_cancels_every_tick_task(manager):

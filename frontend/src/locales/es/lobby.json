@@ -1,0 +1,64 @@
+{
+  "title": "Lobby",
+  "rooms": {
+    "heading": "Salas abiertas",
+    "loading": "Cargando salas…",
+    "empty": "No hay salas abiertas ahora. ¡Crea una!",
+    "filter": "Filtrar por modo",
+    "all": "Todos",
+    "players": "{{count}}/{{max}} jugadores",
+    "host": "Anfitrión: {{username}}",
+    "join": "Entrar",
+    "open": "Abrir",
+    "mine": "Ya estás en una sala.",
+    "toMine": "Ir a tu sala",
+    "retry": "Intentar de nuevo"
+  },
+  "create": {
+    "heading": "Crear sala",
+    "mode": "Modo",
+    "map": "Mapa",
+    "noMaps": "Todavía no hay mapa para este modo.",
+    "maxPlayers": "Jugadores",
+    "defaults": "Opciones (por defecto; la edición llega pronto)",
+    "submit": "Crear sala",
+    "submitting": "Creando…"
+  },
+  "options": {
+    "theme": "Tema",
+    "startHp": "HP inicial",
+    "potion": "Poción",
+    "mana": "Maná",
+    "armor": "Armadura",
+    "on": "activado",
+    "off": "desactivado",
+    "fragLimit": "Límite de bajas",
+    "timeLimit": "Tiempo límite",
+    "seconds": "{{count}} s"
+  },
+  "room": {
+    "title": "Sala de espera",
+    "players": "Jugadores ({{count}}/{{max}})",
+    "you": "tú",
+    "host": "anfitrión",
+    "ready": "listo",
+    "notReady": "no está listo",
+    "disconnected": "desconectado",
+    "setReady": "Estoy listo",
+    "unsetReady": "No estoy listo",
+    "leave": "Salir de la sala",
+    "start": "Iniciar partida",
+    "needPlayers_one": "Se necesita al menos {{count}} jugador para empezar.",
+    "needPlayers_other": "Se necesitan al menos {{count}} jugadores para empezar.",
+    "waitingHost": "Esperando a que el anfitrión inicie la partida.",
+    "notMember": "No estás en esta sala.",
+    "join": "Entrar en esta sala",
+    "aborted": "Esta sala se cerró.",
+    "started": "Esta partida ya empezó.",
+    "missing": "Esta sala no existe.",
+    "back": "Volver al lobby"
+  },
+  "socket": {
+    "reconnecting": "Reconectando al servidor… la lista puede estar desactualizada."
+  }
+}

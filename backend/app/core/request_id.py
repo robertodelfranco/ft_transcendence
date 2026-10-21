@@ -1,10 +1,13 @@
 import uuid
+from contextvars import ContextVar
 
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
 HEADER = "X-Request-ID"
+# o log JSON lê daqui (logging.py): toda linha escrita durante a requisição leva o mesmo id
+current_request_id: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 
 def get_request_id(request: Request) -> str:
@@ -45,4 +48,8 @@ class RequestIdMiddleware:
 				message["headers"] = headers
 			await send(message)
 
-		await self.app(scope, receive, send_with_header)
+		token = current_request_id.set(request_id)
+		try:
+			await self.app(scope, receive, send_with_header)
+		finally:
+			current_request_id.reset(token)

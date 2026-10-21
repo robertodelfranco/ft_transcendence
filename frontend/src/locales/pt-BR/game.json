@@ -1,0 +1,15 @@
+{
+  "modes": {
+    "coop": "Cooperativo",
+    "pvp": "PvP 1x1"
+  },
+  "maps": {
+    "dungeon_map": "Masmorra",
+    "enemy": "Salões inimigos",
+    "enemy_sewer": "Salões do esgoto"
+  },
+  "themes": {
+    "dungeon": "Masmorra",
+    "sewer": "Esgoto"
+  }
+}

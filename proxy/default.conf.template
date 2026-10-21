@@ -23,11 +23,27 @@ server {
         proxy_pass http://frontend:80;
     }
 
+    # avatares: o backend escreve no volume media, o Nginx lê direto (decisão 13). O arquivo veio de
+    # um User: nosniff impede o navegador de tratá-lo como outra coisa. O nome muda a cada envio,
+    # então o cache pode ser longo; arquivo que não existe é 404 aqui, e não o index.html do SPA
+    location /media/ {
+        alias /media/;
+        add_header X-Content-Type-Options nosniff always;
+        expires 30d;
+    }
+
+    # o avatar padrão vem da imagem do proxy, não do volume: nome fixo, cache curto
+    location = /media/avatars/default.png {
+        alias /usr/share/nginx/default-avatar.png;
+        add_header X-Content-Type-Options nosniff always;
+        expires 1h;
+    }
+
     location /api/ {
         proxy_pass http://backend:8000;          # sem barra final: o backend vê /api/... (decisão 5)
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For   $remote_addr;   # substitui, não acrescenta: o uvicorn lê o 1º IP, que o cliente forjaria
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
@@ -38,7 +54,7 @@ server {
         proxy_set_header Connection        "upgrade";
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For   $remote_addr;   # substitui, não acrescenta: o uvicorn lê o 1º IP, que o cliente forjaria
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 3600s;                # sem isso o Nginx corta socket parado aos 60 s
         proxy_send_timeout 3600s;

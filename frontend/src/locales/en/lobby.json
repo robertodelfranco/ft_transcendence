@@ -1,0 +1,64 @@
+{
+  "title": "Lobby",
+  "rooms": {
+    "heading": "Open rooms",
+    "loading": "Loading rooms…",
+    "empty": "No open rooms right now. Create one!",
+    "filter": "Filter by mode",
+    "all": "All",
+    "players": "{{count}}/{{max}} players",
+    "host": "Host: {{username}}",
+    "join": "Join",
+    "open": "Open",
+    "mine": "You are already in a room.",
+    "toMine": "Go to your room",
+    "retry": "Try again"
+  },
+  "create": {
+    "heading": "Create a room",
+    "mode": "Mode",
+    "map": "Map",
+    "noMaps": "No map available for this mode yet.",
+    "maxPlayers": "Players",
+    "defaults": "Options (defaults; editing comes soon)",
+    "submit": "Create room",
+    "submitting": "Creating…"
+  },
+  "options": {
+    "theme": "Theme",
+    "startHp": "Starting HP",
+    "potion": "Potion",
+    "mana": "Mana",
+    "armor": "Armor",
+    "on": "on",
+    "off": "off",
+    "fragLimit": "Frag limit",
+    "timeLimit": "Time limit",
+    "seconds": "{{count}} s"
+  },
+  "room": {
+    "title": "Waiting room",
+    "players": "Players ({{count}}/{{max}})",
+    "you": "you",
+    "host": "host",
+    "ready": "ready",
+    "notReady": "not ready",
+    "disconnected": "disconnected",
+    "setReady": "I'm ready",
+    "unsetReady": "I'm not ready",
+    "leave": "Leave room",
+    "start": "Start match",
+    "needPlayers_one": "At least {{count}} player is needed to start.",
+    "needPlayers_other": "At least {{count}} players are needed to start.",
+    "waitingHost": "Waiting for the host to start the match.",
+    "notMember": "You are not in this room.",
+    "join": "Join this room",
+    "aborted": "This room was closed.",
+    "started": "This match has already started.",
+    "missing": "This room doesn't exist.",
+    "back": "Back to the lobby"
+  },
+  "socket": {
+    "reconnecting": "Reconnecting to the server… the list may be out of date."
+  }
+}
