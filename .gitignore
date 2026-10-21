@@ -1,6 +1,9 @@
 # Environment
 .env
 
+# Combinados pessoais do Roberto para o agente, locais a este workspace
+/docs/combinados-locais-roberto.md
+
 # Certificados locais (mkcert): só a pasta é versionada
 proxy/certs/*
 !proxy/certs/.gitkeep
