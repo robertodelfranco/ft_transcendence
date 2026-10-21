@@ -25,7 +25,7 @@ export default function WaitingRoom() {
   const matchId = Number(param);
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { rooms, failure: loadFailure, apply } = useLobbyRooms();
+  const { rooms, failure: loadFailure, runAction } = useLobbyRooms();
   const [gone, setGone] = useState<Gone | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -34,13 +34,11 @@ export default function WaitingRoom() {
   const room = rooms?.find((candidate) => candidate.match_id === matchId);
   const me = room?.players.find((player) => player.user_id === user?.id);
 
-  // match_started só chega a quem joga, inclusive o host, e vem antes do lobby_removed "started":
-  // quem joga ignora esse lobby_removed, senão a tela piscaria "já começou" antes de ir para /play.
-  // Com aborted (o último saiu), a sala fecha para quem só estava olhando
+  // O match_started (ir para /play) é do MatchStartedRedirect, na casca inteira. Ele chega antes do
+  // lobby_removed "started", e quem joga ignora esse aviso: senão a tela piscaria "já começou"
+  // antes de trocar. Com aborted (o último saiu), a sala fecha para quem estava nela ou olhando
   useAppMessages((message) => {
-    if (message.type === "match_started" && message.match_id === matchId)
-      navigate(`/play/${matchId}`, { replace: true });
-    else if (message.type === "lobby_removed" && message.match_id === matchId
+    if (message.type === "lobby_removed" && message.match_id === matchId
       && !(message.reason === "started" && me))
       setGone(message.reason);
   });
@@ -75,7 +73,8 @@ export default function WaitingRoom() {
     };
   }, [missing, matchId, navigate, user?.id]);
 
-  // Cada ação devolve o RoomInfo novo (ou 204); o lobby_update que o servidor publica chega igual
+  // join e ready passam pelo runAction (a resposta não sobrescreve o socket); leave e start
+  // devolvem 204
   async function act(action: () => Promise<void>) {
     setFailure(null);
     setBusy(true);
@@ -162,7 +161,9 @@ export default function WaitingRoom() {
           <button
             type="button"
             disabled={busy}
-            onClick={() => act(async () => apply(await post("ready", { ready: !me.ready })))}
+            onClick={() => act(async () => {
+              await runAction(matchId, () => post("ready", { ready: !me.ready }));
+            })}
             className={buttonSecondary}
           >
             {me.ready ? t("room.unsetReady") : t("room.setReady")}
@@ -204,7 +205,9 @@ export default function WaitingRoom() {
           <button
             type="button"
             disabled={busy || room.players.length >= room.max_players}
-            onClick={() => act(async () => apply(await post("join")))}
+            onClick={() => act(async () => {
+              await runAction(matchId, () => post("join"));
+            })}
             className={buttonPrimary}
           >
             {t("room.join")}

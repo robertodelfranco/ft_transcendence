@@ -22,7 +22,7 @@ export default function RoomList({ lobby }: { lobby: ReturnType<typeof useLobbyR
   const [joining, setJoining] = useState<number | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
 
-  const { rooms, failure: loadFailure, apply, reload } = lobby;
+  const { rooms, failure: loadFailure, runAction, reload } = lobby;
   const mine = rooms?.find((room) => room.players.some((player) => player.user_id === user?.id));
   const visible = (rooms ?? []).filter((room) => filter === "all" || room.mode === filter);
 
@@ -30,7 +30,8 @@ export default function RoomList({ lobby }: { lobby: ReturnType<typeof useLobbyR
     setFailure(null);
     setJoining(room.match_id);
     try {
-      apply(await apiFetch<RoomInfo>(`/api/matches/${room.match_id}/join`, { method: "POST" }));
+      await runAction(room.match_id, () =>
+        apiFetch<RoomInfo>(`/api/matches/${room.match_id}/join`, { method: "POST" }));
       navigate(`/lobby/${room.match_id}`);
     } catch (error) {
       setJoining(null);

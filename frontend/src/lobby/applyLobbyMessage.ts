@@ -20,6 +20,9 @@ export function applyLobbyMessage(rooms: RoomInfo[], message: AppServerMessage):
   }
 }
 
-export function isLobbyMessage(message: AppServerMessage): boolean {
+type LobbyMessage = Extract<AppServerMessage, { type: "lobby_update" | "lobby_removed" }>;
+
+// "message is LobbyMessage": depois do if, o TypeScript sabe que a mensagem tem room ou match_id
+export function isLobbyMessage(message: AppServerMessage): message is LobbyMessage {
   return message.type === "lobby_update" || message.type === "lobby_removed";
 }
