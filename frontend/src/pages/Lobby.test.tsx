@@ -118,6 +118,34 @@ describe("lista de Rooms", () => {
   });
 });
 
+describe("match_started fora da sala de espera", () => {
+  // Regressão (revisão do Roberto no PR #50): o Player volta ao lobby pelo navegador e o host inicia
+  it("quem voltou ao lobby pelo navegador vai para /play", async () => {
+    const user = userEvent.setup();
+    const router = await renderWithSession();
+    await list().findByText("Salões do esgoto");
+    await user.click(within(roomCards()[1]).getByRole("button", { name: "Entrar" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/lobby/13"));
+    await act(() => router.navigate(-1));
+    await screen.findByRole("region", { name: "Salas abertas" });
+
+    act(() => {
+      publish({ type: "match_started", match_id: 13 });
+      publish({ type: "lobby_removed", match_id: 13, reason: "started" });
+    });
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/play/13"));
+    expect(await screen.findByText("Conectando à partida #13…")).toBeInTheDocument();
+  });
+
+  it("vale em qualquer tela da casca, não só no lobby", async () => {
+    const router = await renderWithSession("/lobby");
+    await act(() => router.navigate("/privacy"));
+    act(() => publish({ type: "match_started", match_id: 13 }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/play/13"));
+  });
+});
+
 describe("criar Room", () => {
   it("mostra os defaults e cria sem mexer em nada, mandando só mode, map e vagas", async () => {
     const user = userEvent.setup();
