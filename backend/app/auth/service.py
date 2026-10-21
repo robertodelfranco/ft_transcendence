@@ -2,12 +2,13 @@
 
 Nenhuma função aqui faz commit: quem escreve é a rota, numa transação só (User e refresh juntos).
 """
+import logging
 import uuid
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Request, Response
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import HTTPConnection
@@ -15,7 +16,7 @@ from starlette.requests import HTTPConnection
 from app.auth.models import OAuthAccount, Provider, RefreshToken, User
 from app.auth.schemas import DEFAULT_AVATAR_URL, AuthResponse, PrivateUser, SignupIn
 from app.auth.security import (InvalidToken, create_access_token, decode_access_token, hash_password,
-	new_refresh_token, verify_password)
+	hash_refresh_token, new_refresh_token, verify_password)
 from app.core.config import get_app_settings
 from app.core.errors import ApiError
 from app.db.session import SessionLocal
@@ -23,9 +24,12 @@ from app.db.session import SessionLocal
 
 REFRESH_COOKIE = "refresh_token"
 REFRESH_COOKIE_PATH = "/api/auth" # o cookie só viaja para as rotas de auth
+REFRESH_GRACE = timedelta(seconds=10) # decisão 5: duas abas que recarregam juntas mandam o mesmo cookie
 MAX_USER_AGENT = 255
 # a constraint UNIQUE que o Postgres acusou → o code da API
 UNIQUE_TO_CODE = {"uq_users_email": "email_taken", "uq_users_username": "username_taken"}
+
+log = logging.getLogger(__name__)
 
 
 # ---------- cadastro e login ----------
@@ -95,22 +99,105 @@ async def issue_tokens(session: AsyncSession, user: User, request: Request,
 	É o que signup, login e o callback do OAuth chamam; o commit fica com eles. Quem já sabe os
 	providers (o signup sabe que não há nenhum) passa a lista e poupa uma consulta.
 	"""
+	await _open_refresh(session, user, request, response, family_id=uuid.uuid4())
+	return await _auth_response(session, user, request, response, providers)
+
+
+async def rotate_refresh(session: AsyncSession, token: str, request: Request,
+		response: Response) -> AuthResponse | None:
+	"""Troca o refresh do cookie seguindo a tabela de auth.md §2.6. None é 401 `invalid_refresh`.
+
+	Quem chama faz o commit também no None: o reuso revoga a família, e essa revogação precisa ficar
+	gravada mesmo com a resposta de erro.
+	"""
+	token_hash = hash_refresh_token(token)
+	family_id = await session.scalar(
+		select(RefreshToken.family_id).where(RefreshToken.token_hash == token_hash))
+	if family_id is None:
+		return None
+	await _lock_family(session, family_id)
+	# relido depois do lock: quem o segurava pode ter rotacionado este token (o segundo de dois
+	# refresh com o mesmo cookie cai na janela de graça) ou revogado a família inteira
+	current = await session.scalar(select(RefreshToken)
+		.where(RefreshToken.token_hash == token_hash).execution_options(populate_existing=True))
+	now = datetime.now(timezone.utc) # depois da espera pelo lock
+	if current is None or current.revoked_at is not None or current.expires_at <= now:
+		return None
+	user = await session.get(User, current.user_id)
+
+	if current.rotated_at is None:
+		successor = await _open_refresh(session, user, request, response, family_id=current.family_id)
+		current.rotated_at = now
+		current.replaced_by = successor.id
+	elif now - current.rotated_at >= REFRESH_GRACE or not await _still_valid(session, current.replaced_by, now):
+		# a única exceção à rotação estrita é a janela de graça: fora dela, o token velho que volta
+		# indica cookie vazado, e cai a família inteira (RFC 9700 §4.14.2)
+		await session.execute(update(RefreshToken)
+			.where(RefreshToken.family_id == current.family_id, RefreshToken.revoked_at.is_(None))
+			.values(revoked_at=now))
+		log.warning("refresh token reuse", extra={"user_id": user.id, "family_id": str(current.family_id)})
+		return None
+	# dentro da janela de graça (decisão 5) a outra aba já tem o cookie novo: só um access, sem Set-Cookie
+	return await _auth_response(session, user, request, response)
+
+
+async def revoke_refresh(session: AsyncSession, token: str) -> None:
+	"""Logout: revoga só o token do cookie (decisão 11). As outras sessões do User continuam."""
+	await session.execute(update(RefreshToken)
+		.where(RefreshToken.token_hash == hash_refresh_token(token), RefreshToken.revoked_at.is_(None))
+		.values(revoked_at=datetime.now(timezone.utc)))
+
+
+def clear_refresh_cookie(response: Response) -> None:
+	# o navegador só apaga o cookie com o mesmo nome e o mesmo Path com que ele foi gravado
+	response.delete_cookie(REFRESH_COOKIE, path=REFRESH_COOKIE_PATH, secure=True, httponly=True,
+		samesite="strict")
+
+
+async def _lock_family(session: AsyncSession, family_id: uuid.UUID) -> None:
+	"""Põe em fila a rotação e a revogação da mesma família, até o commit ou o rollback.
+
+	O FOR UPDATE trava uma linha, não a família: um reuso que revoga enquanto outra transação insere
+	o sucessor deixaria esse sucessor de fora, porque o UPDATE só enxerga as linhas do snapshot em
+	que começou. Com o lock, o UPDATE da revogação só começa depois do commit de quem rotacionou.
+	"""
+	# os primeiros 64 bits do UUID são a chave; uma colisão só põe em fila duas famílias sem relação
+	key = int.from_bytes(family_id.bytes[:8], "big", signed=True)
+	await session.execute(select(func.pg_advisory_xact_lock(key)))
+
+
+async def _open_refresh(session: AsyncSession, user: User, request: Request, response: Response, *,
+		family_id: uuid.UUID) -> RefreshToken:
+	"""Grava um refresh novo na família e põe o cookie na resposta."""
 	settings = get_app_settings(request)
 	token, token_hash = new_refresh_token()
 	user_agent = request.headers.get("user-agent")
-	session.add(RefreshToken(user_id=user.id, token_hash=token_hash, family_id=uuid.uuid4(),
+	row = RefreshToken(user_id=user.id, token_hash=token_hash, family_id=family_id,
 		expires_at=datetime.now(timezone.utc) + timedelta(seconds=settings.refresh_token_ttl_s),
-		user_agent=user_agent[:MAX_USER_AGENT] if user_agent else None))
-	await session.flush()
+		user_agent=user_agent[:MAX_USER_AGENT] if user_agent else None)
+	session.add(row)
+	await session.flush() # o id sai daqui: é o replaced_by de quem foi trocado
 
 	response.set_cookie(REFRESH_COOKIE, token, max_age=settings.refresh_token_ttl_s,
 		path=REFRESH_COOKIE_PATH, secure=True, httponly=True, samesite="strict")
+	return row
+
+
+async def _auth_response(session: AsyncSession, user: User, request: Request, response: Response,
+		providers: list[Provider] | None = None) -> AuthResponse:
+	settings = get_app_settings(request)
 	# resposta com token não fica em cache de navegador nem de proxy (RFC 6749 §5.1)
 	response.headers["Cache-Control"] = "no-store"
 	access = create_access_token(user.id, settings.jwt_secret.get_secret_value(),
 		settings.access_token_ttl_s)
 	return AuthResponse(access_token=access, expires_in=settings.access_token_ttl_s,
 		user=await private_user(session, user, providers))
+
+
+async def _still_valid(session: AsyncSession, token_id: int | None, now: datetime) -> bool:
+	# o sucessor pode ter saído por logout, ou sumido (replaced_by vira NULL)
+	successor = await session.get(RefreshToken, token_id) if token_id is not None else None
+	return successor is not None and successor.revoked_at is None and successor.expires_at > now
 
 
 # ---------- serialização (§2.3) ----------

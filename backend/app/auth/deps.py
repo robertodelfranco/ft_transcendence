@@ -42,5 +42,13 @@ async def optional_user(request: Request, session: DbSession, credentials: Beare
 	return await _user(request, session, credentials.credentials)
 
 
+async def same_origin(request: Request) -> None:
+	"""Só a página do próprio site chama /refresh e /logout: a segunda barreira contra CSRF, depois
+	do SameSite do cookie (auth.md §2.2). O navegador sempre manda Origin num POST."""
+	expected = f"https://{get_app_settings(request).public_host}"
+	if request.headers.get("origin") != expected:
+		raise ApiError(403, "forbidden", "origin not allowed")
+
+
 CurrentUser = Annotated[User, Depends(current_user)]
 OptionalUser = Annotated[User | None, Depends(optional_user)]

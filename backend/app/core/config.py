@@ -34,6 +34,9 @@ class Settings(BaseSettings):
 	access_token_ttl_s: PositiveInt = 900
 	refresh_token_ttl_s: PositiveInt = 604800
 
+	# nome público com a porta quando não é a 443 (infra.md §2.4); o Origin de /refresh e /logout
+	public_host: str = "localhost"
+
 	@model_validator(mode="after")
 	def _require_a_strong_secret(self) -> Self:
 		secret = self.jwt_secret.get_secret_value()
