@@ -26,6 +26,7 @@ log = logging.getLogger(__name__)
 
 RoomStatus = Literal["lobby", "running", "finished", "aborted"]
 MapLoader = Callable[[str, Mode], Map]
+TickObserver = Callable[[float], None]
 
 MIN_PLAYERS = {Mode.COOP: 1, Mode.PVP: 2} # rooms.md "Em aberto" 3
 MAX_PLAYERS = {Mode.COOP: 5, Mode.PVP: 2}
@@ -145,9 +146,11 @@ def now() -> datetime:
 
 
 class RoomManager:
-	def __init__(self, connections: ConnectionManager, *, load: MapLoader = load_map) -> None:
+	def __init__(self, connections: ConnectionManager, *, load: MapLoader = load_map,
+			on_tick: TickObserver = lambda seconds: None) -> None:
 		self._connections = connections
 		self._load = load # o teste troca pelos próprios mapas
+		self._on_tick = on_tick # duração de cada Tick, para o game_tick_seconds
 		self._entries: dict[int, Entry] = {}
 		self._room_of: dict[int, int] = {} # user_id → match_id, enquanto lobby ou running
 
@@ -220,6 +223,10 @@ class RoomManager:
 	def info(self, match_id: int) -> RoomInfo:
 		return self._info(self._entry(match_id))
 
+	def running_count(self) -> int:
+		"""Rooms com o tick rodando, para o `game_rooms_active`."""
+		return sum(entry.status == "running" for entry in self._entries.values())
+
 	def list_open(self) -> list[RoomInfo]:
 		return [self._info(entry) for entry in self._entries.values() if entry.status == "lobby"]
 
@@ -250,6 +257,7 @@ class RoomManager:
 		healthy = 0 # Ticks bons seguidos desde a última falha
 		next_tick = time.monotonic()
 		while room.result is None:
+			started = time.perf_counter()
 			try:
 				await self._send(room, step(room, dt))
 			except Exception:
@@ -260,6 +268,8 @@ class RoomManager:
 					await self._abort(entry)
 					return
 			else:
+				# só o trabalho, sem o sleep: é o que se compara com o orçamento de 33 ms
+				self._on_tick(time.perf_counter() - started)
 				# só zera depois de um ciclo inteiro, com Snapshot: um Tick ímpar bom não prova nada
 				healthy += 1
 				if healthy >= SNAPSHOT_EVERY:

@@ -56,7 +56,7 @@ Fora da minha Slice dentro de F2: **F2.7** (Prediction/Reconciliation) e **F2.13
 
 | ID | Tarefa | d | Depende de | Sem. | Pronto quando | Estado |
 |---|---|---|---|---|---|---|
-| F8.7 | `GET /metrics` com `prometheus_client`, só na rede interna; `http_requests_total{route,status}`, `auth_login_total{result}`, `ws_connections{channel}`, `game_rooms_active`, `game_tick_seconds` (histograma) | 1 | F2.3, F6.5 | S3 | `curl backend:8000/metrics` de dentro da rede mostra as cinco séries; de fora, não responde | ⏳ #92 |
+| F8.7 | `GET /metrics` com `prometheus_client`, só na rede interna; `http_requests_total{route,status}`, `auth_login_total{result}`, `ws_connections{channel}`, `game_rooms_active`, `game_tick_seconds` (histograma) | 1 | F2.3, F6.5 | S3 | `curl backend:8000/metrics` de dentro da rede mostra as cinco séries; de fora, não responde | 🔄 #92, implementada na branch `92-f8-7-metrics` |
 
 ### F9 — de todos
 

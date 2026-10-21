@@ -9,6 +9,8 @@ from app.auth.router import router as auth_router
 from app.core.config import Settings, get_settings
 from app.core.errors import error_response, install_error_handlers
 from app.core.logging import AccessLogMiddleware, configure_logging
+from app.core.metrics import Metrics, MetricsMiddleware
+from app.core.metrics import router as metrics_router
 from app.core.ratelimit import RateLimitStore
 from app.core.request_id import RequestIdMiddleware
 from app.game.protocol import CloseCode
@@ -47,8 +49,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 		lifespan=lifespan,
 	)
 	app.state.settings = settings
+	app.state.metrics = metrics = Metrics() # registro por app: os testes não somam contagens
 	app.state.connection_manager = ConnectionManager() # uma por processo: um worker só
-	app.state.room_manager = RoomManager(app.state.connection_manager)
+	app.state.room_manager = RoomManager(app.state.connection_manager,
+		on_tick=metrics.tick_seconds.observe)
+	# lidos na hora da coleta, não agora: o teste troca as instâncias
+	metrics.watch(lambda: app.state.connection_manager.counts(),
+		lambda: app.state.room_manager.running_count())
 	app.state.rate_limits = RateLimitStore() # por app: cada teste começa com a contagem zerada
 	app.state.maps = load_catalog() # GET /api/maps e a validação do POST /api/matches
 	# lê o room_manager na hora do aviso, não agora: o teste troca a instância
@@ -61,11 +68,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 		notify_presence(app.state.connection_manager, app.state.friend_graph, user_id, online))
 
 	# o último é o de fora: o request_id já existe quando a linha de acesso é escrita
+	app.add_middleware(MetricsMiddleware)
 	app.add_middleware(AccessLogMiddleware)
 	app.add_middleware(RequestIdMiddleware)
 	install_error_handlers(app)
 	app.add_exception_handler(RoomError, handle_room_error)
 	app.include_router(health.router)
+	app.include_router(metrics_router)
 	app.include_router(auth_router)
 	app.include_router(matches_router)
 	app.include_router(game_router)
