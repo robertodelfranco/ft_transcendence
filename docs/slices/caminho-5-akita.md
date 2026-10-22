@@ -104,12 +104,14 @@ No calendário replanejado ([replanejamento-e-board.md](../pm/replanejamento-e-b
 |---|---|
 | **S1** · até 10/10 | ✅ os 3 contratos · ✅ F0.6 issues (#27–#34) e board · ✅ **F8.1** TLS (#35) · **F8.2** CI: passo 1 (`pytest`) no PR #38, `vitest` e lint esperam F0.4 · **F5.1** Alembic quando F0.3 existir · cadastro dos apps OAuth (42 e Google) passou para a S2 |
 | **S2** · 11–17/10 | **F5.2** lobby · **F8.3** compose final com migração no `entrypoint` · **F8.4** build de produção |
-| **S3** · 18–24/10 | **F5.3** `record_match_result` · **F5.6** histórico (puxado da S4: só depende de F5.3) · **F8.5** README esqueleto · **F8.8** Prometheus e exporters |
-| **S4** · 25–31/10 | **F5.4** stats · **F5.5** Elo e level · **F5.7** conquistas · **F5.8** leaderboard · **F6.8** OAuth (42 primeiro, Google em seguida) · **F8.9** dashboards · **F8.11** acesso seguro |
-| **S5** · 01–14/11 | Google do F6.8, se a S4 estourar · **F8.10** alertas · **F8.6** demo · **F9.1** minha parte do README · folga para bug e revisão |
+| **S3** · 18–24/10 | Nesta ordem: **F5.3** `record_match_result` (bloqueia o #91 e o "Match gravado" do C3) → **F8.8** Prometheus e `node-exporter` (destrava F8.9 e F8.11) → **F8.5** README esqueleto → **F5.6** histórico (se não couber, vai para a S4) |
+| **S4** · 25–31/10 | Primeiro o que o teste da 42 valida em 31/10: **F6.8** só com a 42 · **F8.9** dashboards · **F8.11** acesso seguro · renovar o secret da 42 (vence em 06/11). Depois, o que não precisa da 42: **F5.4** stats → **F5.5** Elo e level → **F5.8** leaderboard, e **F5.7** conquistas quando a F4.6 do Rafael chegar. **Sáb 31/10:** teste com 2 PCs na 42 ([teste-2-pcs.md](../infra/teste-2-pcs.md), D1–D8) |
+| **S5** · 01–14/11 | O que da F5.4–F5.8 escorregar da S4, até 07/11 · **F8.6** demo (depende do resultado de 31/10) · **F8.10** alertas · **F9.1** minha parte do README · Google do F6.8 · folga para bug e revisão |
 | **S6** · 15–21/11 | bug, README fechado, ensaio |
 
-**O gargalo é a S4:** F5.4–F5.8 + F6.8 + F8.9 + F8.11 somavam 9 d numa semana de 5, e o segundo provedor do F6.8 soma mais 0,5–1 d. Mitigação já aplicada acima: F5.6 (1 d) foi puxado para a S3, porque só depende de F5.3 — a S4 da tabela fica em **8,5–9 d**, ainda acima da capacidade. Se ainda estourar, o Google vai para a S5 (a 42 sozinha já fecha o módulo, [auth.md](../contracts/auth.md) §5.13) e o que sai em seguida é F5.8 (leaderboard, 0,5 d, última peça do módulo de estatísticas). Com dois provedores, o 2FA TOTP deixa de ser o Plano B: se um provedor travar no cadastro, o outro sozinho vale o mesmo ponto. Decido isso no checkpoint C3, em 23/10, não na véspera.
+**O gargalo é a S4:** F5.4–F5.8 + F6.8 + F8.9 + F8.11 somavam 9 d numa semana de 5, e o segundo provedor do F6.8 soma mais 0,5–1 d. Mitigação já aplicada acima: F5.6 (1 d) foi puxado para a S3, porque só depende de F5.3 — a S4 da tabela fica em **8,5–9 d**, ainda acima da capacidade. Em 19/10 o Google saiu da S4 (a 42 sozinha já fecha o módulo, [auth.md](../contracts/auth.md) §5.13). Com a F5.6 podendo escorregar da S3, a S4 volta a ficar perto de 9–10 d.
+
+**Atualizado em 21/10, quando o teste com 2 PCs passou para 31/10:** a S4 começa pelo que só se valida na rede da 42 (F6.8, F8.9 e F8.11). Assim, o teste do dia 31 já cobre essas tarefas, e o que estourar da semana é a F5.4–F5.8, que não depende da 42 e pode entrar na primeira semana da S5. Se nem isso couber, a primeira a sair é a F5.8 (leaderboard, 0,5 d, última peça do módulo de estatísticas). Fora a F8.6, nada da Slice 5 espera o resultado do dia 31.
 
 ## 6. O que eu explico na defesa
 
