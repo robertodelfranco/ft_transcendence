@@ -31,7 +31,7 @@ Por que as duas semanas extras vão onde vão:
 - **A segunda vai para a S5**, porque é lá que o plano §8.1 admite que a conta não fecha: ≈113 dias-pessoa de tarefa contra 85–100 dias reais de capacidade. A S5 é a semana que decide quais módulos entram no README, e um módulo pela metade vale zero. Dar folga à S5 é dar folga à nota.
 - **S2, S3 e S4 continuam de uma semana.** São as semanas com checkpoint de integração; esticá-las adia a descoberta dos bugs de integração, que é exatamente o que não se quer adiar.
 
-**A conferir antes de prometer 21/11:** o prazo real do `ft_transcendence` na intra da 42. Se a intra não permitir 21/11, o cenário alternativo é manter 07/11 e acionar a ordem de corte do plano §8.3 — i18n sai primeiro (20 pts), depois Game statistics (19), depois Monitoring (17); os 14 do fundo não são cortáveis. **Essa decisão é da reunião, com o prazo da intra na tela.**
+**Prazo da intra conferido (reunião de 19/10, [resultado](reuniao-19-10.md) §9):** a defesa em 21/11 cabe no prazo do `ft_transcendence`. A ordem de corte do plano §8.3 (i18n, depois Game statistics, depois Monitoring) fica só para o caso de faltar tempo, não de faltar prazo.
 
 ### Regra do freeze
 
