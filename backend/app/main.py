@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -18,14 +19,24 @@ from app.game.rooms import RoomError, RoomManager
 from app.game.router import router as game_router
 from app.matches.router import router as matches_router
 from app.db.session import SessionLocal
+from app.matches.results import abort_unfinished
 from app.matches.service import leave_when_offline, load_catalog
 from app.ws.app_events import DbFriendGraph, notify_presence
 from app.ws.manager import ConnectionManager
 from app.ws.router import router as app_socket_router
 
 
+log = logging.getLogger(__name__)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+	# antes do yield o uvicorn ainda não aceita conexão: nenhum Lobby nasce durante a limpeza.
+	# Em teste o lifespan não toca no banco; os testes chamam abort_unfinished direto
+	# ponytail: um worker só (arq. §2); com dois, o startup de um abortaria as Rooms vivas do outro
+	if app.state.settings.app_env != "test":
+		aborted = await abort_unfinished() # o RoomManager nasce vazio: o que está aberto é órfão
+		log.info("unfinished matches aborted", extra={"aborted": aborted})
 	yield
 	await app.state.room_manager.close() # nenhuma task de tick sobra
 	# desligamento: todo socket fecha com 4503 e a casca mostra "partida encerrada pelo servidor"
