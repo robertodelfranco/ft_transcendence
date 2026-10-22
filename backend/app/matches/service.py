@@ -116,7 +116,7 @@ async def start_match(session: AsyncSession, rooms: RoomManager, connections: Co
 		raise ApiError(403, "not_host", f"user {user_id} is not the host of match {match_id}")
 	rooms.start(match_id) # AlreadyStarted no segundo clique: uma task de tick só
 	# ponytail: se este commit falhar, a Room roda com o banco em lobby e o record_match_result
-	# não acha a linha 'running'; o startup da F5.3 pode abortar o que sobrar em lobby
+	# ignora o resultado (só um warning); o abort_unfinished do próximo startup leva o lobby órfão
 	await session.execute(update(Match).where(Match.id == match_id)
 		.values(status="running", started_at=now()))
 	await session.commit()
