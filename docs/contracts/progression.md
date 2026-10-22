@@ -1,6 +1,6 @@
 # F4.6 — Achievements, XP, level e ranking
 
-**Issue:** #119. **Data:** 22/10/2026. **Estado:** conteúdo aceito por Rafael; revisão técnica dos consumidores pendente.
+**Issue:** #119. **Data:** 22/10/2026. **Estado:** conteúdo aceito por Rafael; revisão de Akita aprovada na PR #144; aceites de Roberto e Caio pendentes.
 **Escreve:** Rafael. **Revisam:** Akita (F5.5/F5.7 e schema), Roberto (Simulation e contadores) e Caio (apresentação e i18n).
 
 ## 1. Escopo e fontes
@@ -30,7 +30,7 @@ Essas políticas de elegibilidade precisam de aceite do Akita e do Roberto; não
 
 ## 3. Catálogo
 
-Nomes são conteúdo traduzível; códigos são estáveis, ASCII e independentes do idioma. Predicados usam `p` para a linha individual de `MatchPlayerResult`, além da elegibilidade da §2.
+Nomes são conteúdo traduzível; códigos são estáveis, ASCII e independentes do idioma. Predicados usam `p` para a linha individual de `PlayerOutcome` (a forma implementada de `MatchPlayerResult`, conforme `rooms.md` após a #141), além da elegibilidade da §2.
 
 | Código proposto | Nome pt-BR | Mode | Condição em um único Match | Dados |
 |---|---|---|---|---|
@@ -39,7 +39,7 @@ Nomes são conteúdo traduzível; códigos são estáveis, ASCII e independentes
 | `coop_no_deaths_win` | Ensaboado | `coop` | `p.won = true` e `p.deaths = 0` | Já previstos |
 | `pvp_first_win` | Veni, vidi, vici | `pvp` | `p.won = true` | Já previstos |
 | `pvp_five_frags` | Não grita! | `pvp` | `p.frags >= 5`, sem exigir vitória | Já previstos |
-| `first_five_seconds` | Bem-vindo a Catacomb 42 | Ambos | Participar até o fim de um Match com `duration_ticks >= 5 × TICK_RATE`, sem exigir vitória ou sobrevivência | Já previstos; interpretação de tempo a confirmar |
+| `first_five_seconds` | Bem-vindo ao Catacombs 42 | Ambos | Participar até o fim de um Match com `duration_ticks >= 5 × TICK_RATE`, sem exigir vitória ou sobrevivência | Já previstos; interpretação de tempo a confirmar |
 | `pvp_time_limit_win` | Salvo pelo gongo | `pvp` | `p.won = true` e `reason = time_limit` | Já previstos |
 
 Detalhes para evitar interpretações diferentes:
@@ -48,7 +48,7 @@ Detalhes para evitar interpretações diferentes:
 - **Ensaboado:** exige zero mortes, não zero dano. `survived` sozinho não substitui `deaths = 0`, pois significa apenas vivo no Tick final. Não exige que o Player tenha dado o último golpe no Boss.
 - **Veni, vidi, vici:** vitória é `p.won`, não `result = win` da Room, que também chega ao perdedor no PvP. Empate não desbloqueia.
 - **Não grita!:** 4 Frags não bastam; 5 ou mais bastam, mesmo em derrota por tempo. Com `frag_limit = 3` ou 4 a condição não será alcançável; o catálogo descreve “em um único Match”, sem prometer que todo conjunto de RoomOptions permite o desbloqueio. O intervalo atual é 3–10 e o default é 5 em [room-options.md](room-options.md).
-- **Bem-vindo a Catacomb 42:** substitui a condição de morte. Não exige morrer, matar ou vencer. O pedido é participar por 5 segundos; a definição calculável com o contrato atual usa a duração do Match e conexão ao término, conforme §4. Desbloqueio ao persistir o resultado, não uma notificação instantânea aos 5 segundos.
+- **Bem-vindo ao Catacombs 42:** substitui a condição de morte. Não exige morrer, matar ou vencer. O pedido é participar por 5 segundos; a definição calculável com o contrato atual usa a duração do Match e conexão ao término, conforme §4. Desbloqueio ao persistir o resultado, não uma notificação instantânea aos 5 segundos.
 - **Salvo pelo gongo:** vencer quando o relógio encerra o PvP; não exige Frag nos segundos finais. Empate, derrota, vitória por `frag_limit` e vitória por `forfeit` não desbloqueiam.
 - As condições são independentes: um Match pode desbloquear vários códigos. Lixeiro e a condição de morte para Enemy foram substituídos; não fazem parte do catálogo. Não há acompanhamento por tipo de Enemy.
 
@@ -63,7 +63,7 @@ Caio revisa os textos e escolhe as chaves conforme [i18n.md](i18n.md). O catálo
 | `coop_no_deaths_win` | Slippery | Escurridizo |
 | `pvp_first_win` | Veni, vidi, vici | Veni, vidi, vici |
 | `pvp_five_frags` | Don't scream! | ¡No grites! |
-| `first_five_seconds` | Welcome to Catacomb 42 | Bienvenido a Catacomb 42 |
+| `first_five_seconds` | Welcome to Catacombs 42 | Bienvenido a Catacombs 42 |
 | `pvp_time_limit_win` | Saved by the bell | Salvado por la campana |
 
 As descrições traduzidas devem explicitar Mode, quantidade e “em um único Match”, seguindo a tabela de condições. Ainda não foram adicionadas aos catálogos do frontend.
@@ -72,12 +72,12 @@ As descrições traduzidas devem explicitar Mode, quantidade e “em um único M
 
 O resultado já prevê `duration_ticks`, `reason` e `disconnected_at_end`. Com as substituições, os sete predicados da tabela podem usar os dados já previstos, **se a interpretação abaixo de participação for aceita**. Nenhum contador novo é solicitado nesta versão.
 
-A proposta para Bem-vindo a Catacomb 42 é participar até o fim de um Match que dure pelo menos 5 segundos. `duration_ticks` mede o tempo da Room inteira, não o tempo conectado ou vivo de cada Player. Alguém que só conectar perto do término também pode satisfazer esse predicado; ele não comprova 5 segundos individuais de presença. Caso Rafael queira garantir literalmente 5 segundos conectado, será necessário revisar o contrato de tempo por Player antes de implementar essa condição.
+A proposta para Bem-vindo ao Catacombs 42 é participar até o fim de um Match que dure pelo menos 5 segundos. `duration_ticks` mede o tempo da Room inteira, não o tempo conectado ou vivo de cada Player. Alguém que só conectar perto do término também pode satisfazer esse predicado; ele não comprova 5 segundos individuais de presença. Caso Rafael queira garantir literalmente 5 segundos conectado, será necessário revisar o contrato de tempo por Player antes de implementar essa condição.
 
 Usar `duration_ticks >= 5 × TICK_RATE`, com a constante oficial do servidor, sem arredondar segundos para cima. Hoje `TICK_RATE = 30`: 149 Ticks não bastam; 150 bastam. Não contar espera no Lobby. Morte antes dos 5 segundos não impede o desbloqueio se o Match durar o mínimo e o Player continuar conectado até o fim; não se exige sobrevivência.
 O backend persiste e anuncia o Achievement após o término normal, conforme §2. Match que chega aos 5 segundos mas depois é abortado não desbloqueia. Não usar temporizador de navegador para conceder progressão.
 
-Na implementação atual a Simulation exporta `PlayerOutcome`/`MatchOutcome`; a integração deve preservar duração, motivo e estados individuais ao compor `MatchPlayerResult`/`MatchResult`. Não ampliar Snapshot, `HudState` ou Events para avaliar este catálogo.
+Na `main` após a #141, a Simulation exporta `PlayerOutcome`/`MatchOutcome`; `record_match_result` recebe o `MatchOutcome` junto de `match_id` e `ended_at`, sem criar outra dataclass de resultado. Mode e início vêm da linha de `matches`, conforme `rooms.md` §2.4–§2.5. Não ampliar Snapshot, `HudState` ou Events para avaliar este catálogo.
 Proposta: avaliar apenas novos Matches após ativação, sem backfill histórico nesta entrega.
 
 ## 5. XP proposto
@@ -158,8 +158,8 @@ Valores de XP/level nos JSON ilustrativos atuais de `matches-api.md` não valida
 | Exterminador com 4 e 5 Kills | Não desbloqueia / desbloqueia; Boss conta como Kill |
 | Vitória coop com dano mas nenhuma morte | Eu venci! e Ensaboado; não exige HP cheio |
 | Vitória/derrota/empate PvP | Veni, vidi, vici apenas para vencedor; Não grita! depende de Frags, não de vitória |
-| Match terminado com 149 / 150 Ticks, a 30 Hz | Bem-vindo a Catacomb 42 não desbloqueia / desbloqueia para Player elegível |
-| Match de pelo menos 5 segundos, com derrota ou Player morto conectado | Bem-vindo a Catacomb 42 não exige vitória nem sobrevivência |
+| Match terminado com 149 / 150 Ticks, a 30 Hz | Bem-vindo ao Catacombs 42 não desbloqueia / desbloqueia para Player elegível |
+| Match de pelo menos 5 segundos, com derrota ou Player morto conectado | Bem-vindo ao Catacombs 42 não exige vitória nem sobrevivência |
 | Match com conexão individual apenas perto do fim | O predicado por duração da Room pode desbloquear; confirma a limitação de presença individual a revisar |
 | Vitória PvP por tempo / empate por tempo / vitória por Frags ou forfeit | Salvo pelo gongo apenas no primeiro caso |
 | Uma condição repetida em outro Match | Nenhum novo desbloqueio ou anúncio do mesmo código |
@@ -178,11 +178,11 @@ Estes são aceites propostos, não testes executados da funcionalidade. A implem
 Inspeção local em 22/10/2026: contrato de `MatchResult`, resultado exportado por `sim.py`, `TICK_RATE` em `rules.py` e modelo `UserAchievement` sustentam os dados usados no catálogo revisado. Nenhuma migração foi feita. A ausência de duração individual permanece explícita na §4.
 As fronteiras e exemplos numéricos de level e Elo foram calculados em script temporário de leitura antes da redação; não validam código de produção nem balanceamento. Não foram executados Docker ou partida real.
 
-| Responsável | Revisão pendente |
+| Responsável | Estado da revisão / próximo passo |
 |---|---|
-| Akita | Revisar coeficientes de XP/level/Elo e elegibilidade aceitos por Rafael, especialmente queda no instante final e forfeit |
-| Roberto e Akita | Revisar a regra de boas-vindas aceita por Rafael (duração do Match, desbloqueio ao final); conferir propagação dos dados até a persistência |
-| Akita | Atualizar exemplos de API, implementar transação, fórmulas e catálogo |
+| Akita | Aprovado na revisão da PR #144 compartilhada por Rafael: dados e fórmulas, elegibilidade, forfeit, duração da Room para boas-vindas, separação por Mode e desempate/filtro do leaderboard |
+| Roberto | Aceite da duração da Room para boas-vindas e da propagação dos dados até a persistência ainda pendente |
+| Akita | A transação e o retorno de desbloqueios já estão na F5.3 (#141). Fórmulas e correção dos exemplos de API ficam na F5.5; catálogo e desbloqueios na F5.7 |
 | Caio | Revisar traduções e exibição de descrição, desbloqueio e XP restante; deixar claro que o desbloqueio acontece ao fim |
 
-O documento entrega a proposta de conteúdo da #119; os sete Achievements não estão declarados funcionais. Não há novos contadores nesta versão; elegibilidade e interpretação do tempo continuam sujeitas à revisão, sem aprovação presumida dos consumidores.
+O documento entrega a proposta de conteúdo da #119; os sete Achievements não estão declarados funcionais. Não há novos contadores nesta versão. O aceite de Akita foi registrado com base no comentário da PR #144 compartilhado por Rafael; não há aprovação presumida de Roberto ou Caio. Só marcar o contrato como totalmente aceito e datar esse aceite após as revisões restantes.

@@ -86,22 +86,20 @@ Garantias que o lobby assume:
 
 ### 2.4 `MatchResult` — o que a Room entrega ao terminar
 
-```python
-# app/matches/service.py
-@dataclass(frozen=True)
-class MatchResult:
-    match_id: int
-    mode: Literal["coop", "pvp"]
-    result: Literal["win", "loss", "draw"]
-    reason: Literal["boss_defeated", "all_dead", "frag_limit",
-                    "time_limit", "forfeit"]
-    started_at: datetime          # timezone-aware, UTC
-    ended_at: datetime
-    duration_ticks: int
-    players: list[MatchPlayerResult]
+Em código, o MatchResult é o **`MatchOutcome` da Simulation** (`app/game/state.py`, lido com `match_outcome(room)`, congelado no Tick do `game_over`) mais o `match_id` e o `ended_at`, que a Room passa ao lado (§2.5). O `mode` e o `started_at` não viajam: estão na linha de `matches`, gravados no `create` e no `start` (§2.6). Decidido em 21/10, na F5.3: uma dataclass a menos e nenhuma conversão no `_run`. **Os campos de `PlayerOutcome` são colunas de `match_players`** (o `record_match_result` grava com `asdict`): renomear um deles muda este contrato.
 
-@dataclass(frozen=True)
-class MatchPlayerResult:
+```python
+# app/game/state.py — a Simulation produz (Roberto)
+@dataclass(frozen=True, slots=True)
+class MatchOutcome:
+    result: str                   # "win" | "loss" | "draw"
+    reason: str                   # "boss_defeated" | "all_dead" | "frag_limit" | "time_limit" | "forfeit"
+    winner_ids: tuple[int, ...]
+    duration_ticks: int
+    players: tuple[PlayerOutcome, ...]
+
+@dataclass(frozen=True, slots=True)
+class PlayerOutcome:
     user_id: int
     won: bool
     survived: bool
@@ -125,7 +123,8 @@ Quem produz cada número (é o que o Roberto confere ao assinar):
 `result`, `reason` | o mesmo `game_over` que vai ao cliente
 `duration_ticks` | `room.tick`
 `disconnected_at_end` | `player.connected` no instante do `game_over`
-`started_at`, `ended_at` | `RoomManager`, com `datetime.now(timezone.utc)`
+`started_at` | `matches.started_at`, gravado pelo `start_match` (F5.2)
+`ended_at` | `RoomManager`, com `now()` no `game_over`, passado ao `record_match_result`
 
 Regras da Simulation que fecham estes números (respostas do Roberto ao assinar, em 06/10):
 
@@ -145,16 +144,26 @@ Regra de preenchimento de `won`:
 ### 2.5 `record_match_result`
 
 ```python
+# app/matches/results.py — fora do service.py, que importa app.game.rooms: a Room importa daqui sem ciclo
 @dataclass(frozen=True)
 class AchievementUnlock:
     user_id: int
     code: str
 
-async def record_match_result(match_id: int,
-                              result: MatchResult) -> list[AchievementUnlock]: ...
+async def record_match_result(match_id: int, outcome: MatchOutcome, ended_at: datetime, *,
+        sessions: Callable[[], AsyncSession] = SessionLocal) -> list[AchievementUnlock]: ...
+
+async def abort_unfinished(match_id: int | None = None, *,
+        sessions: Callable[[], AsyncSession] = SessionLocal) -> int: ...
 ```
 
-Chamada uma única vez pela Room, no `game_over` (F2.9). **Idempotente**: chamar duas vezes grava uma vez.
+Chamada uma única vez pela Room, no `game_over` (F2.9):
+
+```python
+unlocks = await record_match_result(entry.match_id, match_outcome(room), now())
+```
+
+**Idempotente**: chamar duas vezes grava uma vez. Roda fora de request, então recebe a **fábrica** de sessões, como o `authenticate_ws_token` ([auth.md](auth.md) §2.7): quem chama não abre sessão, e o teste passa uma fábrica que entrega a sessão com rollback. A função abre a sessão, faz tudo numa transação e dá o próprio commit.
 
 Tudo numa transação, nesta ordem:
 
@@ -164,6 +173,12 @@ Tudo numa transação, nesta ordem:
 4. `INSERT` em `user_achievements` com `ON CONFLICT (user_id, code) DO NOTHING`; as desbloqueadas voltam para quem chamou, que emite `achievement_unlocked`.
 5. `UPDATE matches SET status = 'finished', result, reason, ended_at, duration_ticks`.
 
+A F5.3 entrega os passos 1, 2 e 5; os outros entram **dentro da mesma transação**, entre o 2 e o 5, sem mudar a assinatura: o 3 na F5.4 (contadores e `playtime_s`) e na F5.5 (`xp`, `level`, `elo`, e `xp_gained`/`elo_*` em `match_players`), o 4 na F5.7. Até lá, `xp_gained` fica `0`, `elo_before`/`elo_after` ficam nulos e o retorno é sempre `[]`.
+
+Se a chamada levantar (banco fora), a Room registra o erro e segue: sem retry, o Match fica `running` e o próximo startup o aborta (§2.6). Se o `close()` do desligamento cancelar a task no meio, a transação inteira cai junto, sem gravação pela metade, e vale o mesmo caminho.
+
+**`abort_unfinished`** marca `lobby` e `running` como `aborted`, com `reason = 'server_shutdown'`, e devolve quantos mudaram. Sem `match_id` é o startup; com `match_id` é a Room que a Simulation derrubou (`_abort`, 30 falhas seguidas no `step`). O `WHERE status IN ('lobby','running')` nunca toca um `finished`: um abort que chega depois do resultado não faz nada.
+
 A função devolve **as conquistas desbloqueadas nesta chamada** (lista vazia se nenhuma, ou se a chamada foi a repetida). É `async` e usa a sessão do SQLAlchemy; **não toca em WebSocket**. Quem emite `achievement_unlocked {user_id, code}` é a Room, com o que a função devolveu — é o que mantém a função testável sem rede (ver "Em aberto" 4; se o time preferir a função chamando o `ConnectionManager`, o retorno vira `None` e esta seção muda junto).
 
 ### 2.6 Estados de um Match
@@ -172,11 +187,15 @@ A função devolve **as conquistas desbloqueadas nesta chamada** (lista vazia se
 |---|---|---|---|
 | — | `lobby` | `POST /api/matches` grava a linha e chama `RoomManager.create` | F5.2 |
 | `lobby` | `running` | `POST /api/matches/{id}/start` → `RoomManager.start`; grava `started_at` | F5.2 |
-| `lobby` | `aborted` | último Player saiu (inclusive por ficar offline, §4 decisão 10) | F5.2 |
+| `lobby` | `aborted` | último Player saiu (inclusive por ficar offline, §4 decisão 10); `reason` fica nulo | F5.2 |
+| `lobby` | `aborted` | backend reiniciou: `abort_unfinished()` no `lifespan`, `reason = "server_shutdown"` | F5.3 |
 | `running` | `finished` | `game_over` → `record_match_result` | F2.9 → F5.3 |
-| `running` | `aborted` | backend reiniciou: o `startup` marca todo `running` como `aborted`, `reason = "server_shutdown"` | F5.3 |
+| `running` | `aborted` | backend reiniciou: `abort_unfinished()` no `lifespan`, `reason = "server_shutdown"` | F5.3 |
+| `running` | `aborted` | a Simulation falhou 30 Ticks seguidos: `abort_unfinished(match_id)` no `_abort`, `reason = "server_shutdown"` (o cliente recebe o mesmo `4503`) | F2.9 → F5.3 |
 
 `finished` e `aborted` são finais. A Room é removida 60 s depois do `game_over` (arq. §10.1); de `aborted` por reinício não sobra Room nenhuma.
+
+O startup roda antes do `yield` do `lifespan`, quando o uvicorn ainda não aceita conexão, e o `RoomManager` de um processo novo nasce vazio: toda linha em `lobby` ou `running` é órfã, e nenhum Lobby novo nasce durante a limpeza. Isso só vale com **um worker** (arq. §2); com dois, o startup de um abortaria as Rooms vivas do outro. Com `APP_ENV=test` o `lifespan` não toca no banco; os testes chamam a função direto.
 
 ### 2.7 Tabelas
 
@@ -424,8 +443,8 @@ No empate, `result` é `"draw"`, `reason` é `"time_limit"` e os dois Players t�
 | 1 | `join` no `/ws/game` de uma Room que ainda está em `lobby`: fecha com `4409` ou aceita e manda `welcome` só no `start`? É o item 5 de [ws-messages.md](ws-messages.md) §5. Proposta: fechar, porque a casca só navega para `/play` depois do `match_started`. | Augusto e Akita | reunião 04/10 |
 | 2 | Resolvido em 10/10: sem TTL; quem fica offline sai do Lobby (§4, decisão 10). TTL fica como melhoria para a S5/S6, se sobrar tempo. | Akita | feito |
 | 3 | `min_players` por Mode. Proposta: 1 no `coop` (dá para testar sozinho e o módulo *Multiplayer 3+* se demonstra com 3+ de verdade) e 2 no `pvp`. **Implementado assim** (`MIN_PLAYERS` em `app/game/rooms.py`). **Falta decidir a regra do pronto:** hoje o `start` confere só `min_players` e não olha `ready`; a reunião de 12/10 (pauta, item 6) propôs exigir todos os Players prontos, o host incluído. A casca espelha o servidor: até a decisão, o botão "Iniciar" habilita só por `min_players`, e o `ready` aparece na tela sem bloquear (Caio, F7.7, 20/10). Se a regra mudar, `start` ganha um `code` novo (proposta: `not_all_ready`), que entra no [i18n.md](i18n.md) §2.3 no mesmo PR. | Rafael e Akita | S3 (antes do C3, 23/10) |
-| 4 | Quem emite `achievement_unlocked`: `record_match_result` devolve a lista e a Room emite, ou a função chama o `ConnectionManager` direto? Proposta: devolve a lista — a função fica sem dependência de rede e testável. | Akita e Augusto | reunião 04/10 |
-| 5 | Fórmula de XP e de level, fórmula de Elo e a lista de ≥ 5 conquistas com o código de cada uma. [Proposta F4.6 em `progression.md`](progression.md), preparada em 22/10 (#119): sete condições com dados previstos, condicionadas ao aceite da duração do Match como critério de boas-vindas. Aguarda revisão; não altera o schema acima por aprovação implícita. | Rafael (F4.6), revisão de Akita e Roberto | **início da S3**; proposta em revisão |
+| 4 | Resolvido em 21/10, na F5.3: `record_match_result` devolve `list[AchievementUnlock]` e a Room emite `achievement_unlocked`. A lista vem vazia até a F5.7, mas o laço do #91 já fica pronto. | Akita e Augusto | feito |
+| 5 | Fórmula de XP e de level, fórmula de Elo e a lista de ≥ 5 conquistas com o código de cada uma. [Proposta F4.6 em `progression.md`](progression.md), preparada em 22/10 (#119): sete condições com dados previstos. Conteúdo aceito por Rafael e revisão de Akita aprovada na PR #144, incluindo duração da Room para boas-vindas. Faltam os aceites de Roberto e Caio; não altera o schema acima por aprovação implícita. | Rafael (F4.6), revisão de Akita, Roberto e Caio | **início da S3**; revisão parcial registrada |
 | 6 | Resolvido em 06/10: `damage_dealt` é o HP tirado do Boss (`coop`) ou de Players (`pvp`), num contador só (§2.4). | Roberto | feito |
 | 7 | Resolvido: a arquitetura e o `CONTEXT.md` usam `match_id` desde o PR #14. | Roberto | feito |
 | 8 | O que acontece com `matches` e `match_players` se um User for apagado. Hoje: `RESTRICT`, ou seja, não apaga. Não há tela de exclusão de conta no escopo; se entrar, vira anonimização do `username`, não `DELETE`. | Augusto e Akita | quando a exclusão de conta entrar no escopo |

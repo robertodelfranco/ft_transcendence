@@ -40,7 +40,7 @@ O inventário de F3.1 no plano §5 cita C2, mas o plano §6 exige a masmorra em 
 
 Em F4.2 e F4.7, sou responsável pelos valores e pelo balanceamento. O Roberto mantém nomes, unidades e a coerência com Simulation/Prediction; revisa as mudanças de `rules.*`. Limites escolhidos na criação da Room ficam em `room-options.md`.
 
-**F4.6 — atualização de 22/10/2026 (#119):** [catálogo e proposta de progressão](../contracts/progression.md) com conteúdo aceito por Rafael, pronto para revisão técnica de Akita, Roberto e Caio. Sete Achievements, incluindo Bem-vindo a Catacomb 42 (Match com pelo menos 5 segundos, desbloqueio ao final) e Salvo pelo gongo (vitória PvP por tempo), sem contadores novos. Rafael aceitou fórmulas, valores e elegibilidade, ciente de que a duração da Room não comprova presença individual. Revisão técnica, traduções, implementação e playtest pendentes.
+**F4.6 — atualização de 22/10/2026 (#119):** [catálogo e proposta de progressão](../contracts/progression.md) com conteúdo aceito por Rafael, pronto para revisão técnica de Akita, Roberto e Caio. Sete Achievements, incluindo Bem-vindo ao Catacombs 42 (Match com pelo menos 5 segundos, desbloqueio ao final) e Salvo pelo gongo (vitória PvP por tempo), sem contadores novos. Rafael aceitou fórmulas, valores e elegibilidade, ciente de que a duração da Room não comprova presença individual. Revisão técnica, traduções, implementação e playtest pendentes.
 
 ### F0 e F9 — compartilhados
 
