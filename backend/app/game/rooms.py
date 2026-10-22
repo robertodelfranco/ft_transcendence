@@ -7,18 +7,20 @@ instância por processo, criada no `create_app()` e entregue por `get_room_manag
 import asyncio
 import contextvars
 import logging
+import math
 import random
 import time
-from collections.abc import Callable
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
 
 from starlette.requests import HTTPConnection
 
-from app.game import (TICK_RATE, Event, Map, Mode, Room, RoomOptions, create_room, last_input_seq,
-	load_map, step, to_snapshot)
+from app.game import (BOSS_DYING_S, TICK_RATE, Event, Map, MatchOutcome, Mode, Room, RoomOptions,
+	create_room, last_input_seq, load_map, match_outcome, step, to_snapshot)
 from app.game.protocol import CloseCode, encode_event, options_payload, snapshot_encoder
+from app.matches.results import AchievementUnlock, abort_unfinished, record_match_result
 from app.ws.manager import ConnectionManager
 
 
@@ -27,11 +29,15 @@ log = logging.getLogger(__name__)
 RoomStatus = Literal["lobby", "running", "finished", "aborted"]
 MapLoader = Callable[[str, Mode], Map]
 TickObserver = Callable[[float], None]
+RecordResult = Callable[[int, MatchOutcome, datetime], Awaitable[list[AchievementUnlock]]]
+AbortMatch = Callable[[int], Awaitable[int]]
 
 MIN_PLAYERS = {Mode.COOP: 1, Mode.PVP: 2} # rooms.md "Em aberto" 3
 MAX_PLAYERS = {Mode.COOP: 5, Mode.PVP: 2}
 SNAPSHOT_EVERY = 2 # Ticks: 15 Hz (ws-messages.md §2.8)
 MAX_STEP_FAILURES = TICK_RATE # falhas sem um ciclo bom no meio: a Room fecha com 4503
+DYING_TICKS = math.ceil(BOSS_DYING_S * TICK_RATE) # depois do game_over, só a animação do Boss anda
+ROOM_TTL_S = 60 # a Room some 60 s depois do fim (arq. §10.1)
 
 
 # ---------- recusas (rooms.md §2.2) ----------
@@ -147,10 +153,13 @@ def now() -> datetime:
 
 class RoomManager:
 	def __init__(self, connections: ConnectionManager, *, load: MapLoader = load_map,
-			on_tick: TickObserver = lambda seconds: None) -> None:
+			on_tick: TickObserver = lambda seconds: None, record: RecordResult = record_match_result,
+			abort: AbortMatch = abort_unfinished) -> None:
 		self._connections = connections
 		self._load = load # o teste troca pelos próprios mapas
 		self._on_tick = on_tick # duração de cada Tick, para o game_tick_seconds
+		self._record = record # o banco do fim de partida (rooms.md §2.5); o teste troca por um fake
+		self._abort_match = abort
 		self._entries: dict[int, Entry] = {}
 		self._room_of: dict[int, int] = {} # user_id → match_id, enquanto lobby ou running
 
@@ -256,7 +265,8 @@ class RoomManager:
 		failures = 0
 		healthy = 0 # Ticks bons seguidos desde a última falha
 		next_tick = time.monotonic()
-		while room.result is None:
+		end_tick: int | None = None # o game_over mais a animação do Boss, que o cliente espera ver
+		while end_tick is None or room.tick < end_tick:
 			started = time.perf_counter()
 			try:
 				await self._send(room, step(room, dt))
@@ -274,11 +284,30 @@ class RoomManager:
 				healthy += 1
 				if healthy >= SNAPSHOT_EVERY:
 					failures = 0
+			if end_tick is None and room.result is not None:
+				end_tick = room.tick + DYING_TICKS
+				await self._finish(entry)
 			# o próximo Tick é marcado a partir do anterior, não de agora: o atraso não acumula
 			next_tick += dt
 			await asyncio.sleep(max(0.0, next_tick - time.monotonic()))
-		entry.status = "finished" # gravar o Match e remover a Room 60 s depois é da F2.9
+		await asyncio.sleep(ROOM_TTL_S) # até lá, quem reconecta ainda vê o estado final
+		del self._entries[entry.match_id]
+
+	async def _finish(self, entry: Entry) -> None:
+		"""game_over: libera os Players e grava o Match uma vez só (rooms.md §2.5)."""
+		# liberado já: quem volta ao lobby pela tela de fim não pode levar 409 already_in_other_match
+		entry.status = "finished"
 		self._release(entry)
+		room = entry.room
+		try:
+			unlocks = await self._record(entry.match_id, match_outcome(room), now())
+		except Exception: # sem retry: o Match fica running e o próximo startup o aborta
+			log.exception("match result not recorded", extra={"match_id": entry.match_id})
+			return
+		recipients = [user_id for user_id, player in room.players.items() if not player.left]
+		for unlock in unlocks:
+			event = Event("achievement_unlocked", room.tick, asdict(unlock))
+			await self._connections.broadcast(recipients, encode_event(event), "game")
 
 	async def _send(self, room: Room, events: list[Event]) -> None:
 		recipients = [user_id for user_id, player in room.players.items() if not player.left]
@@ -297,6 +326,10 @@ class RoomManager:
 		del self._entries[entry.match_id]
 		await self._connections.close_match(entry.match_id, CloseCode.SERVER_SHUTDOWN,
 			"simulation failed")
+		try:
+			await self._abort_match(entry.match_id)
+		except Exception: # o próximo startup aborta o que sobrou
+			log.exception("match abort not recorded", extra={"match_id": entry.match_id})
 
 	# ---------- auxiliares ----------
 

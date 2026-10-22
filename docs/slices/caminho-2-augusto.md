@@ -46,7 +46,7 @@
 | F2.5 | Cliente: socket, `mountGame`, `ViewState` montado do último Snapshot (sem prediction ainda), envio de Input e Action | 1,5 | F2.4 | S2 | C2: 1 player anda com movimento decidido pelo servidor | 🔄 #72, PR rascunho #109: socket, input, `ViewState` e `createMountGame`; falta o `index.ts` (espera o Renderer, PR #105) e a prova no navegador |
 | F2.6 | N players; limite de 60 Inputs/s; `dt` do servidor; `Seq` monotônico; fila por conexão com descarte | 1 | F2.5 | S3 | 5 abas numa Room sem travar | 🔄 #89, implementada na branch `89-f2-6-n-players`: limite de 60 mensagens/s com rajada de 120 por socket, testes com 5 sockets e com cliente lento |
 | F2.8 | Interpolation dos outros a `now − 100 ms` | 1 | F2.6 | S3 | Outro player desliza sem saltos | ⏳ #90 |
-| F2.9 | Fim de partida: chamar `record_match_result` uma vez, remover a Room após 60 s, `4503` no desligamento | 1 | F5.3 | S3 | Teste: `game_over` → uma chamada, mesmo com ticks depois | ⏳ #91 |
+| F2.9 | Fim de partida: chamar `record_match_result` uma vez, remover a Room após 60 s, `4503` no desligamento | 1 | F5.3 | S3 | Teste: `game_over` → uma chamada, mesmo com ticks depois | 🔄 #91, implementada na branch `91-f2-9-fim-de-partida`: grava no `game_over`, tick só pela animação do Boss, Room removida em 60 s, `abort_unfinished` no `_abort` |
 | F2.10 | Grace period de 30 s e Reconnection com Snapshot completo; no PvP, grace expirada conta derrota | 2 | F2.7 | S4 | Fechar a aba e voltar em 20 s mantém HP e chaves | ⏳ #107 |
 | F2.12 | `ping/pong` com RTT na HUD; teste de aceite com throttling (100 ms + 2 % de perda, 5 min) anotado no PR | 1 | F2.8 | S5 | Resultado do teste no PR | ⏳ #108 |
 

@@ -9,12 +9,13 @@ from pathlib import Path
 import pytest
 
 import app.game.rooms as rooms
-from app.game import Mode, RoomOptions, set_connected
+from app.game import MatchOutcome, Mode, RoomOptions, set_connected
 from app.game.protocol import CloseCode
 from app.game.rooms import (AlreadyIn, AlreadyInOtherMatch, AlreadyStarted, NotEnoughPlayers,
 	NotInRoom, RoomError, RoomFull, RoomManager, RoomNotFound, get_room_manager)
 from app.core.request_id import current_request_id
 from app.game.world import parse_map
+from app.matches.results import AchievementUnlock
 from app.ws.manager import ConnectionManager
 
 
@@ -39,9 +40,35 @@ async def connections():
 	await connections.close_all(1000)
 
 
+class FakeResults:
+	"""O banco do fim de partida (app/matches/results.py): guarda as chamadas, sem sessão."""
+
+	def __init__(self) -> None:
+		self.recorded: list[tuple] = []
+		self.aborted: list[int] = []
+		self.unlocks: list[AchievementUnlock] = []
+		self.fail = False
+
+	async def record(self, match_id, outcome, ended_at):
+		self.recorded.append((match_id, outcome, ended_at))
+		if self.fail:
+			raise ConnectionError("database down")
+		return self.unlocks
+
+	async def abort(self, match_id):
+		self.aborted.append(match_id)
+		return 1
+
+
 @pytest.fixture
-async def manager(connections):
-	manager = RoomManager(connections, load=load_test_map)
+def results() -> FakeResults:
+	return FakeResults()
+
+
+@pytest.fixture
+async def manager(connections, results, monkeypatch):
+	monkeypatch.setattr(rooms, "DYING_TICKS", 2) # a animação do Boss sem esperar 1,2 s
+	manager = RoomManager(connections, load=load_test_map, record=results.record, abort=results.abort)
 	yield manager
 	await manager.close() # nenhuma task de tick sobra para o próximo teste
 
@@ -226,14 +253,93 @@ async def test_tick_sends_events_and_a_snapshot_every_two_ticks(manager, connect
 	assert all(m["last_input_seq"] == 0 for m in snapshots)
 
 
-async def test_game_over_ends_the_task_and_frees_the_players(manager):
+def end_game(manager: RoomManager, match_id: int = 12) -> None:
+	"""Termina a partida pela porta, como o CoopRuleset faria: game_over com o MatchOutcome."""
+	room = manager.game_room(match_id)
+	room.result = {"result": "win", "winner_ids": sorted(room.players), "reason": "boss_defeated"}
+	room.outcome = MatchOutcome(result="win", reason="boss_defeated",
+		winner_ids=tuple(sorted(room.players)), duration_ticks=room.tick, players=())
+
+
+async def test_game_over_records_the_match_once_even_with_ticks_after(manager, results):
+	lobby(manager, players=(7, 9))
+	manager.start(12)
+	room = manager.game_room(12)
+	end_game(manager)
+	end_tick = room.tick + rooms.DYING_TICKS + 1 # +1: o game_over só é visto no Tick seguinte
+	await until(lambda: room.tick >= end_tick)
+
+	((match_id, outcome, ended_at),) = results.recorded
+	assert (match_id, outcome) == (12, room.outcome)
+	assert ended_at.tzinfo is not None
+	assert manager.info(12).status == "finished" # a Room fica 60 s, com o estado final
+
+
+async def test_game_over_frees_the_players_before_the_animation_ends(manager, monkeypatch):
+	monkeypatch.setattr(rooms, "DYING_TICKS", 10_000)
 	lobby(manager, players=(7, 9))
 	manager.start(12)
 	(task,) = room_tasks()
-	manager.game_room(12).result = {"result": "win", "winner_ids": [7, 9], "reason": "boss_defeated"}
-	await until(task.done)
+	end_game(manager)
+	await until(lambda: manager.room_of(7) is None)
+	assert manager.room_of(9) is None
 	assert manager.info(12).status == "finished"
-	assert (manager.room_of(7), manager.room_of(9)) == (None, None)
+	assert not task.done() # a animação do Boss continua andando
+
+
+async def test_the_ticks_after_game_over_stop_after_the_animation(manager):
+	# nos 60 s seguintes a Room só espera: nada de 30 Hz de CPU e Snapshot para uma partida acabada
+	lobby(manager)
+	manager.start(12)
+	room = manager.game_room(12)
+	end_game(manager)
+	game_over_tick = room.tick
+	await asyncio.sleep((rooms.DYING_TICKS + 5) / rooms.TICK_RATE)
+	stopped_at = room.tick
+	await asyncio.sleep(5 / rooms.TICK_RATE)
+	assert room.tick == stopped_at <= game_over_tick + 1 + rooms.DYING_TICKS
+
+
+async def test_the_room_is_removed_after_its_ttl(manager, monkeypatch):
+	monkeypatch.setattr(rooms, "ROOM_TTL_S", 0)
+	lobby(manager)
+	manager.start(12)
+	(task,) = room_tasks()
+	end_game(manager)
+	await until(task.done)
+	assert task.exception() is None
+	with pytest.raises(RoomNotFound):
+		manager.info(12)
+	assert manager.game_room(12) is None
+
+
+async def test_unlocked_achievements_go_to_the_players(manager, connections, fake_ws, results):
+	results.unlocks = [AchievementUnlock(user_id=7, code="first_win")]
+	lobby(manager, players=(7, 9))
+	ws7, ws9 = fake_ws(), fake_ws()
+	await connections.connect(7, "game", ws7, match_id=12)
+	await connections.connect(9, "game", ws9, match_id=12)
+	manager.start(12)
+	end_game(manager)
+	await until(lambda: manager.room_of(7) is None)
+
+	for ws in (ws7, ws9):
+		(event,) = [m for m in ws.messages if m.get("name") == "achievement_unlocked"]
+		assert event["data"] == {"user_id": 7, "code": "first_win"}
+
+
+async def test_a_failed_record_is_logged_and_the_room_still_ends(manager, results, monkeypatch, caplog):
+	monkeypatch.setattr(rooms, "ROOM_TTL_S", 0)
+	results.fail = True
+	lobby(manager)
+	manager.start(12)
+	(task,) = room_tasks()
+	end_game(manager)
+	await until(task.done)
+	assert len(results.recorded) == 1 # sem retry
+	assert "match result not recorded" in caplog.text
+	with pytest.raises(RoomNotFound):
+		manager.info(12)
 
 
 async def test_one_failing_step_is_logged_and_the_room_goes_on(manager, monkeypatch, caplog):
@@ -255,7 +361,8 @@ async def test_one_failing_step_is_logged_and_the_room_goes_on(manager, monkeypa
 	assert "tick failed" in caplog.text
 
 
-async def test_repeated_failures_close_the_room_with_4503(manager, connections, fake_ws, monkeypatch):
+async def test_repeated_failures_close_the_room_with_4503(manager, connections, fake_ws, monkeypatch,
+		results):
 	def broken_step(room, dt):
 		raise RuntimeError("boom")
 
@@ -273,6 +380,7 @@ async def test_repeated_failures_close_the_room_with_4503(manager, connections, 
 	assert ws.messages[-1]["code"] == "server_shutdown"
 	assert other.close_code is None
 	assert manager.room_of(7) is None
+	assert results.aborted == [12] # o Match vira aborted no banco
 	with pytest.raises(RoomNotFound):
 		manager.info(12)
 
@@ -293,6 +401,27 @@ async def test_a_snapshot_that_always_fails_also_closes_the_room(manager, connec
 
 	assert ws.close_code == CloseCode.SERVER_SHUTDOWN
 	assert not any(m["type"] == "snapshot" for m in ws.messages)
+
+
+async def test_a_failed_abort_is_logged_and_the_room_still_closes(manager, connections, fake_ws,
+		results, monkeypatch, caplog):
+	async def broken_abort(match_id):
+		raise ConnectionError("database down")
+
+	def broken_step(room, dt):
+		raise RuntimeError("boom")
+
+	monkeypatch.setattr(rooms, "step", broken_step)
+	monkeypatch.setattr(rooms, "MAX_STEP_FAILURES", 3)
+	monkeypatch.setattr(manager, "_abort_match", broken_abort)
+	lobby(manager)
+	ws = fake_ws()
+	await connections.connect(7, "game", ws, match_id=12)
+	manager.start(12)
+	(task,) = room_tasks()
+	await until(task.done)
+	assert ws.close_code == CloseCode.SERVER_SHUTDOWN
+	assert "match abort not recorded" in caplog.text
 
 
 async def test_the_tick_task_does_not_carry_the_request_id_of_the_start(manager):
@@ -316,6 +445,16 @@ async def test_close_cancels_every_tick_task(manager):
 	await manager.close()
 	assert len(tasks) == 2 and all(task.cancelled() for task in tasks)
 	assert room_tasks() == []
+
+
+async def test_close_also_cancels_a_finished_room_waiting_its_ttl(manager):
+	lobby(manager)
+	manager.start(12)
+	(task,) = room_tasks()
+	end_game(manager)
+	await until(lambda: manager.room_of(7) is None)
+	await manager.close()
+	assert task.cancelled()
 
 
 # ---------- app ----------
