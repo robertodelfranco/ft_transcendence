@@ -9,6 +9,18 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
-    include: ["src/**/*.test.{ts,tsx}", "game/**/*.test.ts"],
+    // Dois projetos para o jogo falso (vitest.shell.setup.ts) valer só na casca: game/** testa o
+    // index de verdade. O extends herda environment e setupFiles daqui
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "shell",
+          include: ["src/**/*.test.{ts,tsx}"],
+          setupFiles: ["./vitest.shell.setup.ts"],
+        },
+      },
+      { extends: true, test: { name: "game", include: ["game/**/*.test.ts"] } },
+    ],
   },
 });
