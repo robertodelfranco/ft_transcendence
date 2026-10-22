@@ -35,6 +35,7 @@ Na defesa, cada pessoa explica cada linha do próprio contrato. Se você não sa
 | Mensagens do jogo: Snapshot, Events, Input, Action | `ws-messages.md` + `snapshot.example.json` | Roberto | Augusto, Rafael | arq. §7.1–§7.3 |
 | Arquivo de Map (grade) | `map-format.md` | Roberto | Rafael | arq. §6.1 |
 | Números das regras | `rules.md` | Rafael (valores), Roberto (nomes e unidades) | Augusto | arq. §6.3 |
+| Achievements, XP, level e Elo (F4.6; proposta #119) | `progression.md` | Rafael | Akita, Roberto, Caio | plano F4.6; `rooms.md` §2.4–§2.7 |
 | `ViewState`, `Renderer`, arquivo de Themes, `HudState`, `mountGame` | `mount-game.md` | Rafael | Augusto, Roberto, Caio | arq. §8 |
 | `RoomOptions` | `room-options.md` | Rafael | Roberto, Akita, Caio | arq. §6.4 |
 | Auth, envelope de erro, schema de usuários | `auth.md` | Augusto | Caio | arq. §9.1, §9.2, §10.3 |
