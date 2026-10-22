@@ -24,7 +24,9 @@ export type Visibility = Pick<Document, "hidden" | "addEventListener" | "removeE
 export interface GameSocketOptions {
   url: string;
   matchId: number;
-  getAccessToken: () => Promise<string>;
+  // fresh: o token da memória já foi recusado (4401). null é sessão perdida; exceção é falha
+  // passageira (rede, 429, 5xx) e só adia o join
+  getAccessToken: (fresh: boolean) => Promise<string | null>;
   onMessage: (message: ServerMessage) => void;
   onReconnecting: () => void;
   // não reconecta mais: null é o fim normal (1000), senão o code que a casca traduz
@@ -66,7 +68,7 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
 
   let ws: WebSocketLike | null = null;
   let attempt = 0;
-  let refreshed = false; // o 4401 pede token novo uma vez só por conexão aceita
+  let fresh = false; // depois de um 4401, até o próximo welcome: o token novo também recusado encerra
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -106,13 +108,18 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
   }
 
   async function join(socket: WebSocketLike): Promise<void> {
-    let token: string;
+    let token: string | null;
     try {
-      token = await options.getAccessToken();
+      token = await options.getAccessToken(fresh);
     } catch {
-      stop("unauthenticated");
+      // a sessão pode estar válida: tenta de novo com o backoff, sem encerrar a partida
+      if (socket === ws) {
+        cleanup();
+        scheduleRetry();
+      }
       return;
     }
+    if (token === null) return stop("unauthenticated");
     if (socket !== ws || socket.readyState !== OPEN) return; // fechou enquanto o token chegava
     socket.send(JSON.stringify({ v: 1, type: "join", match_id: options.matchId, token }));
   }
@@ -130,7 +137,7 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
     }
     if (message.type === "welcome") {
       attempt = 0;
-      refreshed = false;
+      fresh = false;
     }
     // o error só antecipa o close que vem em seguida; quem decide é o código do close
     if (message.type !== "error") options.onMessage(message);
@@ -142,13 +149,17 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
     if (code === NORMAL_CLOSE) return stop(null);
     if (FINAL_CODES.has(code)) return stop(codeName(code) ?? "invalid_message");
     if (code === CLOSE_CODES.unauthenticated) {
-      if (refreshed) return stop("unauthenticated");
-      refreshed = true; // o getAccessToken da casca renova o token se ele venceu
+      if (fresh) return stop("unauthenticated");
+      fresh = true; // o getAccessToken da casca renova pelo cookie de refresh
       options.onReconnecting();
       return connect();
     }
-    // 4429, 4503, 1006 e o resto: a rede ou o servidor caíram; o Grace period segura o Player.
-    // O timer vem antes do aviso: quem é avisado pode chamar close() e cancelá-lo
+    // 4429, 4503, 1006 e o resto: a rede ou o servidor caíram; o Grace period segura o Player
+    scheduleRetry();
+  }
+
+  function scheduleRetry(): void {
+    // o timer vem antes do aviso: quem é avisado pode chamar close() e cancelá-lo
     timer = setTimeout(retry, backoffMs(attempt, random));
     attempt += 1;
     options.onReconnecting();
