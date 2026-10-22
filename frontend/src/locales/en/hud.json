@@ -4,6 +4,7 @@
   "reconnecting": "Connection lost. Reconnecting…",
   "finished": "The match is over.",
   "view": "Game view",
+  "retry": "Try again",
   "stats": {
     "label": "Your status",
     "hp": "Health",

@@ -4,12 +4,12 @@ import { Link } from "react-router";
 import type { EndResult, HudState, MountedGame } from "../../game/src/index";
 import { useAuth } from "../auth/AuthContext";
 import ErrorNotice from "../components/ErrorNotice";
-import { linkClass } from "../components/styles";
+import { buttonSecondary, linkClass } from "../components/styles";
 import { createGameTokenSource } from "./gameToken";
 import Hud from "./Hud";
 import { knownReason, outcomeFor } from "./outcome";
 
-export default function Match({ matchId }: { matchId: number }) {
+export default function Match({ matchId, onRetry }: { matchId: number; onRetry: () => void }) {
   const { t } = useTranslation(["hud", "game", "lobby"]);
   const { user } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -51,6 +51,7 @@ export default function Match({ matchId }: { matchId: number }) {
   const status = loadFailed ? "error" : hud?.status ?? "connecting";
   const errorCode = loadFailed ? "asset_load_failed" : hud?.error ?? "unknown";
   const reason = end && knownReason(end.reason);
+  const outcome = end && user ? outcomeFor(end, user.id) : null;
   const over = status === "error" || status === "finished";
 
   return (
@@ -63,12 +64,19 @@ export default function Match({ matchId }: { matchId: number }) {
       {hud && (status === "running" || status === "disconnected") && <Hud hud={hud} />}
       {status === "connecting" && <p role="status">{t("connecting", { matchId })}</p>}
       {status === "disconnected" && <p role="status">{t("reconnecting")}</p>}
-      {status === "error" && <ErrorNotice failure={{ code: errorCode, requestId: null }} />}
-      {status === "finished" && !end && <p role="status">{t("finished")}</p>}
-      {/* a tela de resultado de verdade é a F7.8 */}
-      {end && user && (
+      {status === "error" && (
+        <>
+          <ErrorNotice failure={{ code: errorCode, requestId: null }} />
+          {/* remonta o jogo: reentra enquanto o Grace period segura a vaga */}
+          <button type="button" onClick={onRetry} className={`self-start ${buttonSecondary}`}>
+            {t("retry")}
+          </button>
+        </>
+      )}
+      {status === "finished" && !outcome && <p role="status">{t("finished")}</p>}
+      {outcome && (
         <div role="status" className="flex flex-col gap-1">
-          <p className="text-xl font-bold">{t(`game:outcomes.${outcomeFor(end, user.id)}`)}</p>
+          <p className="text-xl font-bold">{t(`game:outcomes.${outcome}`)}</p>
           {reason && <p>{t(`game:reasons.${reason}`)}</p>}
         </div>
       )}

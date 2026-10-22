@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -58,8 +59,8 @@ describe("montagem do jogo", () => {
     expect(old.unmounted).toBe(true);
   });
 
-  it("id inválido não monta nada", async () => {
-    await renderAt("/play/abc");
+  it.each(["/play/abc", "/play/0", "/play/0x10", "/play/1e1"])("%s não monta nada", async (path) => {
+    await renderAt(path);
     expect(await screen.findByText("Esta partida não existe mais.")).toBeInTheDocument();
     expect(mounts).toHaveLength(0);
   });
@@ -117,6 +118,18 @@ describe("status da partida", () => {
     await mounted();
     act(() => emitHud({ status: "finished" }));
     expect(await screen.findByText("A partida terminou.")).toBeInTheDocument();
+  });
+
+  it("Tentar de novo remonta o jogo", async () => {
+    const user = userEvent.setup();
+    await renderAt("/play/13");
+    const old = await mounted();
+    act(() => emitHud({ status: "error", error: "replaced" }));
+    await user.click(await screen.findByRole("button", { name: "Tentar de novo" }));
+    await waitFor(() => expect(mounts).toHaveLength(2));
+    expect(old.unmounted).toBe(true);
+    expect(activeMount()?.options.matchId).toBe(13);
+    expect(await screen.findByText("Conectando à partida #13…")).toBeInTheDocument();
   });
 });
 

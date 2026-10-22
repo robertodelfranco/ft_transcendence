@@ -4,6 +4,7 @@
   "reconnecting": "Conexão perdida. Reconectando…",
   "finished": "A partida terminou.",
   "view": "Visão do jogo",
+  "retry": "Tentar de novo",
   "stats": {
     "label": "Seu estado",
     "hp": "Vida",
