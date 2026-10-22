@@ -43,7 +43,7 @@ echo "== D3: o redirect leva a porta junto (esperado: Location: https://$HOST:84
 curl -sI -m 5 "http://$HOST:8080/" | grep -i '^location' | tr -d '\r'
 
 echo "== D5: portas internas do servidor (esperado: fechada em todas)"
-for p in 8000 5432 9090 9100 3000; do
+for p in 8000 5432 9090 9100 9187 3000; do
 	printf '  porta %-5s ' "$p"; nc -z -w 3 "$HOST" "$p" 2>/dev/null && echo "ABERTA (problema!)" || echo "fechada"
 done
 

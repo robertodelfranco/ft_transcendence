@@ -57,7 +57,7 @@ Nada aqui espera ninguém. É por onde eu começo quando algum bloqueio aparecer
 | **F8.3** compose, `.env.example`, healthchecks | a migração no `entrypoint` é a única parte que espera F5.1 |
 | **F8.2** CI | os quatro primeiros passos já existem; `pytest`/`vitest`/lint entram conforme F0.3 e F0.4 chegarem |
 | **F8.5** README esqueleto | o diagrama do schema sai do meu [rooms.md](../contracts/rooms.md) |
-| **F8.8** Prometheus + exporters | `node-exporter` e `postgres-exporter` ficam `UP` **sem** o `/metrics` do backend; só o target do backend fica `DOWN` até F8.7 |
+| **F8.8** Prometheus + exporters | compose e `prometheus.yml` são meus; os targets de host e Postgres não dependem do `/metrics` do backend |
 | **F8.9 / F8.11** Grafana provisionado e atrás do Nginx | os dashboards de host e de Postgres não dependem de ninguém |
 | **F8.10** alertas | `up == 0` do Postgres e dos exporters já dá para disparar ao vivo antes de o backend ter métrica |
 | **F8.6** demo | depende só de F8.1 |
@@ -104,7 +104,7 @@ No calendário replanejado ([replanejamento-e-board.md](../pm/replanejamento-e-b
 |---|---|
 | **S1** · até 10/10 | ✅ os 3 contratos · ✅ F0.6 issues (#27–#34) e board · ✅ **F8.1** TLS (#35) · **F8.2** CI: passo 1 (`pytest`) no PR #38, `vitest` e lint esperam F0.4 · **F5.1** Alembic quando F0.3 existir · cadastro dos apps OAuth (42 e Google) passou para a S2 |
 | **S2** · 11–17/10 | **F5.2** lobby · **F8.3** compose final com migração no `entrypoint` · **F8.4** build de produção |
-| **S3** · 18–24/10 | Nesta ordem: **F5.3** `record_match_result` (bloqueia o #91 e o "Match gravado" do C3) → **F8.8** Prometheus e `node-exporter` (destrava F8.9 e F8.11) → **F8.5** README esqueleto → **F5.6** histórico (se não couber, vai para a S4) |
+| **S3** · 18–24/10 | Nesta ordem: **F5.3** `record_match_result` (bloqueia o #91 e o "Match gravado" do C3) → ✅ **F8.8** Prometheus e exporters, 22/10 (#118; destrava F8.9 e F8.11) → **F8.5** README esqueleto → **F5.6** histórico (se não couber, vai para a S4) |
 | **S4** · 25–31/10 | Primeiro o que o teste da 42 valida em 31/10: **F6.8** só com a 42 · **F8.9** dashboards · **F8.11** acesso seguro · renovar o secret da 42 (vence em 06/11). Depois, o que não precisa da 42: **F5.4** stats → **F5.5** Elo e level → **F5.8** leaderboard, e **F5.7** conquistas quando a F4.6 do Rafael chegar. **Sáb 31/10:** teste com 2 PCs na 42 ([teste-2-pcs.md](../infra/teste-2-pcs.md), D1–D8) |
 | **S5** · 01–14/11 | O que da F5.4–F5.8 escorregar da S4, até 07/11 · **F8.6** demo (depende do resultado de 31/10) · **F8.10** alertas · **F9.1** minha parte do README · Google do F6.8 · folga para bug e revisão |
 | **S6** · 15–21/11 | bug, README fechado, ensaio |

@@ -110,14 +110,18 @@ sed -i "s|^POSTGRES_USER=.*|POSTGRES_USER=transcendence|; \
   s|^PROXY_HTTP_PORT=.*|PROXY_HTTP_PORT=8080|; s|^PROXY_HTTPS_PORT=.*|PROXY_HTTPS_PORT=8443|" .env
 grep -E '^(PUBLIC_HOST|PROXY_)' .env
 cp ../certs/cert.pem ../certs/key.pem proxy/certs/
+stat -c '%a %n' monitoring/prometheus/prometheus.yml
 docker compose up -d --build --wait --wait-timeout 300
 docker compose ps -a
+docker compose exec prometheus wget -qO- localhost:9090/api/v1/targets | grep -o '"health":"[a-z]*"'
 ```
 
 **Esperado:**
 - o `grep` mostra `PUBLIC_HOST=<seu-host>:8443`, `PROXY_HTTP_PORT=8080` e `PROXY_HTTPS_PORT=8443`
 - o `up` termina sem erro em 1–2 min
-- `db`, `backend`, `frontend` e `proxy` aparecem `Up`, e **só o `proxy`** tem `0.0.0.0:...` na coluna de portas
+- o `stat` mostra `644` (com `600`, o Prometheus do rootless não lê o arquivo: rode `chmod -R go+rX monitoring` e suba de novo)
+- `db`, `backend`, `frontend`, `proxy`, `prometheus`, `node-exporter` e `postgres-exporter` aparecem `Up`, e **só o `proxy`** tem `0.0.0.0:...` na coluna de portas
+- o último comando mostra `"health":"up"` três vezes (backend, node e postgres). Logo depois do `up`, um deles pode aparecer `unknown`: espere 15 s e repita
 
 As portas são 8080/8443 porque o Docker rootless da 42 não abre portas abaixo de 1024 (80 e 443 falham). Se o `up` falhar, rode `docker compose logs backend proxy | tail -50` e mande a saída para o Akita.
 
@@ -192,7 +196,7 @@ cp /sgoinfre/<login-do-servidor>/teste-2-pcs/rootCA.pem /sgoinfre/<login-do-serv
 | D1 HTTP | `301` nos três | **o firewall deixa um PC falar com o outro** |
 | D3 | `200` em todas as linhas | TLS validado pela CA e a stack respondendo |
 | D3 redirect | `Location: https://<HOST>:8443/` | o redirect mantém a porta |
-| D5 | `fechada` em 8000, 5432, 9090, 9100 e 3000 | só o proxy está exposto |
+| D5 | `fechada` em 8000, 5432, 9090, 9100, 9187 e 3000 | só o proxy está exposto |
 | D4 | **`401`** (não `429`) | a trava do PC A não pegou o PC B: rate limit por IP real |
 
 ### 2.3 Chrome

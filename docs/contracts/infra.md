@@ -1,6 +1,6 @@
 # Contrato: rotas, host, TLS e `.env` (`infra.md`)
 
-**Estado:** proposta para a reunião de 12/10; as decisões 11 e 12 foram tomadas em 08/10; em 10/10, sincronizado com as decisões 1 e 6 de [auth.md](auth.md) (OAuth com a 42 e o Google, cookie com `Path=/api/auth`). Em 19/10, o teste num PC da 42 ([resultados de 17/10](../infra/resultados-teste-pc-42-2026-10-17.md)) entrou na §2.1, na §2.4, na §2.6 e no "Em aberto" 1. **Escreve:** Akita. **Assina:** todos — é o contrato que diz o que acontece com uma requisição antes de ela chegar ao código de qualquer um.
+**Estado:** proposta para a reunião de 12/10; as decisões 11 e 12 foram tomadas em 08/10; em 10/10, sincronizado com as decisões 1 e 6 de [auth.md](auth.md) (OAuth com a 42 e o Google, cookie com `Path=/api/auth`). Em 19/10, o teste num PC da 42 ([resultados de 17/10](../infra/resultados-teste-pc-42-2026-10-17.md)) entrou na §2.1, na §2.4, na §2.6 e no "Em aberto" 1. Em 22/10, a F8.8 entrou na §2.1, na §2.6 e na decisão 17. **Escreve:** Akita. **Assina:** todos — é o contrato que diz o que acontece com uma requisição antes de ela chegar ao código de qualquer um.
 
 ## 1. Para que serve
 
@@ -18,12 +18,12 @@ Um `docker compose up` sobe tudo (requisito do subject, cap. III). Todos na rede
 | `frontend` | `./frontend` | — | build estático do React servido por nginx |
 | `backend` | `./backend` | — | FastAPI, `uvicorn`, **um worker** |
 | `db` | `postgres:16-alpine` | — | volume `db_data` |
-| `prometheus` | `prom/prometheus` | — | scrape e regras de alerta; volume de dados |
+| `prometheus` | `prom/prometheus:v3.13.5` (LTS) | — | scrape e regras de alerta; volume `prom_data` |
 | `grafana` | `grafana/grafana` | — | datasource e dashboards provisionados por arquivo |
-| `node-exporter` | `prom/node-exporter` | — | métricas de host |
-| `postgres-exporter` | `prometheuscommunity/postgres-exporter` | — | métricas do Postgres |
+| `node-exporter` | `prom/node-exporter:v1.12.1` | — | métricas de host |
+| `postgres-exporter` | `prometheuscommunity/postgres-exporter:v0.20.1` | — | métricas do Postgres |
 
-Nenhum serviço além do `proxy` publica porta. É isso que torna `/metrics`, o Prometheus e os exporters inalcançáveis de fora, sem nenhuma regra de firewall (§4, decisão 6).
+As imagens de monitoring têm versão fixa, para o PC da 42 baixar a mesma que o CI testou. Nenhum serviço além do `proxy` publica porta. É isso que torna `/metrics`, o Prometheus e os exporters inalcançáveis de fora, sem nenhuma regra de firewall (§4, decisão 6).
 
 ### 2.2 Mapa de URLs
 
@@ -127,7 +127,12 @@ postgres-exporter:9187 ───┘   (alerts.yml)
 - Os nomes e as labels das métricas do backend são contrato do Augusto (`app/core/metrics.py`, F8.7, arq. §12.1). Os dashboards de host e Postgres não dependem dele e sobem antes.
 - Grafana: `serve_from_sub_path` ligado, admin do `.env`, anônimo e signup desligados.
 - Host só pelo `node-exporter`, sem cAdvisor: os dois funcionaram no PC da 42 em 17/10, mas o cAdvisor no rootless precisa dos sockets em `/run/user/$UID` e do `data-root` de cada usuário, caminhos que mudam por login e por PC.
-- Retenção curta: `7d` ou `500MB`, o que vier primeiro (`PROM_RETENTION_TIME` e `PROM_RETENTION_SIZE`, §4 decisão 14). É demo local, não observabilidade de produção.
+- Retenção curta: `7d` ou `500MB`, o que vier primeiro (`PROM_RETENTION_TIME` e `PROM_RETENTION_SIZE`, §4 decisão 14). É demo local, não observabilidade de produção. As duas chegam às flags `--storage.tsdb.retention.*` pelo `command:` do compose, com `:-7d` e `:-500MB` como padrão, porque um `.env` sem essas chaves (o do CI) daria flag vazia.
+- `prometheus.yml` (F8.8): `scrape_interval: 15s` e três jobs pelo nome de serviço: `backend` (`backend:8000`, `/metrics`), `node` (`node-exporter:9100`) e `postgres` (`postgres-exporter:9187`). O `rule_files` entra com o `alerts.yml` da F8.10. A pasta `monitoring/prometheus/` é montada inteira em `/etc/prometheus`, só leitura.
+- `node-exporter` com as montagens testadas no rootless da 42: `pid: host`, `/proc`, `/sys` e `/` em `/host/proc`, `/host/sys` e `/rootfs`, todas só leitura. Nenhum caminho depende do usuário. O `--collector.filesystem.mount-points-exclude` repete o padrão da imagem e acrescenta `/run/user`, que o WSL monta duas vezes: sem isso, cada scrape grava um `ERROR` de série duplicada no log.
+- **O tráfego de rede do `node-exporter` é o do container, não o do host.** As interfaces listadas vêm do `/sys` do host, mas os contadores (`node_network_*_bytes_total`, `netstat`, `sockstat`) vêm do `/proc/net`, que aponta para `self/net`, o namespace de rede do próprio exporter. Em 22/10, no WSL, o `eth0` mostrava 13 KB recebidos contra 2,1 GB no host. A correção de praxe, `network_mode: host`, tira o exporter da rede `transcendence` e abre a 9100 no host, o que quebra a §2.1. Por isso o dashboard Host da F8.9 fica sem painel de rede: CPU, memória, load, disco e sistema de arquivos são do host e estão certos.
+- `postgres-exporter` entra no banco com o `POSTGRES_USER` (§4, decisão 17).
+- No rootless, o Prometheus roda como `nobody`, que no host é um subuid: ele só lê o `prometheus.yml` se o arquivo der leitura para outros (`644`). Um clone feito com umask `077` impede o Prometheus de subir.
 
 ### 2.7 O que o CI roda a cada PR
 
@@ -240,6 +245,7 @@ cp "$(mkcert -CAROOT)/rootCA.pem" .          # levar para as outras máquinas
 14. **Retenção do Prometheus: `7d` ou `500MB`, o que vier primeiro.** Sete dias cobrem uma semana de desenvolvimento e a comparação entre dois ensaios. O teto de tamanho protege a cota do home nos PCs da 42 se alguma métrica gerar séries demais (uma label com `user_id`, que a arq. §12.1 proíbe, mas por engano). Na demo, `down -v` zera tudo de qualquer forma.
 15. **Dashboards próprios e pequenos.** Três, todos nossos: Jogo e backend, Host, Postgres, com uns 5–6 painéis cada, montados na UI, exportados em JSON e versionados em `monitoring/grafana/provisioning/dashboards/`. O subject cobra dashboards *custom*, e cada painel precisa de uma consulta que alguém explique na defesa. Os da comunidade (Node Exporter Full, por exemplo) têm dezenas de painéis e usam `${DS_PROMETHEUS}`, que quebra no provisioning por arquivo.
 16. **Alertas no Prometheus, sem Alertmanager.** `monitoring/prometheus/alerts.yml` em PromQL puro (primeiro `up == 0` dos exporters e do backend, depois a latência do tick), visto em *firing* na página `/alerts` do Prometheus e na lista de alertas do Grafana, como regra do datasource. O subject cobra regras de alerta, não notificação; um Alertmanager com webhook seria mais um serviço, mais um segredo e um serviço externo na demo. Disparo ao vivo: `docker compose stop postgres-exporter`.
+17. **O `postgres-exporter` usa o `POSTGRES_USER`, e não um role só-leitura.** Um role `pg_monitor` precisaria de um script em `docker-entrypoint-initdb.d`, que só roda num volume vazio: o `db_data` de quem já tem dados nunca o receberia, e a alternativa seria uma migração do Alembic criando um role, o que mistura infra com schema. O risco fica contido pela topologia: o exporter não publica porta e só a rede interna o alcança. Usuário, senha e host vão em `DATA_SOURCE_USER`, `DATA_SOURCE_PASS` e `DATA_SOURCE_URI`, interpolados do `.env` pelo compose. Com a senha fora da URI, ela não precisa de URL-encoding. Se um dia valer a pena, o caminho é criar o role `pg_monitor` e trocar só essas três variáveis.
 
 ## 5. Em aberto
 
