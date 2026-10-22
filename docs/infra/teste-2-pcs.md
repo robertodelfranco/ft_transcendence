@@ -2,7 +2,7 @@
 
 > Fecha o que o [teste de 17/10](resultados-teste-pc-42-2026-10-17.md) não conseguiu provar com uma máquina só: **outro PC da 42 alcança a stack, vê o cadeado limpo e o rate limit separa os clientes por IP.** Escrito para qualquer pessoa do time seguir sem contexto prévio. Precisa de **2 pessoas, 2 PCs da 42 e uns 40 min** (25 no servidor, 15 no cliente).
 >
-> **Prazo:** antes do C3 (sex 23/10), que é o primeiro checkpoint com duas máquinas. Se ninguém conseguir até lá, o Akita faz em 24–25/10.
+> **Data:** sábado, 31/10, com o Akita no servidor. Ninguém do time vai à 42 antes do C3 (sex 23/10), então o C3 mostra as duas máquinas fora da rede da 42, e a validação dentro dela fica para este dia. Como o teste vem depois do C4 (30/10), ele também cobre o que a S4 entregar: login pela 42, Grafana e co-op entre os dois PCs ([Parte 3](#parte-3-o-que-a-s4-entregou)). Com isso, a sessão passa de 40 min para cerca de 1h30.
 
 ## Por que importa
 
@@ -213,18 +213,63 @@ cp /sgoinfre/<login-do-servidor>/teste-2-pcs/rootCA.pem /sgoinfre/<login-do-serv
 | e | `https://<HOST>:8443/assets/map/dungeon_wall_1.png` | a textura de uma parede |
 | f | `http://<HOST>:8080/` (http, sem s) | vai sozinho para `https://<HOST>:8443/` |
 
-**Console:** enquanto a F6.3 (`/api/auth/refresh`, do Augusto) não estiver na `main`, aparece um `POST /api/auth/refresh 404` a cada carregamento. **É esperado e não é infra.** Qualquer outra coisa vermelha ou amarela vale anotar e mandar print.
+**Console:** a F6.3 (`/api/auth/refresh`, do Augusto) entrou na `main` em 21/10 (#131), então o `POST /api/auth/refresh 404` não deve mais aparecer. Qualquer coisa vermelha ou amarela vale anotar e mandar print.
 
 ### 2.4 Desfazer no PC B
 
 1. Volte em `chrome://settings/certificates` → **Certificados locais** → **Personalizado** → **Instalados por você** → **Certificados confiáveis**, ache "mkcert development CA" e clique em **Excluir**. No Chrome antigo, é a aba **Autoridades**, item "org-mkcert development CA".
 2. Apague a pasta: `rm -rf ~/teste-2-pcs`.
 
+> Se for fazer a Parte 3, deixe o 2.4 para o fim: ela usa a mesma CA no Chrome do PC B.
+
 ---
 
-## Parte 3: registrar
+## Parte 3: o que a S4 entregou
 
-Preencha a tabela "Pendente 2º PC" em [resultados-teste-pc-42-2026-10-17.md](resultados-teste-pc-42-2026-10-17.md#pendente-2º-pc) com data, PCs (o servidor e o cliente, e se eram do mesmo cluster) e o resultado de cada item. Cole o `saida.txt` no fim do arquivo. Depois, abra PR seguindo o fluxo do README.
+Cada item só entra se a tarefa estiver na `main` em 30/10. O que não estiver fica como "não testado" na tabela e não bloqueia o resto. Use a mesma janela anônima do 2.3 no PC B.
+
+### 3.1 D6: login pela 42 de outro PC (F6.8)
+
+**Antes, no PC A:**
+1. No app da intra (perfil do Akita), acrescente a URL de retorno `https://<HOST>:8443/api/auth/oauth/42/callback`, com o `HOST` do 1.1. O backend monta essa URL a partir do `PUBLIC_HOST`, então host e porta precisam ser exatamente esses.
+2. Preencha `FT_CLIENT_ID` e `FT_CLIENT_SECRET` no `.env` do 1.6, com o secret já renovado (o antigo vence em 06/11), e rode `docker compose up -d` de novo.
+
+**No PC B:** abra `https://<HOST>:8443/login`, clique no botão da 42 e autorize na intra.
+
+**Esperado:** a intra devolve para `https://<HOST>:8443/` já logado, e o console fica limpo durante todo o caminho.
+
+### 3.2 D7: Grafana de outro PC (F8.11)
+
+**No PC B:**
+1. Abra `https://<HOST>:8443/grafana/`. **Esperado:** a tela de login do Grafana, com cadeado limpo e sem CSS quebrado.
+2. No terminal, sem login:
+   ```bash
+   curl -s --cacert ~/teste-2-pcs/rootCA.pem -o /dev/null -w '%{http_code}\n' "https://<HOST>:8443/grafana/api/dashboards/home"
+   ```
+   **Esperado:** `401`.
+3. Entre com o admin do `.env` do PC A. **Esperado:** os dashboards aparecem, com dados.
+
+As portas 9090 e 3000 fechadas já estão no D5.
+
+### 3.3 D8: co-op entre os dois PCs (critério do C3)
+
+1. No PC A e no PC B, cada pessoa entra com a própria conta (cadastro ou 42).
+2. O PC A cria uma Room no lobby. **Esperado:** ela aparece no lobby do PC B sem recarregar a página.
+3. O PC B entra na Room, os dois marcam pronto e o PC A inicia. **Esperado:** `/play` abre nos dois.
+4. Cada um anda pela masmorra. **Esperado:** cada um vê o outro se mexer sem teleporte. No DevTools, aba **Network** → **WS**, a conexão é `wss://<HOST>:8443/...`.
+5. Joguem até o fim (boss morto ou todos mortos). **Esperado:** no PC A,
+   ```bash
+   docker compose exec db psql -U transcendence -d transcendence -c "select status, created_at from matches order by created_at desc limit 3"
+   ```
+   mostra a partida como `finished`.
+
+O console precisa ficar limpo nos dois PCs do começo ao fim.
+
+---
+
+## Parte 4: registrar
+
+Preencha a tabela "Pendente 2º PC" em [resultados-teste-pc-42-2026-10-17.md](resultados-teste-pc-42-2026-10-17.md#pendente-2º-pc) com data, PCs (o servidor e o cliente, e se eram do mesmo cluster) e o resultado de cada item. Acrescente as linhas D6, D7 e D8 da Parte 3. Cole o `saida.txt` no fim do arquivo. Depois, abra PR seguindo o fluxo do README.
 
 ## Se algo falhar
 
@@ -238,6 +283,10 @@ Preencha a tabela "Pendente 2º PC" em [resultados-teste-pc-42-2026-10-17.md](re
 | D4 com `429` | o 1.4 não foi aplicado, ou o PC A travou o login pelo `localhost` em vez do `$HOST` | No PC A: `ps -eo args \| grep -o -- '--port-driver=[a-z0-9]*'` deve dizer `slirp4netns`; no log do 1.9, o IP do PC B deve aparecer |
 | D5 com porta `ABERTA` | algo além do proxy está publicando porta | No PC A: `docker compose ps` e anote qual serviço |
 | Chrome mostra aviso de certificado | CA não importada, Chrome não reiniciado, ou o nome não está no SAN | Refazer o 2.3 fechando todas as janelas; conferir o SAN no PC A |
+| D6: a intra recusa a URL de retorno | a URL cadastrada no app não bate com o `PUBLIC_HOST` (host ou porta) | Conferir o 3.1, passo 1, contra o `grep PUBLIC_HOST .env` do PC A |
+| D6: volta da intra para `/login?error=...` | secret errado ou vencido, ou o cookie `oauth_state` se perdeu | No PC A: `docker compose logs backend \| tail -50` |
+| D7: `502` ou página sem CSS em `/grafana/` | Grafana fora do ar, ou a URL raiz dele não bate com o `PUBLIC_HOST` | No PC A: `docker compose ps grafana` e `docker compose logs grafana \| tail -50` |
+| D8: o lobby não atualiza ou o `/play` não conecta | o `/ws/app` ou o `/ws/game` caiu (é a mesma porta da D1, então não é rede) | Print do Console e da aba WS nos dois PCs; no PC A, `docker compose logs backend \| tail -50` |
 
 ## Limpeza
 
