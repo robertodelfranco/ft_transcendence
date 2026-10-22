@@ -25,7 +25,21 @@ Manter **2 sombras como orçamento inicial** é coerente com esta amostra: 4 aum
 
 Com **2 sombras e pixel ratio 2**, o mesmo viewport usa resolução interna 2560 × 1440: **25,95 fps**, intervalo p95 **50 ms**, CPU de render p50/p95 **1,90/3,40 ms**. O resultado sugere custo associado à resolução/GPU; não houve medição direta de tempo de GPU para atribuir o custo a uma passagem específica.
 
-**Pendência:** a configuração atual permite pixel ratio até 2. A meta de 60 fps não está comprovada nesse modo Retina. Foi proposta a Rafael a limitação inicial a pixel ratio 1, que reduz a resolução interna em telas Retina, para revisão antes de qualquer alteração. Não foi aplicada nesta rodada.
+**Ajuste final autorizado por Rafael:** pixel ratio interno fixo em 1, inclusive quando `window.devicePixelRatio = 2`. Reduz a resolução interna em telas Retina; não é uma promessa de manter nitidez física nativa com o mesmo custo.
+
+Após a alteração de `resize`, o teste foi repetido em uma nova instância do Chrome com device pixel ratio 2, mesmo viewport 1280 × 720 e duas sombras:
+
+| Verificação | Resultado final |
+|---|---|
+| Pixel ratio informado pelo navegador | 2 |
+| Pixel ratio interno do Renderer | 1 |
+| Canvas e buffers do compositor | 1280 × 720 |
+| FPS médio, 481 quadros | 60,00 |
+| Intervalo p95 | 16,80 ms |
+| CPU de render p50 / p95 | 2,00 / 5,10 ms |
+| Chamadas de desenho | 138 |
+
+Build e lint passaram novamente após o ajuste. Os 321 testes da rodada anterior não foram repetidos, pois a única mudança de código foi a constante de resolução; o comportamento atualizado foi exercitado no navegador. A nova instância isolada foi encerrada ao final. Este resultado cobre o cenário descrito, não toda resolução ou máquina.
 
 ## Verificações executadas
 
@@ -47,4 +61,4 @@ A instância isolada do Chrome foi encerrada ao final. Nenhum servidor do usuár
 
 Rafael já confirmou a conferência visual de tochas/sombras/névoa, partículas e correção da mão. A aceitação visual em janela normal não substitui as medições; o ajuste do halo dos Enemies ainda merece conferência explícita na configuração final.
 
-O fechamento técnico da #145 ainda depende da decisão de resolução interna e da aceitação dos limites registrados. A validação completa de performance/memória com 10 Projectiles, partidas reais e dez trocas de Room continua pertencendo à F3.10.
+Com a decisão de resolução interna autorizada e verificada, a implementação da #145 está pronta para revisão de PR. A validação completa de performance/memória com 10 Projectiles, partidas reais e dez trocas de Room continua pertencendo à F3.10. O resultado não resolve nem oculta as observações de memória acima; elas devem acompanhar a revisão e a próxima tarefa.

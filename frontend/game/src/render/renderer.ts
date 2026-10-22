@@ -186,7 +186,8 @@ export class ThreeRenderer implements Renderer {
 
   resize(width: number, height: number): void {
     if (this.disposed || !this.camera || width <= 0 || height <= 0) return;
-    const pixelRatio = Math.min(window.devicePixelRatio, 2);
+    // Orçamento inicial F3.5: Retina a 2 ficou abaixo da meta nas medições locais.
+    const pixelRatio = 1;
     this.renderer.setPixelRatio(pixelRatio);
     this.renderer.setSize(width, height, false);
     if (this.composer) {
