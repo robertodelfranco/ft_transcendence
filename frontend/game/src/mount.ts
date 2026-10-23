@@ -2,6 +2,7 @@
 // O Renderer chega por fábrica: o laço não conhece Three.js, e os testes usam um falso.
 import type { EndResult, HudState, HudStatus, MountedGame, MountOptions } from "./api";
 import { captureInput } from "./net/input";
+import { createInterpolator, type Interpolator } from "./net/interpolation";
 import { createPredictionLoop } from "./net/predictionLoop";
 import { createGameSocket, type WebSocketFactory } from "./net/socket";
 import { buildHud, buildViewState, createGridTracker, emptyHud, type Killfeed,
@@ -35,6 +36,7 @@ export function createMountGame(deps: GameDeps) {
   return function mountGame(canvas: HTMLCanvasElement, opts: MountOptions): MountedGame {
     let welcome: WelcomeMessage | null = null;
     let trackGrid: ((delta: GridCell[]) => string[]) | null = null;
+    let interpolator: Interpolator | null = null;
     let snapshot: Snapshot | null = null;
     let view: ViewState | null = null;
     let killfeed: Killfeed = [];
@@ -126,6 +128,7 @@ export function createMountGame(deps: GameDeps) {
     function onWelcome(message: WelcomeMessage): void {
       welcome = message;
       trackGrid = createGridTracker(message.map.grid);
+      interpolator = createInterpolator(message.user_id); // cada Reconnection começa um buffer novo
       try {
         loop.start(message);
       } catch {
@@ -157,6 +160,7 @@ export function createMountGame(deps: GameDeps) {
       if (welcome === null || trackGrid === null) return;
       // O Snapshot abastece o mundo e a HUD; o frame aplica a pose prevista do Player local.
       view = buildViewState(next, trackGrid(next.grid_delta), welcome.user_id, welcome.room.mode);
+      interpolator?.push(next, performance.now()); // o mesmo relógio do nowMs do rAF
       snapshot = next;
     }
 
@@ -204,7 +208,9 @@ export function createMountGame(deps: GameDeps) {
           } : view.camera,
         };
 
-        renderer.render(drawing, dtS);
+        // os outros, os Enemies, o Boss e os Projectiles a now − 100 ms (F2.8)
+        const others = interpolator?.sample(nowMs) ?? null;
+        renderer.render(others === null ? drawing : { ...drawing, ...others }, dtS);
       }
     }
 

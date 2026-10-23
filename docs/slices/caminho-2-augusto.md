@@ -76,7 +76,7 @@ Cada linha existe porque, mal entendida, faz duas pessoas escreverem a mesma coi
 | Modelos e schema de `users`, `refresh_tokens`, `oauth_accounts`, `friendships` | **Sim** | Eu escrevo os modelos (`app/auth/models.py`, na `main`); a migração `0001_initial` é do Akita, a partir deles; o Caio implementa as rotas de amigos por cima de `friendships` |
 | `Base` do SQLAlchemy (`app/db/base.py`) | **Sim** | É compartilhada: as tabelas de partidas (F5) do Akita herdam dela |
 | Sessão de banco (`DbSession`) e Alembic | **Não** | Akita (F5.1) |
-| `record_match_result` | **Não** | Akita (F5.3). Eu **chamo** a função uma vez no `game_over` (F2.9), e a Room emite os `achievement_unlocked` que ela devolve |
+| `record_match_result` | **Não** | Akita (F5.3, `app/matches/results.py`). Eu **chamo** a função uma vez no `game_over` (F2.9), e a Room emite os `achievement_unlocked` que ela devolve; no `_abort`, chamo `abort_unfinished(match_id)` ([rooms.md](../contracts/rooms.md) §2.5) |
 | Emissão de tokens no login por OAuth (Google e 42) | **Sim**, reusada | O fluxo OAuth (F6.8) é do Akita; ele chama a mesma `issue_tokens` que eu escrevo em F6.2. O contrato das rotas, do vínculo de contas e do idioma está no meu `auth.md` §2.8 |
 | Interface do `RoomManager` que implemento | Segue **`rooms.md`** (Akita) | Com `set_ready`, `list_open`, `room_of` e `avatar_url` no `join` (decisão D-A do Akita, 10/10) |
 | Funções de publicação do lobby | **Sim**, a função; quem chama é o Akita | `publish_lobby_update(manager, info)` e as outras duas recebem o manager como primeiro argumento ([ws-manager.md](../contracts/ws-manager.md) §2.5) |
@@ -154,7 +154,7 @@ Todas decididas e escritas no [auth.md](../contracts/auth.md) §4 (número da de
 | §2.9 | `4403`, `4404` e `4409` não reconectam | `ws-manager.md` §2.9 |
 | `join` em Room ainda no lobby | fecha com `4404` | proposta do Akita; falta o Roberto registrar no `ws-messages.md` |
 | `step` que falha 30 Ticks seguidos | fecha com `4503` e o Match vira `aborted` | decisão do Akita; falta registrar no `ws-messages.md` |
-| `achievement_unlocked` | `record_match_result` devolve a lista e a Room emite | `rooms.md`, "Em aberto" 4 |
+| `achievement_unlocked` | `record_match_result` devolve a lista e a Room emite (fechado em 21/10, na F5.3) | `rooms.md` §2.5 e "Em aberto" 4 |
 
 ### Decididas em 16/10, na F2.1 parte 2
 
