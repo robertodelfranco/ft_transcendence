@@ -266,6 +266,8 @@ Fechar FOV e política de resize com documentação oficial e teste visual: o va
 
 ### 5.5 HUD, eventos e término — Render, Netcode e Web
 
+**F4.3 (22/10/2026):** a proposta de apresentação, prioridades, estados por Mode e roteiro de aceite está em [hud.md](hud.md). Aguarda revisão de Caio e Augusto; não altera `HudState` nem resolve por aprovação implícita as pendências abaixo.
+
 - **Placar:** decidido em 06/10: a HUD usa a lista do protocolo (§2.6).
 - **Unidades/atualização:** propor `ping` em ms; fechar frequência do `onHud` e valores antes do `welcome`.
 - **Feed:** `player_died` alimenta `{by, victim: player_id, tick}`. A forma atual não representa Kills de Enemy/Boss; decidir se o feed mostra só eliminações de Player ou precisa de uma união de tipos. Duração e limite de linhas também faltam.

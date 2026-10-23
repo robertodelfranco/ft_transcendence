@@ -40,6 +40,8 @@ O inventário de F3.1 no plano §5 cita C2, mas o plano §6 exige a masmorra em 
 
 Em F4.2 e F4.7, sou responsável pelos valores e pelo balanceamento. O Roberto mantém nomes, unidades e a coerência com Simulation/Prediction; revisa as mudanças de `rules.*`. Limites escolhidos na criação da Room ficam em `room-options.md`.
 
+**F4.3 — atualização de 22/10/2026:** [especificação da HUD](../contracts/hud.md) preparada como proposta para revisão de Caio e Augusto. Define composição, recursos, morte/respawn, conexão, placar, feed e término sem mudar o contrato de dados. Revisão dos consumidores e validação da F7.6 ainda pendentes.
+
 ### F0 e F9 — compartilhados
 
 F0.2: publicar e revisar meus contratos com os consumidores. F0.4 é do Caio; combino com ele a integração de `frontend/game/`. F9.1: minha parte do README, com features, módulos, contribuição e desafios. F9.2: ensaio com código aberto e uma modificação rápida na minha parte.
