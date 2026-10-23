@@ -11,5 +11,14 @@
   "themes": {
     "dungeon": "Masmorra",
     "sewer": "Esgoto"
+  },
+  "outcomes": { "win": "Vitória!", "loss": "Derrota", "draw": "Empate" },
+  "reasons": {
+    "boss_defeated": "O Boss foi derrotado.",
+    "all_dead": "Todos os jogadores morreram.",
+    "frag_limit": "Um jogador chegou ao limite de Frags.",
+    "time_limit": "O tempo acabou.",
+    "forfeit": "A partida terminou por abandono.",
+    "server_shutdown": "O servidor foi reiniciado."
   }
 }

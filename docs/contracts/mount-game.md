@@ -106,7 +106,7 @@ export interface HudState {
 }
 export interface MountOptions {
   matchId: number;
-  getAccessToken: () => Promise<string>;
+  getAccessToken: (fresh: boolean) => Promise<string | null>;
   onHud: (hud: HudState) => void;
   onEnd: (result: {
     result: "win" | "loss" | "draw"; winnerIds: number[]; reason: string;
@@ -129,7 +129,7 @@ export declare function mountGame(
 | `scoreboard` | `null` no `coop`; no `pvp`, a lista de Frags por Player em ordem de placar e `timeLeftS` em segundos |
 | `killfeed` | Eliminações de Player; `by` pode ser `null`, `victim` é `user_id`, `tick` é Tick da Room |
 | `status`, `error` | Estado da integração e código traduzido pela casca |
-| `getAccessToken` | A casca entrega o token ao jogo quando solicitado |
+| `getAccessToken` | A casca entrega o token a cada `join`. `fresh = true` só depois de um `4401`, até o próximo `welcome`: o token da memória foi recusado, renovar pelo refresh. `null` é sessão perdida (o jogo para com `unauthenticated`); exceção é falha passageira (rede, `429`, `5xx`) e o jogo tenta de novo com o backoff, sem encerrar a partida. Mesmo contrato do `/ws/app` |
 | `onHud`, `onEnd` | Callbacks de atualização de HUD e término |
 | `wsUrl` | Opcional; padrão `wss://<host>/ws/game/<matchId>` |
 
@@ -174,6 +174,7 @@ Para a cena de desenvolvimento, usar [snapshot.example.json](snapshot.example.js
 - **Animação local, regra no servidor.** Terminar um clipe não aplica dano nem encerra a partida.
 - **Map e Theme separados.** A mesma grade pode mudar de aparência sem mudar a Simulation.
 - **HUD na casca.** Texto e tradução ficam na Web; o Renderer permanece independente de React.
+- **`getAccessToken(fresh)` separa sessão perdida de falha passageira.** Decidido em 22/10 (#147), na revisão da #138: antes, qualquer exceção do refresh encerrava a partida, e o rate limit do refresh (compartilhado no NAT do campus) derrubava quem ainda tinha sessão. O getter antigo, `() => Promise<string>`, continua compatível.
 - **Assinaturas copiadas da arquitetura.** `matchId` e `players[].id` mantêm os nomes publicados; sua identidade continua sendo `match_id` e `user_id`.
 
 ## 5. Em aberto
@@ -264,6 +265,8 @@ Propostas a testar: câmera a 0,5 unidade do chão; Enemy e outro Player com alt
 Fechar FOV e política de resize com documentação oficial e teste visual: o valor horizontal do Cub3D não deve ser copiado diretamente para o FOV vertical da câmera. Confirmar Spawn `N` olhando para cima da grade e parede a leste aparecendo à direita. Esses testes não foram executados nesta preparação.
 
 ### 5.5 HUD, eventos e término — Render, Netcode e Web
+
+**F4.3 (22/10/2026):** a proposta de apresentação, prioridades, estados por Mode e roteiro de aceite está em [hud.md](hud.md). Aguarda revisão de Caio e Augusto; não altera `HudState` nem resolve por aprovação implícita as pendências abaixo.
 
 - **Placar:** decidido em 06/10: a HUD usa a lista do protocolo (§2.6).
 - **Unidades/atualização:** propor `ping` em ms; fechar frequência do `onHud` e valores antes do `welcome`.

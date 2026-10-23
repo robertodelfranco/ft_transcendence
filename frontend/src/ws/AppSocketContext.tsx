@@ -2,9 +2,9 @@ import {
   createContext, useCallback, useContext, useEffect, useEffectEvent, useMemo, useRef, useState,
   type ReactNode,
 } from "react";
-import { refreshSession, reportSessionLost } from "../api/client";
+import { reportSessionLost } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { getAccessToken } from "../auth/token";
+import { socketToken } from "../auth/socketToken";
 import { appSocketUrl, createAppSocket, type AppServerMessage, type AppSocketError } from "./appSocket";
 
 // connecting: até o primeiro welcome · online: welcome recebido · reconnecting: caiu e está voltando ·
@@ -21,14 +21,6 @@ interface AppSocketContextValue {
 
 const AppSocketContext = createContext<AppSocketContextValue | null>(null);
 
-// Depois de um 4401, o token da memória já foi recusado: pede outro pelo cookie de refresh
-async function tokenFor(fresh: boolean): Promise<string | null> {
-  if (!fresh)
-    return getAccessToken();
-  const auth = await refreshSession();
-  return auth?.access_token ?? null;
-}
-
 export function AppSocketProvider({ children }: { children: ReactNode }) {
   const { status: authStatus } = useAuth();
   const [socketStatus, setSocketStatus] = useState<AppSocketStatus>("connecting");
@@ -43,7 +35,7 @@ export function AppSocketProvider({ children }: { children: ReactNode }) {
       return;
     const socket = createAppSocket({
       url: appSocketUrl(),
-      getAccessToken: tokenFor,
+      getAccessToken: socketToken,
       onMessage: (message) => {
         if (message.type === "welcome")
           setSocketStatus("online");

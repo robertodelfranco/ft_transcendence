@@ -33,7 +33,8 @@ let received: ServerMessage[];
 let closed: Array<ErrorCode | null>;
 let reconnecting: number;
 let visibility: FakeVisibility;
-let tokens: string[];
+let tokens: Array<string | null | Error>; // Error: o getter lança
+let asked: boolean[]; // o fresh de cada pedido de token
 let socket: GameSocket;
 
 const last = () => sockets[sockets.length - 1];
@@ -47,9 +48,15 @@ beforeEach(() => {
   reconnecting = 0;
   visibility = new FakeVisibility();
   tokens = ["token-1", "token-2"];
+  asked = [];
   socket = createGameSocket({
     url: "wss://test/ws/game/12", matchId: 12,
-    getAccessToken: async () => tokens.shift() ?? "token-n",
+    getAccessToken: async (fresh) => {
+      asked.push(fresh);
+      const token = tokens.length > 0 ? tokens.shift()! : "token-n";
+      if (token instanceof Error) throw token;
+      return token;
+    },
     onMessage: (message) => received.push(message),
     onReconnecting: () => { reconnecting += 1; },
     onClosed: (error) => closed.push(error),
@@ -130,6 +137,81 @@ test("4401 asks for a new token once and reconnects right away", async () => {
   expect(JSON.parse(last().sent[0]).token).toBe("token-2");
   last().drop(4401);
   expect(closed).toEqual(["unauthenticated"]);
+});
+
+test("only a 4401 asks for a fresh token, until the next welcome", async () => {
+  last().open();
+  await flush();
+  last().drop(4503); // queda comum: o token da memória ainda vale
+  await vi.advanceTimersByTimeAsync(1000);
+  last().open();
+  await flush();
+  last().drop(4401);
+  last().open();
+  await flush();
+  last().receive({ v: 1, type: "welcome" });
+  last().drop(1006);
+  await vi.advanceTimersByTimeAsync(1000);
+  last().open();
+  await flush();
+  expect(asked).toEqual([false, false, true, false]);
+});
+
+test("a null token is a lost session and stops", async () => {
+  tokens = [null];
+  last().open();
+  await flush();
+  expect(closed).toEqual(["unauthenticated"]);
+  expect(last().sent).toEqual([]);
+  expect(last().closedWith).toBe(1000);
+});
+
+test("a token that fails is retried with the backoff, not a lost session", async () => {
+  tokens = [new Error("503"), "token-2"];
+  last().open();
+  await flush();
+  expect(closed).toEqual([]);
+  expect(last().closedWith).toBe(1000); // sem join, o socket aberto não fica pendurado
+  expect(reconnecting).toBe(1);
+  await vi.advanceTimersByTimeAsync(999);
+  expect(sockets).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(1);
+  last().open();
+  await flush();
+  expect(JSON.parse(last().sent[0]).token).toBe("token-2");
+});
+
+test("a failing refresh after 4401 keeps asking for a fresh token", async () => {
+  tokens = ["token-1", new Error("429"), "token-3"];
+  last().open();
+  await flush();
+  last().drop(4401);
+  last().open();
+  await flush();
+  await vi.advanceTimersByTimeAsync(1000);
+  last().open();
+  await flush();
+  expect(asked).toEqual([false, true, true]);
+  expect(JSON.parse(last().sent[0]).token).toBe("token-3");
+  expect(closed).toEqual([]);
+});
+
+test("closing while the token is on its way sends nothing", async () => {
+  let release: (token: string) => void = () => {};
+  socket.close();
+  socket = createGameSocket({
+    url: "wss://test/ws/game/12", matchId: 12,
+    getAccessToken: () => new Promise((resolve) => { release = resolve; }),
+    onMessage: () => {}, onReconnecting: () => {}, onClosed: (error) => closed.push(error),
+    createWebSocket: () => { const ws = new FakeWebSocket(); sockets.push(ws); return ws; },
+    visibility,
+  });
+  last().open();
+  socket.close();
+  release("token-1");
+  await flush();
+  expect(last().sent).toEqual([]);
+  expect(closed).toEqual([]);
 });
 
 test("a welcome gives 4401 its one retry back", () => {
