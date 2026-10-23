@@ -11,9 +11,10 @@ const OPEN = 1;
 const FINAL_CODES = new Set<number>([CLOSE_CODES.invalid_message, CLOSE_CODES.not_a_member,
   CLOSE_CODES.room_not_found, CLOSE_CODES.replaced, CLOSE_CODES.room_full]);
 
-// 1, 2, 4, 8, 16 s e depois a cada 30 s, com até 20 % de variação para as abas não voltarem juntas
-const BACKOFF_S = [1, 2, 4, 8, 16];
-const BACKOFF_MAX_S = 30;
+// 1, 2, 4 s e depois a cada 8 s, com até 20 % de variação para as abas não voltarem juntas. O teto é
+// mais baixo que o do /ws/app: com 30 s de Grace period, uma espera de 16 s ou 30 s perderia a volta
+const BACKOFF_S = [1, 2, 4];
+const BACKOFF_MAX_S = 8;
 const JITTER = 0.2;
 
 export type WebSocketLike = Pick<WebSocket, "send" | "close"
