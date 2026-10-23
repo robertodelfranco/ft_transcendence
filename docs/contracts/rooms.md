@@ -195,6 +195,12 @@ A função devolve **as conquistas desbloqueadas nesta chamada** (lista vazia se
 
 `finished` e `aborted` são finais. A Room é removida 60 s depois do `game_over` (arq. §10.1); de `aborted` por reinício não sobra Room nenhuma.
 
+O fim na Room (F2.9, decidido em 22/10):
+
+- **No Tick do `game_over`**, a Room passa a `finished`, libera os Players (quem volta ao lobby pela tela de fim não leva `409 already_in_other_match`) e chama `record_match_result`. Gravar antes da animação garante o resultado mesmo se a Simulation falhar depois; o `abort_unfinished` não toca um `finished`.
+- **O tick continua por `BOSS_DYING_S`** (`DYING_TICKS` Ticks), só com as animações, porque o cliente espera esses Snapshots antes da tela de fim ([mount-game.md](mount-game.md) §5.5). Depois para: nos 60 s seguintes a Room só espera, sem 30 Hz de CPU nem Snapshot.
+- Os `achievement_unlocked` devolvidos saem no canal `game` para os Players que não saíram.
+
 O startup roda antes do `yield` do `lifespan`, quando o uvicorn ainda não aceita conexão, e o `RoomManager` de um processo novo nasce vazio: toda linha em `lobby` ou `running` é órfã, e nenhum Lobby novo nasce durante a limpeza. Isso só vale com **um worker** (arq. §2); com dois, o startup de um abortaria as Rooms vivas do outro. Com `APP_ENV=test` o `lifespan` não toca no banco; os testes chamam a função direto.
 
 ### 2.7 Tabelas
