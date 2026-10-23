@@ -16,6 +16,8 @@ export class Doors {
     this.material = new THREE.MeshLambertMaterial({ map: texture });
     for (const door of doors) {
       const mesh = new THREE.Mesh(this.geometry, this.material.clone());
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
       // Paredes ao norte/sul: a folha acompanha Z. Oeste/leste: acompanha X.
       if (grid[door.y - 1]?.[door.x] === "1"
           && grid[door.y + 1]?.[door.x] === "1") mesh.rotation.y = Math.PI / 2;
