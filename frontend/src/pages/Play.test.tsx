@@ -9,6 +9,7 @@ import i18n from "../i18n";
 import { activeMount, emitEnd, emitHud, failNextMount, mounts } from "../mocks/game";
 import { MOCK_PASSWORD } from "../mocks/handlers";
 import { routes } from "../routes";
+import { socketToken } from "../auth/socketToken";
 
 // Login no mock e depois "recarrega" na rota pedida. O perfil do mock é pt-BR, e o User é o 7
 async function renderAt(path: string) {
@@ -72,6 +73,12 @@ describe("montagem do jogo", () => {
       "Não foi possível carregar os arquivos do jogo. Recarregue a página.",
     )).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Voltar ao lobby" })).toBeInTheDocument();
+  });
+
+  it("passa ao jogo o token do helper comum aos dois sockets", async () => {
+    await renderAt("/play/13");
+    const game = await mounted();
+    expect(game.options.getAccessToken).toBe(socketToken);
   });
 });
 

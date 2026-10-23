@@ -5,7 +5,7 @@ import type { EndResult, HudState, MountedGame } from "../../game/src/index";
 import { useAuth } from "../auth/AuthContext";
 import ErrorNotice from "../components/ErrorNotice";
 import { buttonSecondary, linkClass } from "../components/styles";
-import { createGameTokenSource } from "./gameToken";
+import { socketToken } from "../auth/socketToken";
 import Hud from "./Hud";
 import { knownReason, outcomeFor } from "./outcome";
 
@@ -31,7 +31,7 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
           return;
         game = mountGame(target, {
           matchId,
-          getAccessToken: createGameTokenSource(),
+          getAccessToken: socketToken,
           onHud: setHud,
           onEnd: setEnd,
         });
