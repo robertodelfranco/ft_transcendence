@@ -56,9 +56,60 @@ services:
     networks:
       - transcendence
 
+  # Monitoring (infra.md §2.6): nenhum publica porta; só a rede interna alcança
+  prometheus:
+    image: prom/prometheus:v3.13.5 # LTS
+    # o command substitui o CMD da imagem, então config e path voltam aqui;
+    # o :- cobre um .env sem as chaves de retenção (o do CI, por exemplo)
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROM_RETENTION_TIME:-7d}
+      - --storage.tsdb.retention.size=${PROM_RETENTION_SIZE:-500MB}
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus:ro # a pasta, para o alerts.yml da F8.10 entrar sem mexer aqui
+      - prom_data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - transcendence
+
+  # montagens testadas no Docker rootless da 42 em 17/10 (o mount-points-exclude, só no WSL);
+  # nenhum caminho por usuário. Tráfego de rede sai do container, não do host (infra.md §2.6)
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    pid: host
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      # o padrão da imagem + run/user, que o WSL monta duas vezes (série duplicada a cada scrape);
+      # $$ porque o compose interpolaria o $
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|run/credentials/.+|run/user|sys|var/lib/docker/.+|var/lib/containers/storage/.+)($$|/)
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - transcendence
+
+  # mesmo usuário do backend (infra.md, decisão 17); a senha separada da URI dispensa URL-encoding
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.20.1
+    environment:
+      DATA_SOURCE_URI: db:5432/${POSTGRES_DB}?sslmode=disable
+      DATA_SOURCE_USER: ${POSTGRES_USER}
+      DATA_SOURCE_PASS: ${POSTGRES_PASSWORD}
+    networks:
+      - transcendence
+
 volumes:
   db_data:
   media:
+  prom_data:
 
 networks:
   transcendence:
