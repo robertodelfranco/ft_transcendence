@@ -27,7 +27,7 @@ export interface EndResult {
 
 export interface MountOptions {
   matchId: number;
-  getAccessToken: () => Promise<string>;
+  getAccessToken: (fresh: boolean) => Promise<string | null>; // mount-game.md §2
   onHud: (hud: HudState) => void;
   onEnd: (result: EndResult) => void;
   wsUrl?: string; // padrão: wss://<host>/ws/game/<matchId>
