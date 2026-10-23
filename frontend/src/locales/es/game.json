@@ -11,5 +11,14 @@
   "themes": {
     "dungeon": "Mazmorra",
     "sewer": "Cloaca"
+  },
+  "outcomes": { "win": "¡Victoria!", "loss": "Derrota", "draw": "Empate" },
+  "reasons": {
+    "boss_defeated": "El Boss fue derrotado.",
+    "all_dead": "Todos los jugadores murieron.",
+    "frag_limit": "Un jugador llegó al límite de Frags.",
+    "time_limit": "Se acabó el tiempo.",
+    "forfeit": "La partida terminó por abandono.",
+    "server_shutdown": "El servidor se reinició."
   }
 }

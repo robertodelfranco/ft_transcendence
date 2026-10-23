@@ -12,5 +12,5 @@
     "skipLibCheck": true,
     "strict": true
   },
-  "include": ["vite.config.ts", "vitest.setup.ts"]
+  "include": ["vite.config.ts"]
 }

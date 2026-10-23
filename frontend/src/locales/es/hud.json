@@ -1,4 +1,16 @@
 {
   "title": "Partida",
-  "connecting": "Conectando a la partida #{{matchId}}…"
+  "connecting": "Conectando a la partida #{{matchId}}…",
+  "reconnecting": "Conexión perdida. Reconectando…",
+  "finished": "La partida terminó.",
+  "view": "Vista del juego",
+  "retry": "Reintentar",
+  "stats": {
+    "label": "Tu estado",
+    "hp": "Vida",
+    "mana": "Maná",
+    "armor": "Armadura",
+    "keys": "Llaves",
+    "ofMax": "{{value}}/{{max}}"
+  }
 }
