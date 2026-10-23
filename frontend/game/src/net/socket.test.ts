@@ -234,9 +234,9 @@ test("a dropped socket comes back after 1, 2 and 4 s", async () => {
   expect(reconnecting).toBe(3);
 });
 
-test("the wait stops growing at 30 s and varies at most 20 %", () => {
-  expect([0, 1, 2, 3, 4, 5, 9].map((attempt) => backoffMs(attempt, () => 0.5)))
-    .toEqual([1000, 2000, 4000, 8000, 16000, 30000, 30000]);
+test("the wait stops growing at 8 s, inside the Grace period, and varies at most 20 %", () => {
+  expect([0, 1, 2, 3, 4, 9].map((attempt) => backoffMs(attempt, () => 0.5)))
+    .toEqual([1000, 2000, 4000, 8000, 8000, 8000]);
   expect(backoffMs(0, () => 0)).toBeCloseTo(800);
   expect(backoffMs(0, () => 1)).toBeCloseTo(1200);
 });

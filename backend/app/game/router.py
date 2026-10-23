@@ -12,7 +12,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from app.auth.security import InvalidToken
-from app.game import Room, enqueue, initial_grid, last_input_seq, set_connected, to_snapshot
+from app.game import Room, enqueue, initial_grid, last_input_seq, to_snapshot
 from app.game.protocol import (ActionMessage, CloseCode, InputMessage, InvalidMessage, Join, Ping,
 	encode_pong, encode_welcome, parse_client_message)
 from app.game.rooms import RoomManager, get_room_manager
@@ -92,7 +92,7 @@ async def serve(ws: ServerSocket, match_id: int, *, rooms: RoomManager, connecti
 
 	connection = await connections.connect(user_id, "game", ws, match_id=match_id)
 	# daqui ao welcome não há await que suspenda: nenhum Snapshot do tick entra na fila antes dele
-	set_connected(room, user_id, True)
+	rooms.player_connected(match_id, user_id)
 	await connections.send_to_user(user_id, _welcome(rooms, room, match_id, user_id), "game")
 	try:
 		await _read(ws, room, user_id, connections, MessageBudget())
@@ -104,7 +104,7 @@ async def serve(ws: ServerSocket, match_id: int, *, rooms: RoomManager, connecti
 		await connections.disconnect(connection) # não é erro se já saiu
 		# substituído por um socket novo (4408): quem está conectado agora é o novo
 		if not connections.in_game(user_id, match_id):
-			set_connected(room, user_id, False)
+			rooms.player_disconnected(match_id, user_id) # começa o Grace period
 
 
 # ---------- fases ----------
