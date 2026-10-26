@@ -411,12 +411,16 @@ def _hurt_player(room: Room, player: Player, amount: int, by: int | None, source
 	player.hp -= lost
 	player.armor_absorbed += absorbed
 	player.damage_taken += lost
+	if by is not None and room.mode == Mode.PVP:
+		room.players[by].damage_dealt += lost # só HP perdido, nunca o que a Armor segurou
 	events.append(Event("player_hit", room.tick, {"target": player.user_id, "by": by,
 		"source": source, "amount": lost, "absorbed": absorbed}))
 	if player.hp == 0:
 		# morto sai de _blocking_bodies, _pick_target e _targets, que filtram alive
 		player.alive = False
 		player.deaths += 1
+		if by is not None and room.mode == Mode.PVP:
+			room.players[by].frags += 1
 		events.append(Event("player_died", room.tick, {"player_id": player.user_id, "by": by}))
 
 

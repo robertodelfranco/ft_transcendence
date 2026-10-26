@@ -15,11 +15,17 @@ NO_KEYS = {"up": False, "down": False, "left": False, "right": False,
 WIDTH = 32
 CORRIDOR = ("1" * WIDTH + "\n" + "1E" + "0" * (WIDTH - 3) + "1\n"
 	+ "1W" + "0" * (WIDTH - 4) + "B1\n" + "1" + "0" * (WIDTH - 2) + "1\n" + "1" * WIDTH + "\n")
+PVP_CORRIDOR = "1111111\n1E000W1\n1111111\n"
 
 
 def new_room():
 	game_map = parse_map(CORRIDOR, "t", Mode.COOP)
 	return create_room(12, Mode.COOP, game_map, RoomOptions(), [(7, "roberto"), (9, "augusto")], seed=1)
+
+
+def new_pvp_room():
+	game_map = parse_map(PVP_CORRIDOR, "pvp_t", Mode.PVP)
+	return create_room(12, Mode.PVP, game_map, RoomOptions(), [(7, "roberto"), (9, "augusto")], seed=1)
 
 
 def run(room, ticks):
@@ -47,6 +53,22 @@ def aim_at_player(room, user_id):
 
 def named(events, name):
 	return [event for event in events if event.name == name]
+
+
+def test_pvp_kill_credits_only_hp_lost_and_one_frag():
+	room = new_pvp_room()
+	target = room.players[9]
+	target.hp, target.armor = 1, 1
+	room.projectiles.append(Projectile(id="pvp_hit", kind=ProjectileKind.FIREBALL,
+		owner_id=7, x=target.x - 1.0, y=target.y, dx=1.0, dy=0.0))
+
+	events = run(room, 3)
+
+	assert named(events, "player_hit")[0].data["amount"] == 1
+	assert named(events, "player_died")[0].data == {"player_id": 9, "by": 7}
+	assert room.players[7].damage_dealt == 1 # Armor não é HP perdido
+	assert room.players[7].frags == 1
+	assert target.deaths == 1
 
 
 def test_boss_entering_dying_ends_the_match_with_a_win_for_every_player():
