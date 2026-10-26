@@ -37,6 +37,10 @@ class Settings(BaseSettings):
 	# nome público com a porta quando não é a 443 (infra.md §2.4); o Origin de /refresh e /logout
 	public_host: str = "localhost"
 
+	# OAuth da 42 (auth.md §2.8); vazios no pytest, que não fala com a intra
+	ft_client_id: str = ""
+	ft_client_secret: SecretStr = SecretStr("")
+
 	@model_validator(mode="after")
 	def _require_a_strong_secret(self) -> Self:
 		secret = self.jwt_secret.get_secret_value()
