@@ -60,7 +60,14 @@ describe("montagem do jogo", () => {
     expect(old.unmounted).toBe(true);
   });
 
-  it.each(["/play/abc", "/play/0", "/play/0x10", "/play/1e1"])("%s não monta nada", async (path) => {
+  it.each([
+    "/play/abc",
+    "/play/0",
+    "/play/0x10",
+    "/play/1e1",
+    "/play/99999999999999999999",
+    `/play/${"9".repeat(400)}`,
+  ])("%s não monta nada", async (path) => {
     await renderAt(path);
     expect(await screen.findByText("Esta partida não existe mais.")).toBeInTheDocument();
     expect(mounts).toHaveLength(0);
