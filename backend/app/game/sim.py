@@ -37,7 +37,8 @@ def create_room(match_id: int, mode: Mode, game_map: Map, options: RoomOptions,
 	ruleset = RULESETS[mode]
 	numbers = ruleset.numbers
 	room = Room(match_id=match_id, mode=mode, options=options, numbers=numbers,
-		rng=Random(seed), initial_grid=game_map.grid, grid=game_map.new_grid())
+		rng=Random(seed), initial_grid=game_map.grid, grid=game_map.new_grid(),
+		spawn_points=tuple((spawn.x, spawn.y) for spawn in game_map.spawns))
 	# o enésimo Player nasce no enésimo Spawn, olhando para onde a letra aponta
 	for (user_id, name), spawn in zip(players, game_map.spawns):
 		room.players[user_id] = Player(user_id=user_id, name=name, x=spawn.x, y=spawn.y,
@@ -128,6 +129,7 @@ def _apply_ruleset(room: Room, events: list[Event]) -> None:
 		ruleset.on_player_death(room, room.players[user_id], events)
 	result = ruleset.check_end(room)
 	if result is None:
+		ruleset.on_tick(room, events)
 		return
 	room.result = result
 	room.outcome = _freeze_outcome(room, result)

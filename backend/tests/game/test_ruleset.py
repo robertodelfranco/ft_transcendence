@@ -71,6 +71,40 @@ def test_pvp_kill_credits_only_hp_lost_and_one_frag():
 	assert target.deaths == 1
 
 
+def test_pvp_respawn_waits_exactly_three_seconds_and_restores_resources():
+	room = new_pvp_room()
+	target = room.players[9]
+	target.hp, target.mana, target.armor = 1, 12, 1
+	room.projectiles.append(Projectile(id="pvp_respawn_hit", kind=ProjectileKind.FIREBALL,
+		owner_id=7, x=target.x - 1.0, y=target.y, dx=1.0, dy=0.0))
+	[died] = named(run(room, 3), "player_died")
+	assert target.respawn_at_tick == died.tick + 3 * TICK_RATE
+	assert not target.alive
+
+	assert named(run(room, target.respawn_at_tick - room.tick - 1), "player_respawned") == []
+	assert not target.alive
+	[respawned] = named(run(room, 1), "player_respawned")
+	assert respawned.tick == died.tick + 3 * TICK_RATE
+	assert respawned.data == {"player_id": 9, "x": 5.5, "y": 1.5}
+	assert (target.hp, target.mana, target.armor, target.alive) == (10, 100, 0, True)
+	assert target.respawn_at_tick is None
+
+
+def test_pvp_respawn_uses_farthest_free_spawn_and_retries_when_both_blocked():
+	room = create_room(12, Mode.PVP, parse_map("11111\n1EW01\n11111\n", "pvp_close", Mode.PVP),
+		RoomOptions(), [(7, "roberto"), (9, "augusto")], seed=1)
+	opponent, target = room.players[7], room.players[9]
+	target.alive, target.hp, target.respawn_at_tick = False, 0, 1
+	opponent.x = 2.0 # 0,5 célula de cada Spawn: nenhum está livre
+	assert named(run(room, 1), "player_respawned") == []
+	assert not target.alive and target.respawn_at_tick == 1
+
+	opponent.x = 1.5
+	[respawned] = named(run(room, 1), "player_respawned")
+	assert respawned.data == {"player_id": 9, "x": 2.5, "y": 1.5}
+	assert target.alive
+
+
 def test_boss_entering_dying_ends_the_match_with_a_win_for_every_player():
 	room = new_room()
 	aim_at_boss(room)
