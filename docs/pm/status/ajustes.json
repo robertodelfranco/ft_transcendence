@@ -1,0 +1,46 @@
+{
+  "_leia": "Regras que o plano e o GitHub não dizem sozinhos. Cada entrada tem o porquê; o README.md explica quando mexer.",
+  "nomes": {"roberto": "Roberto", "augusto": "Augusto", "rafael": "Rafael", "caio": "Caio", "akita": "Akita"},
+  "papeis": {
+    "roberto": "Tech Lead · Simulation e Prediction",
+    "augusto": "Dev · Auth e Netcode",
+    "rafael": "Dev · Render 3D e conteúdo",
+    "caio": "PO · Web, usuários e i18n",
+    "akita": "PM · Partidas, estatísticas, infra e monitoring"
+  },
+  "github": {"roberto": "robertodelfranco", "augusto": "augustocesarmd", "rafael": "rflheringer", "caio": "caioosantos", "akita": "kanashir0"},
+  "datas": {
+    "freeze": "2026-11-14",
+    "defesa_plano": "2026-11-21",
+    "limite": "2026-11-27",
+    "entrega": "2026-11-28"
+  },
+  "semanas_velocidade": 2,
+  "donos": {
+    "_porque": "Alocação do plano §9. 'todos' divide a estimativa em 5 partes iguais.",
+    "por_frente": {"F1": "roberto", "F2": "augusto", "F3": "rafael", "F4": "rafael", "F5": "akita", "F6": "augusto", "F7": "caio", "F8": "akita", "F9": "todos"},
+    "por_tarefa": {
+      "F0.1": "todos", "F0.2": "todos", "F0.3": "augusto", "F0.4": "caio", "F0.5": "roberto", "F0.6": "akita",
+      "F2.7": "roberto", "F2.13": "roberto", "F3.6": "roberto",
+      "F6.6": "caio", "F6.7": "caio", "F6.8": "akita",
+      "F8.7": "augusto"
+    }
+  },
+  "status_manual": {
+    "_porque": "Tarefas entregues sem issue própria, ou com a issue esquecida aberta. A evidência é o PR mergeado.",
+    "F0.1": {"status": "concluida", "data": "2026-09-29", "evidencia": "PR #13: alocação na §9 do plano"},
+    "F0.2": {"status": "concluida", "data": "2026-10-11", "evidencia": "PRs #15–#21: contratos em docs/contracts/"},
+    "F0.5": {"status": "concluida", "data": "2026-10-04", "evidencia": "PR #14: três ADRs em docs/adr/"},
+    "F4.2": {"status": "concluida", "data": "2026-10-14", "evidencia": "PRs #26 (rules.py) e #85 (rules.ts)"},
+    "F4.3": {"status": "concluida", "data": "2026-10-23", "evidencia": "PR #143: docs/contracts/hud.md (a issue #142 ficou aberta)"},
+    "F4.5": {"status": "concluida", "data": "2026-10-05", "evidencia": "PR #16: tabela de opções em docs/contracts/room-options.md"}
+  },
+  "ignorar_issues": [4, 6, 8, 9],
+  "escopo_adicionado": {
+    "_porque": "Issues fora das tarefas do plano. d = estimativa em dias; null = sem estimativa ainda.",
+    "120": {"dono": "akita", "d": null},
+    "147": {"dono": "augusto", "d": null},
+    "155": {"dono": "akita", "d": 0.5},
+    "164": {"dono": "akita", "d": 1}
+  }
+}

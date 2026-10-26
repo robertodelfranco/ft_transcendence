@@ -1,0 +1,2112 @@
+{
+  "data": "2026-10-26",
+  "semana_do_plano": "S4",
+  "datas": {
+    "freeze": "2026-11-14",
+    "defesa_plano": "2026-11-21",
+    "limite": "2026-11-27",
+    "entrega": "2026-11-28"
+  },
+  "projeto": {
+    "d_total": 112.0,
+    "d_concluido": 63.5,
+    "pct": 56.7,
+    "velocidade_d_semana": 30.25,
+    "semanas_velocidade": 2,
+    "previsao_obrigatorio": "2026-11-06",
+    "previsao_com_adicional": "2026-11-07",
+    "velocidade_pior_semana": 26.5,
+    "previsao_conservadora": "2026-11-08",
+    "previsao_cada_um_no_seu": "2026-11-30",
+    "gargalo": "caio",
+    "tarefas_restantes": 32,
+    "tarefas_esperando_outro": 5,
+    "pontos_garantidos": 5,
+    "pontos_total": 21
+  },
+  "semanas": [
+    {
+      "inicio": "2026-09-27",
+      "fim": "2026-10-03",
+      "entregue_d": 0.5,
+      "planejado_d": 0,
+      "parcial": false
+    },
+    {
+      "inicio": "2026-10-04",
+      "fim": "2026-10-10",
+      "entregue_d": 2.5,
+      "planejado_d": 24.0,
+      "parcial": false
+    },
+    {
+      "inicio": "2026-10-11",
+      "fim": "2026-10-17",
+      "entregue_d": 34.0,
+      "planejado_d": 28.5,
+      "parcial": false
+    },
+    {
+      "inicio": "2026-10-18",
+      "fim": "2026-10-24",
+      "entregue_d": 26.5,
+      "planejado_d": 25.5,
+      "parcial": false
+    },
+    {
+      "inicio": "2026-10-25",
+      "fim": "2026-10-31",
+      "entregue_d": 0,
+      "planejado_d": 20.0,
+      "parcial": true
+    }
+  ],
+  "membros": [
+    {
+      "membro": "roberto",
+      "d_total": 19.5,
+      "d_concluido": 11.0,
+      "pct": 56.4,
+      "velocidade_d_semana": 5.2,
+      "previsao_obrigatorio": "2026-11-06",
+      "previsao_com_adicional": "2026-11-06",
+      "tarefas": {
+        "concluida": 8,
+        "em_revisao": 1,
+        "em_andamento": 1,
+        "a_fazer": 3
+      },
+      "atrasadas": [
+        "F1.8",
+        "F1.9",
+        "F2.7"
+      ],
+      "esperando_outro": [],
+      "restantes": [
+        "F1.8",
+        "F1.9",
+        "F2.7",
+        "F2.13",
+        "F3.6"
+      ]
+    },
+    {
+      "membro": "augusto",
+      "d_total": 24.5,
+      "d_concluido": 20.5,
+      "pct": 83.7,
+      "velocidade_d_semana": 10.2,
+      "previsao_obrigatorio": "2026-10-29",
+      "previsao_com_adicional": "2026-10-29",
+      "tarefas": {
+        "concluida": 15,
+        "em_revisao": 0,
+        "em_andamento": 1,
+        "a_fazer": 1
+      },
+      "atrasadas": [],
+      "esperando_outro": [
+        "F2.10"
+      ],
+      "restantes": [
+        "F2.10",
+        "F2.12"
+      ]
+    },
+    {
+      "membro": "rafael",
+      "d_total": 21.5,
+      "d_concluido": 14.0,
+      "pct": 65.1,
+      "velocidade_d_semana": 6.7,
+      "previsao_obrigatorio": "2026-11-03",
+      "previsao_com_adicional": "2026-11-03",
+      "tarefas": {
+        "concluida": 10,
+        "em_revisao": 0,
+        "em_andamento": 0,
+        "a_fazer": 6
+      },
+      "atrasadas": [
+        "F4.4"
+      ],
+      "esperando_outro": [
+        "F3.8",
+        "F4.4",
+        "F4.7"
+      ],
+      "restantes": [
+        "F3.7",
+        "F3.8",
+        "F3.9",
+        "F3.10",
+        "F4.4",
+        "F4.7"
+      ]
+    },
+    {
+      "membro": "caio",
+      "d_total": 22.5,
+      "d_concluido": 6.5,
+      "pct": 28.9,
+      "velocidade_d_semana": 3.2,
+      "previsao_obrigatorio": "2026-11-30",
+      "previsao_com_adicional": "2026-11-30",
+      "tarefas": {
+        "concluida": 4,
+        "em_revisao": 1,
+        "em_andamento": 1,
+        "a_fazer": 6
+      },
+      "atrasadas": [
+        "F6.6",
+        "F6.7",
+        "F7.3",
+        "F7.5",
+        "F7.6"
+      ],
+      "esperando_outro": [
+        "F7.8"
+      ],
+      "restantes": [
+        "F6.6",
+        "F6.7",
+        "F7.2",
+        "F7.3",
+        "F7.5",
+        "F7.6",
+        "F7.8",
+        "F7.9"
+      ]
+    },
+    {
+      "membro": "akita",
+      "d_total": 24.0,
+      "d_concluido": 11.5,
+      "pct": 47.9,
+      "velocidade_d_semana": 4.95,
+      "previsao_obrigatorio": "2026-11-13",
+      "previsao_com_adicional": "2026-11-15",
+      "tarefas": {
+        "concluida": 9,
+        "em_revisao": 1,
+        "em_andamento": 0,
+        "a_fazer": 10
+      },
+      "atrasadas": [
+        "F8.5"
+      ],
+      "esperando_outro": [],
+      "restantes": [
+        "F5.4",
+        "F5.5",
+        "F5.6",
+        "F5.7",
+        "F5.8",
+        "F6.8",
+        "F8.5",
+        "F8.6",
+        "F8.9",
+        "F8.10",
+        "F8.11"
+      ]
+    }
+  ],
+  "modulos": [
+    {
+      "nome": "Web-based game",
+      "subject": "Web-based game (users play against each other)",
+      "tipo": "Major",
+      "pontos": 2,
+      "tarefas": "F1.*, F2.5, F3.*, F7.6",
+      "ids": [
+        "F1.1",
+        "F1.2",
+        "F1.3",
+        "F1.4",
+        "F1.5",
+        "F1.6",
+        "F1.7",
+        "F1.8",
+        "F1.9",
+        "F2.5",
+        "F3.1",
+        "F3.2",
+        "F3.3",
+        "F3.4",
+        "F3.5",
+        "F3.6",
+        "F3.7",
+        "F3.8",
+        "F3.9",
+        "F3.10",
+        "F7.6"
+      ],
+      "faltam": [
+        "F1.8",
+        "F1.9",
+        "F3.6",
+        "F3.7",
+        "F3.8",
+        "F3.9",
+        "F3.10",
+        "F7.6"
+      ],
+      "pct": 66.7,
+      "garantido": false
+    },
+    {
+      "nome": "Real-time (WebSockets)",
+      "subject": "Real-time features (WebSockets)",
+      "tipo": "Major",
+      "pontos": 2,
+      "tarefas": "F2.1–F2.6, F5.2",
+      "ids": [
+        "F2.1",
+        "F2.2",
+        "F2.3",
+        "F2.4",
+        "F2.5",
+        "F2.6",
+        "F5.2"
+      ],
+      "faltam": [],
+      "pct": 100.0,
+      "garantido": true
+    },
+    {
+      "nome": "Remote players",
+      "subject": "Remote players (latência, reconexão)",
+      "tipo": "Major",
+      "pontos": 2,
+      "tarefas": "F2.7, F2.8, F2.10, F2.12",
+      "ids": [
+        "F2.7",
+        "F2.8",
+        "F2.10",
+        "F2.12"
+      ],
+      "faltam": [
+        "F2.7",
+        "F2.10",
+        "F2.12"
+      ],
+      "pct": 15.4,
+      "garantido": false
+    },
+    {
+      "nome": "Multiplayer 3+",
+      "subject": "Multiplayer 3+",
+      "tipo": "Major",
+      "pontos": 2,
+      "tarefas": "F1.5, F1.6, F2.6, F2.13",
+      "ids": [
+        "F1.5",
+        "F1.6",
+        "F2.6",
+        "F2.13"
+      ],
+      "faltam": [
+        "F2.13"
+      ],
+      "pct": 90.9,
+      "garantido": false
+    },
+    {
+      "nome": "Framework front + back",
+      "subject": "Framework frontend + backend (React + FastAPI)",
+      "tipo": "Major",
+      "pontos": 2,
+      "tarefas": "F0.3, F0.4, F7.1",
+      "ids": [
+        "F0.3",
+        "F0.4",
+        "F7.1"
+      ],
+      "faltam": [],
+      "pct": 100.0,
+      "garantido": true
+    },
+    {
+      "nome": "ORM",
+      "subject": "ORM (SQLAlchemy + Alembic)",
+      "tipo": "Minor",
+      "pontos": 1,
+      "tarefas": "F5.1, F6.1",
+      "ids": [
+        "F5.1",
+        "F6.1"
+      ],
+      "faltam": [],
+      "pct": 100.0,
+      "garantido": true
+    },
+    {
+      "nome": "Standard user management",
+      "subject": "Standard user management",
+      "tipo": "Major",
+      "pontos": 2,
+      "tarefas": "F6.6, F6.7, F7.5",
+      "ids": [
+        "F6.6",
+        "F6.7",
+        "F7.5"
+      ],
+      "faltam": [
+        "F6.6",
+        "F6.7",
+        "F7.5"
+      ],
+      "pct": 0.0,
+      "garantido": false
+    },
+    {
+      "nome": "OAuth 2.0",
+      "subject": "OAuth 2.0 (42)",
+      "tipo": "Minor",
+      "pontos": 1,
+      "tarefas": "F6.8, F7.4",
+      "ids": [
+        "F6.8",
+        "F7.4"
+      ],
+      "faltam": [
+        "F6.8"
+      ],
+      "pct": 33.3,
+      "garantido": false
+    },
+    {
+      "nome": "Advanced 3D",
+      "subject": "Advanced 3D graphics (Three.js)",
+      "tipo": "Major",
+      "pontos": 2,
+      "tarefas": "F3.1–F3.5, F3.10",
+      "ids": [
+        "F3.1",
+        "F3.2",
+        "F3.3",
+        "F3.4",
+        "F3.5",
+        "F3.10"
+      ],
+      "faltam": [
+        "F3.10"
+      ],
+      "pct": 91.3,
+      "garantido": false
+    },
+    {
+      "nome": "Game customization",
+      "subject": "Game customization",
+      "tipo": "Minor",
+      "pontos": 1,
+      "tarefas": "F1.9, F3.8, F4.4, F4.5, F7.7",
+      "ids": [
+        "F1.9",
+        "F3.8",
+        "F4.4",
+        "F4.5",
+        "F7.7"
+      ],
+      "faltam": [
+        "F1.9",
+        "F3.8",
+        "F4.4"
+      ],
+      "pct": 38.5,
+      "garantido": false
+    },
+    {
+      "nome": "Game statistics",
+      "subject": "Game statistics & match history",
+      "tipo": "Minor",
+      "pontos": 1,
+      "tarefas": "F5.3–F5.8, F7.8",
+      "ids": [
+        "F5.3",
+        "F5.4",
+        "F5.5",
+        "F5.6",
+        "F5.7",
+        "F5.8",
+        "F7.8"
+      ],
+      "faltam": [
+        "F5.4",
+        "F5.5",
+        "F5.6",
+        "F5.7",
+        "F5.8",
+        "F7.8"
+      ],
+      "pct": 11.8,
+      "garantido": false
+    },
+    {
+      "nome": "Monitoring",
+      "subject": "Monitoring system (Prometheus + Grafana)",
+      "tipo": "Major",
+      "pontos": 2,
+      "tarefas": "F8.7–F8.11",
+      "ids": [
+        "F8.7",
+        "F8.8",
+        "F8.9",
+        "F8.10",
+        "F8.11"
+      ],
+      "faltam": [
+        "F8.9",
+        "F8.10",
+        "F8.11"
+      ],
+      "pct": 40.0,
+      "garantido": false
+    },
+    {
+      "nome": "i18n",
+      "subject": "Multiple languages (3)",
+      "tipo": "Minor",
+      "pontos": 1,
+      "tarefas": "F7.2, F7.3",
+      "ids": [
+        "F7.2",
+        "F7.3"
+      ],
+      "faltam": [
+        "F7.2",
+        "F7.3"
+      ],
+      "pct": 0.0,
+      "garantido": false
+    }
+  ],
+  "tarefas": [
+    {
+      "id": "F0.1",
+      "titulo": "Reunião de kickoff: ler este doc, fechar alocação, registrar…",
+      "d": 0.5,
+      "depende": [],
+      "semana": "S1",
+      "dono": "todos",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-09-29",
+      "evidencia": "PR #13: alocação na §9 do plano",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F0.2",
+      "titulo": "Contratos publicados em docs/contracts/: ws-messages.md +…",
+      "d": 2.0,
+      "depende": [],
+      "semana": "S1",
+      "dono": "todos",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-11",
+      "evidencia": "PRs #15–#21: contratos em docs/contracts/",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F0.3",
+      "titulo": "Backend vira pacote backend/app/ com create_app(),…",
+      "d": 1.5,
+      "depende": [],
+      "semana": "S1",
+      "dono": "augusto",
+      "issues": [
+        43
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-11",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F0.4",
+      "titulo": "Frontend: Vite + React + TypeScript + framework CSS",
+      "d": 1.0,
+      "depende": [],
+      "semana": "S1",
+      "dono": "caio",
+      "issues": [
+        45
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-12",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F0.5",
+      "titulo": "ADRs curtos em docs/adr/: servidor autoritativo e Room em…",
+      "d": 0.5,
+      "depende": [],
+      "semana": "S1",
+      "dono": "roberto",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-04",
+      "evidencia": "PR #14: três ADRs em docs/adr/",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F0.6",
+      "titulo": "Os 5 membros como colaboradores no GitHub",
+      "d": 0.5,
+      "depende": [
+        "F0.1"
+      ],
+      "semana": "S1",
+      "dono": "akita",
+      "issues": [
+        33
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-19",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F1.1",
+      "titulo": "Carregador de Map: lê a grade (caracteres do Cub3D mais M…",
+      "d": 1.0,
+      "depende": [
+        "F0.2"
+      ],
+      "semana": "S1",
+      "dono": "roberto",
+      "issues": [
+        23
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-11",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F1.2",
+      "titulo": "state.py (dataclasses Room, Player, Enemy, Boss, Projectile,…",
+      "d": 1.0,
+      "depende": [
+        "F0.2"
+      ],
+      "semana": "S1",
+      "dono": "roberto",
+      "issues": [
+        22
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-11",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F1.3",
+      "titulo": "Movimento por dt (andar, sprint, girar por tecla e por…",
+      "d": 2.0,
+      "depende": [
+        "F1.2"
+      ],
+      "semana": "S1",
+      "dono": "roberto",
+      "issues": [
+        24
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-13",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F1.4",
+      "titulo": "Portas, chaves, poções, pickups de mana e armadura",
+      "d": 1.5,
+      "depende": [
+        "F1.3"
+      ],
+      "semana": "S2",
+      "dono": "roberto",
+      "issues": [
+        60
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-13",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F1.5",
+      "titulo": "Inimigos (alvo = player vivo mais próximo, troca só com 1…",
+      "d": 3.0,
+      "depende": [
+        "F1.4"
+      ],
+      "semana": "S2",
+      "dono": "roberto",
+      "issues": [
+        61
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-16",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F1.6",
+      "titulo": "Ruleset (interface) + CoopRuleset",
+      "d": 1.0,
+      "depende": [
+        "F1.5"
+      ],
+      "semana": "S2",
+      "dono": "roberto",
+      "issues": [
+        62
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-20",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F1.7",
+      "titulo": "CLI que roda N ticks e grava snapshot.json para o render",
+      "d": 0.5,
+      "depende": [
+        "F1.6"
+      ],
+      "semana": "S2",
+      "dono": "roberto",
+      "issues": [
+        63
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-21",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F1.8",
+      "titulo": "PvpRuleset: 1v1, fireball fere player, respawn no spawn…",
+      "d": 2.0,
+      "depende": [
+        "F1.6"
+      ],
+      "semana": "S3",
+      "dono": "roberto",
+      "issues": [
+        126
+      ],
+      "prs_abertos": [
+        166
+      ],
+      "status": "em_revisao",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": true
+    },
+    {
+      "id": "F1.9",
+      "titulo": "RoomOptions aplicadas na Simulation com defaults: map,…",
+      "d": 1.5,
+      "depende": [
+        "F1.8"
+      ],
+      "semana": "S3",
+      "dono": "roberto",
+      "issues": [
+        127
+      ],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": true
+    },
+    {
+      "id": "F2.1",
+      "titulo": "ConnectionManager (connect, disconnect, send_to_user,…",
+      "d": 2.0,
+      "depende": [
+        "F0.3",
+        "F6.4"
+      ],
+      "semana": "S2",
+      "dono": "augusto",
+      "issues": [
+        86,
+        65
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-17",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F2.2",
+      "titulo": "protocol.py (Pydantic, união discriminada por type) e…",
+      "d": 1.0,
+      "depende": [
+        "F0.2"
+      ],
+      "semana": "S2",
+      "dono": "augusto",
+      "issues": [
+        54
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-12",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F2.3",
+      "titulo": "RoomManager + uma asyncio.Task por Room, tick fixo 30 Hz com…",
+      "d": 2.0,
+      "depende": [
+        "F1.6"
+      ],
+      "semana": "S2",
+      "dono": "augusto",
+      "issues": [
+        68
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-13",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F2.4",
+      "titulo": "WS /ws/game/{match_id}: join com token em ≤ 5 s, welcome,…",
+      "d": 1.5,
+      "depende": [
+        "F2.3",
+        "F6.4"
+      ],
+      "semana": "S2",
+      "dono": "augusto",
+      "issues": [
+        71
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-15",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F2.5",
+      "titulo": "Cliente: socket, mountGame, ViewState montado do último…",
+      "d": 1.5,
+      "depende": [
+        "F2.4"
+      ],
+      "semana": "S2",
+      "dono": "augusto",
+      "issues": [
+        72
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-19",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F2.6",
+      "titulo": "N players",
+      "d": 1.0,
+      "depende": [
+        "F2.5"
+      ],
+      "semana": "S3",
+      "dono": "augusto",
+      "issues": [
+        89
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-20",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F2.7",
+      "titulo": "Prediction + Reconciliation",
+      "d": 2.5,
+      "depende": [
+        "F1.3",
+        "F2.6"
+      ],
+      "semana": "S3",
+      "dono": "roberto",
+      "issues": [
+        125,
+        64
+      ],
+      "prs_abertos": [],
+      "status": "em_andamento",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": true
+    },
+    {
+      "id": "F2.8",
+      "titulo": "Interpolation dos outros a now − 100 ms",
+      "d": 1.0,
+      "depende": [
+        "F2.6"
+      ],
+      "semana": "S3",
+      "dono": "augusto",
+      "issues": [
+        90
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-22",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F2.9",
+      "titulo": "Fim de partida: chamar record_match_result uma vez, remover…",
+      "d": 1.0,
+      "depende": [
+        "F5.3"
+      ],
+      "semana": "S3",
+      "dono": "augusto",
+      "issues": [
+        91
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-23",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F2.10",
+      "titulo": "Grace period de 30 s e Reconnection com Snapshot completo",
+      "d": 2.0,
+      "depende": [
+        "F2.7"
+      ],
+      "semana": "S4",
+      "dono": "augusto",
+      "issues": [
+        107
+      ],
+      "prs_abertos": [],
+      "status": "em_andamento",
+      "sem_issue": false,
+      "espera_por": [
+        "F2.7"
+      ],
+      "atrasada": false
+    },
+    {
+      "id": "F2.12",
+      "titulo": "ping/pong com RTT na HUD",
+      "d": 1.0,
+      "depende": [
+        "F2.8"
+      ],
+      "semana": "S5",
+      "dono": "augusto",
+      "issues": [
+        108
+      ],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F2.13",
+      "titulo": "Teste de carga: 4 Rooms × 5 players, p99 do tick < 5 ms",
+      "d": 0.5,
+      "depende": [
+        "F2.6"
+      ],
+      "semana": "S5",
+      "dono": "roberto",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F3.1",
+      "titulo": "dev.html: cena a partir do grid (paredes como InstancedMesh…",
+      "d": 2.5,
+      "depende": [
+        "F0.2"
+      ],
+      "semana": "S1",
+      "dono": "rafael",
+      "issues": [
+        58
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-13",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F3.2",
+      "titulo": "Renderer (init, render(view, dt), resize, dispose) e…",
+      "d": 1.0,
+      "depende": [
+        "F3.1"
+      ],
+      "semana": "S2",
+      "dono": "rafael",
+      "issues": [
+        79
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-17",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F3.3",
+      "titulo": "Billboards animados: inimigos (10 quadros), boss, itens,…",
+      "d": 2.5,
+      "depende": [
+        "F3.2"
+      ],
+      "semana": "S2",
+      "dono": "rafael",
+      "issues": [
+        123
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-21",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F3.4",
+      "titulo": "Porta como mesh animado",
+      "d": 1.5,
+      "depende": [
+        "F3.2"
+      ],
+      "semana": "S2",
+      "dono": "rafael",
+      "issues": [
+        122
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-21",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F3.5",
+      "titulo": "Técnicas \"advanced\": tochas como luzes pontuais com sombra,…",
+      "d": 3.0,
+      "depende": [
+        "F3.3"
+      ],
+      "semana": "S3",
+      "dono": "rafael",
+      "issues": [
+        145
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-23",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F3.6",
+      "titulo": "Minimapa (canvas 2D sobreposto)",
+      "d": 1.0,
+      "depende": [
+        "F3.2"
+      ],
+      "semana": "S4",
+      "dono": "roberto",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F3.7",
+      "titulo": "Efeitos de dano, morte e respawn",
+      "d": 1.0,
+      "depende": [
+        "F3.5"
+      ],
+      "semana": "S4",
+      "dono": "rafael",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F3.8",
+      "titulo": "Temas (Game customization): no mínimo 2 conjuntos de…",
+      "d": 1.5,
+      "depende": [
+        "F3.5",
+        "F1.9"
+      ],
+      "semana": "S4",
+      "dono": "rafael",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [
+        "F1.9"
+      ],
+      "atrasada": false
+    },
+    {
+      "id": "F3.9",
+      "titulo": "Áudio (passos, tiro, acerto, música) com Web Audio, iniciado…",
+      "d": 1.0,
+      "depende": [
+        "F3.3"
+      ],
+      "semana": "S4",
+      "dono": "rafael",
+      "issues": [
+        153
+      ],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F3.10",
+      "titulo": "Performance e limpeza: 60 fps com 5 players, 20 inimigos e…",
+      "d": 1.0,
+      "depende": [
+        "F3.5"
+      ],
+      "semana": "S5",
+      "dono": "rafael",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F4.1",
+      "titulo": "Mapas co-op (dungeon_map, enemy, enemy_sewer) no formato de…",
+      "d": 1.0,
+      "depende": [
+        "F0.2"
+      ],
+      "semana": "S1",
+      "dono": "rafael",
+      "issues": [
+        106
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-17",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F4.2",
+      "titulo": "rules.py / rules.ts v1: números da arq. §6.3 + mana,…",
+      "d": 0.5,
+      "depende": [
+        "F1.2"
+      ],
+      "semana": "S1",
+      "dono": "rafael",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-14",
+      "evidencia": "PRs #26 (rules.py) e #85 (rules.ts)",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F4.3",
+      "titulo": "Especificação da HUD co-op e PvP (o que aparece, quando, em…",
+      "d": 0.5,
+      "depende": [],
+      "semana": "S2",
+      "dono": "rafael",
+      "issues": [
+        142
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-23",
+      "evidencia": "PR #143: docs/contracts/hud.md (a issue #142 ficou aberta)",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F4.4",
+      "titulo": "Dois mapas PvP 1v1 pequenos e simétricos",
+      "d": 1.0,
+      "depende": [
+        "F1.8"
+      ],
+      "semana": "S3",
+      "dono": "rafael",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [
+        "F1.8"
+      ],
+      "atrasada": true
+    },
+    {
+      "id": "F4.5",
+      "titulo": "Catálogo de opções de customização com defaults e limites…",
+      "d": 0.5,
+      "depende": [],
+      "semana": "S3",
+      "dono": "rafael",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-05",
+      "evidencia": "PR #16: tabela de opções em docs/contracts/room-options.md",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F4.6",
+      "titulo": "Lista de conquistas (≥ 5) e fórmula de XP/level e de ranking",
+      "d": 0.5,
+      "depende": [],
+      "semana": "S3",
+      "dono": "rafael",
+      "issues": [
+        119
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-23",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F4.7",
+      "titulo": "Passada de balanceamento: co-op e PvP",
+      "d": 1.0,
+      "depende": [
+        "F1.9"
+      ],
+      "semana": "S5",
+      "dono": "rafael",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [
+        "F1.9"
+      ],
+      "atrasada": false
+    },
+    {
+      "id": "F5.1",
+      "titulo": "Alembic configurado (o entrypoint roda alembic upgrade head)",
+      "d": 1.5,
+      "depende": [
+        "F0.3"
+      ],
+      "semana": "S1",
+      "dono": "akita",
+      "issues": [
+        29
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-13",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F5.2",
+      "titulo": "Lobby: POST /api/matches (mode, map, max_players, options…",
+      "d": 3.0,
+      "depende": [
+        "F2.3",
+        "F6.4"
+      ],
+      "semana": "S2",
+      "dono": "akita",
+      "issues": [
+        32
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-20",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F5.3",
+      "titulo": "record_match_result(match_id, MatchResult) idempotente",
+      "d": 1.0,
+      "depende": [
+        "F5.1"
+      ],
+      "semana": "S3",
+      "dono": "akita",
+      "issues": [
+        115
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-22",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F5.4",
+      "titulo": "player_stats agregado: vitórias, derrotas, eliminações,…",
+      "d": 1.0,
+      "depende": [
+        "F5.3"
+      ],
+      "semana": "S4",
+      "dono": "akita",
+      "issues": [
+        156
+      ],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F5.5",
+      "titulo": "Ranking (Elo no PvP) e level por XP (fórmula de F4.6)",
+      "d": 1.0,
+      "depende": [
+        "F5.4"
+      ],
+      "semana": "S4",
+      "dono": "akita",
+      "issues": [
+        157
+      ],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F5.6",
+      "titulo": "Histórico paginado: data, modo, mapa, resultado,…",
+      "d": 1.0,
+      "depende": [
+        "F5.3"
+      ],
+      "semana": "S4",
+      "dono": "akita",
+      "issues": [
+        116
+      ],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F5.7",
+      "titulo": "Conquistas (≥ 5) em user_achievements, desbloqueadas no…",
+      "d": 1.5,
+      "depende": [
+        "F5.3",
+        "F4.6"
+      ],
+      "semana": "S4",
+      "dono": "akita",
+      "issues": [
+        158
+      ],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F5.8",
+      "titulo": "Leaderboard",
+      "d": 0.5,
+      "depende": [
+        "F5.5"
+      ],
+      "semana": "S4",
+      "dono": "akita",
+      "issues": [
+        159
+      ],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F6.1",
+      "titulo": "Migrações users, refresh_tokens, oauth_accounts, friendships…",
+      "d": 0.5,
+      "depende": [
+        "F5.1"
+      ],
+      "semana": "S1",
+      "dono": "augusto",
+      "issues": [
+        51
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-12",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F6.2",
+      "titulo": "Signup, login e me: Argon2id, JWT de acesso, validação…",
+      "d": 2.0,
+      "depende": [
+        "F6.1"
+      ],
+      "semana": "S1",
+      "dono": "augusto",
+      "issues": [
+        69
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-14",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F6.3",
+      "titulo": "Refresh com rotação e detecção de reuso",
+      "d": 1.5,
+      "depende": [
+        "F6.2"
+      ],
+      "semana": "S2",
+      "dono": "augusto",
+      "issues": [
+        87
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-21",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F6.4",
+      "titulo": "get_current_user e authenticate_ws_token",
+      "d": 0.5,
+      "depende": [
+        "F6.2"
+      ],
+      "semana": "S1",
+      "dono": "augusto",
+      "issues": [
+        70
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-14",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F6.5",
+      "titulo": "Middlewares: logging JSON com request_id, handlers de erro…",
+      "d": 2.0,
+      "depende": [
+        "F0.3"
+      ],
+      "semana": "S2",
+      "dono": "augusto",
+      "issues": [
+        88
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-16",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F6.6",
+      "titulo": "Perfil: GET/PATCH /api/users/me, perfil público, upload de…",
+      "d": 1.5,
+      "depende": [
+        "F6.4"
+      ],
+      "semana": "S3",
+      "dono": "caio",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [],
+      "atrasada": true
+    },
+    {
+      "id": "F6.7",
+      "titulo": "Amigos (adicionar, remover, listar) e status online via…",
+      "d": 2.0,
+      "depende": [
+        "F2.1"
+      ],
+      "semana": "S3",
+      "dono": "caio",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [],
+      "atrasada": true
+    },
+    {
+      "id": "F6.8",
+      "titulo": "OAuth 2.0 com a 42 (Authorization Code + state), emitindo os…",
+      "d": 2.0,
+      "depende": [
+        "F6.3"
+      ],
+      "semana": "S4",
+      "dono": "akita",
+      "issues": [
+        34
+      ],
+      "prs_abertos": [
+        167
+      ],
+      "status": "em_revisao",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F7.1",
+      "titulo": "Roteamento, layout, contexto de auth (access em memória,…",
+      "d": 2.0,
+      "depende": [
+        "F0.4"
+      ],
+      "semana": "S1",
+      "dono": "caio",
+      "issues": [
+        47
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-15",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F7.2",
+      "titulo": "i18n desde o primeiro componente: react-i18next, pt-BR / en…",
+      "d": 3.0,
+      "depende": [
+        "F0.4"
+      ],
+      "semana": "S5",
+      "dono": "caio",
+      "issues": [
+        46
+      ],
+      "prs_abertos": [],
+      "status": "em_andamento",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F7.3",
+      "titulo": "Privacy Policy e Terms of Service com conteúdo real, nos 3…",
+      "d": 1.0,
+      "depende": [
+        "F7.2"
+      ],
+      "semana": "S2",
+      "dono": "caio",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [],
+      "atrasada": true
+    },
+    {
+      "id": "F7.4",
+      "titulo": "Telas de login e cadastro com a mesma validação do backend",
+      "d": 1.0,
+      "depende": [
+        "F7.1"
+      ],
+      "semana": "S1",
+      "dono": "caio",
+      "issues": [
+        48
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-19",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F7.5",
+      "titulo": "Perfil próprio e de terceiros, edição, upload de avatar,…",
+      "d": 2.0,
+      "depende": [
+        "F6.6",
+        "F6.7"
+      ],
+      "semana": "S3",
+      "dono": "caio",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [],
+      "atrasada": true
+    },
+    {
+      "id": "F7.6",
+      "titulo": "Rota /play/:matchId que monta mountGame",
+      "d": 2.0,
+      "depende": [
+        "F2.5",
+        "F4.3"
+      ],
+      "semana": "S3",
+      "dono": "caio",
+      "issues": [
+        49
+      ],
+      "prs_abertos": [
+        168
+      ],
+      "status": "em_revisao",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": true
+    },
+    {
+      "id": "F7.7",
+      "titulo": "Lobby: criar Room com opções de customização (e defaults…",
+      "d": 2.0,
+      "depende": [
+        "F5.2",
+        "F4.5"
+      ],
+      "semana": "S4",
+      "dono": "caio",
+      "issues": [
+        50
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-21",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F7.8",
+      "titulo": "Tela de resultado",
+      "d": 2.5,
+      "depende": [
+        "F5.4",
+        "F5.8"
+      ],
+      "semana": "S4",
+      "dono": "caio",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [
+        "F5.4",
+        "F5.8"
+      ],
+      "atrasada": false
+    },
+    {
+      "id": "F7.9",
+      "titulo": "Responsivo, acessibilidade básica, passada de console limpo…",
+      "d": 1.0,
+      "depende": [],
+      "semana": "S5",
+      "dono": "caio",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F8.1",
+      "titulo": "Nginx com TLS (mkcert), redirect 80 → 443, /api/, /ws/ com…",
+      "d": 1.5,
+      "depende": [],
+      "semana": "S1",
+      "dono": "akita",
+      "issues": [
+        27
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-10",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F8.2",
+      "titulo": "build-check.yml: build das imagens, pytest, vitest, lint",
+      "d": 1.0,
+      "depende": [
+        "F0.3",
+        "F0.4"
+      ],
+      "semana": "S1",
+      "dono": "akita",
+      "issues": [
+        28
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-19",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F8.3",
+      "titulo": ".env.example completo, healthchecks no compose, entrypoint…",
+      "d": 1.0,
+      "depende": [
+        "F5.1"
+      ],
+      "semana": "S2",
+      "dono": "akita",
+      "issues": [
+        30
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-15",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F8.4",
+      "titulo": "Build de produção do frontend servindo assets do jogo",
+      "d": 0.5,
+      "depende": [
+        "F0.4"
+      ],
+      "semana": "S2",
+      "dono": "akita",
+      "issues": [
+        31
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-18",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F8.5",
+      "titulo": "Esqueleto do README com todas as seções do capítulo VI…",
+      "d": 1.0,
+      "depende": [],
+      "semana": "S3",
+      "dono": "akita",
+      "issues": [
+        117
+      ],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": true
+    },
+    {
+      "id": "F8.6",
+      "titulo": "Setup da demo: 2–3 máquinas na mesma rede com a CA do mkcert…",
+      "d": 0.5,
+      "depende": [
+        "F8.1"
+      ],
+      "semana": "S5",
+      "dono": "akita",
+      "issues": [
+        163
+      ],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F8.7",
+      "titulo": "Instrumentação: GET /metrics com prometheus_client, só na…",
+      "d": 1.0,
+      "depende": [
+        "F2.3",
+        "F6.5"
+      ],
+      "semana": "S3",
+      "dono": "augusto",
+      "issues": [
+        92
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-21",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F8.8",
+      "titulo": "Prometheus no compose com scrape_configs do backend e dos…",
+      "d": 1.0,
+      "depende": [
+        "F8.7"
+      ],
+      "semana": "S3",
+      "dono": "akita",
+      "issues": [
+        118
+      ],
+      "prs_abertos": [],
+      "status": "concluida",
+      "concluida_em": "2026-10-23",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F8.9",
+      "titulo": "Grafana com datasource e dashboards provisionados por…",
+      "d": 1.5,
+      "depende": [
+        "F8.8"
+      ],
+      "semana": "S4",
+      "dono": "akita",
+      "issues": [
+        160
+      ],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F8.10",
+      "titulo": "Regras de alerta (backend fora do ar, p99 do tick acima de…",
+      "d": 1.0,
+      "depende": [
+        "F8.8"
+      ],
+      "semana": "S5",
+      "dono": "akita",
+      "issues": [
+        162
+      ],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F8.11",
+      "titulo": "Acesso seguro: Grafana só pelo Nginx em /grafana/ com TLS,…",
+      "d": 0.5,
+      "depende": [
+        "F8.9",
+        "F8.1"
+      ],
+      "semana": "S4",
+      "dono": "akita",
+      "issues": [
+        161
+      ],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": false,
+      "espera_por": [],
+      "atrasada": false
+    },
+    {
+      "id": "F9.1",
+      "titulo": "Cada pessoa escreve no README: features, módulos com…",
+      "d": 5.0,
+      "depende": [
+        "F8.5"
+      ],
+      "semana": "S6",
+      "dono": "todos",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [
+        "F8.5"
+      ],
+      "atrasada": false
+    },
+    {
+      "id": "F9.2",
+      "titulo": "Ensaio de defesa: cada pessoa explica a própria parte com o…",
+      "d": 0.0,
+      "depende": [],
+      "semana": "S6",
+      "dono": "todos",
+      "issues": [],
+      "prs_abertos": [],
+      "status": "a_fazer",
+      "sem_issue": true,
+      "espera_por": [],
+      "atrasada": false
+    }
+  ],
+  "escopo_adicionado": {
+    "issues": [
+      {
+        "issue": 164,
+        "titulo": "F6.8 · parte 2: login pelo Google",
+        "estado": "open",
+        "dono": "akita",
+        "d": 1,
+        "fechada_em": null
+      },
+      {
+        "issue": 155,
+        "titulo": "F5.3 · parte 2: MatchDetail em GET /api/matches/{id}/result",
+        "estado": "open",
+        "dono": "akita",
+        "d": 0.5,
+        "fechada_em": null
+      },
+      {
+        "issue": 147,
+        "titulo": "F2.5 · Socket do jogo com getAccessToken(fresh): falha transitória não encerra a partida",
+        "estado": "closed",
+        "dono": "augusto",
+        "d": null,
+        "fechada_em": "2026-10-23"
+      },
+      {
+        "issue": 120,
+        "titulo": "F8 · Servir /media/ com o avatar padrão",
+        "estado": "closed",
+        "dono": "akita",
+        "d": null,
+        "fechada_em": "2026-10-20"
+      }
+    ],
+    "abertas": 2,
+    "fechadas": 2,
+    "d_aberto_estimado": 1.5,
+    "sem_estimativa": []
+  },
+  "mensagem": "O ritmo do time é bom: no ritmo das últimas duas semanas, o que falta do plano termina antes do freeze. O risco está na distribuição. Se cada um fizer só o seu, a parte do Caio passa do limite de 27/11, e com o jogo rodando ainda temos só 5 dos 21 pontos fechados.",
+  "acoes": {
+    "roberto": [
+      {
+        "titulo": "Merge do PvpRuleset (#166, em revisão com o Rafael)",
+        "detalhe": "Destrava os mapas PvP (F4.4) e as RoomOptions (F1.9), que por sua vez destravam os temas (F3.8) e o balanceamento (F4.7) do Rafael."
+      },
+      {
+        "titulo": "Fechar a Prediction (F2.7, #125)",
+        "detalhe": "A reconexão do Augusto (F2.10) depende dela, e o módulo Remote players (2 pts) só fecha com as duas."
+      },
+      {
+        "titulo": "Criar as issues do minimapa (F3.6) e do teste de carga (F2.13)",
+        "detalhe": "As duas estão sem issue no board; o teste de carga é o que falta para o Multiplayer 3+ (2 pts)."
+      }
+    ],
+    "augusto": [
+      {
+        "titulo": "Revisar o PR da F6.8 (#167, OAuth da 42)",
+        "detalhe": "Fecha o módulo OAuth (1 pt) antes do teste de 31/10."
+      },
+      {
+        "titulo": "Combinar com o Roberto a ordem da reconexão (F2.10 espera a F2.7)",
+        "detalhe": ""
+      },
+      {
+        "titulo": "Você termina a sua parte do plano por volta de 29/10",
+        "detalhe": "É quem vai ter mais folga no time: dá para ajudar onde a carga está concentrada (ver Caio)."
+      }
+    ],
+    "rafael": [
+      {
+        "titulo": "Revisar o PvpRuleset do Roberto (#166)",
+        "detalhe": "O PvP, os mapas PvP e as conquistas pvp_* dependem dele."
+      },
+      {
+        "titulo": "Mapas PvP (F4.4): atrasados e sem issue",
+        "detalhe": "Sem um Map em backend/maps/pvp/, o PvP não roda na demo e o Elo não tem aceite real."
+      },
+      {
+        "titulo": "Criar as issues de F3.7, F3.8, F3.10, F4.4 e F4.7, e fechar a #142",
+        "detalhe": "A F4.3 já entrou na main pelo PR #143."
+      }
+    ],
+    "caio": [
+      {
+        "titulo": "Faltam 16 d do plano: no ritmo atual, a sua parte termina em 30/11, depois do limite",
+        "detalhe": "É o principal ponto de atenção da semana. As tarefas de backend (F6.6 e F6.7) são as mais fáceis de passar para outra pessoa."
+      },
+      {
+        "titulo": "Privacy Policy e Terms of Service (F7.3) ainda sem conteúdo",
+        "detalhe": "Não vale ponto, mas é critério de rejeição do subject."
+      },
+      {
+        "titulo": "Standard user management (2 pts) está em 0%",
+        "detalhe": "Perfil, amigos e telas (F6.6, F6.7, F7.5) estão sem issue no board."
+      },
+      {
+        "titulo": "Revisar o #165 (contrato da F7.8) e o #168 (F7.6, do Augusto)",
+        "detalhe": "O #165 precisa da sua assinatura para a tela de resultado e estatísticas sair contra ele."
+      },
+      {
+        "titulo": "A Home não tem link para /login nem /signup",
+        "detalhe": "Quem chegar pelo hostname no teste de 31/10 não encontra o login."
+      }
+    ],
+    "akita": [
+      {
+        "titulo": "S4 com 10,5 d numa semana: F5.4–F5.8, F8.9 e F8.11",
+        "detalhe": "A previsão é 13/11, colada no freeze. A F5.8 é a primeira a cortar."
+      },
+      {
+        "titulo": "Esqueleto do README (F8.5) atrasado",
+        "detalhe": "O F9.1 de todos depende dele."
+      },
+      {
+        "titulo": "MatchDetail (#155) e F5.4–F5.8 destravam a F7.8 do Caio",
+        "detalhe": ""
+      },
+      {
+        "titulo": "Teste com 2 PCs no sábado, 31/10, e trocar o secret da 42 até 06/11",
+        "detalhe": ""
+      }
+    ]
+  }
+}

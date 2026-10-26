@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Status do Catacombs 42</title>
+<!-- Gerado por status.py a partir de template.html: edite o template, nunca o index.html -->
+<style>
+:root {
+  color-scheme: dark;
+  /* tema da casca (frontend/src/index.css) */
+  --crypt-950: #0b0a0f;
+  --crypt-900: #14121c;
+  --crypt-800: #1d1a28;
+  --crypt-700: #2a2638;
+  --bone: #e8e2d0;
+  --bone-2: #b9b3a3;
+  --muted: #8a8578;
+  --torch: #f2a03d;          /* títulos e destaques de texto */
+  /* séries (validadas no fundo #14121c: dataviz/validate_palette.js) */
+  --s-entregue: #cc7818;
+  --s-plano: #6f8fe0;
+  --grid: #2a2638;
+  --axis: #3a3548;
+  /* status: sempre com ícone e texto */
+  --ok: #0ca30c;
+  --warn: #fab219;
+  --bad: #d03b3b;
+  --ring: rgba(255,255,255,0.08);
+}
+* { box-sizing: border-box; }
+html { background: var(--crypt-950); }
+body {
+  margin: 0; background: var(--crypt-950); color: var(--bone);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main { max-width: 1120px; margin: 0 auto; padding: 0 16px 80px; }
+a { color: var(--torch); }
+h1, h2, h3 { line-height: 1.2; margin: 0; }
+h2 { font-size: 1.6rem; color: var(--torch); margin-bottom: 6px; }
+h3 { font-size: 1.05rem; }
+.lede { color: var(--bone-2); margin: 0 0 24px; max-width: 70ch; }
+section { padding: 56px 0 8px; border-top: 1px solid var(--crypt-700); }
+section:first-of-type { border-top: 0; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* topo */
+.hero { padding: 56px 0 32px; position: relative; }
+.hero::before {
+  content: ""; position: absolute; inset: 0 -50vw; z-index: -1;
+  background: radial-gradient(60% 120% at 50% 0%, rgba(242,160,61,0.14), transparent 70%);
+}
+.eyebrow { color: var(--torch); letter-spacing: .14em; text-transform: uppercase; font-size: .8rem; font-weight: 600; }
+.hero h1 { font-size: clamp(2rem, 5vw, 3.2rem); margin: 8px 0 12px; }
+.message { font-size: 1.2rem; color: var(--bone); max-width: 62ch; margin: 0; }
+.nav { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 24px; font-size: .9rem; }
+.nav a { color: var(--bone-2); text-decoration: none; border-bottom: 1px solid var(--crypt-700); }
+.nav a:hover { color: var(--torch); }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 32px; }
+.tile { background: var(--crypt-900); border: 1px solid var(--ring); border-radius: 12px; padding: 16px 18px; }
+.tile .label { color: var(--bone-2); font-size: .85rem; }
+.tile .value { font-size: 2.2rem; font-weight: 700; line-height: 1.15; margin: 4px 0 2px; }
+.tile .sub { color: var(--muted); font-size: .85rem; }
+
+/* status */
+.badge { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: .85rem;
+  padding: 2px 10px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.badge.ok { color: var(--ok); } .badge.warn { color: var(--warn); } .badge.bad { color: var(--bad); }
+.badge svg { width: 14px; height: 14px; }
+
+/* veredito */
+.verdicts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 28px; }
+@media (max-width: 720px) { .verdicts { grid-template-columns: 1fr; } }
+.verdict { background: var(--crypt-900); border: 1px solid var(--ring); border-radius: 12px; padding: 18px; }
+.verdict h3 { margin: 10px 0 6px; }
+.verdict p { margin: 0; color: var(--bone-2); font-size: .95rem; }
+
+.card { background: var(--crypt-900); border: 1px solid var(--ring); border-radius: 12px; padding: 18px; }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart-title { font-weight: 600; margin-bottom: 2px; }
+.chart-sub { color: var(--muted); font-size: .85rem; margin-bottom: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .85rem; color: var(--bone-2); margin-top: 8px; }
+.legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 6px; }
+.tip {
+  position: absolute; pointer-events: none; background: var(--crypt-950); border: 1px solid var(--crypt-700);
+  border-radius: 8px; padding: 8px 10px; font-size: .82rem; line-height: 1.4; min-width: 150px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.5); opacity: 0; transition: opacity .08s; z-index: 5;
+}
+.tip b { color: var(--bone); }
+.tip .row { display: flex; justify-content: space-between; gap: 12px; color: var(--bone-2); }
+.grid2 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 12px; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+
+/* membros */
+.members { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
+.member .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.member .role { color: var(--muted); font-size: .85rem; margin: 2px 0 12px; }
+.member .pct { font-size: 2rem; font-weight: 700; }
+.bar { height: 10px; background: var(--crypt-700); border-radius: 999px; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--s-entregue); border-radius: 999px; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: .9rem; margin-top: 12px; color: var(--bone-2); }
+.kv b { color: var(--bone); font-weight: 600; text-align: right; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip { font-size: .78rem; padding: 1px 8px; border-radius: 6px; background: var(--crypt-800); border: 1px solid var(--crypt-700); color: var(--bone-2); }
+.chip.late { border-color: var(--bad); color: #f0a3a3; }
+.counts { display: flex; gap: 14px; font-size: .82rem; color: var(--muted); margin-top: 10px; flex-wrap: wrap; }
+
+/* módulos */
+.modules { display: grid; gap: 2px; }
+.mod { display: grid; grid-template-columns: minmax(0, 1.4fr) 56px minmax(0, 1fr) 120px; gap: 12px; align-items: center;
+  padding: 10px 12px; border-radius: 8px; }
+.mod:nth-child(odd) { background: var(--crypt-900); }
+.mod .name { font-weight: 600; }
+.mod .name small { display: block; color: var(--muted); font-weight: 400; font-size: .8rem; }
+.mod .pts { color: var(--bone-2); font-size: .9rem; text-align: center; }
+.mod .state { text-align: right; }
+@media (max-width: 640px) {
+  .mod { grid-template-columns: 1fr auto; }
+  .mod .barcell { grid-column: 1 / -1; }
+  .mod .pts { text-align: right; }
+  .mod .state { grid-column: 1 / -1; text-align: left; }
+}
+
+/* escopo e ações */
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+ul.plain { list-style: none; padding: 0; margin: 0; }
+ul.plain li { padding: 8px 0; border-top: 1px solid var(--crypt-700); font-size: .92rem; color: var(--bone-2); }
+ul.plain li:first-child { border-top: 0; }
+.actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.action h3 { display: flex; justify-content: space-between; align-items: baseline; }
+.action ol { margin: 12px 0 0; padding-left: 20px; }
+.action li { margin: 0 0 10px; color: var(--bone); }
+.action li span { display: block; color: var(--bone-2); font-size: .88rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+details { margin-top: 16px; }
+summary { cursor: pointer; color: var(--bone-2); }
+table { width: 100%; border-collapse: collapse; font-size: .85rem; margin-top: 12px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--crypt-700); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+.table-wrap { overflow-x: auto; }
+footer { color: var(--muted); font-size: .85rem; margin-top: 48px; }
+footer p { max-width: 80ch; }
+</style>
+</head>
+<body>
+<main id="app"></main>
+
+<script>
+const DATA = /*__DADOS__*/null;
+
+const S = DATA.atual;
+const NOMES = DATA.nomes, PAPEIS = DATA.papeis;
+const DAY = 86400000;
+const d = (iso) => new Date(iso + "T12:00:00");
+const fmtDate = (iso) => iso ? d(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "—";
+const fmtNum = (n, digits = 1) => Number(n).toLocaleString("pt-BR", { maximumFractionDigits: digits, minimumFractionDigits: 0 });
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const DATAS = S.datas;
+
+/* regra fixa do semáforo (README): até o freeze = verde; até o limite = amarelo; depois, ou sem previsão = vermelho */
+function level(iso) {
+  if (!iso) return "bad";
+  if (iso <= DATAS.freeze) return "ok";
+  if (iso <= DATAS.limite) return "warn";
+  return "bad";
+}
+const ICON = {
+  ok: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  warn: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l6.5 12h-13z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 6.5v3.5M8 12v.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  bad: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+};
+const LABEL = { ok: "No prazo", warn: "Apertado", bad: "Em risco" };
+const badge = (lvl, text) => `<span class="badge ${lvl}">${ICON[lvl]}${esc(text || LABEL[lvl])}</span>`;
+const STATUS_TXT = { concluida: "concluída", em_revisao: "em revisão", em_andamento: "em andamento", a_fazer: "a fazer" };
+
+const P = S.projeto;
+const remainingD = P.d_total - P.d_concluido;
+const lastFull = S.semanas.filter((w) => !w.parcial);
+
+/* ---------- topo ---------- */
+function hero() {
+  return `
+  <header class="hero">
+    <div class="eyebrow">Catacombs 42 · status do projeto</div>
+    <h1>Reunião de ${fmtDate(S.data)} · ${esc(S.semana_do_plano)}</h1>
+    <p class="message">${esc(S.mensagem)}</p>
+    <div class="tiles">
+      <div class="tile"><div class="label">Plano concluído</div>
+        <div class="value num">${fmtNum(P.pct)}%</div>
+        <div class="sub">${fmtNum(P.d_concluido)} de ${fmtNum(P.d_total)} dias do plano</div></div>
+      <div class="tile"><div class="label">Pontos garantidos</div>
+        <div class="value num">${P.pontos_garantidos} <span style="font-size:1.1rem;color:var(--muted)">de ${P.pontos_total}</span></div>
+        <div class="sub">o subject exige 14; módulo pela metade vale zero</div></div>
+      <div class="tile"><div class="label">Previsão do time, no ritmo atual</div>
+        <div class="value num">${fmtDate(P.previsao_com_adicional)}</div>
+        <div class="sub">${badge(level(P.previsao_conservadora))} &nbsp;freeze em ${fmtDate(DATAS.freeze)}</div></div>
+      <div class="tile"><div class="label">Se cada um fizer só o seu</div>
+        <div class="value num">${fmtDate(P.previsao_cada_um_no_seu)}</div>
+        <div class="sub">${badge(level(P.previsao_cada_um_no_seu))} &nbsp;limite em ${fmtDate(DATAS.limite)}</div></div>
+    </div>
+    <nav class="nav" aria-label="Seções">
+      <a href="#prazo">Estamos bem de prazo?</a><a href="#membros">Por membro</a>
+      <a href="#modulos">Módulos do subject</a><a href="#escopo">Escopo adicionado</a><a href="#acoes">Pontos de ação</a>
+    </nav>
+  </header>`;
+}
+
+/* ---------- prazo ---------- */
+function verdicts() {
+  const waiting = P.tarefas_esperando_outro, left = P.tarefas_restantes;
+  const gargalo = S.membros.find((m) => m.membro === P.gargalo);
+  const vels = lastFull.slice(-3).map((w) => fmtNum(w.entregue_d)).join(" → ");
+  const mod = P.pontos_garantidos >= 14 ? "ok" : (P.pontos_garantidos + pointsNear() >= 14 ? "warn" : "bad");
+  return `
+  <div class="verdicts">
+    <div class="verdict">${badge(level(P.previsao_conservadora))}
+      <h3>Ritmo do time</h3>
+      <p>Entregamos ${vels} dias do plano por semana. Mantido o ritmo das últimas ${P.semanas_velocidade} semanas, o que falta (${fmtNum(remainingD)} d, mais ${fmtNum(S.escopo_adicionado.d_aberto_estimado)} d de escopo adicionado) termina em <b>${fmtDate(P.previsao_com_adicional)}</b>; na pior semana recente, em <b>${fmtDate(P.previsao_conservadora)}</b>.</p></div>
+    <div class="verdict">${badge(level(P.previsao_cada_um_no_seu))}
+      <h3>Distribuição da carga</h3>
+      <p>O ritmo é do time, mas cada tarefa tem dono. Se cada um seguir só no que é seu, o último a terminar é ${esc(NOMES[P.gargalo])}, em <b>${fmtDate(P.previsao_cada_um_no_seu)}</b>: faltam ${fmtNum(gargalo.d_total - gargalo.d_concluido)} d no ritmo de ${fmtNum(gargalo.velocidade_d_semana)} d por semana.</p></div>
+    <div class="verdict">${badge(waiting <= left / 4 ? "ok" : "warn", waiting <= left / 4 ? "Dependência baixa" : "Dependência alta")}
+      <h3>Dependência entre pessoas</h3>
+      <p>Das ${left} tarefas que faltam, <b>${left - waiting} não esperam ninguém</b>. Só ${waiting} esperam uma tarefa de outra pessoa. O trabalho agora entra num jogo que já funciona, então pode ir para quem tiver tempo livre.</p></div>
+    <div class="verdict">${badge(mod, mod === "ok" ? "Garantido" : "Ainda não")}
+      <h3>O jogo funcionando já garante nota?</h3>
+      <p>Hoje são <b>${P.pontos_garantidos} de ${P.pontos_total}</b> pontos fechados de ponta a ponta. Para chegar aos 14, faltam ${14 - P.pontos_garantidos}, e a maioria dos módulos está entre 30% e 90%: um módulo pela metade não vale nada na avaliação.</p></div>
+  </div>`;
+}
+function pointsNear() { // módulos que fecham com uma tarefa
+  return S.modulos.filter((m) => !m.garantido && m.faltam.length === 1).reduce((a, m) => a + m.pontos, 0);
+}
+
+/* burn-up: dias do plano acumulados, planejado × entregue, com projeção */
+function burnup() {
+  const W = 760, H = 350, m = { l: 44, r: 16, t: 40, b: 34 };
+  const start = d(S.semanas[0].inicio).getTime();
+  const end = d(DATAS.entrega).getTime() + 2 * DAY;
+  const today = d(S.data).getTime();
+  const yMax = Math.ceil((P.d_total + S.escopo_adicionado.d_aberto_estimado) / 20) * 20;
+  const x = (t) => m.l + (t - start) / (end - start) * (W - m.l - m.r);
+  const y = (v) => H - m.b - v / yMax * (H - m.t - m.b);
+
+  // pontos semanais: fim de cada semana (o último é hoje)
+  let accDone = 0, accPlan = 0;
+  const pts = S.semanas.map((w) => {
+    accDone += w.entregue_d; accPlan += w.planejado_d;
+    const t = w.parcial ? today : d(w.fim).getTime();
+    return { t, done: accDone, plan: accPlan, w };
+  });
+  // o plano continua até a defesa: S4 (resto), S5 e S6 a partir das tarefas
+  const planEnds = { S4: "2026-10-31", S5: "2026-11-14", S6: "2026-11-21" };
+  const planAt = (wk) => S.tarefas.filter((t) => t.semana <= wk).reduce((a, t) => a + t.d, 0);
+  const planLine = [[start, 0], ...pts.filter((p) => !p.w.parcial).map((p) => [p.t, p.plan]),
+    ...Object.entries(planEnds).map(([wk, iso]) => [d(iso).getTime(), planAt(wk)])];
+  const doneLine = [[start, 0], ...pts.map((p) => [p.t, p.done])];
+  const proj = P.previsao_com_adicional ? [[today, P.d_concluido], [d(P.previsao_com_adicional).getTime(), P.d_total + S.escopo_adicionado.d_aberto_estimado]] : [];
+  const path = (pp) => pp.map(([t, v], i) => `${i ? "L" : "M"}${x(t).toFixed(1)},${y(v).toFixed(1)}`).join("");
+
+  const yTicks = []; for (let v = 0; v <= yMax; v += 20) yTicks.push(v);
+  const xTicks = []; for (let t = start; t <= end; t += 14 * DAY) xTicks.push(t);
+  const markers = [
+    ["hoje", today, "var(--bone-2)"], ["freeze", d(DATAS.freeze).getTime(), "var(--warn)"],
+    ["defesa (plano)", d(DATAS.defesa_plano).getTime(), "var(--bone-2)"], ["limite", d(DATAS.limite).getTime(), "var(--bad)"],
+  ];
+  const svg = `
+  <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Dias do plano acumulados: planejado e entregue, com projeção">
+    ${yTicks.map((v) => `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/>
+      <text x="${m.l - 8}" y="${y(v) + 4}" fill="var(--muted)" font-size="11" text-anchor="end" class="num">${v}</text>`).join("")}
+    ${xTicks.map((t) => `<text x="${x(t)}" y="${H - m.b + 18}" fill="var(--muted)" font-size="11" text-anchor="middle" class="num">${fmtDate(new Date(t).toISOString().slice(0, 10))}</text>`).join("")}
+    <line x1="${m.l}" x2="${W - m.r}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)"/>
+    ${markers.map(([name, t, c], i) => `<line x1="${x(t)}" x2="${x(t)}" y1="${18 + (i % 2) * 14}" y2="${y(0)}" stroke="${c}" stroke-width="1" stroke-dasharray="${name === "hoje" ? "2 3" : "4 3"}" opacity=".8"/>
+      <text x="${x(t)}" y="${12 + (i % 2) * 14}" fill="${c}" font-size="11" text-anchor="middle">${name}</text>`).join("")}
+    <line x1="${m.l}" x2="${W - m.r}" y1="${y(P.d_total)}" y2="${y(P.d_total)}" stroke="var(--bone-2)" stroke-width="1" opacity=".35"/>
+    <text x="${m.l + 6}" y="${y(P.d_total) - 6}" fill="var(--bone-2)" font-size="11">total do plano: ${fmtNum(P.d_total)} d</text>
+    <path d="${path(planLine)}" fill="none" stroke="var(--s-plano)" stroke-width="2" stroke-dasharray="6 4" stroke-linejoin="round"/>
+    ${proj.length ? `<path d="${path(proj)}" fill="none" stroke="var(--s-entregue)" stroke-width="2" stroke-dasharray="3 4" opacity=".9"/>
+      <circle cx="${x(proj[1][0])}" cy="${y(proj[1][1])}" r="4.5" fill="var(--crypt-900)" stroke="var(--s-entregue)" stroke-width="2"/>` : ""}
+    <path d="${path(doneLine)}" fill="none" stroke="var(--s-entregue)" stroke-width="2.5" stroke-linejoin="round"/>
+    ${pts.map((p) => `<circle cx="${x(p.t)}" cy="${y(p.done)}" r="4" fill="var(--s-entregue)" stroke="var(--crypt-900)" stroke-width="2"/>`).join("")}
+    <text x="${x(today) + 8}" y="${y(P.d_concluido) + 16}" fill="var(--bone)" font-size="12" font-weight="600">${fmtNum(P.d_concluido)} d</text>
+    <line class="xh" y1="${m.t}" y2="${y(0)}" stroke="var(--bone-2)" stroke-width="1" opacity="0"/>
+    <rect class="hit" x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}" fill="transparent"/>
+  </svg>`;
+  return { svg, pts, x, W, planLine };
+}
+
+function weeklyBars() {
+  const W = 360, H = 250, m = { l: 34, r: 8, t: 22, b: 34 };
+  const weeks = S.semanas;
+  const yMax = Math.ceil(Math.max(...weeks.map((w) => Math.max(w.entregue_d, w.planejado_d)), 10) / 10) * 10;
+  const bw = (W - m.l - m.r) / weeks.length;
+  const y = (v) => H - m.b - v / yMax * (H - m.t - m.b);
+  const ticks = []; for (let v = 0; v <= yMax; v += 10) ticks.push(v);
+  return `
+  <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Dias do plano entregues por semana">
+    ${ticks.map((v) => `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/>
+      <text x="${m.l - 6}" y="${y(v) + 4}" fill="var(--muted)" font-size="11" text-anchor="end" class="num">${v}</text>`).join("")}
+    ${weeks.map((w, i) => {
+      const cx = m.l + bw * i + bw / 2, h = y(0) - y(w.entregue_d), bwid = Math.min(34, bw * 0.55);
+      const label = fmtDate(w.inicio);
+      return `<g class="wk" data-i="${i}">
+        <rect x="${m.l + bw * i}" y="${m.t}" width="${bw}" height="${H - m.t - m.b}" fill="transparent"/>
+        ${h > 0 ? `<path d="M${cx - bwid / 2},${y(0)} V${y(w.entregue_d) + 4} q0,-4 4,-4 H${cx + bwid / 2 - 4} q4,0 4,4 V${y(0)} Z" fill="var(--s-entregue)" opacity="${w.parcial ? .45 : 1}"/>` : ""}
+        <line x1="${cx - bwid / 2 - 4}" x2="${cx + bwid / 2 + 4}" y1="${y(w.planejado_d)}" y2="${y(w.planejado_d)}" stroke="var(--s-plano)" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="${cx}" y="${y(w.entregue_d) - 6}" fill="var(--bone)" font-size="11" text-anchor="middle" class="num">${w.parcial ? "" : fmtNum(w.entregue_d)}</text>
+        <text x="${cx}" y="${H - m.b + 16}" fill="var(--muted)" font-size="11" text-anchor="middle">${label}${w.parcial ? "*" : ""}</text>
+      </g>`;
+    }).join("")}
+    <line x1="${m.l}" x2="${W - m.r}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)"/>
+  </svg>`;
+}
+
+function prazo() {
+  const b = burnup();
+  return `
+  <section id="prazo">
+    <h2>Estamos bem de prazo?</h2>
+    <p class="lede">O jogo rodando passa a sensação de que estamos bem. Os números dizem que o <b>ritmo</b> está bom, mas a <b>carga</b> está mal distribuída, e a nota ainda não está garantida.</p>
+    ${verdicts()}
+    <div class="grid2">
+      <div class="card chart" id="burnup">
+        <div class="chart-title">Dias do plano entregues, acumulados</div>
+        <div class="chart-sub">Planejado × entregue, com a projeção no ritmo das últimas ${P.semanas_velocidade} semanas</div>
+        ${b.svg}
+        <div class="legend"><span><i style="border-color:var(--s-entregue)"></i>entregue</span>
+          <span><i style="border-color:var(--s-entregue);border-top-style:dotted"></i>projeção</span>
+          <span><i style="border-color:var(--s-plano);border-top-style:dashed"></i>planejado</span></div>
+        <div class="tip"></div>
+      </div>
+      <div class="card chart" id="weekly">
+        <div class="chart-title">Ritmo por semana</div>
+        <div class="chart-sub">Dias do plano entregues em cada semana; o traço azul é o que o plano previa</div>
+        ${weeklyBars()}
+        <div class="legend"><span><i style="border-color:var(--s-entregue);border-top-width:8px"></i>entregue</span>
+          <span><i style="border-color:var(--s-plano)"></i>planejado</span><span>* semana em curso</span></div>
+        <div class="tip"></div>
+      </div>
+    </div>
+  </section>`;
+}
+
+/* ---------- membros ---------- */
+function timeline() {
+  const W = 760, rowH = 40, m = { l: 92, r: 24, t: 26, b: 30 };
+  const H = m.t + m.b + rowH * S.membros.length;
+  const start = d(S.data).getTime();
+  const dates = S.membros.map((mm) => mm.previsao_obrigatorio).filter(Boolean).map((iso) => d(iso).getTime());
+  const end = Math.max(d(DATAS.limite).getTime() + 7 * DAY, ...dates.map((t) => t + 5 * DAY));
+  const x = (t) => m.l + (t - start) / (end - start) * (W - m.l - m.r);
+  const xTicks = []; for (let t = start; t <= end; t += 7 * DAY) xTicks.push(t);
+  const marks = [["freeze", DATAS.freeze, "var(--warn)"], ["defesa", DATAS.defesa_plano, "var(--bone-2)"], ["limite", DATAS.limite, "var(--bad)"]];
+  return `
+  <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Previsão de término de cada membro">
+    ${xTicks.map((t) => `<line x1="${x(t)}" x2="${x(t)}" y1="${m.t}" y2="${H - m.b}" stroke="var(--grid)"/>
+      <text x="${x(t)}" y="${H - m.b + 18}" fill="var(--muted)" font-size="11" text-anchor="middle" class="num">${fmtDate(new Date(t).toISOString().slice(0, 10))}</text>`).join("")}
+    ${marks.map(([n, iso, c]) => `<line x1="${x(d(iso).getTime())}" x2="${x(d(iso).getTime())}" y1="${m.t - 8}" y2="${H - m.b}" stroke="${c}" stroke-dasharray="4 3"/>
+      <text x="${x(d(iso).getTime())}" y="${m.t - 12}" fill="${c}" font-size="11" text-anchor="middle">${n}</text>`).join("")}
+    ${S.membros.map((mm, i) => {
+      const cy = m.t + rowH * i + rowH / 2, lvl = level(mm.previsao_obrigatorio);
+      const t = mm.previsao_obrigatorio ? d(mm.previsao_obrigatorio).getTime() : end;
+      const col = { ok: "var(--ok)", warn: "var(--warn)", bad: "var(--bad)" }[lvl];
+      return `<g class="mdot" data-i="${i}">
+        <rect x="0" y="${cy - rowH / 2}" width="${W}" height="${rowH}" fill="transparent"/>
+        <text x="${m.l - 12}" y="${cy + 4}" fill="var(--bone)" font-size="13" text-anchor="end">${esc(NOMES[mm.membro])}</text>
+        <line x1="${x(start)}" x2="${x(t)}" y1="${cy}" y2="${cy}" stroke="${col}" stroke-width="2" opacity=".35"/>
+        <circle cx="${x(t)}" cy="${cy}" r="7" fill="${col}" stroke="var(--crypt-900)" stroke-width="2"/>
+        <text x="${x(t) + (x(t) > W - 90 ? -12 : 12)}" y="${cy + 4}" fill="var(--bone)" font-size="12" text-anchor="${x(t) > W - 90 ? "end" : "start"}" class="num">${mm.previsao_obrigatorio ? fmtDate(mm.previsao_obrigatorio) : "sem ritmo"}</text>
+      </g>`;
+    }).join("")}
+  </svg>`;
+}
+
+function memberCard(mm) {
+  const lvl = level(mm.previsao_obrigatorio);
+  const t = mm.tarefas;
+  const left = S.tarefas.filter((x) => x.dono === mm.membro && x.status !== "concluida");
+  return `
+  <article class="card member">
+    <div class="top"><h3>${esc(NOMES[mm.membro])}</h3>${badge(lvl)}</div>
+    <div class="role">${esc(PAPEIS[mm.membro])}</div>
+    <div class="top"><span class="pct num">${fmtNum(mm.pct)}%</span><span class="num" style="color:var(--muted)">${fmtNum(mm.d_concluido)} / ${fmtNum(mm.d_total)} d</span></div>
+    <div class="bar" role="img" aria-label="${fmtNum(mm.pct)}% concluído"><span style="width:${mm.pct}%"></span></div>
+    <div class="kv">
+      <span>Ritmo (últimas ${P.semanas_velocidade} semanas)</span><b class="num">${fmtNum(mm.velocidade_d_semana)} d/sem</b>
+      <span>Previsão de término</span><b class="num">${fmtDate(mm.previsao_obrigatorio)}</b>
+    </div>
+    <div class="counts"><span>${t.concluida} concluídas</span><span>${t.em_revisao} em revisão</span><span>${t.em_andamento} em andamento</span><span>${t.a_fazer} a fazer</span></div>
+    ${left.length ? `<div class="chips">${left.map((x) => `<span class="chip ${x.atrasada ? "late" : ""}" title="${esc(x.titulo)} · ${STATUS_TXT[x.status]} · ${x.semana}${x.atrasada ? " · atrasada" : ""}">${x.id}${x.atrasada ? " · atrasada" : ""}</span>`).join("")}</div>` : ""}
+  </article>`;
+}
+
+function membros() {
+  return `
+  <section id="membros">
+    <h2>Por membro</h2>
+    <p class="lede">A % conta só as tarefas do plano fechadas inteiras, pesadas pelos dias estimados. Uma parte já entregue de uma tarefa maior ainda não entra. A previsão divide o que falta de cada um pelo ritmo dele nas últimas ${P.semanas_velocidade} semanas.</p>
+    <div class="card chart" id="timeline">
+      <div class="chart-title">Quando cada um termina a sua parte do plano</div>
+      <div class="chart-sub">Cor: verde até o freeze (${fmtDate(DATAS.freeze)}); amarelo até o limite (${fmtDate(DATAS.limite)}); vermelho depois dele</div>
+      ${timeline()}
+      <div class="tip"></div>
+    </div>
+    <div class="members">${S.membros.map(memberCard).join("")}</div>
+  </section>`;
+}
+
+/* ---------- módulos ---------- */
+function modulos() {
+  const sorted = [...S.modulos].sort((a, b) => (b.garantido - a.garantido) || (b.pct - a.pct));
+  return `
+  <section id="modulos">
+    <h2>Módulos do subject</h2>
+    <p class="lede">Um módulo só conta ponto quando todas as tarefas dele estão na <code>main</code>. Hoje são <b>${P.pontos_garantidos} de ${P.pontos_total}</b> pontos garantidos, e o mínimo para passar é 14.</p>
+    <div class="modules" role="list">
+      ${sorted.map((m) => {
+        const lvl = m.garantido ? "ok" : (m.pct >= 75 ? "warn" : "bad");
+        const txt = m.garantido ? "Garantido" : (m.faltam.length === 1 ? `Falta ${m.faltam[0]}` : `Faltam ${m.faltam.length} tarefas`);
+        return `<div class="mod" role="listitem" title="Falta: ${esc(m.faltam.join(", ") || "nada")}">
+          <div class="name">${esc(m.nome)}<small>${esc(m.tipo)} · ${esc(m.faltam.join(", ") || "todas as tarefas na main")}</small></div>
+          <div class="pts num">${m.pontos} pt${m.pontos > 1 ? "s" : ""}</div>
+          <div class="barcell"><div class="bar"><span style="width:${m.pct}%"></span></div></div>
+          <div class="state">${badge(lvl, txt)}</div>
+        </div>`;
+      }).join("")}
+    </div>
+  </section>`;
+}
+
+/* ---------- escopo adicionado ---------- */
+function escopo() {
+  const e = S.escopo_adicionado;
+  const open = e.issues.filter((i) => i.estado === "open"), closed = e.issues.filter((i) => i.estado === "closed");
+  const li = (i) => `<li><b>#${i.issue}</b> ${esc(i.titulo)}<br><span style="color:var(--muted);font-size:.82rem">${esc(NOMES[i.dono] || "sem dono")} · ${i.d == null ? "sem estimativa" : fmtNum(i.d) + " d"}${i.fechada_em ? " · fechada em " + fmtDate(i.fechada_em) : ""}</span></li>`;
+  return `
+  <section id="escopo">
+    <h2>Escopo adicionado</h2>
+    <p class="lede">O que surgiu fora das tarefas do plano. Não entra na %; entra só na previsão "obrigatório + adicional", para sabermos se cabe tudo ou só o obrigatório.</p>
+    <div class="tiles" style="margin-top:0">
+      <div class="tile"><div class="label">Abertas</div><div class="value num">${e.abertas}</div><div class="sub">${fmtNum(e.d_aberto_estimado)} d estimados${e.sem_estimativa.length ? ` · ${e.sem_estimativa.length} sem estimativa` : ""}</div></div>
+      <div class="tile"><div class="label">Já entregues</div><div class="value num">${e.fechadas}</div><div class="sub">trabalho fora do plano que já está na main</div></div>
+      <div class="tile"><div class="label">Obrigatório + adicional</div><div class="value num">${fmtDate(P.previsao_com_adicional)}</div><div class="sub">${badge(level(P.previsao_com_adicional))} &nbsp;só o obrigatório: ${fmtDate(P.previsao_obrigatorio)}</div></div>
+    </div>
+    <div class="split" style="margin-top:12px">
+      <div class="card"><h3>Abertas</h3><ul class="plain">${open.map(li).join("") || '<li class="empty">nenhuma</li>'}</ul></div>
+      <div class="card"><h3>Entregues</h3><ul class="plain">${closed.map(li).join("") || '<li class="empty">nenhuma</li>'}</ul></div>
+    </div>
+  </section>`;
+}
+
+/* ---------- ações ---------- */
+function acoes() {
+  return `
+  <section id="acoes">
+    <h2>Pontos de ação da semana</h2>
+    <p class="lede">Só o que trava outra pessoa ou o prazo. O resto segue o board.</p>
+    <div class="actions">
+      ${Object.entries(S.acoes).map(([who, items]) => `
+        <article class="card action">
+          <h3>${esc(NOMES[who])} ${badge(level(S.membros.find((m) => m.membro === who).previsao_obrigatorio))}</h3>
+          ${items.length ? `<ol>${items.map((it) => `<li>${esc(it.titulo)}${it.detalhe ? `<span>${esc(it.detalhe)}</span>` : ""}</li>`).join("")}</ol>` : '<p class="empty">Nada que trave alguém esta semana.</p>'}
+        </article>`).join("")}
+    </div>
+  </section>`;
+}
+
+/* ---------- tabela (acessibilidade e conferência) ---------- */
+function tabela() {
+  return `
+  <details>
+    <summary>Ver todas as ${S.tarefas.length} tarefas do plano</summary>
+    <div class="table-wrap"><table>
+      <thead><tr><th>ID</th><th>Tarefa</th><th>Dono</th><th>d</th><th>Semana</th><th>Status</th><th>Issue / PR</th></tr></thead>
+      <tbody>${S.tarefas.map((t) => `<tr><td>${t.id}</td><td>${esc(t.titulo)}</td><td>${esc(NOMES[t.dono] || "todos")}</td>
+        <td class="num">${fmtNum(t.d)}</td><td>${t.semana}</td>
+        <td>${STATUS_TXT[t.status]}${t.atrasada ? " · <span style='color:#f0a3a3'>atrasada</span>" : ""}${t.concluida_em ? " · " + fmtDate(t.concluida_em) : ""}</td>
+        <td>${t.issues.map((n) => "#" + n).join(", ")}${t.prs_abertos.length ? " · PR " + t.prs_abertos.map((n) => "#" + n).join(", ") : ""}${t.evidencia ? esc(t.evidencia) : ""}${t.sem_issue ? "sem issue" : ""}</td></tr>`).join("")}
+      </tbody></table></div>
+  </details>`;
+}
+
+function rodape() {
+  return `
+  <footer>
+    ${tabela()}
+    <p>Coletado em ${fmtDate(S.data)} do plano (<code>docs/catacombs42-plano-de-tarefas.md</code> §5, §7 e §9) e do GitHub. Uma tarefa conta quando o PR está na <code>main</code>. As tarefas de todos dividem a estimativa em 5. Como recriar e as regras: <code>docs/pm/status/README.md</code>.</p>
+  </footer>`;
+}
+
+document.getElementById("app").innerHTML = hero() + prazo() + membros() + modulos() + escopo() + acoes() + rodape();
+
+/* ---------- hover ---------- */
+function placeTip(card, tip, html, px, py) {
+  tip.innerHTML = html; tip.style.opacity = 1;
+  const r = card.getBoundingClientRect();
+  let left = px - r.left + 14, top = py - r.top + 14;
+  if (left + tip.offsetWidth > r.width - 8) left = px - r.left - tip.offsetWidth - 14;
+  if (top + tip.offsetHeight > r.height - 8) top = py - r.top - tip.offsetHeight - 14;
+  tip.style.left = left + "px"; tip.style.top = top + "px";
+}
+(function () {
+  const card = document.getElementById("burnup"), svg = card.querySelector("svg"), tip = card.querySelector(".tip");
+  const b = burnup(), xh = svg.querySelector(".xh");
+  svg.querySelector(".hit").addEventListener("mousemove", (ev) => {
+    const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+    const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const near = b.pts.reduce((a, p) => Math.abs(b.x(p.t) - loc.x) < Math.abs(b.x(a.t) - loc.x) ? p : a);
+    xh.setAttribute("x1", b.x(near.t)); xh.setAttribute("x2", b.x(near.t)); xh.setAttribute("opacity", ".5");
+    placeTip(card, tip, `<b>${near.w.parcial ? "hoje, " + fmtDate(S.data) : "semana até " + fmtDate(near.w.fim)}</b>
+      <div class="row"><span>entregue</span><span class="num">${fmtNum(near.done)} d</span></div>
+      <div class="row"><span>planejado</span><span class="num">${fmtNum(near.plan)} d</span></div>
+      <div class="row"><span>diferença</span><span class="num">${fmtNum(near.done - near.plan)} d</span></div>`, ev.clientX, ev.clientY);
+  });
+  svg.querySelector(".hit").addEventListener("mouseleave", () => { tip.style.opacity = 0; xh.setAttribute("opacity", "0"); });
+})();
+(function () {
+  const card = document.getElementById("weekly"), tip = card.querySelector(".tip");
+  card.querySelectorAll(".wk").forEach((g) => {
+    const w = S.semanas[+g.dataset.i];
+    g.addEventListener("mousemove", (ev) => placeTip(card, tip, `<b>${fmtDate(w.inicio)} a ${fmtDate(w.fim)}${w.parcial ? " (em curso)" : ""}</b>
+      <div class="row"><span>entregue</span><span class="num">${fmtNum(w.entregue_d)} d</span></div>
+      <div class="row"><span>planejado</span><span class="num">${fmtNum(w.planejado_d)} d</span></div>`, ev.clientX, ev.clientY));
+    g.addEventListener("mouseleave", () => { tip.style.opacity = 0; });
+  });
+})();
+(function () {
+  const card = document.getElementById("timeline"), tip = card.querySelector(".tip");
+  card.querySelectorAll(".mdot").forEach((g) => {
+    const mm = S.membros[+g.dataset.i];
+    g.addEventListener("mousemove", (ev) => placeTip(card, tip, `<b>${esc(NOMES[mm.membro])}</b>
+      <div class="row"><span>faltam</span><span class="num">${fmtNum(mm.d_total - mm.d_concluido)} d</span></div>
+      <div class="row"><span>ritmo</span><span class="num">${fmtNum(mm.velocidade_d_semana)} d/sem</span></div>
+      <div class="row"><span>previsão</span><span class="num">${fmtDate(mm.previsao_obrigatorio)}</span></div>
+      <div class="row"><span>atrasadas</span><span>${mm.atrasadas.join(", ") || "nenhuma"}</span></div>`, ev.clientX, ev.clientY));
+    g.addEventListener("mouseleave", () => { tip.style.opacity = 0; });
+  });
+})();
+</script>
+</body>
+</html>
