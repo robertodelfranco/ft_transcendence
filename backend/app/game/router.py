@@ -91,8 +91,12 @@ async def serve(ws: ServerSocket, match_id: int, *, rooms: RoomManager, connecti
 		return
 
 	connection = await connections.connect(user_id, "game", ws, match_id=match_id)
+	# o connect espera o socket substituído fechar (4408): o Grace pode ter vencido nesse meio-tempo
+	if not rooms.player_connected(match_id, user_id):
+		await connections.disconnect(connection, CloseCode.NOT_A_MEMBER,
+			f"user {user_id} left match {match_id} while joining")
+		return
 	# daqui ao welcome não há await que suspenda: nenhum Snapshot do tick entra na fila antes dele
-	rooms.player_connected(match_id, user_id)
 	await connections.send_to_user(user_id, _welcome(rooms, room, match_id, user_id), "game")
 	try:
 		await _read(ws, room, user_id, connections, MessageBudget())

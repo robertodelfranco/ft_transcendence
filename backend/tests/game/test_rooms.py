@@ -523,6 +523,18 @@ async def test_everyone_expiring_ends_the_coop_with_a_forfeit(manager, results, 
 	assert all(player.disconnected_at_end for player in outcome.players)
 
 
+async def test_connecting_after_the_grace_period_expired_is_refused(manager, short_grace):
+	lobby(manager, players=(7, 9))
+	manager.start(12)
+	room = manager.game_room(12)
+	manager.player_connected(12, 9)
+	await until(lambda: room.players[7].left)
+
+	assert manager.player_connected(12, 7) is False
+	assert not room.players[7].connected
+	assert manager.player_connected(13, 7) is False # Room que não existe mais: recusa, não levanta
+
+
 async def test_who_never_opens_the_socket_expires_counting_from_the_start(manager, short_grace):
 	lobby(manager, players=(7, 9))
 	manager.start(12)

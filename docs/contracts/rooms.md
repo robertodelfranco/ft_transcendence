@@ -32,7 +32,7 @@ class RoomManager:
     def list_open(self) -> list[RoomInfo]: ...                            # status == "lobby"
     def room_of(self, user_id: int) -> int | None: ...                    # match_id da Room do User
     def game_room(self, match_id: int) -> Room | None: ...                # para o /ws/game (F2.4); None em lobby
-    def player_connected(self, match_id: int, user_id: int) -> None: ...  # /ws/game: join aceito, para o Grace period (F2.10)
+    def player_connected(self, match_id: int, user_id: int) -> bool: ...  # /ws/game: join aceito, para o Grace period (F2.10); False = já saiu, 4403
     def player_disconnected(self, match_id: int, user_id: int) -> None: ...  # /ws/game: socket caiu, começa o Grace period (F2.10)
     async def close(self) -> None: ...                                    # lifespan: cancela toda task de tick
 ```

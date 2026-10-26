@@ -234,11 +234,17 @@ class RoomManager:
 
 	# ---------- socket do jogo (arq. §7.3) ----------
 
-	def player_connected(self, match_id: int, user_id: int) -> None:
-		"""Um join aceito no /ws/game: o Player volta e o Grace period dele para."""
-		entry = self._entry(match_id)
+	def player_connected(self, match_id: int, user_id: int) -> bool:
+		"""Um join aceito no /ws/game: o Player volta e o Grace period dele para.
+
+		False: o Player saiu (ou a Room acabou) depois do join, enquanto o socket velho fechava.
+		"""
+		entry = self._entries.get(match_id)
+		if entry is None or entry.room is None or entry.room.players[user_id].left:
+			return False
 		set_connected(entry.room, user_id, True)
 		entry.grace.pop(user_id, None)
+		return True
 
 	def player_disconnected(self, match_id: int, user_id: int) -> None:
 		"""O socket caiu: começa o Grace period. Não é erro se a Room já foi removida."""
