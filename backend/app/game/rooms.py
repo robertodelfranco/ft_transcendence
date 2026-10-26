@@ -18,7 +18,7 @@ from typing import Any, Literal
 from starlette.requests import HTTPConnection
 
 from app.game import (BOSS_DYING_S, TICK_RATE, Event, Map, MatchOutcome, Mode, Room, RoomOptions,
-	create_room, last_input_seq, load_map, match_outcome, step, to_snapshot)
+	create_room, last_input_seq, leave, load_map, match_outcome, set_connected, step, to_snapshot)
 from app.game.protocol import CloseCode, encode_event, options_payload, snapshot_encoder
 from app.matches.results import AchievementUnlock, abort_unfinished, record_match_result
 from app.ws.manager import ConnectionManager
@@ -38,6 +38,8 @@ SNAPSHOT_EVERY = 2 # Ticks: 15 Hz (ws-messages.md §2.8)
 MAX_STEP_FAILURES = TICK_RATE # falhas sem um ciclo bom no meio: a Room fecha com 4503
 DYING_TICKS = math.ceil(BOSS_DYING_S * TICK_RATE) # depois do game_over, só a animação do Boss anda
 ROOM_TTL_S = 60 # a Room some 60 s depois do fim (arq. §10.1)
+GRACE_PERIOD_S = 30 # ws-messages.md §2.8
+GRACE_TICKS = GRACE_PERIOD_S * TICK_RATE # contado em Ticks: o prazo anda com a partida
 
 
 # ---------- recusas (rooms.md §2.2) ----------
@@ -145,6 +147,7 @@ class Entry:
 	room: Room | None = None # a Room da Simulation nasce no start
 	task: asyncio.Task[None] | None = None
 	started_at: datetime | None = None
+	grace: dict[int, int] = field(default_factory=dict) # user_id → Tick em que o Grace period expira
 
 
 def now() -> datetime:
@@ -221,11 +224,36 @@ class RoomManager:
 		players = [(user_id, seat.username) for user_id, seat in entry.seats.items()]
 		entry.room = create_room(match_id, entry.mode, entry.game_map, entry.options, players,
 			seed=random.randrange(2**32))
+		# o Player nasce desconectado: quem nunca abre o socket expira contando daqui (ws-messages.md)
+		entry.grace = {user_id: GRACE_TICKS for user_id in entry.seats}
 		entry.status = "running"
 		entry.started_at = now()
 		# contexto vazio: a task vive a partida inteira e não pode levar o request_id do POST /start
 		entry.task = asyncio.create_task(self._run(entry), name=f"room-{match_id}",
 			context=contextvars.Context())
+
+	# ---------- socket do jogo (arq. §7.3) ----------
+
+	def player_connected(self, match_id: int, user_id: int) -> bool:
+		"""Um join aceito no /ws/game: o Player volta e o Grace period dele para.
+
+		False: o Player saiu (ou a Room acabou) depois do join, enquanto o socket velho fechava.
+		"""
+		entry = self._entries.get(match_id)
+		if entry is None or entry.room is None or entry.room.players[user_id].left:
+			return False
+		set_connected(entry.room, user_id, True)
+		entry.grace.pop(user_id, None)
+		return True
+
+	def player_disconnected(self, match_id: int, user_id: int) -> None:
+		"""O socket caiu: começa o Grace period. Não é erro se a Room já foi removida."""
+		entry = self._entries.get(match_id)
+		if entry is None or entry.room is None:
+			return
+		set_connected(entry.room, user_id, False)
+		if entry.status == "running": # depois do game_over não há o que esperar
+			entry.grace[user_id] = entry.room.tick + GRACE_TICKS
 
 	# ---------- leitura ----------
 
@@ -269,6 +297,9 @@ class RoomManager:
 		while end_tick is None or room.tick < end_tick:
 			started = time.perf_counter()
 			try:
+				if end_tick is None:
+					# antes do step: o player_left e o game_over por forfeit saem no mesmo Tick
+					self._expire_grace(entry)
 				await self._send(room, step(room, dt))
 			except Exception:
 				failures += 1
@@ -308,6 +339,15 @@ class RoomManager:
 		for unlock in unlocks:
 			event = Event("achievement_unlocked", room.tick, asdict(unlock))
 			await self._connections.broadcast(recipients, encode_event(event), "game")
+
+	def _expire_grace(self, entry: Entry) -> None:
+		"""Grace period vencido: o Player sai de vez e o User fica livre para outra Room."""
+		for user_id, deadline in list(entry.grace.items()):
+			if entry.room.tick >= deadline:
+				del entry.grace[user_id]
+				leave(entry.room, user_id)
+				if self._room_of.get(user_id) == entry.match_id:
+					del self._room_of[user_id]
 
 	async def _send(self, room: Room, events: list[Event]) -> None:
 		recipients = [user_id for user_id, player in room.players.items() if not player.left]
