@@ -1,6 +1,7 @@
 from app.game.rules import (BOSS_DYING_S, BULLET_DAMAGE, ENEMY_DYING_S, FIREBALL_BOSS_DAMAGE,
 	TICK_RATE)
 from app.game.sim import create_room, enqueue, leave, match_outcome, set_connected, step
+from app.game.snapshot import to_snapshot
 from app.game.state import (Action, ActionKind, BossState, Enemy, EnemyState, Input, Mode,
 	Projectile, ProjectileKind, ProjectileState, RoomOptions)
 from app.game.world import parse_map
@@ -103,6 +104,72 @@ def test_pvp_respawn_uses_farthest_free_spawn_and_retries_when_both_blocked():
 	[respawned] = named(run(room, 1), "player_respawned")
 	assert respawned.data == {"player_id": 9, "x": 2.5, "y": 1.5}
 	assert target.alive
+
+
+def test_pvp_frag_limit_ends_on_the_kill_tick_and_prevents_respawn():
+	room = new_pvp_room()
+	room.players[7].frags = room.options.frag_limit - 1
+	target = room.players[9]
+	target.hp = 1
+	room.projectiles.append(Projectile(id="pvp_last_frag", kind=ProjectileKind.FIREBALL,
+		owner_id=7, x=target.x - 1.0, y=target.y, dx=1.0, dy=0.0))
+	events = run(room, 3)
+	[died] = named(events, "player_died")
+	[over] = named(events, "game_over")
+	assert over.tick == died.tick
+	assert over.data == {"result": "win", "winner_ids": [7], "reason": "frag_limit"}
+	assert room.players[7].frags == room.options.frag_limit
+	assert match_outcome(room).winner_ids == (7,)
+	assert named(run(room, 3 * TICK_RATE), "player_respawned") == []
+	assert not target.alive
+
+
+def test_pvp_time_limit_uses_higher_frag_count_at_exact_tick():
+	room = new_pvp_room()
+	room.options = RoomOptions(time_limit_s=2)
+	room.players[9].frags = 2
+	assert named(run(room, 2 * TICK_RATE - 1), "game_over") == []
+	[over] = named(run(room, 1), "game_over")
+	assert over.tick == 2 * TICK_RATE
+	assert over.data == {"result": "win", "winner_ids": [9], "reason": "time_limit"}
+	assert match_outcome(room).duration_ticks == 2 * TICK_RATE
+
+
+def test_pvp_equal_frags_at_time_limit_is_a_draw():
+	room = new_pvp_room()
+	room.options = RoomOptions(time_limit_s=1)
+	[over] = named(run(room, TICK_RATE), "game_over")
+	assert over.data == {"result": "draw", "winner_ids": [], "reason": "time_limit"}
+	assert match_outcome(room).winner_ids == ()
+
+
+def test_pvp_opponent_leaving_awards_forfeit_but_disconnecting_does_not():
+	room = new_pvp_room()
+	set_connected(room, 9, True)
+	set_connected(room, 9, False)
+	assert named(run(room, 1), "game_over") == []
+	leave(room, 9)
+	events = run(room, 1)
+	assert named(events, "game_over")[0].data == {
+		"result": "win", "winner_ids": [7], "reason": "forfeit"}
+	assert named(run(room, 2), "game_over") == []
+
+
+def test_pvp_scoreboard_is_sorted_and_countdown_stops_at_game_over():
+	room = new_pvp_room()
+	room.options = RoomOptions(time_limit_s=2)
+	room.players[9].frags = 2
+	assert to_snapshot(room)["scoreboard"] == {
+		"players": [{"id": 9, "frags": 2}, {"id": 7, "frags": 0}], "time_left_s": 2}
+	run(room, 1)
+	assert to_snapshot(room)["scoreboard"]["time_left_s"] == 2
+	run(room, TICK_RATE)
+	assert to_snapshot(room)["scoreboard"]["time_left_s"] == 1
+	leave(room, 9)
+	run(room, 1)
+	remaining = to_snapshot(room)["scoreboard"]["time_left_s"]
+	run(room, TICK_RATE * 3)
+	assert to_snapshot(room)["scoreboard"]["time_left_s"] == remaining
 
 
 def test_boss_entering_dying_ends_the_match_with_a_win_for_every_player():

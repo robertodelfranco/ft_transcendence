@@ -7,7 +7,6 @@ RESPAWN_TICKS = round(RULESET_NUMBERS[Mode.PVP]["RESPAWN_DELAY_S"] * TICK_RATE)
 
 
 class PvpRuleset:
-	# o fim de partida entra no R6.3
 	numbers = RULESET_NUMBERS[Mode.PVP]
 
 	def on_start(self, room: Room) -> None:
@@ -43,4 +42,19 @@ class PvpRuleset:
 				{"player_id": player.user_id, "x": player.x, "y": player.y}))
 
 	def check_end(self, room: Room) -> dict | None:
+		# Frag do Tick atual prevalece sobre o relógio e a saída simultânea.
+		for player in room.players.values():
+			if player.frags >= room.options.frag_limit:
+				return {"result": "win", "winner_ids": [player.user_id], "reason": "frag_limit"}
+		if any(player.left for player in room.players.values()):
+			remaining = [player.user_id for player in room.players.values() if not player.left]
+			return {"result": "win" if remaining else "draw",
+				"winner_ids": remaining, "reason": "forfeit"}
+		if room.tick >= room.options.time_limit_s * TICK_RATE:
+			highest = max(player.frags for player in room.players.values())
+			leaders = [player.user_id for player in room.players.values()
+				if player.frags == highest]
+			winner_ids = leaders if len(leaders) == 1 else []
+			return {"result": "win" if winner_ids else "draw",
+				"winner_ids": winner_ids, "reason": "time_limit"}
 		return None
