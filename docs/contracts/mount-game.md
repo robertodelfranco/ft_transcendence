@@ -268,13 +268,13 @@ Fechar FOV e política de resize com documentação oficial e teste visual: o va
 
 ### 5.5 HUD, eventos e término — Render, Netcode e Web
 
-**F4.3 (22/10/2026):** a proposta de apresentação, prioridades, estados por Mode e roteiro de aceite está em [hud.md](hud.md). A revisão do Caio está em [hud.md](hud.md) §11 (26/10); as decisões 1 (`mode` no `HudState`) e 4 (teclas com foco em controle da página) aguardam o Augusto. A hud.md não altera `HudState` por aprovação implícita.
+**F4.3 (22/10/2026):** a proposta de apresentação, prioridades, estados por Mode e roteiro de aceite está em [hud.md](hud.md). A revisão do Caio está em [hud.md](hud.md) §11 (26/10); as decisões 1 (`mode` no `HudState`) e 4 (teclas com foco em controle da página) entraram com a #168.
 
 - **Placar:** decidido em 06/10: a HUD usa a lista do protocolo (§2.6).
 - **Unidades/atualização:** propor `ping` em ms; fechar frequência do `onHud` e valores antes do `welcome`.
 - **Feed:** `player_died` alimenta `{by, victim: player_id, tick}`. A forma atual não representa Kills de Enemy/Boss; decidir se o feed mostra só eliminações de Player ou precisa de uma união de tipos. Duração e limite de linhas também faltam.
 - **Término:** o `game_over` chega no Tick em que a partida se decide (no `coop`, quando o Boss entra em `dying`), e depois dele o servidor só avança animações ([ws-messages.md](ws-messages.md) §2.6). Decidido em 06/10: o jogo espera `BOSS_DYING_S` antes de chamar `onEnd`, para não cortar a morte do Boss, e `winner_ids` vira `winnerIds`. Decidido com a Web em 26/10 ([hud.md](hud.md) §11.2): o `result` do `onEnd` continua sendo o da Room, sem conversão no jogo, e a casca decide o desfecho local pelo `winnerIds` nos dois Modes (`draw` é empate; id local em `winnerIds` é vitória; o resto é derrota). No `pvp`, `win` da Room não é vitória de quem perdeu.
-- **Mode:** proposto em 26/10 ([hud.md](hud.md) §11.1): `HudState.mode: "coop" | "pvp" | null`, `null` antes do `welcome`. Aguarda o Augusto; com o aceite, §2.6 e `api.ts` mudam juntos.
+- **Mode:** decidido em 26/10 ([hud.md](hud.md) §11.1) e implementado na #168: `HudState.mode` (§2.6), `null` antes do `welcome`.
 - **Efeitos:** resolvido em 06/10 sem campo novo: todo Event traz `x, y` ou cita um id presente no Snapshot ([ws-messages.md](ws-messages.md) §2.6).
 
 ### 5.6 Erros e aceite — Render, Netcode e Web
