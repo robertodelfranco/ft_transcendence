@@ -223,7 +223,7 @@ OAuth 2.0 Authorization Code, o mesmo fluxo para os dois provedores; só muda a 
 | Token | `https://oauth2.googleapis.com/token` | `https://api.intra.42.fr/oauth/token` |
 | Dados do User | `https://openidconnect.googleapis.com/v1/userinfo` | `https://api.intra.42.fr/v2/me` |
 | Escopo | `openid email profile` | `public` |
-| PKCE | sim (S256) | só se a intra aceitar ("Em aberto" 11) |
+| PKCE | sim (S256) | não: a intra ignora ("Em aberto" 11) |
 | Id do provedor | `sub` (texto) | `id` (inteiro, gravado como texto) |
 | E-mail confiável para vincular | só com `email_verified = true` | o `email` da intra (decisão 20) |
 | `username` sugerido | parte do e-mail antes do `@` | `login` (ex.: `rdel-fra` vira `rdel_fra`) |
@@ -245,6 +245,8 @@ OAuth 2.0 Authorization Code, o mesmo fluxo para os dois provedores; só muda a 
 | Ninguém com esse e-mail, mas o e-mail não é confiável | 302 `/login?error=oauth_failed`; nada é criado (decisão 19) |
 
 4. Chama `issue_tokens`, apaga o cookie `oauth_state` e redireciona para `/`.
+
+**Implementado em 26/10 (F6.8, #34), só a 42.** Até o adaptador do Google entrar (#164), `google` cai no 404 `not_found` das duas rotas. O `oauth_failed` e o `oauth_success` contam em `auth_login_total` (§2.10); o `oauth_cancelled` não conta. O log da falha leva só o motivo, nunca `code` nem `state`.
 
 Como o vínculo é pelo e-mail, quem tem conta por senha e entra pela 42 ou pelo Google com o mesmo e-mail cai na mesma conta, e a mesma conta pode ter os dois provedores (`providers: ["42", "google"]`).
 
