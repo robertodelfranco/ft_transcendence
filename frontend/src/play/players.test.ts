@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { orderPlayers } from "./players";
+import { nameOf, orderPlayers } from "./players";
 
 const player = (id: number) => ({ id, name: `p${id}`, hp: 10, alive: true, connected: true });
 
@@ -18,5 +18,15 @@ describe("orderPlayers", () => {
     const list = [player(9), player(3)];
     orderPlayers(list, 3);
     expect(list.map((p) => p.id)).toEqual([9, 3]);
+  });
+});
+
+describe("nameOf", () => {
+  it("acha o nome pelo id", () => {
+    expect(nameOf([player(3), player(9)], 9)).toBe("p9");
+  });
+
+  it("id fora da lista não tem nome", () => {
+    expect(nameOf([player(3)], 12)).toBeUndefined();
   });
 });

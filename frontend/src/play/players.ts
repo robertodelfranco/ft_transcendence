@@ -7,3 +7,7 @@ export type HudPlayer = HudState["players"][number];
 export function orderPlayers(players: HudPlayer[], userId: number | null): HudPlayer[] {
   return [...players].sort((a, b) => Number(b.id === userId) - Number(a.id === userId) || a.id - b.id);
 }
+
+export function nameOf(players: HudPlayer[], id: number): string | undefined {
+  return players.find((player) => player.id === id)?.name;
+}

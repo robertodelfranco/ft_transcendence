@@ -31,5 +31,17 @@
     "hp": "Vida {{hp}}",
     "dead": "morto",
     "offline": "desconectado"
+  },
+  "unknownPlayer": "Jogador #{{id}}",
+  "scoreboard": {
+    "label": "Placar",
+    "frags": "Frags: {{frags}}",
+    "timeLeft": "Tempo restante",
+    "unavailable": "Placar indisponível"
+  },
+  "feed": {
+    "label": "Últimos Frags",
+    "frag": "{{by}} fez um Frag em {{victim}}",
+    "died": "{{victim}} morreu."
   }
 }

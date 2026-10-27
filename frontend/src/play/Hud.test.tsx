@@ -101,3 +101,27 @@ describe("topo esquerdo por Mode", () => {
     expect(screen.queryByRole("list", { name: "Jogadores" })).not.toBeInTheDocument();
   });
 });
+
+describe("pvp", () => {
+  const players = [
+    { id: 7, name: "caio", hp: 10, alive: true, connected: true },
+    { id: 9, name: "rdel_fra", hp: 10, alive: true, connected: true },
+  ];
+  const scoreboard = { players: [{ id: 7, frags: 3 }, { id: 9, frags: 1 }], timeLeftS: 61 };
+  const killfeed = [{ by: 7, victim: 9, tick: 40 }];
+
+  it("mostra placar, relógio e feed", () => {
+    render(<Hud userId={7} hud={hudState({ mode: "pvp", players, scoreboard, killfeed })} />);
+    expect(screen.getByRole("list", { name: "Placar" })).toBeInTheDocument();
+    expect(screen.getByText("01:01")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Últimos Frags" })).toHaveTextContent(
+      "caio fez um Frag em rdel_fra",
+    );
+  });
+
+  it("coop não tem placar nem feed", () => {
+    render(<Hud userId={7} hud={hudState({ mode: "coop", players, killfeed })} />);
+    expect(screen.queryByRole("list", { name: "Placar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Últimos Frags" })).not.toBeInTheDocument();
+  });
+});

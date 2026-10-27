@@ -31,5 +31,17 @@
     "hp": "Health {{hp}}",
     "dead": "dead",
     "offline": "disconnected"
+  },
+  "unknownPlayer": "Player #{{id}}",
+  "scoreboard": {
+    "label": "Scoreboard",
+    "frags": "Frags: {{frags}}",
+    "timeLeft": "Time left",
+    "unavailable": "Scoreboard unavailable"
+  },
+  "feed": {
+    "label": "Recent Frags",
+    "frag": "{{by}} fragged {{victim}}",
+    "died": "{{victim}} died."
   }
 }

@@ -1,9 +1,11 @@
 import { useTranslation } from "react-i18next";
 import type { HudState } from "../../game/src/index";
+import KillFeed from "./KillFeed";
 import { deathNotice } from "./notices";
 import Ping from "./Ping";
 import Players from "./Players";
 import Resources from "./Resources";
+import Scoreboard from "./Scoreboard";
 
 const panel = "rounded bg-crypt-950/75 px-3 py-2";
 
@@ -17,14 +19,18 @@ export default function Hud({ hud, userId }: { hud: HudState; userId: number | n
 
   return (
     <div className="pointer-events-none absolute inset-0 grid grid-cols-2 grid-rows-[auto_1fr_auto] gap-2 p-3 text-sm">
-      {/* topo esquerdo: Players no coop; placar e relógio no pvp (próximo passo) */}
-      {hud.mode === "coop" && (
+      {/* topo esquerdo: Players no coop; placar e relógio no pvp */}
+      {hud.mode !== null && (
         <div className={`col-start-1 row-start-1 justify-self-start ${panel} ${dim}`}>
-          <Players players={hud.players} userId={userId} />
+          {hud.mode === "coop"
+            ? <Players players={hud.players} userId={userId} />
+            : <Scoreboard hud={hud} userId={userId} />}
         </div>
       )}
-      <div className={`col-start-2 row-start-1 justify-self-end ${panel} ${dim}`}>
+      {/* topo direito: ping; no pvp, também o kill feed */}
+      <div className={`col-start-2 row-start-1 flex flex-col items-end gap-2 justify-self-end ${panel} ${dim}`}>
         <Ping ping={hud.ping} />
+        {hud.mode === "pvp" && <KillFeed killfeed={hud.killfeed} players={hud.players} />}
       </div>
       {/* centro: livre na partida normal. A região de status fica sempre montada, para o leitor
           de tela anunciar o texto que entra nela */}
