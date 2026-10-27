@@ -13,6 +13,7 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
   const { t } = useTranslation(["hud", "game", "lobby"]);
   const { user } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const minimapRef = useRef<HTMLCanvasElement>(null);
   const [hud, setHud] = useState<HudState | null>(null);
   const [end, setEnd] = useState<EndResult | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -34,6 +35,7 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
           getAccessToken: socketToken,
           onHud: setHud,
           onEnd: setEnd,
+          minimapCanvas: minimapRef.current ?? undefined,
         });
       } catch {
         if (!cancelled)
@@ -56,11 +58,18 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
 
   return (
     <>
-      <canvas
-        ref={canvasRef}
-        aria-label={t("view")}
-        className="aspect-video w-full rounded border border-crypt-700 bg-black"
-      />
+      <div className="relative w-full">
+        <canvas
+          ref={canvasRef}
+          aria-label={t("view")}
+          className="aspect-video w-full rounded border border-crypt-700 bg-black"
+        />
+        <canvas
+          ref={minimapRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-3 right-3 h-32 w-32 rounded border border-crypt-700 bg-crypt-950/90 sm:h-40 sm:w-40"
+        />
+      </div>
       {hud && (status === "running" || status === "disconnected") && <Hud hud={hud} />}
       {status === "connecting" && <p role="status">{t("connecting", { matchId })}</p>}
       {status === "disconnected" && <p role="status">{t("reconnecting")}</p>}

@@ -32,6 +32,7 @@ export interface MountOptions {
   getAccessToken: (fresh: boolean) => Promise<string | null>; // mount-game.md §2
   onHud: (hud: HudState) => void;
   onEnd: (result: EndResult) => void;
+  minimapCanvas?: HTMLCanvasElement;
   wsUrl?: string; // padrão: wss://<host>/ws/game/<matchId>
 }
 

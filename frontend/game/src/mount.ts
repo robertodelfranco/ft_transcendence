@@ -7,6 +7,7 @@ import { createPredictionLoop } from "./net/predictionLoop";
 import { createGameSocket, type WebSocketFactory } from "./net/socket";
 import { buildHud, buildViewState, createGridTracker, emptyHud, type Killfeed,
   type ViewState } from "./net/viewstate";
+import { Minimap } from "./render/minimap";
 import { BOSS_DYING_S } from "./rules";
 import type { EventMessage, GridCell, RoomOptions, ServerMessage, Snapshot,
   WelcomeMessage } from "./types";
@@ -50,6 +51,7 @@ export function createMountGame(deps: GameDeps) {
     let frameId: number | null = null;
     let lastFrameMs: number | null = null;
 
+    const minimap = opts.minimapCanvas ? new Minimap(opts.minimapCanvas) : null;
     const renderer = deps.createRenderer(canvas);
     const socket = createGameSocket({
       url: opts.wsUrl ?? defaultWsUrl(opts.matchId),
@@ -68,6 +70,7 @@ export function createMountGame(deps: GameDeps) {
     const input = captureInput(canvas, (kind) => loop.action(kind));
     const resizer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(resize);
     resizer?.observe(canvas);
+    if (opts.minimapCanvas) resizer?.observe(opts.minimapCanvas);
 
     function hud(): HudState {
       if (welcome === null || snapshot === null) {
@@ -184,7 +187,9 @@ export function createMountGame(deps: GameDeps) {
     }
 
     function resize(): void {
-      if (rendererReady && !unmounted) renderer.resize(canvas.clientWidth, canvas.clientHeight);
+      if (unmounted) return;
+      minimap?.resize();
+      if (rendererReady) renderer.resize(canvas.clientWidth, canvas.clientHeight);
     }
 
     function frame(nowMs: number): void {
@@ -212,7 +217,9 @@ export function createMountGame(deps: GameDeps) {
 
         // os outros, os Enemies, o Boss e os Projectiles a now − 100 ms (F2.8)
         const others = interpolator?.sample(nowMs) ?? null;
-        renderer.render(others === null ? drawing : { ...drawing, ...others }, dtS);
+        const rendered = others === null ? drawing : { ...drawing, ...others };
+        renderer.render(rendered, dtS);
+        minimap?.render(rendered, canvas.clientWidth / canvas.clientHeight || 1);
       }
     }
 
@@ -229,6 +236,7 @@ export function createMountGame(deps: GameDeps) {
         input.dispose();
         resizer?.disconnect();
         renderer.dispose(); // também no meio do init: o Renderer libera o que já tinha criado
+        minimap?.dispose();
       },
     };
   };
