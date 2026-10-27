@@ -29,7 +29,7 @@ export function mountGame(canvas: HTMLCanvasElement, options: MountOptions) {
   }
   const mount: FakeMount = { canvas, options, unmounted: false};
   mounts.push(mount);
-  options.onHud(hudState({ status: "connecting" }));
+  options.onHud(hudState({ status: "connecting", mode: null }));
   return { unmount: () => { mount.unmounted = true } };
 }
 

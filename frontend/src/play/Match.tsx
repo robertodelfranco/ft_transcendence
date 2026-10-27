@@ -53,34 +53,39 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
   const reason = end && knownReason(end.reason);
   const outcome = end && user ? outcomeFor(end, user.id) : null;
   const over = status === "error" || status === "finished";
+  const live = status === "running" || status === "disconnected";
 
   return (
-    <>
+    <div className="relative">
       <canvas
         ref={canvasRef}
         aria-label={t("view")}
         className="aspect-video w-full rounded border border-crypt-700 bg-black"
       />
-      {hud && (status === "running" || status === "disconnected") && <Hud hud={hud} />}
-      {status === "connecting" && <p role="status">{t("connecting", { matchId })}</p>}
-      {status === "disconnected" && <p role="status">{t("reconnecting")}</p>}
-      {status === "error" && (
-        <>
-          <ErrorNotice failure={{ code: errorCode, requestId: null }} />
-          {/* remonta o jogo: reentra enquanto o Grace period segura a vaga */}
-          <button type="button" onClick={onRetry} className={`self-start ${buttonSecondary}`}>
-            {t("retry")}
-          </button>
-        </>
-      )}
-      {status === "finished" && !outcome && <p role="status">{t("finished")}</p>}
-      {outcome && (
-        <div role="status" className="flex flex-col gap-1">
-          <p className="text-xl font-bold">{t(`game:outcomes.${outcome}`)}</p>
-          {reason && <p>{t(`game:reasons.${reason}`)}</p>}
+      {hud && live && <Hud hud={hud} />}
+      {!live && (
+        <div className="absolute inset-0 flex items-center justify-center p-3">
+          <div className="flex max-w-md flex-col items-center gap-3 rounded bg-crypt-950/85 px-4 py-3 text-center">
+            {status === "connecting" && <p role="status">{t("connecting", { matchId })}</p>}
+            {status === "error" && (
+              <>
+                <ErrorNotice failure={{ code: errorCode, requestId: null }} />
+                <button type="button" onClick={onRetry} className={buttonSecondary}>
+                  {t("retry")}
+                </button>
+              </>
+            )}
+            {status === "finished" && !outcome && <p role="status">{t("finished")}</p>}
+            {outcome && (
+              <div role="status" className="flex flex-col gap-1">
+                <p className="text-xl font-bold">{t(`game:outcomes.${outcome}`)}</p>
+                {reason && <p>{t(`game:reasons.${reason}`)}</p>}
+              </div>
+            )}
+            {over && <Link to="/lobby" className={linkClass}>{t("lobby:room.back")}</Link>}
+          </div>
         </div>
       )}
-      {over && <Link to="/lobby" className={`self-start ${linkClass}`}>{t("lobby:room.back")}</Link>}
-    </>
+    </div>
   );
 }

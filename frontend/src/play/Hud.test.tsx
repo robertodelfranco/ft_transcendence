@@ -52,8 +52,9 @@ describe("ping", () => {
 });
 
 describe("conexão perdida", () => {
-  it("marca os valores como desatualizados e mantém os números", () => {
+  it("avisa a reconexão, marca os valores como desatualizados e mantém os números", () => {
     render(<Hud hud={hudState({ status: "disconnected", hp: 7, maxHp: 10 })} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Conexão perdida. Reconectando…");
     expect(screen.getByText(STALE)).toBeInTheDocument();
     expect(within(stats()).getByText("7/10")).toBeInTheDocument();
   });
@@ -63,3 +64,27 @@ describe("conexão perdida", () => {
     expect(screen.queryByText(STALE)).not.toBeInTheDocument();
   });
 });
+
+describe("aviso de morte", () => {
+  it("coop: aguarda o fim da partida, sem respawn", () => {
+    render(<Hud hud={hudState({ alive: false, hp: 0, mode: "coop" })} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Você morreu. Aguardando o fim da partida.");
+  });
+
+  it("pvp: aguarda o respawn, sem contagem regressiva", () => {
+    render(<Hud hud={hudState({ alive: false, hp: 0, mode: "pvp" })} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Você morreu. Aguardando respawn.");
+  });
+
+  it("o aviso some quando o servidor diz que voltou a viver", () => {
+    const { rerender } = render(<Hud hud={hudState({ alive: false, hp: 0, mode: "pvp" })} />);
+    rerender(<Hud hud={hudState({ alive: true, mode: "pvp" })} />);
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  it("os recursos continuam os do Player local durante a espera", () => {
+    render(<Hud hud={hudState({ alive: false, hp: 0, maxHp: 10, mode: "coop" })} />);
+    expect(within(stats()).getByText("0/10")).toBeInTheDocument();
+  });
+});
+

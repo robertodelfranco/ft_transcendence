@@ -20,5 +20,9 @@
     "none": "—",
     "unavailable": "unavailable",
     "ms": "{{ms}} ms"
+  },
+  "death": {
+    "coop": "You died. Waiting for the match to end.",
+    "pvp": "You died. Waiting to respawn."
   }
 }
