@@ -11,6 +11,14 @@
     "mana": "Maná",
     "armor": "Armadura",
     "keys": "Llaves",
-    "ofMax": "{{value}}/{{max}}"
+    "ofMax": "{{value}}/{{max}}",
+    "lowHp": "Vida baja"
+  },
+  "stale": "Valores de antes de perder la conexión.",
+  "ping": {
+    "label": "Ping",
+    "none": "—",
+    "unavailable": "no disponible",
+    "ms": "{{ms}} ms"
   }
 }

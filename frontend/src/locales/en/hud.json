@@ -11,6 +11,14 @@
     "mana": "Mana",
     "armor": "Armor",
     "keys": "Keys",
-    "ofMax": "{{value}}/{{max}}"
+    "ofMax": "{{value}}/{{max}}",
+    "lowHp": "Low health"
+  },
+  "stale": "Values from before the connection dropped.",
+  "ping": {
+    "label": "Ping",
+    "none": "—",
+    "unavailable": "unavailable",
+    "ms": "{{ms}} ms"
   }
 }
