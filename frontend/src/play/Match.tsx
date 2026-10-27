@@ -56,7 +56,9 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
   const live = status === "running" || status === "disconnected";
 
   return (
-    <div className="relative">
+    // largura limitada pela altura da janela: o canvas 16:9 inteiro cabe na tela, e os recursos no
+    // rodapé aparecem sem rolar (hud.md §2)
+    <div className="relative mx-auto w-full max-w-[calc((100dvh-14rem)*16/9)]">
       <canvas
         ref={canvasRef}
         aria-label={t("view")}
@@ -65,7 +67,7 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
       {hud && live && <Hud hud={hud} userId={user?.id ?? null} />}
       {/* fora da partida em andamento, o centro do canvas fala: conexão, erro ou fim */}
       {!live && (
-        <div className="absolute inset-0 flex items-center justify-center p-3">
+        <div className="mt-2 flex justify-center md:absolute md:inset-0 md:mt-0 md:items-center md:p-3">
           <div className="flex max-w-md flex-col items-center gap-3 rounded bg-crypt-950/85 px-4 py-3 text-center">
             {status === "connecting" && <p role="status">{t("connecting", { matchId })}</p>}
             {status === "error" && (

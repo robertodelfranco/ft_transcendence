@@ -12,7 +12,7 @@ export default function Help({ mode }: { mode: HudState["mode"] }) {
   const { t } = useTranslation("hud");
 
   return (
-    <details className="pointer-events-auto text-right">
+    <details className="pointer-events-auto md:text-right">
       <summary className={`cursor-pointer ${linkClass}`}>{t("help.title")}</summary>
       <div className="mt-2 flex max-w-xs flex-col gap-2 text-left">
         {mode && <p>{t(`help.goal.${mode}`)}</p>}

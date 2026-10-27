@@ -133,3 +133,17 @@ describe("ajuda", () => {
     expect(summary.closest("details")).toHaveClass("pointer-events-auto");
   });
 });
+
+// Em janela estreita os grupos ficam um sob o outro, na ordem do DOM; é também a ordem de leitura
+it("a ordem do DOM segue a prioridade da hud.md §2", () => {
+  const players = [{ id: 7, name: "caio", hp: 10, alive: true, connected: true }];
+  render(<Hud userId={7} hud={hudState({ mode: "coop", players })} />);
+  const order = [
+    screen.getByRole("status"),
+    screen.getByLabelText("Seu estado"),
+    screen.getByRole("list", { name: "Jogadores" }),
+    screen.getByText("Controles e objetivo"),
+  ];
+  for (const [index, element] of order.slice(1).entries())
+    expect(order[index].compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});

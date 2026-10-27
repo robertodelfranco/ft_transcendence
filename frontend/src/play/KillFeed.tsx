@@ -18,7 +18,7 @@ export default function KillFeed({ killfeed, players }: {
   const name = (id: number) => nameOf(players, id) ?? t("unknownPlayer", { id });
 
   return (
-    <ol aria-label={t("feed.label")} className="flex flex-col items-end gap-1">
+    <ol aria-label={t("feed.label")} className="flex flex-col gap-1 md:items-end">
       {lines.map((entry, index) => (
         // o tick sozinho pode repetir; o índice separa registros iguais
         <li key={`${entry.tick}:${entry.victim}:${index}`}>
