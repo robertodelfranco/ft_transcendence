@@ -1,5 +1,6 @@
 // Interface pública do jogo para a casca (mount-game.md §2.6, arq. §8.3).
 // Os nomes são camelCase, e não os do fio: quem converte é o net/.
+import type { Mode } from "./types";
 
 export type HudStatus = "connecting" | "running" | "finished" | "disconnected" | "error";
 
@@ -15,6 +16,7 @@ export interface HudState {
   players: Array<{ id: number; name: string; hp: number; alive: boolean; connected: boolean }>;
   scoreboard: { players: Array<{ id: number; frags: number }>; timeLeftS: number } | null;
   killfeed: Array<{ by: number | null; victim: number; tick: number }>;
+  mode: Mode | null; // null antes do welcome
   status: HudStatus;
   error?: string; // code que a casca traduz; nunca frase
 }

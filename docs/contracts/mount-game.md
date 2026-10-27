@@ -101,6 +101,7 @@ export interface HudState {
   }>;
   scoreboard: { players: Array<{ id: number; frags: number }>; timeLeftS: number } | null;
   killfeed: Array<{ by: number | null; victim: number; tick: number }>;
+  mode: "coop" | "pvp" | null;
   status: "connecting" | "running" | "finished" | "disconnected" | "error";
   error?: string;
 }
@@ -128,6 +129,7 @@ export declare function mountGame(
 | `players` | Estado dos participantes; `id` é o `user_id` |
 | `scoreboard` | `null` no `coop`; no `pvp`, a lista de Frags por Player em ordem de placar e `timeLeftS` em segundos |
 | `killfeed` | Eliminações de Player; `by` pode ser `null`, `victim` é `user_id`, `tick` é Tick da Room |
+| `mode` | Mode da Room, vindo do `welcome`; `null` antes dele. A casca escolhe por ele o aviso de morte e o placar (26/10, pedido da Web) |
 | `status`, `error` | Estado da integração e código traduzido pela casca |
 | `getAccessToken` | A casca entrega o token a cada `join`. `fresh = true` só depois de um `4401`, até o próximo `welcome`: o token da memória foi recusado, renovar pelo refresh. `null` é sessão perdida (o jogo para com `unauthenticated`); exceção é falha passageira (rede, `429`, `5xx`) e o jogo tenta de novo com o backoff, sem encerrar a partida. Mesmo contrato do `/ws/app` |
 | `onHud`, `onEnd` | Callbacks de atualização de HUD e término. O `result` do `onEnd` é o da Room ([ws-messages.md](ws-messages.md) §2.6); a casca tira o desfecho local do `winnerIds`, nos dois Modes (§5.5) |
@@ -161,7 +163,7 @@ HudState completo e ilustrativo para montar a tela de `coop`; os números de Man
   "players": [
     {"id": 7, "name": "jogador_7", "hp": 10, "alive": true, "connected": true}
   ],
-  "scoreboard": null, "killfeed": [], "status": "running"
+  "scoreboard": null, "killfeed": [], "mode": "coop", "status": "running"
 }
 ```
 
