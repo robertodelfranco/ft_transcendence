@@ -102,6 +102,17 @@ describe("status da partida", () => {
     expect(screen.queryByText("Conectando à partida #13…")).not.toBeInTheDocument();
   });
 
+  it("coop põe o User da sessão no topo da lista de Players", async () => {
+    await renderAt("/play/13");
+    await mounted();
+    act(() => emitHud({ players: [
+      { id: 9, name: "rdel_fra", hp: 10, alive: true, connected: true },
+      { id: 7, name: "caio", hp: 8, alive: true, connected: true },
+    ] }));
+    const list = await screen.findByRole("list", { name: "Jogadores" });
+    expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent("caio(você)");
+  });
+
   it("disconnected avisa que está reconectando e mantém a HUD", async () => {
     await renderAt("/play/13");
     await mounted();

@@ -24,5 +24,12 @@
   "death": {
     "coop": "You died. Waiting for the match to end.",
     "pvp": "You died. Waiting to respawn."
+  },
+  "players": {
+    "label": "Players",
+    "you": "(you)",
+    "hp": "Health {{hp}}",
+    "dead": "dead",
+    "offline": "disconnected"
   }
 }

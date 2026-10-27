@@ -2,13 +2,14 @@ import { useTranslation } from "react-i18next";
 import type { HudState } from "../../game/src/index";
 import { deathNotice } from "./notices";
 import Ping from "./Ping";
+import Players from "./Players";
 import Resources from "./Resources";
 
 const panel = "rounded bg-crypt-950/75 px-3 py-2";
 
 // Camada sobre o canvas nas regiões da hud.md §2. pointer-events-none: o clique passa para o
 // canvas, que pede o Pointer Lock
-export default function Hud({ hud }: { hud: HudState }) {
+export default function Hud({ hud, userId }: { hud: HudState; userId: number | null }) {
   const { t } = useTranslation("hud");
   const stale = hud.status === "disconnected";
   const dim = stale ? "opacity-60" : "";
@@ -16,7 +17,12 @@ export default function Hud({ hud }: { hud: HudState }) {
 
   return (
     <div className="pointer-events-none absolute inset-0 grid grid-cols-2 grid-rows-[auto_1fr_auto] gap-2 p-3 text-sm">
-      {/* topo esquerdo: Players no coop, placar e relógio no pvp (próximo passo) */}
+      {/* topo esquerdo: Players no coop; placar e relógio no pvp (próximo passo) */}
+      {hud.mode === "coop" && (
+        <div className={`col-start-1 row-start-1 justify-self-start ${panel} ${dim}`}>
+          <Players players={hud.players} userId={userId} />
+        </div>
+      )}
       <div className={`col-start-2 row-start-1 justify-self-end ${panel} ${dim}`}>
         <Ping ping={hud.ping} />
       </div>
