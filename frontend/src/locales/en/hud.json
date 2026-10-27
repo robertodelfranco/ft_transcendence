@@ -43,5 +43,42 @@
     "label": "Recent Frags",
     "frag": "{{by}} fragged {{victim}}",
     "died": "{{victim}} died."
+  },
+  "help": {
+    "title": "Controls and goal",
+    "goal": {
+      "coop": "Goal: defeat the Boss. If everyone dies, the team loses; there is no respawn.",
+      "pvp": "Goal: reach the Frag limit, or have more Frags when time runs out. Whoever dies respawns."
+    },
+    "controls": {
+      "move": {
+        "keys": "W A S D",
+        "action": "Move forward, back and sideways"
+      },
+      "turn": {
+        "keys": "← →",
+        "action": "Turn"
+      },
+      "mouse": {
+        "keys": "Mouse",
+        "action": "Turn (click the scene to capture the mouse)"
+      },
+      "sprint": {
+        "keys": "Shift",
+        "action": "Run"
+      },
+      "fire": {
+        "keys": "Space",
+        "action": "Fire"
+      },
+      "door": {
+        "keys": "F",
+        "action": "Open door"
+      },
+      "release": {
+        "keys": "Esc",
+        "action": "Release the mouse"
+      }
+    }
   }
 }

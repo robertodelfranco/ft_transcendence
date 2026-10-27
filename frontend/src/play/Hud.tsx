@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { HudState } from "../../game/src/index";
+import Help from "./Help";
 import KillFeed from "./KillFeed";
 import { deathNotice } from "./notices";
 import Ping from "./Ping";
@@ -27,9 +28,10 @@ export default function Hud({ hud, userId }: { hud: HudState; userId: number | n
             : <Scoreboard hud={hud} userId={userId} />}
         </div>
       )}
-      {/* topo direito: ping; no pvp, também o kill feed */}
+      {/* topo direito: ping e ajuda; no pvp, também o kill feed */}
       <div className={`col-start-2 row-start-1 flex flex-col items-end gap-2 justify-self-end ${panel} ${dim}`}>
         <Ping ping={hud.ping} />
+        <Help mode={hud.mode} />
         {hud.mode === "pvp" && <KillFeed killfeed={hud.killfeed} players={hud.players} />}
       </div>
       {/* centro: livre na partida normal. A região de status fica sempre montada, para o leitor

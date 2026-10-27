@@ -125,3 +125,11 @@ describe("pvp", () => {
     expect(screen.queryByRole("list", { name: "Últimos Frags" })).not.toBeInTheDocument();
   });
 });
+
+describe("ajuda", () => {
+  it.each(["coop", "pvp"] as const)("aparece no %s, sobre o jogo e clicável", (mode) => {
+    render(<Hud userId={7} hud={hudState({ mode })} />);
+    const summary = screen.getByText("Controles e objetivo");
+    expect(summary.closest("details")).toHaveClass("pointer-events-auto");
+  });
+});

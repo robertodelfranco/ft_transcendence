@@ -8,6 +8,7 @@ export function orderPlayers(players: HudPlayer[], userId: number | null): HudPl
   return [...players].sort((a, b) => Number(b.id === userId) - Number(a.id === userId) || a.id - b.id);
 }
 
+// undefined quando o Player não está na lista: quem chama mostra um nome traduzido com o id
 export function nameOf(players: HudPlayer[], id: number): string | undefined {
   return players.find((player) => player.id === id)?.name;
 }
