@@ -70,7 +70,9 @@ export function createMountGame(deps: GameDeps) {
     resizer?.observe(canvas);
 
     function hud(): HudState {
-      if (welcome === null || snapshot === null) return emptyHud(status, error);
+      if (welcome === null || snapshot === null) {
+        return emptyHud(status, welcome?.room.mode ?? null, error);
+      }
       const context = { userId: welcome.user_id, mode: welcome.room.mode,
         options: welcome.room.options };
       const state = buildHud(snapshot, context, killfeed, status);

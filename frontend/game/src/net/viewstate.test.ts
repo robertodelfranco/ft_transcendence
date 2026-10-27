@@ -87,6 +87,14 @@ test("the pvp scoreboard turns time_left_s into timeLeftS", () => {
 });
 
 test("the empty HUD carries the error code only when there is one", () => {
-  expect(emptyHud("connecting")).not.toHaveProperty("error");
-  expect(emptyHud("error", "room_not_found").error).toBe("room_not_found");
+  expect(emptyHud("connecting", null)).not.toHaveProperty("error");
+  expect(emptyHud("error", null, "room_not_found").error).toBe("room_not_found");
+});
+
+test("the HUD carries the Mode once the welcome arrives", () => {
+  expect(emptyHud("connecting", null).mode).toBeNull();
+  expect(emptyHud("connecting", "pvp").mode).toBe("pvp");
+  const hud = buildHud(snapshot([player(1)]), { userId: 1, mode: "coop", options: OPTIONS }, [],
+    "running");
+  expect(hud.mode).toBe("coop");
 });
