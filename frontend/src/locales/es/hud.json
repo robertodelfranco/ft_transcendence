@@ -11,6 +11,74 @@
     "mana": "Maná",
     "armor": "Armadura",
     "keys": "Llaves",
-    "ofMax": "{{value}}/{{max}}"
+    "ofMax": "{{value}}/{{max}}",
+    "lowHp": "Vida baja"
+  },
+  "stale": "Valores de antes de perder la conexión.",
+  "ping": {
+    "label": "Ping",
+    "none": "—",
+    "unavailable": "no disponible",
+    "ms": "{{ms}} ms"
+  },
+  "death": {
+    "coop": "Moriste. Esperando el final de la partida.",
+    "pvp": "Moriste. Esperando para reaparecer."
+  },
+  "players": {
+    "label": "Jugadores",
+    "you": "(tú)",
+    "hp": "Vida {{hp}}",
+    "dead": "muerto",
+    "offline": "desconectado"
+  },
+  "unknownPlayer": "Jugador #{{id}}",
+  "scoreboard": {
+    "label": "Marcador",
+    "frags": "Frags: {{frags}}",
+    "timeLeft": "Tiempo restante",
+    "unavailable": "Marcador no disponible"
+  },
+  "feed": {
+    "label": "Últimos Frags",
+    "frag": "{{by}} hizo un Frag a {{victim}}",
+    "died": "{{victim}} murió."
+  },
+  "help": {
+    "title": "Controles y objetivo",
+    "goal": {
+      "coop": "Objetivo: derrotar al Boss. Si todos mueren, el equipo pierde; no hay reaparición.",
+      "pvp": "Objetivo: llegar al límite de Frags o tener más Frags cuando se acabe el tiempo. Quien muere reaparece."
+    },
+    "controls": {
+      "move": {
+        "keys": "W A S D",
+        "action": "Moverse hacia adelante, atrás y a los lados"
+      },
+      "turn": {
+        "keys": "← →",
+        "action": "Girar"
+      },
+      "mouse": {
+        "keys": "Ratón",
+        "action": "Girar (haz clic en la escena para capturar el ratón)"
+      },
+      "sprint": {
+        "keys": "Shift",
+        "action": "Correr"
+      },
+      "fire": {
+        "keys": "Espacio",
+        "action": "Disparar"
+      },
+      "door": {
+        "keys": "F",
+        "action": "Abrir puerta"
+      },
+      "release": {
+        "keys": "Esc",
+        "action": "Soltar el ratón"
+      }
+    }
   }
 }

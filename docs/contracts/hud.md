@@ -1,6 +1,6 @@
 # F4.3 — Especificação da HUD coop e PvP
 
-**Data:** 22/10/2026. **Estado:** proposta de conteúdo pronta para revisão; sem aceite dos consumidores registrado.
+**Data:** 22/10/2026. **Estado:** proposta de conteúdo pronta para revisão. Revisão da F7.6 (Caio) registrada em 26/10, §11: as cinco decisões estão fechadas (1 e 4 entraram com a #168, do Augusto).
 **Escreve:** Rafael. **Revisam:** Caio (F7.6 e i18n) e Augusto (`HudState` e integração).
 Roberto revisa qualquer dúvida sobre regras; esta especificação não altera a Simulation.
 
@@ -12,7 +12,7 @@ Os termos seguem [CONTEXT.md](../../CONTEXT.md); término e vencedores seguem [w
 
 React desenha toda a HUD em DOM, com i18n em pt-BR, en e es. O canvas contém cena, mão e minimapa, sem texto.
 A casca recebe `onHud` e `onEnd`; não lê Snapshot, não abre um segundo socket do jogo e não calcula dano, coleta, respawn ou vitória.
-Mode, identidade do User local e RoomOptions vêm do contexto autenticado e da Room, conforme [matches-api.md](matches-api.md). Não inferir Mode de `scoreboard === null`: isso também ocorre antes do primeiro `welcome`.
+A identidade do User local vem do contexto autenticado. O Mode vem do `HudState.mode` (§11.1); a HUD não precisa das RoomOptions. Não inferir Mode de `scoreboard === null`: isso também ocorre antes do primeiro `welcome`.
 
 Na cópia inspecionada em 22/10, `Play.tsx` é uma página provisória de conexão, `ping` chega como `null` e o jogo guarda os últimos cinco registros do feed. Estes são fatos da implementação, não aceites da F7.6.
 
@@ -61,7 +61,7 @@ Não sinalizar tiro disponível com base só na Mana: o contrato não informa co
 
 ### pvp
 
-- Objetivo na ajuda: atingir `frag_limit` ou terminar o tempo com mais Frags; limites vêm das RoomOptions, sem duplicar defaults na tela.
+- Objetivo na ajuda: atingir o limite de Frags ou terminar o tempo com mais Frags. O texto não traz números (§11.1): o relógio já mostra o tempo, e a HUD não recebe as RoomOptions nem duplica defaults.
 - Mostrar os dois nomes e Frags na ordem entregue por `scoreboard.players`, resolvendo nomes por `players.id`; identificar o Player local também por texto/ícone.
 - Mostrar `timeLeftS` como `mm:ss`, arredondando para cima e limitando o valor visual mínimo a zero. Não decrementar com relógio próprio nem declarar resultado quando chegar a zero.
 - Com `scoreboard = null` em uma Room PvP já identificada, mostrar placar indisponível; não fabricar empate `0 × 0`.
@@ -84,18 +84,18 @@ A política de cinco linhas e a ordem visual precisam do aceite de Caio e August
 | `connecting` | Mensagem de conexão; recursos e placar ainda indisponíveis. Zeros iniciais não significam morte |
 | `running` | Exibir valores recebidos e aplicar as condições de vivo/morto |
 | `disconnected` | Aviso persistente de Reconnection; manter últimos valores identificados como desatualizados. Não simular retomada nem abrir outro socket |
-| `error` | Mensagem traduzida por `error`, fallback para código desconhecido e ação para voltar ao lobby; sem repetição automática pela página |
+| `error` | Mensagem traduzida por `error`, fallback para código desconhecido, ação para voltar ao lobby e botão “Tentar de novo”, que remonta o jogo só por ação da pessoa (§11.3); sem repetição automática pela página |
 | `finished` | Encerrar avisos de morte/reconexão; se `onEnd` ainda não chegou, mostrar partida encerrada sem inventar vencedor |
 
-Em `error`, `replaced` explica que outra aba assumiu a partida. O fechamento `server_shutdown` inicia Reconnection e chega à HUD atual como `disconnected`, sem código de causa; usar aviso genérico de reconexão, sem afirmar o motivo da queda. A política de nova tentativa pertence ao socket, conforme [ws-manager.md §2.9](ws-manager.md).
+Em `error`, `replaced` explica que outra aba assumiu a partida. O fechamento `server_shutdown` inicia Reconnection e chega à HUD atual como `disconnected`, sem código de causa; usar aviso genérico de reconexão, sem afirmar o motivo da queda. A política de nova tentativa pertence ao socket, conforme [ws-manager.md §2.9](ws-manager.md). Falha passageira ao obter o token (exceção no `getAccessToken`) também chega como `disconnected` e usa o mesmo aviso (§11.5).
 O jogo pode emitir `running` antes de concluir o carregamento dos assets: isso não comprova Renderer pronto. Falha posterior chega como `asset_load_failed`.
 
 A tela de resultado usa `onEnd`, respeitando a espera de `BOSS_DYING_S` já feita pelo jogo. Não adicionar outro atraso na casca.
-No coop, usar `result`; no PvP, empate vem de `result = draw`, vitória local de `winnerIds` contendo o id local e derrota local dos demais casos com vencedor. Nunca interpretar `win` da Room como vitória dos dois Players.
+Nos dois Modes, o desfecho local segue uma regra só (§11.2): `result = draw` é empate; fora disso, vitória se `winnerIds` contém o id local e derrota nos demais casos. O `result` do `onEnd` é o da Room: nunca interpretar `win` da Room como vitória dos dois Players.
 Traduzir `reason` (`boss_defeated`, `all_dead`, `forfeit`, `frag_limit`, `time_limit`) com fallback. Oferecer retorno ao lobby; resumo persistido e Achievements pertencem à F7.8/F4.6, sem inventar valores na HUD.
 
 Ajuda traduzida e acessível por botão: movimento W/A/S/D, giro pelas setas esquerda/direita e mouse capturado, Shift para correr, Espaço para `fire`, F para `door`, clique na cena para Pointer Lock e Esc para liberar o mouse. Manter alinhamento com `net/input.ts` e com o Renderer; não criar atalhos de HUD sobre essas teclas.
-A partida não pausa ao abrir ajuda nem ao perder Pointer Lock. Controles DOM devem permitir navegação por teclado sem disparar Actions do jogo; isso é um aceite de integração, não uma garantia da versão atual.
+A partida não pausa ao abrir ajuda nem ao perder Pointer Lock. Controles DOM devem permitir navegação por teclado sem disparar Actions do jogo; o `net/input.ts` ignora as teclas cujo alvo é um controle da página desde a #168 (§11.4).
 Sair da rota chama `unmount`; fechar a página não declara vitória/derrota nem significa remoção imediata da Room, por causa do Grace period.
 
 ## 7. i18n e acessibilidade
@@ -141,3 +141,19 @@ Validação local em 22/10/2026, na branch `142-f4.3-especificacao-hud`:
 - Comando em `frontend/`: `npm test -- game/src/mount.test.ts game/src/net/viewstate.test.ts game/src/net/socket.test.ts game/src/net/input.test.ts`. Resultado: **4 arquivos, 58 testes aprovados**. Foram usados testes existentes; nenhum código ou teste foi alterado.
 
 Esses testes verificam a base que fornece os dados à HUD, não a apresentação proposta. Não foram executados Docker, navegador ou partida real nesta validação. Os cenários da §8 continuam pendentes da implementação da F7.6 e da revisão dos consumidores.
+
+## 11. Decisões da revisão da F7.6 — 26/10/2026
+
+Revisão do Caio na #143 (23/10), fechada aqui depois do merge. As decisões 2, 3 e 5 ficam do lado da casca. As decisões 1 e 4 mudam código do jogo e entraram com a #168 (Augusto, 26/10).
+
+| # | Tema | Decisão | Estado |
+|---|---|---|---|
+| 1 | Mode na HUD | `HudState` ganha `mode: "coop" \| "pvp" \| null`, `null` antes do `welcome`; entre o `welcome` e o primeiro Snapshot o `emptyHud` já traz o Mode. Sem `GET /api/matches/{id}` na /play | Decidida; implementada na #168 |
+| 2 | Desfecho | O `result` do `onEnd` continua sendo o da Room, sem conversão no jogo. A casca decide o desfecho local pelo `winnerIds` nos dois Modes (§6), como o [ws-messages.md](ws-messages.md) §2.6 já define | Decidida |
+| 3 | Erro | Além de voltar ao lobby, a casca oferece “Tentar de novo”, que remonta o jogo (novo `mountGame`, depois do `unmount` do anterior) só por ação da pessoa | Decidida; implementada na #138 |
+| 4 | Teclas com foco em controle da página | O `net/input.ts` ignora teclas cujo alvo está dentro de um elemento interativo (`closest("button, a, input, textarea, select, summary")`, mais o `isContentEditable`), e não só em campos de texto | Decidida; implementada na #168 |
+| 5 | Falha passageira de token | Continua chegando como `disconnected`, com o aviso genérico de reconexão: o jogo tenta de novo com backoff, e mostrar erro levaria a pessoa a sair de uma partida que ainda se recupera | Decidida |
+
+Motivos da decisão 1: o `welcome` chega também a cada Reconnection, então o Mode fica sempre certo, por uma fonte só. O `GET` acrescentaria carregamento, erro e corrida com o socket, e a rota muda de formato quando a partida acaba ([matches-api.md](matches-api.md), “Em aberto” 5). A ajuda do PvP descreve o objetivo sem números (§4), por isso as RoomOptions não entram no `HudState`.
+
+Motivos da decisão 4: a política de captura de teclas pertence ao jogo, e a correção cabe no `isTyping` com um `closest`, testável no `input.test.ts`. Barrar o evento na casca (`stopPropagation` em volta da HUD) espalharia a regra pelos dois lados e, se alcançasse o `keyup`, deixaria tecla de movimento presa.

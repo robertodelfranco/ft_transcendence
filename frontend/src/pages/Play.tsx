@@ -13,8 +13,8 @@ export default function Play() {
   const { t } = useTranslation(["hud", "lobby"]);
   const { matchId: param = "" } = useParams();
   const [attempt, setAttempt] = useState(0);
-  const valid = /^[1-9]\d*$/.test(param);
   const matchId = Number(param);
+  const valid = /^[1-9]\d*$/.test(param) && Number.isSafeInteger(matchId);
   usePageTitle("hud:title");
 
   return (
