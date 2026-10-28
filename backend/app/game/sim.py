@@ -36,8 +36,16 @@ def create_room(match_id: int, mode: Mode, game_map: Map, options: RoomOptions,
 		raise ValueError(f"{len(players)} Players para {len(game_map.spawns)} Spawns")
 	ruleset = RULESETS[mode]
 	numbers = ruleset.numbers
+	disabled = {char for char, enabled in (
+		("P", options.pickups.potion),
+		("M", options.pickups.mana),
+		("A", options.pickups.armor),
+	) if not enabled}
+	initial_grid = tuple("".join("0" if cell in disabled else cell for cell in row)
+		for row in game_map.grid)
 	room = Room(match_id=match_id, mode=mode, options=options, numbers=numbers,
-		rng=Random(seed), initial_grid=game_map.grid, grid=game_map.new_grid(),
+		rng=Random(seed), initial_grid=initial_grid,
+		grid=[list(row) for row in initial_grid],
 		spawn_points=tuple((spawn.x, spawn.y) for spawn in game_map.spawns))
 	# o enésimo Player nasce no enésimo Spawn, olhando para onde a letra aponta
 	for (user_id, name), spawn in zip(players, game_map.spawns):
