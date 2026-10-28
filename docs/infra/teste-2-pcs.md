@@ -236,7 +236,7 @@ Cada item só entra se a tarefa estiver na `main` em 30/10. O que não estiver f
 
 **Antes, no PC A:**
 1. No app da intra (perfil do Akita), acrescente a URL de retorno `https://<HOST>:8443/api/auth/oauth/42/callback`, com o `HOST` do 1.1. O backend monta essa URL a partir do `PUBLIC_HOST`, então host e porta precisam ser exatamente esses.
-2. Preencha `FT_CLIENT_ID` e `FT_CLIENT_SECRET` no `.env` do 1.6, com o secret já renovado (o antigo vence em 06/11), e rode `docker compose up -d` de novo.
+2. Preencha `FT_CLIENT_ID` e `FT_CLIENT_SECRET` no `.env` do 1.6, com o secret novo que a intra gerou sozinha em 30/10 (o anterior vence em 06/11), e rode `docker compose up -d` de novo.
 
 **No PC B:** abra `https://<HOST>:8443/login`, clique no botão da 42 e autorize na intra.
 
