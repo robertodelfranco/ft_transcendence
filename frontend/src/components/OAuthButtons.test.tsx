@@ -20,12 +20,12 @@ describe("OAuthButtons", () => {
   it.each([
     ["/login", "Sign in"],
     ["/signup", "Create an account"],
-  ])("%s mostra os dois links, apontando para o backend", async (path, heading) => {
+  ])("%s mostra só o link da 42, apontando para o backend", async (path, heading) => {
     await openAt(path, heading);
     expect(screen.getByRole("link", { name: "Sign in with 42" }))
       .toHaveAttribute("href", "/api/auth/oauth/42/login?lang=en");
-    expect(screen.getByRole("link", { name: "Sign in with Google" }))
-      .toHaveAttribute("href", "/api/auth/oauth/google/login?lang=en");
+    // o Google volta com a #164
+    expect(screen.queryByRole("link", { name: "Sign in with Google" })).not.toBeInTheDocument();
   });
 
   it("o ?lang acompanha o idioma da tela, inclusive depois de trocar", async () => {
@@ -33,7 +33,6 @@ describe("OAuthButtons", () => {
     await userEvent.setup().selectOptions(screen.getByLabelText("Language"), "pt-BR");
     expect(screen.getByRole("link", { name: "Entrar com a 42" }))
       .toHaveAttribute("href", "/api/auth/oauth/42/login?lang=pt-BR");
-    expect(screen.getByRole("link", { name: "Entrar com Google" }))
-      .toHaveAttribute("href", "/api/auth/oauth/google/login?lang=pt-BR");
+    expect(screen.queryByRole("link", { name: "Entrar com Google" })).not.toBeInTheDocument();
   });
 });

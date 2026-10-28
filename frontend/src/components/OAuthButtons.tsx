@@ -1,7 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { FALLBACK_LANGUAGE, isLanguage } from "../i18n/languages";
 
-const PROVIDERS = ["42", "google"] as const;
+// Só a 42 por enquanto (reunião de 19/10): o Google volta com a F6.8 parte 2 (#164), com
+// { id: "google", label: "oauth.withGoogle" }; a tradução já está nos três idiomas
+const PROVIDERS = [{ id: "42", label: "oauth.with42" }] as const;
 
 const linkClass = "rounded border border-crypt-700 px-4 py-2 text-center hover:text-torch focus-visible:outline-2 focus-visible:outline-torch";
 
@@ -15,9 +17,9 @@ export default function OAuthButtons() {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-center text-sm">{t("oauth.or")}</p>
-      {PROVIDERS.map((provider) => (
-        <a key={provider} href={`/api/auth/oauth/${provider}/login?${query}`} className={linkClass}>
-          {t(provider === "42" ? "oauth.with42" : "oauth.withGoogle")}
+      {PROVIDERS.map(({ id, label }) => (
+        <a key={id} href={`/api/auth/oauth/${id}/login?${query}`} className={linkClass}>
+          {t(label)}
         </a>
       ))}
     </div>

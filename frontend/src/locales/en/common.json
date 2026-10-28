@@ -19,7 +19,9 @@
     "terms": "Terms of Service"
   },
   "home": {
-    "tagline": "A 3D dungeon in your browser: team up with up to 5 friends or duel 1v1."
+    "tagline": "A 3D dungeon in your browser: team up with up to 5 friends or duel 1v1.",
+    "login": "Sign in",
+    "signup": "Create account"
   },
   "notFound": {
     "title": "Page not found",
