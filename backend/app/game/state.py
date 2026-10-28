@@ -89,6 +89,7 @@ class Player:
 	connected: 			bool = False # nasce desconectado, vira True no primeiro join
 	joined: 			bool = False # já abriu o socket do jogo alguma vez
 	left: 				bool = False # (saiu) fora do Snapshot, dentro do resultado
+	respawn_at_tick:	int | None = None # pvp: primeiro Tick em que pode renascer
 	input_queue: 		deque[Input | Action] = field(default_factory=deque)
 	last_input_seq:		int = 0
 	last_queued_seq:	int = 0 # maior seq que entrou na fila
@@ -154,6 +155,7 @@ class Room:
 	rng: 			Random
 	initial_grid:	tuple[str, ...] # o Grid do welcome, não muda
 	grid: 			list[list[str]] # cópia do Map, muda com Door e Pickup
+	spawn_points:	tuple[tuple[float, float], ...] # posições fixas do Map, em ordem
 	tick: 			int = 0
 	players: 		dict[int, Player] = field(default_factory=dict) # user_id, Players
 	enemies: 		list[Enemy] = field(default_factory=list)

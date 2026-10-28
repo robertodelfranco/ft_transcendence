@@ -134,6 +134,7 @@ Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um
 - **Mana é fracionária na Room e inteira no fio.** `MANA_REGEN_PER_S` a 30 Hz soma frações por Tick. A Room guarda o valor exato, o Snapshot manda o arredondamento para baixo, e a fireball exige Mana exata `>= FIREBALL_MANA_COST`.
 - **Os números do netcode** (Snapshot a cada 2 Ticks, Interpolation, Reconciliation, Grace period) ficam em [ws-messages.md](ws-messages.md) §2.8, porque não são regra de jogo. Daqueles números, só o `TICK_RATE` entra aqui, porque a Prediction usa o mesmo `dt` do servidor.
 - **Mana cheia no início e depois do respawn.** O Pickup de mana soma até `MANA_MAX`. Decidido em 06/10.
+- **Respawn no `pvp`.** Três segundos (`RESPAWN_DELAY_S`) depois da morte, o Player renasce no Spawn livre mais distante do adversário vivo; empate segue a ordem dos Spawns do Map. Um Spawn é livre quando está a pelo menos `BODY_BLOCK_DISTANCE` (0,6 célula) de todos os adversários vivos. Se nenhum estiver livre, o Player permanece morto e a Simulation tenta novamente a cada Tick. Ele volta com HP e Mana cheios, Armor zero e sem invulnerabilidade. Decidido por Roberto em 26/10.
 - **Armor não acumula.** Pegar o Pickup leva a Armor a `ARMOR_POINTS`; não existe um teto separado nem pilha de Pickups.
 - **Pickup que não serve fica no chão.** Poção com HP cheio, Mana com Mana cheia e Armor com Armor cheia não são coletados, e sobram para um companheiro. O C consumia a poção mesmo com HP cheio (`game_bonus/handle_utils_bonus.c:48-54`). Chave é sempre coletada.
 - **`MOUSE_MAX_ROT_SPEED` é uma constante comum, de 6π rad/s** (três voltas por segundo, 0,63 rad por Tick). A proposta inicial era 2π, com que meia-volta levaria 0,5 s e o mouse look ficaria preso. O valor é igual nos dois Modes, então não entra no `numbers` do Ruleset. Ponto de partida, a ajustar jogando.
@@ -151,7 +152,6 @@ Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um
    - **Player.** `3.6` e `1.8` são o C rodando a 60 fps, o vsync padrão da MLX42 (`MLX42/src/mlx_init.c:111`) num monitor de 60 Hz. Não é preciso medir o fps do Cub3D: o número sai do teste.
    - **Projectile.** O `move_delay` do projétil no C nunca volta a zero (só é somado e comparado), então depois dos primeiros 0,2 s ele salta 0,5 célula a cada quadro: cerca de 30 cél/s a 60 fps. Os `2.5` da arq. são mais lentos que o Player (3,6; 7,2 correndo), que ultrapassaria a própria fireball. O ponto de partida é `12`, acima do sprint e ainda desviável no `pvp`.
    - **Boss.** Depois de atirar, o C faz `attack_delay = 1` (`init_boss_bonus.c:51`) e testa `attack_delay > 1.0`, que passa no quadro seguinte. Por isso o intervalo real entre bullets é de cerca de 1,2 s, e a até 18 células o Boss não anda: os limites `> 8` e `<= 16` não têm efeito. O port implementa a regra que o C pretendia: anda até `BOSS_MIN_RANGE`, atira a até `BOSS_ATTACK_RANGE`, um bullet a cada `BOSS_ATTACK_COOLDOWN_S`. O comportamento real do C é a mesma regra com `BOSS_MIN_RANGE = 18` e `BOSS_ATTACK_COOLDOWN_S = 1.2`, então testar os dois é trocar dois números. O Boss em `idle` leva dano e acorda ao ser atingido; no C ele era invulnerável até ver alguém (`update_fireball_bonus.c:24`).
-2. **Mais tarde, com resposta neste arquivo:** no `pvp`, o que é um Spawn livre e há proteção depois do respawn? (R6)
 
 
 ### 5.3 Valores iniciais por Mode — proposta de conteúdo
@@ -174,6 +174,6 @@ O limite de mouse é velocidade angular, não sensibilidade em pixels. Com `TICK
 
 **Conteúdo e Simulation:** decidido em 06/10 e registrado em §4. Mana cheia no início e depois do respawn; o Pickup de mana soma até `MANA_MAX`; Armor não acumula; Pickup que não serve fica no chão.
 
-**Conteúdo e Partidas:** confirmar respawn apenas no `pvp`, critérios de Spawn livre e proteção após renascer, junto do ponto 2 acima. Nenhuma proteção nova foi presumida nesta proposta.
+**Conteúdo e Partidas:** o respawn ocorre apenas no `pvp`; os critérios de Spawn livre e a ausência de proteção após renascer estão em §4.
 
 **Validação:** jogar coop e PvP antes de promover os números a decisões. Registrar frequência de disparos, tempo sem Mana, utilidade dos Pickups e duração do duelo; verificar a rotação do mouse no navegador com a mesma limitação do servidor. Esta preparação não executou esses testes.

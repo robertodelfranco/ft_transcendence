@@ -1,6 +1,7 @@
 import math
 
-from app.game.state import Room
+from app.game.rules import TICK_RATE
+from app.game.state import Mode, Room
 
 
 def to_snapshot(room: Room) -> dict:
@@ -43,7 +44,20 @@ def to_snapshot(room: Room) -> dict:
 			for x, char in enumerate(row)
 			if char != room.initial_grid[y][x]
 		],
-		"scoreboard": None, # o placar do pvp entra no R6
+		"scoreboard": _scoreboard(room),
+	}
+
+
+def _scoreboard(room: Room) -> dict | None:
+	if room.mode != Mode.PVP:
+		return None
+	# Depois do game_over a Room continua avançando para terminar as animações.
+	end_tick = room.outcome.duration_ticks if room.outcome is not None else room.tick
+	remaining_ticks = max(0, room.options.time_limit_s * TICK_RATE - end_tick)
+	return {
+		"players": [{"id": player.user_id, "frags": player.frags}
+			for player in sorted(room.players.values(), key=lambda player: -player.frags)],
+		"time_left_s": (remaining_ticks + TICK_RATE - 1) // TICK_RATE,
 	}
 
 
