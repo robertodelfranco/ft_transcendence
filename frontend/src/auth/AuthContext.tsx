@@ -1,5 +1,5 @@
 import { 
-  createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode,
+  createContext, useCallback, useContext, useEffect, useMemo, useState, useRef, type ReactNode
 } from "react";
 import { apiFetch, refreshSession, setSessionLostHandler } from "../api/client";
 import type { AuthResponse, PrivateUser, ProfileChanges } from "../api/types";
@@ -118,13 +118,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // PATCH /api/users/me (i18n.md §2.7): o PrivateUser da resposta passa a ser o da sessão
-  const updateProfile = useCallback(async (changes: ProfileChanges) => {
-    const user = await apiFetch<PrivateUser>("/api/users/me", {
-      method: "PATCH",
-      body: JSON.stringify(changes),
+  // PATCH /api/users/me (i18n.md §2.7): o PrivateUser da resposta passa a ser o da sessão.
+  // Um PATCH por vez, na ordem dos cliques: em paralelo, o que chega por último no servidor
+  // vence, e o perfil pode guardar uma escolha diferente da que está na tela
+  const profileQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const updateProfile = useCallback((changes: ProfileChanges) => {
+    const update = profileQueue.current.then(async () => {
+      const user = await apiFetch<PrivateUser>("/api/users/me", {
+        method: "PATCH",
+        body: JSON.stringify(changes),
+      });
+      setSession((current) => (current ? { ...current, user } : current));
     });
-    setSession((current) => (current ? { ...current, user } : current));
+    profileQueue.current = update.catch(() => undefined); // um PATCH que falhou não trava os próximos
+    return update;
   }, []);
 
   const value = useMemo<AuthContextValue>(

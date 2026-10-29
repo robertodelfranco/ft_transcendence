@@ -11,13 +11,16 @@ export default function LanguageSelector() {
   const [failure, setFailure] = useState<Failure | null>(null);
 
   // A tela troca na hora; com sessão, o perfil guarda a escolha (i18n.md §2.1). Se o PATCH
-  // falhar, a troca continua valendo e o erro aparece traduzido, nunca no console
+  // falhar, a troca continua valendo e o erro aparece traduzido, nunca no console. Os PATCHes
+  // saem um por vez (updateProfile), então quem decide o aviso é o último
   function select(language: Language) {
     changeLanguage(language);
     setFailure(null);
     if (status === "authenticated")
-      updateProfile({ preferred_language: language })
-        .catch((error: unknown) => setFailure(toFailure(error)));
+      updateProfile({ preferred_language: language }).then(
+        () => setFailure(null),
+        (error: unknown) => setFailure(toFailure(error)),
+      );
   }
 
   return (

@@ -73,4 +73,57 @@ describe("LanguageSelector", () => {
     expect(await screen.findByText(/Algo salió mal de nuestro lado/)).toBeInTheDocument();
     expect(i18n.resolvedLanguage).toBe("es");
   });
+
+  it("duas escolhas rápidas: um PATCH por vez, e o perfil fica com a última", async () => {
+    const bodies: unknown[] = [];
+    const pending: Array<() => void> = [];
+    let saved = "pt-BR";
+    server.use(http.patch("/api/users/me", async ({ request }) => {
+      const body = (await request.json()) as { preferred_language: string };
+      bodies.push(body);
+      await new Promise<void>((resolve) => pending.push(resolve)); // o teste decide quando responde
+      saved = body.preferred_language;
+      return HttpResponse.json({ ...authResponse.user, preferred_language: saved });
+    }));
+    await openWithSession();
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByRole("combobox"), "en");
+    await user.selectOptions(screen.getByRole("combobox"), "es");
+
+    // em paralelo, o "es" chegaria antes da resposta do "en" e o servidor terminaria com "en"
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(bodies).toEqual([{ preferred_language: "en" }]);
+
+    pending[0]();
+    await waitFor(() => expect(bodies).toHaveLength(2));
+    pending[1]();
+    await waitFor(() => expect(saved).toBe("es"));
+    expect(i18n.resolvedLanguage).toBe("es");
+  });
+
+  it("se só a escolha anterior falha, o aviso some quando a última grava", async () => {
+    let calls = 0;
+    let releaseFirst!: () => void;
+    const firstHeld = new Promise<void>((resolve) => (releaseFirst = resolve));
+    server.use(http.patch("/api/users/me", async ({ request }) => {
+      calls += 1;
+      if (calls === 1) {
+        await firstHeld; // o "en" só falha depois que o "es" já foi escolhido
+        return HttpResponse.json(
+          { error: { code: "internal_error", message: "db down", request_id: "abc" } }, { status: 500 },
+        );
+      }
+      return HttpResponse.json({ ...authResponse.user, ...((await request.json()) as object) });
+    }));
+    await openWithSession();
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByRole("combobox"), "en");
+    await user.selectOptions(screen.getByRole("combobox"), "es");
+    releaseFirst();
+
+    await waitFor(() => expect(calls).toBe(2));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });
