@@ -30,3 +30,4 @@ class UpdateMeIn(Input):
 class ProfileUser(PublicUser):
 	is_friend: bool # quem pede tem este User como amigo
 	is_me: bool
+	

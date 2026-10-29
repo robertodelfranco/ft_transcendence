@@ -1,12 +1,13 @@
 # backend/tests/users/test_avatar.py
 # O avatar regravado (i18n.md §2.7): Python puro, sem banco nem rede.
 
-import io 
+import io
+import re
 
 import pytest
 from PIL import Image, ImageCms
 
-from app.users.avatar import AVATAR_SIZE, InvalidAvatar, process_avatar
+from app.users.avatar import AVATAR_SIZE, InvalidAvatar, discard_avatar, process_avatar, store_avatar
 
 
 ORIENTATION, GPS = 0x0112, 0x8825 # tags do EXIF
@@ -71,3 +72,26 @@ def test_a_sideways_phone_photo_is_turned_upright():
 	assert min(avatar.getpixel((128, 10))[:3]) > 240 # branco em cima
 	red, green, blue, _ = avatar.getpixel((128, 245))
 	assert blue > 200 and red < 40 # azul embaixo
+
+
+def test_a_12_megapixel_phone_photo_is_accepted():
+	# 4000 × 3000 passa do limite de bytes lido como pixels, mas não do limite de pixels
+	avatar = decode(process_avatar(encode(Image.new("RGB", (4000, 3000)), "JPEG")))
+	assert avatar.size == AVATAR_SIZE
+
+
+def test_each_upload_gets_a_new_name(tmp_path):
+	first, second = store_avatar(tmp_path, 7, b"png"), store_avatar(tmp_path, 7, b"png")
+	assert first != second
+	assert re.fullmatch(r"/media/avatars/7-[0-9a-f]{8}\.png", first)
+	assert (tmp_path / "avatars" / first.rsplit("/", 1)[1]).read_bytes() == b"png"
+
+
+def test_discard_removes_only_uploaded_avatars(tmp_path):
+	url = store_avatar(tmp_path, 7, b"png")
+	discard_avatar(tmp_path, url)
+	assert not any((tmp_path / "avatars").iterdir())
+	discard_avatar(tmp_path, url) # já apagado: não é erro
+	discard_avatar(tmp_path, None) # o avatar padrão (NULL no banco)
+	discard_avatar(tmp_path, "/media/avatars/default.png") # nunca existe no volume
+	
