@@ -1,6 +1,6 @@
 # Contrato: rotas, host, TLS e `.env` (`infra.md`)
 
-**Estado:** proposta para a reunião de 12/10; as decisões 11 e 12 foram tomadas em 08/10; em 10/10, sincronizado com as decisões 1 e 6 de [auth.md](auth.md) (OAuth com a 42 e o Google, cookie com `Path=/api/auth`). Em 19/10, o teste num PC da 42 ([resultados de 17/10](../infra/resultados-teste-pc-42-2026-10-17.md)) entrou na §2.1, na §2.4, na §2.6 e no "Em aberto" 1. Em 22/10, a F8.8 entrou na §2.1, na §2.6 e na decisão 17. **Escreve:** Akita. **Assina:** todos — é o contrato que diz o que acontece com uma requisição antes de ela chegar ao código de qualquer um.
+**Estado:** proposta para a reunião de 12/10; as decisões 11 e 12 foram tomadas em 08/10; em 10/10, sincronizado com as decisões 1 e 6 de [auth.md](auth.md) (OAuth com a 42 e o Google, cookie com `Path=/api/auth`). Em 19/10, o teste num PC da 42 ([resultados de 17/10](../infra/resultados-teste-pc-42-2026-10-17.md)) entrou na §2.1, na §2.4, na §2.6 e no "Em aberto" 1. Em 22/10, a F8.8 entrou na §2.1, na §2.6 e na decisão 17. Em 29/10, a F8.9 entrou na §2.1, na §2.5, na §2.6 e nas decisões 18 e 19. **Escreve:** Akita. **Assina:** todos — é o contrato que diz o que acontece com uma requisição antes de ela chegar ao código de qualquer um.
 
 ## 1. Para que serve
 
@@ -19,7 +19,7 @@ Um `docker compose up` sobe tudo (requisito do subject, cap. III). Todos na rede
 | `backend` | `./backend` | — | FastAPI, `uvicorn`, **um worker** |
 | `db` | `postgres:16-alpine` | — | volume `db_data` |
 | `prometheus` | `prom/prometheus:v3.13.5` (LTS) | — | scrape e regras de alerta; volume `prom_data` |
-| `grafana` | `grafana/grafana` | — | datasource e dashboards provisionados por arquivo |
+| `grafana` | `grafana/grafana:13.2.5` | — | datasource e dashboards provisionados por arquivo; sem volume (§4, decisão 18) |
 | `node-exporter` | `prom/node-exporter:v1.12.1` | — | métricas de host |
 | `postgres-exporter` | `prometheuscommunity/postgres-exporter:v0.20.1` | — | métricas do Postgres |
 
@@ -107,6 +107,11 @@ GF_SECURITY_ADMIN_PASSWORD=
 GF_SERVER_SERVE_FROM_SUB_PATH=true
 GF_USERS_ALLOW_SIGN_UP=false
 GF_AUTH_ANONYMOUS_ENABLED=false
+GF_SECURITY_DISABLE_GRAVATAR=true
+GF_ANALYTICS_REPORTING_ENABLED=false
+GF_ANALYTICS_CHECK_FOR_UPDATES=false
+GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false
+GF_NEWS_NEWS_FEED_ENABLED=false
 ```
 
 A URL do banco é montada pelo `pydantic-settings` a partir das cinco variáveis de Postgres; não há `DATABASE_URL` separada, para não existirem duas fontes da mesma informação.
@@ -125,7 +130,10 @@ postgres-exporter:9187 ───┘   (alerts.yml)
 
 - `monitoring/prometheus/prometheus.yml` e `alerts.yml`, `monitoring/grafana/provisioning/{datasources,dashboards}/` — tudo versionado. **Nada criado à mão na UI entra na demo**: o critério é `docker compose down -v && up` e os dashboards voltarem sozinhos.
 - Os nomes e as labels das métricas do backend são contrato do Augusto (`app/core/metrics.py`, F8.7, arq. §12.1). Os dashboards de host e Postgres não dependem dele e sobem antes.
-- Grafana: `serve_from_sub_path` ligado, admin do `.env`, anônimo e signup desligados.
+- Grafana (F8.9): `serve_from_sub_path` ligado, admin do `.env` (obrigatório, decisão 19), anônimo e signup desligados, e nenhuma requisição para fora (Gravatar, analytics, checagem de versão e feed de notícias). O serviço recebe só as próprias variáveis, pelo `environment:` do compose com `${VAR:-valor seguro}`, e não pelo `env_file`, que entregaria o `JWT_SECRET` e as senhas que ele não usa. O `:-` cobre um `.env` sem as chaves (o do CI).
+- Provisioning (F8.9): `monitoring/grafana/provisioning/{datasources,dashboards}/` montadas nas pastas de mesmo nome em `/etc/grafana/provisioning`, só leitura. São só as duas subpastas: montar a pasta inteira esconderia as pastas `plugins/` e `alerting/` da imagem, e o Grafana registraria um erro por pasta a cada subida. O datasource `Prometheus` tem `uid: prometheus` fixo, e os dashboards apontam para ele por esse `uid`. Os três dashboards da decisão 15 ficam na pasta "Catacombs 42", com `uid` fixo (`catacombs-game`, `catacombs-host`, `catacombs-postgres`), sem apagar nem salvar pela UI: mudar um painel é mudar o JSON e abrir PR. O dashboard Postgres filtra `datname!~"postgres|template0|template1"`, porque o `POSTGRES_DB` muda por `.env`.
+- O healthcheck do Grafana é `/grafana/api/health`: com `serve_from_sub_path`, é o mesmo caminho que o Nginx repassa.
+- O Grafana roda com UID 472: no rootless, como o Prometheus, ele só lê o provisioning se os arquivos derem leitura para outros (`644`, pastas `755`).
 - Host só pelo `node-exporter`, sem cAdvisor: os dois funcionaram no PC da 42 em 17/10, mas o cAdvisor no rootless precisa dos sockets em `/run/user/$UID` e do `data-root` de cada usuário, caminhos que mudam por login e por PC.
 - Retenção curta: `7d` ou `500MB`, o que vier primeiro (`PROM_RETENTION_TIME` e `PROM_RETENTION_SIZE`, §4 decisão 14). É demo local, não observabilidade de produção. As duas chegam às flags `--storage.tsdb.retention.*` pelo `command:` do compose, com `:-7d` e `:-500MB` como padrão, porque um `.env` sem essas chaves (o do CI) daria flag vazia.
 - `prometheus.yml` (F8.8): `scrape_interval: 15s` e três jobs pelo nome de serviço: `backend` (`backend:8000`, `/metrics`), `node` (`node-exporter:9100`) e `postgres` (`postgres-exporter:9187`). O `rule_files` entra com o `alerts.yml` da F8.10. A pasta `monitoring/prometheus/` é montada inteira em `/etc/prometheus`, só leitura.
@@ -246,6 +254,8 @@ cp "$(mkcert -CAROOT)/rootCA.pem" .          # levar para as outras máquinas
 15. **Dashboards próprios e pequenos.** Três, todos nossos: Jogo e backend, Host, Postgres, com uns 5–6 painéis cada, montados na UI, exportados em JSON e versionados em `monitoring/grafana/provisioning/dashboards/`. O subject cobra dashboards *custom*, e cada painel precisa de uma consulta que alguém explique na defesa. Os da comunidade (Node Exporter Full, por exemplo) têm dezenas de painéis e usam `${DS_PROMETHEUS}`, que quebra no provisioning por arquivo.
 16. **Alertas no Prometheus, sem Alertmanager.** `monitoring/prometheus/alerts.yml` em PromQL puro (primeiro `up == 0` dos exporters e do backend, depois a latência do tick), visto em *firing* na página `/alerts` do Prometheus e na lista de alertas do Grafana, como regra do datasource. O subject cobra regras de alerta, não notificação; um Alertmanager com webhook seria mais um serviço, mais um segredo e um serviço externo na demo. Disparo ao vivo: `docker compose stop postgres-exporter`.
 17. **O `postgres-exporter` usa o `POSTGRES_USER`, e não um role só-leitura.** Um role `pg_monitor` precisaria de um script em `docker-entrypoint-initdb.d`, que só roda num volume vazio: o `db_data` de quem já tem dados nunca o receberia, e a alternativa seria uma migração do Alembic criando um role, o que mistura infra com schema. O risco fica contido pela topologia: o exporter não publica porta e só a rede interna o alcança. Usuário, senha e host vão em `DATA_SOURCE_USER`, `DATA_SOURCE_PASS` e `DATA_SOURCE_URI`, interpolados do `.env` pelo compose. Com a senha fora da URI, ela não precisa de URL-encoding. Se um dia valer a pena, o caminho é criar o role `pg_monitor` e trocar só essas três variáveis.
+18. **Grafana sem volume de dados.** Tudo o que importa vem dos arquivos de provisioning, então o banco interno do Grafana (SQLite) nasce a cada `up`. Duas consequências que são o objetivo: a senha do admin do `.env` sempre vale (com volume, ela só vale na primeira subida, e trocar depois exige `grafana-cli`), e nada criado à mão na UI sobrevive, que é o critério da F8.9. O custo: a sessão de login cai quando o container reinicia.
+19. **Admin do Grafana obrigatório.** `GF_SECURITY_ADMIN_USER` e `GF_SECURITY_ADMIN_PASSWORD` entram no compose com `${VAR:?mensagem}`: com a chave ausente ou vazia, o compose para e diz qual chave falta. Sem isso, o Grafana sobe com `admin`/`admin`, o que quebra o "acesso seguro" que o subject cobra. Efeito colateral consciente: **qualquer** comando do compose (`ps`, `logs`) falha até o `.env` ter as duas chaves.
 
 ## 5. Em aberto
 

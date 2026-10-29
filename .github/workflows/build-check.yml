@@ -27,6 +27,8 @@ jobs:
           PUBLIC_HOST=localhost:8443
           PROXY_HTTP_PORT=8080
           PROXY_HTTPS_PORT=8443
+          GF_SECURITY_ADMIN_USER=ci
+          GF_SECURITY_ADMIN_PASSWORD=ci-grafana
           EOF
         
       # --wait: espera db e backend ficarem healthy; reprova se algum ficar unhealthy ou sair
@@ -57,6 +59,17 @@ jobs:
 
       - name: Check database
         run: docker compose exec -T db pg_isready -U ci -d transcendence
+
+      # F8.9: datasource e os 3 dashboards vêm só dos arquivos, sem nada feito na UI
+      # (o Grafana não publica porta: a consulta roda de dentro do container)
+      - name: Grafana provisioned
+        run: |
+          api=http://ci:ci-grafana@localhost:3000/grafana/api
+          search=$(docker compose exec -T grafana wget -qO- "$api/search?type=dash-db")
+          for uid in catacombs-game catacombs-host catacombs-postgres; do
+            echo "$search" | grep -q "\"uid\":\"$uid\"" || { echo "missing dashboard $uid"; exit 1; }
+          done
+          docker compose exec -T grafana wget -qO- "$api/datasources/uid/prometheus/health" | grep -q '"status":"OK"'
 
       - name: No container exited
         run: test -z "$(docker compose ps -a -q --status exited)"
