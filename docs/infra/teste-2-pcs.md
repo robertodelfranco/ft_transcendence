@@ -254,6 +254,9 @@ Cada item só entra se a tarefa estiver na `main` em 30/10. O que não estiver f
    ```
    **Esperado:** `401`.
 3. Entre com o admin do `.env` do PC A. **Esperado:** os dashboards aparecem, com dados.
+4. Abra `https://<HOST>:8443/grafana`, **sem a barra no fim**. **Esperado:** cai em `https://<HOST>:8443/grafana/...`, com a porta, e não na 443.
+5. Com o DevTools aberto (F12, aba Console) num dashboard. **Esperado:** console sem erros, inclusive de WebSocket (o Grafana Live).
+6. Deixe o dashboard "Jogo e backend" aberto durante o D8. **Esperado:** o painel do tick e o de Rooms se mexem enquanto a partida roda.
 
 As portas 9090 e 3000 fechadas já estão no D5.
 

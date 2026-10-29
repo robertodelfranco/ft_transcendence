@@ -71,6 +71,20 @@ jobs:
           done
           docker compose exec -T grafana wget -qO- "$api/datasources/uid/prometheus/health" | grep -q '"status":"OK"'
 
+      # F8.11: o Grafana só pelo Nginx, com TLS e login; Prometheus e /metrics sem acesso externo
+      - name: Grafana only through the proxy, with login
+        run: |
+          code() { curl -s --cacert ci-cert.pem -o /dev/null -w '%{http_code}' "https://localhost:8443$1"; }
+          test "$(code /grafana/api/health)" = 200
+          test "$(code /grafana/login)" = 200
+          test "$(code /grafana/api/dashboards/home)" = 401
+          # sem a barra, o redirect do Nginx é relativo: o absoluto perderia a porta 8443
+          test "$(curl -s --cacert ci-cert.pem -o /dev/null -w '%header{location}' https://localhost:8443/grafana)" = /grafana/
+          for port in 3000 9090; do
+            ! curl -s --max-time 2 "http://localhost:$port" > /dev/null || { echo "port $port answers"; exit 1; }
+          done
+          ! curl -s --cacert ci-cert.pem https://localhost:8443/metrics | grep -q http_requests_total
+
       - name: No container exited
         run: test -z "$(docker compose ps -a -q --status exited)"
       
