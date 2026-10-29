@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { StrictMode } from "react";
@@ -12,11 +12,13 @@ import { AuthProvider, useAuth } from "./AuthContext";
 import { getAccessToken, setAccessToken } from "./token";
 
 function Probe() {
-  const { status, user, login, logout } = useAuth();
+  const { status, user, login, logout, updateProfile } = useAuth();
   return (
     <div>
       <p data-testid="status">{status}</p>
       <p data-testid="user">{user?.username ??"-"}</p>
+      <p data-testid="language">{user?.preferred_language ?? "-"}</p>
+      <button onClick={() => updateProfile({ preferred_language: "es" })}>perfil</button>
       <button onClick={() => login("a@b.c", MOCK_PASSWORD)}>entrar</button>
       <button onClick={() => login("a@b.c", "errada123").catch(() => {})}>errar</button>
       <button onClick={() => logout()}>sair</button>
@@ -142,6 +144,31 @@ describe("renovação a 80 %", () => {
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2_000); // passou de 80 %
+    });
+    await vi.waitFor(() => expect(refreshed).toHaveBeenCalledTimes(2));
+  });
+
+  it("atualizar o perfil troca o user, mas não adia a renovação", async () => {
+    await reloadWithSession();
+    const refreshed = vi.fn();
+    server.use(
+      http.post("/api/auth/refresh", () => {
+        refreshed();
+        return HttpResponse.json({ ...authResponse, expires_in: 100 });
+      }),
+    );
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    renderProbe();
+    await vi.waitFor(() => expect(status()).toBe("authenticated"));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50_000);
+    });
+    fireEvent.click(screen.getByText("perfil"));
+    await vi.waitFor(() => expect(screen.getByTestId("language")).toHaveTextContent("es"));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000); // 81 s desde o login: passou de 80 %
     });
     await vi.waitFor(() => expect(refreshed).toHaveBeenCalledTimes(2));
   });

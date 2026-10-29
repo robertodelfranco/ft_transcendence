@@ -14,6 +14,12 @@ export interface PrivateUser extends PublicUser {
   providers: string[];
 }
 
+// PATCH /api/users/me (i18n.md §2.7): só o que muda, ao menos um campo
+export interface ProfileChanges {
+  username?: string;
+  preferred_language?: Language;
+}
+
 export interface AuthResponse {
   authenticated: true;
   access_token: string;

@@ -2,7 +2,7 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode,
 } from "react";
 import { apiFetch, refreshSession, setSessionLostHandler } from "../api/client";
-import type { AuthResponse, PrivateUser } from "../api/types";
+import type { AuthResponse, PrivateUser, ProfileChanges } from "../api/types";
 import i18n, { changeLanguage } from "../i18n";
 import { setAccessToken } from "./token";
 
@@ -20,6 +20,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   signup: (input: SignupInput) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (changes: ProfileChanges) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -61,9 +62,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [start]);
 
-  // Renovação: cada sessão nova reinicia o timer, e o cleanup cancela o anterior
+  // Renovação: cada token novo reinicia o timer, e o cleanup cancela o anterior. Depende só do
+  // token, não da sessão inteira: o updateProfile troca o user e não pode adiar a renovação
+  const accessToken = session?.access_token;
+  const expiresIn = session?.expires_in;
   useEffect(() => {
-    if (!session)
+    if (!accessToken || expiresIn === undefined)
       return;
     const timer = setTimeout(() => {
       refreshSession()
@@ -71,9 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(() => {
         // falha de rede: o próximo 401 passa pelo apiFetch, que tenta de novo
       });
-    }, session.expires_in * RENEW_AT * 1000);
+    }, expiresIn * RENEW_AT * 1000);
     return () => clearTimeout(timer);
-  }, [session]);
+  }, [accessToken, expiresIn]);
 
   // O cliente HTTP avisa quando a sessão acabou de vez (refresh recusado)
   useEffect(() => {
@@ -114,6 +118,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // PATCH /api/users/me (i18n.md §2.7): o PrivateUser da resposta passa a ser o da sessão
+  const updateProfile = useCallback(async (changes: ProfileChanges) => {
+    const user = await apiFetch<PrivateUser>("/api/users/me", {
+      method: "PATCH",
+      body: JSON.stringify(changes),
+    });
+    setSession((current) => (current ? { ...current, user } : current));
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status: session === undefined ? "loading": session ? "authenticated" : "anonymous",
@@ -121,8 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       signup,
       logout,
+      updateProfile,
     }),
-    [session, login, signup, logout],
+    [session, login, signup, logout, updateProfile],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>
