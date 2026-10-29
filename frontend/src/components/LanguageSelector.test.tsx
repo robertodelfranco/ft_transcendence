@@ -126,4 +126,23 @@ describe("LanguageSelector", () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
+
+  it("sair enquanto a escolha ainda grava não mostra erro", async () => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    server.use(http.patch("/api/users/me", async () => {
+      await held;
+      return HttpResponse.json({ ...authResponse.user, preferred_language: "es" });
+    }));
+    await openWithSession();
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByRole("combobox"), "es");
+    await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Cerrar sesión" })).not.toBeInTheDocument());
+
+    release();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(i18n.resolvedLanguage).toBe("es");
+  });
 });

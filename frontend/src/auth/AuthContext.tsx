@@ -23,6 +23,14 @@ interface AuthContextValue {
   updateProfile: (changes: ProfileChanges) => Promise<void>;
 }
 
+// O updateProfile não terminou porque a sessão acabou ou trocou de conta: não é erro para mostrar
+export class ProfileUpdateCancelled extends Error {
+  constructor() {
+    super("profile update cancelled");
+    this.name = "ProfileUpdateCancelled";
+  }
+}
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 // Renova depois de 80 % do expires_in, antes de o access vencer (auth.md §2.6, passo 2)
@@ -32,13 +40,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // undefined = ainda não sabemos (loading); null = sem sessão
   const [session, setSession] = useState<AuthResponse | null | undefined>(undefined);
 
+  // Fila do updateProfile, que é da sessão atual. Entrar, sair, perder a sessão ou trocar de
+  // conta aborta tudo o que ela tem: um fetch abortado nem sai, e o que estava em voo não repete
+  // com o token da próxima conta nem troca o user dela com uma resposta atrasada
+  const profileQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const profileAbort = useRef<AbortController>(null);
+  const profileSaves = useRef(0); // quantos PATCHes já gravaram: a renovação compara antes e depois
+  const endProfileQueue = useCallback(() => {
+    profileAbort.current?.abort();
+    profileAbort.current = null; // o próximo updateProfile já é da sessão nova
+  }, []);
+
   // Entrada na sessão: guarda o token e aplica o idioma do perfil (i18n.md §2.1, ordem 1)
   const start = useCallback((auth: AuthResponse) => {
+    endProfileQueue(); // antes do token novo: nada da conta anterior sai com ele
     setAccessToken(auth.access_token);
     if (auth.user.preferred_language !== i18n.resolvedLanguage)
       changeLanguage(auth.user.preferred_language);
     setSession(auth);
-  }, []);
+  }, [endProfileQueue]);
 
   // Ao carregar a página: o cookie de refresh diz se ainda há sessão
   useEffect(() => {
@@ -66,24 +86,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // token, não da sessão inteira: o updateProfile troca o user e não pode adiar a renovação
   const accessToken = session?.access_token;
   const expiresIn = session?.expires_in;
+  const userId = session?.user.id;
   useEffect(() => {
     if (!accessToken || expiresIn === undefined)
       return;
     const timer = setTimeout(() => {
+      const saves = profileSaves.current;
       refreshSession()
-        .then((auth) => setSession(auth))
+        .then((auth) => {
+          // a sessão acabou, ou outra aba entrou com outra conta (o cookie de refresh é um só)
+          if (auth?.user.id !== userId)
+            endProfileQueue();
+          // um PATCH gravou enquanto a renovação ia e voltava: o user dela pode ser de antes dele
+          const stale = profileSaves.current !== saves;
+          setSession((current) =>
+            auth && stale && current?.user.id === auth.user.id ? { ...auth, user: current.user } : auth);
+        })
       .catch(() => {
         // falha de rede: o próximo 401 passa pelo apiFetch, que tenta de novo
       });
     }, expiresIn * RENEW_AT * 1000);
     return () => clearTimeout(timer);
-  }, [accessToken, expiresIn]);
+  }, [accessToken, expiresIn, userId, endProfileQueue]);
 
   // O cliente HTTP avisa quando a sessão acabou de vez (refresh recusado)
   useEffect(() => {
-    setSessionLostHandler(() => setSession(null));
+    setSessionLostHandler(() => {
+      endProfileQueue();
+      setSession(null);
+    });
     return () => setSessionLostHandler(null);
-  }, []);
+  }, [endProfileQueue]);
 
   const login = useCallback(
     async (email: string, password: string) => {
@@ -109,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    endProfileQueue(); // quem sai desiste do que ainda não gravou
     try {
       await apiFetch<void>("/api/auth/logout", { method: "POST" });
     } finally {
@@ -116,18 +150,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken(null);
       setSession(null);
     }
-  }, []);
+  }, [endProfileQueue]);
 
   // PATCH /api/users/me (i18n.md §2.7): o PrivateUser da resposta passa a ser o da sessão.
   // Um PATCH por vez, na ordem dos cliques: em paralelo, o que chega por último no servidor
   // vence, e o perfil pode guardar uma escolha diferente da que está na tela
-  const profileQueue = useRef<Promise<unknown>>(Promise.resolve());
   const updateProfile = useCallback((changes: ProfileChanges) => {
+    const { signal } = (profileAbort.current ??= new AbortController());
     const update = profileQueue.current.then(async () => {
       const user = await apiFetch<PrivateUser>("/api/users/me", {
         method: "PATCH",
         body: JSON.stringify(changes),
+        signal,
+      }).catch((error: unknown) => {
+        throw signal.aborted ? new ProfileUpdateCancelled() : error;
       });
+      if (signal.aborted) // a resposta chegou inteira, mas a sessão trocou antes de chegar aqui
+        throw new ProfileUpdateCancelled();
+      profileSaves.current += 1;
       setSession((current) => (current ? { ...current, user } : current));
     });
     profileQueue.current = update.catch(() => undefined); // um PATCH que falhou não trava os próximos

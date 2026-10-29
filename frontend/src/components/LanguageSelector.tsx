@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "../auth/AuthContext";
+import { ProfileUpdateCancelled, useAuth } from "../auth/AuthContext";
 import { changeLanguage } from "../i18n";
 import { isLanguage, LANGUAGES, type Language } from "../i18n/languages";
 import ErrorNotice, { toFailure, type Failure } from "./ErrorNotice";
@@ -19,7 +19,11 @@ export default function LanguageSelector() {
     if (status === "authenticated")
       updateProfile({ preferred_language: language }).then(
         () => setFailure(null),
-        (error: unknown) => setFailure(toFailure(error)),
+        (error: unknown) => {
+          // a sessão acabou antes de gravar: não há o que avisar
+          if (!(error instanceof ProfileUpdateCancelled))
+            setFailure(toFailure(error));
+        },
       );
   }
 
