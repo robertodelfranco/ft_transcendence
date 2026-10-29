@@ -39,8 +39,10 @@ def process_avatar(data: bytes) -> bytes:
 			upright = ImageOps.exif_transpose(original)
 			# RGBA junta paleta, CMYK, 16 bits e transparência num modo só; o fit recorta ao centro
 			square = ImageOps.fit(upright.convert("RGBA"), AVATAR_SIZE)
-	# arquivo truncado é OSError, conversão impossível é ValueError, e a bomba não é OSError
-	except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as error:
+	# arquivo truncado é OSError, conversão impossível é ValueError, a bomba não é OSError, e chunk
+	# quebrado no meio dos dados é SyntaxError: o Pillow só o converte enquanto lê o cabeçalho
+	except (UnidentifiedImageError, OSError, ValueError, SyntaxError,
+			Image.DecompressionBombError) as error:
 		raise InvalidAvatar(str(error)) from None
 	# sem isto, o perfil de cor do original iria junto: só sai o que o servidor desenhou
 	square.info.clear()

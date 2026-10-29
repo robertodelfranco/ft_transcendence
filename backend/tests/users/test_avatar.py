@@ -3,6 +3,8 @@
 
 import io
 import re
+import struct
+import zlib
 
 import pytest
 from PIL import Image, ImageCms
@@ -23,6 +25,19 @@ def decode(data: bytes) -> Image.Image:
 	return Image.open(io.BytesIO(data))
 
 
+def broken_chunk_png() -> bytes:
+	"""Cabeçalho perfeito, e o segundo pedaço dos pixels com um tipo de chunk que não existe."""
+	def chunk(kind: bytes, data: bytes) -> bytes:
+		return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+	png = encode(Image.new("RGB", (64, 64), "red"), "PNG")
+	start = 8 + 25 # assinatura e IHDR: o Pillow grava o IDAT logo depois
+	length = struct.unpack(">I", png[start:start + 4])[0]
+	pixels = png[start + 8:start + 8 + length]
+	half = len(pixels) // 2
+	return (png[:start] + chunk(b"IDAT", pixels[:half]) + chunk(b"\0\0\0\0", pixels[half:])
+		+ chunk(b"IEND", b""))
+
+
 @pytest.mark.parametrize("fmt", ["PNG", "JPEG", "WEBP"])
 def test_accepted_formats_become_a_256_png(fmt):
 	avatar = decode(process_avatar(encode(Image.new("RGB", (400, 300), "red"), fmt)))
@@ -40,7 +55,8 @@ def test_every_color_mode_ends_up_rgba(mode):
 	b"<script>alert(1)</script>", # texto com nome de .png
 	b"",
 	encode(Image.new("RGB", (400, 300)), "PNG")[:60], # cortado ao meio
-], ids=["gif", "script", "empty", "truncated"])
+	broken_chunk_png(), # o Pillow levanta SyntaxError, que viraria 500
+], ids=["gif", "script", "empty", "truncated", "broken-chunk"])
 def test_anything_else_is_invalid(data):
 	with pytest.raises(InvalidAvatar):
 		process_avatar(data)
