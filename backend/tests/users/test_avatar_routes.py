@@ -88,13 +88,15 @@ async def test_without_the_file_field_is_422(client, caio):
 	assert (response.status_code, error["code"], error["fields"]) == (422, "validation_error", {"file": "required"})
 
 
-async def test_a_failed_commit_leaves_no_file_behind(client, db_session, caio, tmp_path, monkeypatch):
+# refresh: a trava da linha (FOR UPDATE); commit: a troca da URL. O PNG já está gravado nos dois
+@pytest.mark.parametrize("step", ["refresh", "commit"])
+async def test_a_database_failure_leaves_no_file_behind(client, db_session, caio, tmp_path, monkeypatch, step):
 	_, auth = caio
 
-	async def broken_commit():
+	async def broken(*args, **kwargs):
 		raise RuntimeError("database went away")
 
-	monkeypatch.setattr(db_session, "commit", broken_commit)
+	monkeypatch.setattr(db_session, step, broken)
 	response = await upload(client, auth, png())
 	assert response.status_code == 500
 	assert stored(tmp_path) == []

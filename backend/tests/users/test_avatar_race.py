@@ -1,6 +1,7 @@
 # Dois envios de avatar do mesmo User ao mesmo tempo (revisão do PR #178), com commits de verdade:
 # a fixture db_session usa uma conexão só e não deixa duas requisições se cruzarem no banco.
 import asyncio
+import secrets
 
 import pytest
 from sqlalchemy import delete
@@ -30,9 +31,11 @@ async def engine(migrated_db, settings):
 
 @pytest.fixture
 async def user_id(engine):
-	# commit de verdade: as duas sessões precisam enxergar o User; o finally apaga, já que não há rollback
+	# commit de verdade: as duas sessões precisam enxergar o User, e no fim ele é apagado, já que não
+	# há rollback. Nome novo a cada rodada: uma rodada interrompida não trava a próxima
+	name = f"race_{secrets.token_hex(4)}"
 	async with AsyncSession(engine, expire_on_commit=False) as session:
-		user = User(email="race@example.com", username="race")
+		user = User(email=f"{name}@example.com", username=name)
 		session.add(user)
 		await session.commit()
 		user_id = user.id

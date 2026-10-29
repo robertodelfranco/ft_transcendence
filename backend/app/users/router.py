@@ -58,13 +58,13 @@ async def get_profile(user_id: UserId, user: CurrentUser, session: DbSession) ->
 
 
 async def _replace_avatar(session: AsyncSession, user: User, url: str | None, media_dir: Path) -> None:
-	"""Troca a URL no banco e só depois apaga o arquivo antigo: se o commit falhar, quem some é o novo."""
-	# FOR UPDATE: outro envio do mesmo User espera este commit e lê a URL que ele gravou. Sem a trava,
-	# os dois leem a mesma URL antiga e o arquivo de quem fez commit primeiro fica órfão
-	await session.refresh(user, ["avatar_url"], with_for_update=True)
-	old = user.avatar_url
-	user.avatar_url = url
+	"""Troca a URL no banco e só depois apaga o arquivo antigo: se o banco falhar, quem some é o novo."""
 	try:
+		# FOR UPDATE: outro envio do mesmo User espera este commit e lê a URL que ele gravou. Sem a
+		# trava, os dois leem a mesma URL antiga e o arquivo de quem fez commit primeiro fica órfão
+		await session.refresh(user, ["avatar_url"], with_for_update=True)
+		old = user.avatar_url
+		user.avatar_url = url
 		await session.commit()
 	except Exception:
 		discard_avatar(media_dir, url)
