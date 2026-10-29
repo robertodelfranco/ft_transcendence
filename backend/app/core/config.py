@@ -1,6 +1,7 @@
 import secrets
 from functools import lru_cache
 from typing import Literal, Self
+from pathlib import Path
 
 from pydantic import PositiveInt, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -40,6 +41,9 @@ class Settings(BaseSettings):
 	# OAuth da 42 (auth.md §2.8); vazios no pytest, que não fala com a intra
 	ft_client_id: str = ""
 	ft_client_secret: SecretStr = SecretStr("")
+
+	# avatares enviados (i18n.md §2.7): o compose monta o volume media aqui; o teste usa uma pasta temporária
+	media_dir: Path = Path("/media")
 
 	@model_validator(mode="after")
 	def _require_a_strong_secret(self) -> Self:

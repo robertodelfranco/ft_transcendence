@@ -15,3 +15,7 @@ markers = [
     "mirror: confere que o mundo não saiu espelhado, como era no Cub3D",
     "perf: mede tempo; fora do CI, rode com `pytest -m perf`",
 ]
+filterwarnings = [
+    # o Starlette 0.38 (do FastAPI 0.115.0) importa o python-multipart pelo nome antigo; some quando o FastAPI subir
+    "ignore:Please use `import python_multipart` instead:PendingDeprecationWarning",
+]

@@ -19,6 +19,8 @@ server {
     ssl_certificate     /etc/nginx/certs/cert.pem;
     ssl_certificate_key /etc/nginx/certs/key.pem;
 
+    client_max_body_size 3m; # acima dos 2 MiB do avatar: o 413 sai do backend, no envelope (infra.md §2.3)
+
     location / {
         proxy_pass http://frontend:80;
     }
