@@ -53,6 +53,9 @@ services:
         condition: service_healthy
       frontend:
         condition: service_started
+      # o Nginx resolve "grafana" ao subir; o custo é um Grafana quebrado segurar o proxy (decisão 20)
+      grafana:
+        condition: service_healthy
     networks:
       - transcendence
 
@@ -91,6 +94,8 @@ services:
       GF_SERVER_SERVE_FROM_SUB_PATH: ${GF_SERVER_SERVE_FROM_SUB_PATH:-true}
       GF_USERS_ALLOW_SIGN_UP: ${GF_USERS_ALLOW_SIGN_UP:-false}
       GF_AUTH_ANONYMOUS_ENABLED: ${GF_AUTH_ANONYMOUS_ENABLED:-false}
+      # atrás do Nginx o Grafana só vê HTTP: sem isto, o cookie de sessão sai sem Secure
+      GF_SECURITY_COOKIE_SECURE: ${GF_SECURITY_COOKIE_SECURE:-true}
       # nenhuma requisição para fora: nada bloqueado no console na rede da 42
       GF_SECURITY_DISABLE_GRAVATAR: ${GF_SECURITY_DISABLE_GRAVATAR:-true}
       GF_ANALYTICS_REPORTING_ENABLED: ${GF_ANALYTICS_REPORTING_ENABLED:-false}

@@ -1,6 +1,6 @@
 # Contrato: rotas, host, TLS e `.env` (`infra.md`)
 
-**Estado:** proposta para a reunião de 12/10; as decisões 11 e 12 foram tomadas em 08/10; em 10/10, sincronizado com as decisões 1 e 6 de [auth.md](auth.md) (OAuth com a 42 e o Google, cookie com `Path=/api/auth`). Em 19/10, o teste num PC da 42 ([resultados de 17/10](../infra/resultados-teste-pc-42-2026-10-17.md)) entrou na §2.1, na §2.4, na §2.6 e no "Em aberto" 1. Em 22/10, a F8.8 entrou na §2.1, na §2.6 e na decisão 17. Em 29/10, a F8.9 entrou na §2.1, na §2.5, na §2.6 e nas decisões 18 e 19. **Escreve:** Akita. **Assina:** todos — é o contrato que diz o que acontece com uma requisição antes de ela chegar ao código de qualquer um.
+**Estado:** proposta para a reunião de 12/10; as decisões 11 e 12 foram tomadas em 08/10; em 10/10, sincronizado com as decisões 1 e 6 de [auth.md](auth.md) (OAuth com a 42 e o Google, cookie com `Path=/api/auth`). Em 19/10, o teste num PC da 42 ([resultados de 17/10](../infra/resultados-teste-pc-42-2026-10-17.md)) entrou na §2.1, na §2.4, na §2.6 e no "Em aberto" 1. Em 22/10, a F8.8 entrou na §2.1, na §2.6 e na decisão 17. Em 29/10, a F8.9 entrou na §2.1, na §2.5, na §2.6 e nas decisões 18 e 19, e a F8.11 na §2.3, na §3 e na decisão 20. **Escreve:** Akita. **Assina:** todos — é o contrato que diz o que acontece com uma requisição antes de ela chegar ao código de qualquer um.
 
 ## 1. Para que serve
 
@@ -49,6 +49,8 @@ Escrito para quem programa atrás dele.
 5. **Tamanho de corpo:** `client_max_body_size` acompanha o limite de avatar do [i18n.md](i18n.md) (API de usuários). Se o Nginx cortar antes do backend, o front recebe 413 do Nginx em HTML, fora do envelope de erro — então o limite do Nginx é um pouco maior que o do backend, e a mensagem de erro vem sempre do backend.
 6. **Log de acesso sem query string.** O callback do OAuth chega com `?code=…&state=…`, e o [auth.md](auth.md) §2.10 proíbe os dois no log. O `log_format` padrão do Nginx grava `$request`, que inclui a query; o nosso grava `$request_method $uri $server_protocol`. Pelo mesmo motivo o `uvicorn` sobe com `--no-access-log`: o middleware de log do backend já registra cada requisição em JSON, com `request_id` e sem a query. Entra no PR de F6.8, antes do primeiro login real.
 7. **`/metrics` não tem `location`.** Uma requisição a `https://<host>/metrics` cai no `location /`, ou seja, no frontend, que devolve o `index.html` do SPA (fallback de rota, `frontend/nginx.conf`) e a casca mostra a página de "não encontrado". Não existe caminho público para o `/metrics` do backend.
+8. **Grafana em `location /grafana/`** (F8.11), sem barra final no `proxy_pass`: com `serve_from_sub_path`, o Grafana espera o `/grafana/` inteiro. O Grafana Live (`/grafana/api/live/`) é WebSocket e tem `location` próprio com o upgrade; sem ele, a página do Grafana enche o console de erro. O cookie de sessão sai `Secure` por `GF_SECURITY_COOKIE_SECURE`, porque atrás do Nginx o Grafana só vê HTTP.
+9. **`absolute_redirect off`.** O Nginx gera sozinho o redirect de `/grafana` para `/grafana/`, e o absoluto usaria a porta de dentro do container (443), perdendo a 8443 do PC da 42. Relativo (`Location: /grafana/`), o navegador mantém host e porta.
 
 ### 2.4 TLS e a demo em 2–3 máquinas
 
@@ -177,6 +179,7 @@ server {
     ssl_certificate     /etc/nginx/certs/cert.pem;
     ssl_certificate_key /etc/nginx/certs/key.pem;
 
+    absolute_redirect off;                       # §2.3 item 9
     client_max_body_size 3m;
 
     location / {
@@ -206,7 +209,18 @@ server {
 
     location /grafana/ {
         proxy_pass http://grafana:3000;          # serve_from_sub_path cuida do prefixo
-        proxy_set_header Host $host;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /grafana/api/live/ {                # Grafana Live: WebSocket
+        proxy_pass http://grafana:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        proxy_set_header Host              $host;
     }
 }
 ```
@@ -256,6 +270,7 @@ cp "$(mkcert -CAROOT)/rootCA.pem" .          # levar para as outras máquinas
 17. **O `postgres-exporter` usa o `POSTGRES_USER`, e não um role só-leitura.** Um role `pg_monitor` precisaria de um script em `docker-entrypoint-initdb.d`, que só roda num volume vazio: o `db_data` de quem já tem dados nunca o receberia, e a alternativa seria uma migração do Alembic criando um role, o que mistura infra com schema. O risco fica contido pela topologia: o exporter não publica porta e só a rede interna o alcança. Usuário, senha e host vão em `DATA_SOURCE_USER`, `DATA_SOURCE_PASS` e `DATA_SOURCE_URI`, interpolados do `.env` pelo compose. Com a senha fora da URI, ela não precisa de URL-encoding. Se um dia valer a pena, o caminho é criar o role `pg_monitor` e trocar só essas três variáveis.
 18. **Grafana sem volume de dados.** Tudo o que importa vem dos arquivos de provisioning, então o banco interno do Grafana (SQLite) nasce a cada `up`. Duas consequências que são o objetivo: a senha do admin do `.env` sempre vale (com volume, ela só vale na primeira subida, e trocar depois exige `grafana-cli`), e nada criado à mão na UI sobrevive, que é o critério da F8.9. O custo: a sessão de login cai quando o container reinicia.
 19. **Admin do Grafana obrigatório.** `GF_SECURITY_ADMIN_USER` e `GF_SECURITY_ADMIN_PASSWORD` entram no compose com `${VAR:?mensagem}`: com a chave ausente ou vazia, o compose para e diz qual chave falta. Sem isso, o Grafana sobe com `admin`/`admin`, o que quebra o "acesso seguro" que o subject cobra. Efeito colateral consciente: **qualquer** comando do compose (`ps`, `logs`) falha até o `.env` ter as duas chaves.
+20. **O proxy espera o Grafana ficar healthy.** O Nginx resolve o nome `grafana` quando sobe, e sem o container de pé ele nem inicia. O `depends_on` com `service_healthy` é o mesmo que já existe para o backend. O custo é consciente: um Grafana que não fica healthy segura o proxy, e o jogo sai do ar junto. A alternativa era resolver o nome só na hora da requisição (`resolver 127.0.0.11` e variável no `proxy_pass`); ela fica guardada para o caso de o Grafana se mostrar instável.
 
 ## 5. Em aberto
 
