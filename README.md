@@ -20,6 +20,7 @@ Pré-requisitos: Docker e Docker Compose v2.
 # 1. criar o seu .env a partir do template (só na primeira vez)
 cp .env.example .env
 # preencha ao menos POSTGRES_USER e POSTGRES_PASSWORD (sem senha o Postgres não inicializa)
+# e GF_SECURITY_ADMIN_USER e GF_SECURITY_ADMIN_PASSWORD (sem eles o compose não sobe)
 
 # 2. subir tudo
 docker compose up --build

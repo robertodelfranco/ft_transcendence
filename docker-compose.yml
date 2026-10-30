@@ -77,6 +77,44 @@ services:
     networks:
       - transcendence
 
+  # datasource e dashboards vêm dos arquivos; sem volume de dados, o banco interno nasce a cada up:
+  # a senha do .env sempre vale e nada criado na UI sobrevive (infra.md, decisão 18).
+  # Só as variáveis dele: o env_file entregaria JWT_SECRET e senhas que o Grafana não usa
+  grafana:
+    image: grafana/grafana:13.2.5
+    environment:
+      # o :? para o compose com a mensagem: sem ele, admin vazio vira admin/admin (decisão 19)
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:?defina GF_SECURITY_ADMIN_USER no .env}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?defina GF_SECURITY_ADMIN_PASSWORD no .env}
+      GF_SERVER_ROOT_URL: https://${PUBLIC_HOST:-localhost}/grafana/ # derivada aqui, não no .env (§2.5)
+      # o :- cobre um .env sem as chaves (o do CI) com o valor seguro
+      GF_SERVER_SERVE_FROM_SUB_PATH: ${GF_SERVER_SERVE_FROM_SUB_PATH:-true}
+      GF_USERS_ALLOW_SIGN_UP: ${GF_USERS_ALLOW_SIGN_UP:-false}
+      GF_AUTH_ANONYMOUS_ENABLED: ${GF_AUTH_ANONYMOUS_ENABLED:-false}
+      # nenhuma requisição para fora: nada bloqueado no console na rede da 42
+      GF_SECURITY_DISABLE_GRAVATAR: ${GF_SECURITY_DISABLE_GRAVATAR:-true}
+      GF_ANALYTICS_REPORTING_ENABLED: ${GF_ANALYTICS_REPORTING_ENABLED:-false}
+      GF_ANALYTICS_CHECK_FOR_UPDATES: ${GF_ANALYTICS_CHECK_FOR_UPDATES:-false}
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: ${GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES:-false}
+      GF_NEWS_NEWS_FEED_ENABLED: ${GF_NEWS_NEWS_FEED_ENABLED:-false}
+    # só as duas pastas nossas: montar o provisioning inteiro esconde as pastas plugins/ e
+    # alerting/ da imagem, e o Grafana registra um erro por pasta a cada subida
+    volumes:
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    # com serve_from_sub_path, o mesmo caminho que o Nginx vai repassar
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/grafana/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    networks:
+      - transcendence
+
   # montagens testadas no Docker rootless da 42 em 17/10 (o mount-points-exclude, só no WSL);
   # nenhum caminho por usuário. Tráfego de rede sai do container, não do host (infra.md §2.6)
   node-exporter:

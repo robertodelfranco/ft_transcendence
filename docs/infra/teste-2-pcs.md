@@ -107,8 +107,10 @@ sed -i "s|^POSTGRES_USER=.*|POSTGRES_USER=transcendence|; \
   s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_hex(16))')|; \
   s|^JWT_SECRET=.*|JWT_SECRET=$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')|; \
   s|^PUBLIC_HOST=.*|PUBLIC_HOST=$HOST:8443|; \
-  s|^PROXY_HTTP_PORT=.*|PROXY_HTTP_PORT=8080|; s|^PROXY_HTTPS_PORT=.*|PROXY_HTTPS_PORT=8443|" .env
-grep -E '^(PUBLIC_HOST|PROXY_)' .env
+  s|^PROXY_HTTP_PORT=.*|PROXY_HTTP_PORT=8080|; s|^PROXY_HTTPS_PORT=.*|PROXY_HTTPS_PORT=8443|; \
+  s|^GF_SECURITY_ADMIN_USER=.*|GF_SECURITY_ADMIN_USER=admin|; \
+  s|^GF_SECURITY_ADMIN_PASSWORD=.*|GF_SECURITY_ADMIN_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_hex(12))')|" .env
+grep -E '^(PUBLIC_HOST|PROXY_|GF_SECURITY_ADMIN_)' .env
 cp ../certs/cert.pem ../certs/key.pem proxy/certs/
 stat -c '%a %n' monitoring/prometheus/prometheus.yml
 docker compose up -d --build --wait --wait-timeout 300
@@ -117,10 +119,10 @@ docker compose exec prometheus wget -qO- localhost:9090/api/v1/targets | grep -o
 ```
 
 **Esperado:**
-- o `grep` mostra `PUBLIC_HOST=<seu-host>:8443`, `PROXY_HTTP_PORT=8080` e `PROXY_HTTPS_PORT=8443`
+- o `grep` mostra `PUBLIC_HOST=<seu-host>:8443`, `PROXY_HTTP_PORT=8080`, `PROXY_HTTPS_PORT=8443` e o admin do Grafana: **anote a senha**, é a do D7 (§3.2)
 - o `up` termina sem erro em 1–2 min
 - o `stat` mostra `644` (com `600`, o Prometheus do rootless não lê o arquivo: rode `chmod -R go+rX monitoring` e suba de novo)
-- `db`, `backend`, `frontend`, `proxy`, `prometheus`, `node-exporter` e `postgres-exporter` aparecem `Up`, e **só o `proxy`** tem `0.0.0.0:...` na coluna de portas
+- `db`, `backend`, `frontend`, `proxy`, `prometheus`, `grafana`, `node-exporter` e `postgres-exporter` aparecem `Up`, e **só o `proxy`** tem `0.0.0.0:...` na coluna de portas
 - o último comando mostra `"health":"up"` três vezes (backend, node e postgres). Logo depois do `up`, um deles pode aparecer `unknown`: espere 15 s e repita
 
 As portas são 8080/8443 porque o Docker rootless da 42 não abre portas abaixo de 1024 (80 e 443 falham). Se o `up` falhar, rode `docker compose logs backend proxy | tail -50` e mande a saída para o Akita.
