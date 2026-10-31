@@ -14,6 +14,8 @@ import type { EventMessage, GridCell, RoomOptions, ServerMessage, Snapshot,
 
 // proposta para mount-game.md §5.5: as últimas 5 eliminações
 const KILLFEED_MAX = 5;
+// proposta mount-game.md §5.5: um ping a cada 2 s; RTT em ms
+const PING_INTERVAL_MS = 2000;
 
 // O que o jogo precisa de um Renderer; a fábrica junta o AssetLoader e o ThreeRenderer
 export interface SceneRenderer {
@@ -50,6 +52,7 @@ export function createMountGame(deps: GameDeps) {
     let ending: ReturnType<typeof setTimeout> | null = null;
     let frameId: number | null = null;
     let lastFrameMs: number | null = null;
+    let ping: number | null = null;
 
     const minimap = opts.minimapCanvas ? new Minimap(opts.minimapCanvas) : null;
     const renderer = deps.createRenderer(canvas);
@@ -71,6 +74,7 @@ export function createMountGame(deps: GameDeps) {
     const resizer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(resize);
     resizer?.observe(canvas);
     if (opts.minimapCanvas) resizer?.observe(opts.minimapCanvas);
+    const pinger = setInterval(sendPing, PING_INTERVAL_MS);
 
     function hud(): HudState {
       if (welcome === null || snapshot === null) {
@@ -78,8 +82,22 @@ export function createMountGame(deps: GameDeps) {
       }
       const context = { userId: welcome.user_id, mode: welcome.room.mode,
         options: welcome.room.options };
-      const state = buildHud(snapshot, context, killfeed, status);
+      const state = { ...buildHud(snapshot, context, killfeed, status), ping };
       return error === undefined ? state : { ...state, error };
+    }
+
+    // só depois do welcome: numa Reconnection o join ainda espera o token, e o servidor fecha
+    // com 4400 qualquer mensagem que chegue antes dele
+    function sendPing(): void {
+      if (status === "running") socket.send({ v: 1, type: "ping", t: performance.now() });
+    }
+
+    // o servidor devolve o t intacto: o RTT sai do relógio do próprio cliente, sem sincronizar
+    // relógios entre as máquinas
+    function onPong(t: number): void {
+      if (!Number.isFinite(t)) throw new TypeError("pong without t"); // senão a HUD mostra NaN
+      ping = performance.now() - t;
+      emitHud();
     }
 
     // só avisa a casca quando algo mudou: a maioria dos Snapshots não mexe em HP, Mana ou placar,
@@ -110,6 +128,7 @@ export function createMountGame(deps: GameDeps) {
 
     // depois do game_over não há partida para onde voltar: o servidor recusaria com 4404
     function onReconnecting(): void {
+      ping = null; // a medida da conexão que caiu não diz nada da próxima
       if (ending === null) setStatus("disconnected");
       else socket.close();
     }
@@ -120,7 +139,7 @@ export function createMountGame(deps: GameDeps) {
           case "welcome": return onWelcome(message);
           case "snapshot": return onSnapshot(message);
           case "event": return onEvent(message);
-          case "pong": return; // RTT entra com a F2.12
+          case "pong": return onPong(message.t);
           case "error": return; // o socket decide pelo código do close
         }
       } catch {
@@ -152,6 +171,7 @@ export function createMountGame(deps: GameDeps) {
       applySnapshot(message.snapshot);
       if (status === "connecting" || status === "disconnected") status = "running";
       emitHud(); // um onHud só por welcome, já com o status novo
+      sendPing(); // a primeira medida não espera o intervalo
     }
 
     function onSnapshot(next: Snapshot): void {
@@ -232,6 +252,7 @@ export function createMountGame(deps: GameDeps) {
         unmounted = true;
         if (frameId !== null) cancelAnimationFrame(frameId);
         if (ending !== null) clearTimeout(ending);
+        clearInterval(pinger);
         socket.close();
         input.dispose();
         resizer?.disconnect();

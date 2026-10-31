@@ -125,7 +125,7 @@ export declare function mountGame(
 | `mana`, `maxMana` | Pontos de Mana; teto depende do Ruleset |
 | `armor`, `keys` | Pontos de Armor e quantidade de chaves |
 | `alive` | Player local vivo |
-| `ping` | RTT; `null` enquanto não medido; explicitar unidade em §5.5 |
+| `ping` | RTT em ms, do último `pong`; `null` antes da primeira medida e enquanto a conexão está caída (§5.5) |
 | `players` | Estado dos participantes; `id` é o `user_id` |
 | `scoreboard` | `null` no `coop`; no `pvp`, a lista de Frags por Player em ordem de placar e `timeLeftS` em segundos |
 | `killfeed` | Eliminações de Player; `by` pode ser `null`, `victim` é `user_id`, `tick` é Tick da Room |
@@ -271,7 +271,7 @@ Fechar FOV e política de resize com documentação oficial e teste visual: o va
 **F4.3 (22/10/2026):** a proposta de apresentação, prioridades, estados por Mode e roteiro de aceite está em [hud.md](hud.md). A revisão do Caio está em [hud.md](hud.md) §11 (26/10); as decisões 1 (`mode` no `HudState`) e 4 (teclas com foco em controle da página) entraram com a #168.
 
 - **Placar:** decidido em 06/10: a HUD usa a lista do protocolo (§2.6).
-- **Unidades/atualização:** propor `ping` em ms; fechar frequência do `onHud` e valores antes do `welcome`.
+- **Unidades/atualização:** proposta da F2.12 (#108), a confirmar com a Web e o Render: `ping` em ms, sem arredondar (a HUD arredonda, [hud.md](hud.md) §3). O jogo manda um `ping` logo depois de cada `welcome` e outro a cada 2 s enquanto o status é `running`; nunca antes do `welcome`, porque numa Reconnection o `join` ainda espera o token e o servidor fecha com `4400` o que chegar antes dele. O RTT é `performance.now()` no `pong` menos o `t` que voltou: só o relógio do cliente entra na conta. Cada `pong` gera um `onHud` (no máximo um a cada 2 s por causa do ping). Quando a conexão cai, `ping` volta a `null` até o próximo `pong`. Falta fechar a frequência dos outros `onHud` e os valores antes do `welcome`.
 - **Feed:** `player_died` alimenta `{by, victim: player_id, tick}`. A forma atual não representa Kills de Enemy/Boss; decidir se o feed mostra só eliminações de Player ou precisa de uma união de tipos. Duração e limite de linhas também faltam.
 - **Término:** o `game_over` chega no Tick em que a partida se decide (no `coop`, quando o Boss entra em `dying`), e depois dele o servidor só avança animações ([ws-messages.md](ws-messages.md) §2.6). Decidido em 06/10: o jogo espera `BOSS_DYING_S` antes de chamar `onEnd`, para não cortar a morte do Boss, e `winner_ids` vira `winnerIds`. Decidido com a Web em 26/10 ([hud.md](hud.md) §11.2): o `result` do `onEnd` continua sendo o da Room, sem conversão no jogo, e a casca decide o desfecho local pelo `winnerIds` nos dois Modes (`draw` é empate; id local em `winnerIds` é vitória; o resto é derrota). No `pvp`, `win` da Room não é vitória de quem perdeu.
 - **Mode:** decidido em 26/10 ([hud.md](hud.md) §11.1) e implementado na #168: `HudState.mode` (§2.6), `null` antes do `welcome`.

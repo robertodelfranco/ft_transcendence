@@ -220,6 +220,59 @@ test("unmount releases everything and is safe to call twice", async () => {
   expect(huds).toHaveLength(count);
 });
 
+test("ping waits for the welcome and the pong turns into RTT in ms", async () => {
+  const clock = vi.spyOn(performance, "now").mockReturnValue(1000);
+  ws.open();
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(ws.sent.map((message) => message.type)).toEqual(["join"]); // nada antes do join
+  expect(lastHud().ping).toBeNull();
+  ws.receive(WELCOME);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(ws.sent.at(-1)).toEqual({ v: 1, type: "ping", t: 1000 });
+  expect(lastHud().ping).toBeNull();
+  clock.mockReturnValue(1042);
+  ws.receive({ v: 1, type: "pong", t: 1000 });
+  expect(lastHud().ping).toBe(42);
+  clock.mockRestore();
+});
+
+test("ping repeats every 2 s while running", async () => {
+  await connect();
+  const pings = () => ws.sent.filter((message) => message.type === "ping").length;
+  expect(pings()).toBe(1);
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(pings()).toBe(2);
+  await vi.advanceTimersByTimeAsync(4000);
+  expect(pings()).toBe(4);
+});
+
+test("a dropped connection clears the RTT and stops pinging until the next welcome", async () => {
+  await connect();
+  ws.receive({ v: 1, type: "pong", t: performance.now() - 30 });
+  expect(lastHud().ping).not.toBeNull();
+  ws.drop(1006);
+  expect(lastHud()).toMatchObject({ status: "disconnected", ping: null });
+  await vi.advanceTimersByTimeAsync(1200);
+  ws.open();
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(ws.sent.map((message) => message.type)).toEqual(["join"]);
+});
+
+test("a pong without t becomes invalid_message", async () => {
+  await connect();
+  ws.receive({ v: 1, type: "pong" });
+  expect(lastHud()).toMatchObject({ status: "error", error: "invalid_message" });
+});
+
+test("unmount stops the ping timer", async () => {
+  await connect();
+  const sent = ws.sent.length;
+  game.unmount();
+  ws.readyState = 1; // mesmo que o socket ainda aceitasse, nada sai
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(ws.sent).toHaveLength(sent);
+});
+
 test("frames draw predicted movement before a new Snapshot arrives", async () => {
   await connect();
   await runFrame(0);
