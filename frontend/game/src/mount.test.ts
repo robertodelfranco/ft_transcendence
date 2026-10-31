@@ -266,11 +266,18 @@ test("a pong without t becomes invalid_message", async () => {
 
 test("unmount stops the ping timer", async () => {
   await connect();
-  const sent = ws.sent.length;
   game.unmount();
-  ws.readyState = 1; // mesmo que o socket ainda aceitasse, nada sai
-  await vi.advanceTimersByTimeAsync(10_000);
-  expect(ws.sent).toHaveLength(sent);
+  expect(vi.getTimerCount()).toBe(0); // nenhum timer vivo depois do unmount
+});
+
+test("a welcome restarts the ping interval instead of sending two pings close together", async () => {
+  ws.open();
+  await vi.advanceTimersByTimeAsync(1900);
+  ws.receive(WELCOME);
+  await vi.advanceTimersByTimeAsync(1999);
+  expect(ws.sent.filter((message) => message.type === "ping")).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(ws.sent.filter((message) => message.type === "ping")).toHaveLength(2);
 });
 
 test("frames draw predicted movement before a new Snapshot arrives", async () => {

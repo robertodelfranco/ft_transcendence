@@ -53,6 +53,7 @@ export function createMountGame(deps: GameDeps) {
     let frameId: number | null = null;
     let lastFrameMs: number | null = null;
     let ping: number | null = null;
+    let pinger: ReturnType<typeof setInterval> | null = null;
 
     const minimap = opts.minimapCanvas ? new Minimap(opts.minimapCanvas) : null;
     const renderer = deps.createRenderer(canvas);
@@ -74,7 +75,6 @@ export function createMountGame(deps: GameDeps) {
     const resizer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(resize);
     resizer?.observe(canvas);
     if (opts.minimapCanvas) resizer?.observe(opts.minimapCanvas);
-    const pinger = setInterval(sendPing, PING_INTERVAL_MS);
 
     function hud(): HudState {
       if (welcome === null || snapshot === null) {
@@ -92,10 +92,17 @@ export function createMountGame(deps: GameDeps) {
       if (status === "running") socket.send({ v: 1, type: "ping", t: performance.now() });
     }
 
+    // cada welcome recomeça a contagem: o primeiro ping sai já, os outros a cada 2 s
+    function startPinging(): void {
+      if (pinger !== null) clearInterval(pinger);
+      sendPing();
+      pinger = setInterval(sendPing, PING_INTERVAL_MS);
+    }
+
     // o servidor devolve o t intacto: o RTT sai do relógio do próprio cliente, sem sincronizar
     // relógios entre as máquinas
     function onPong(t: number): void {
-      if (!Number.isFinite(t)) throw new TypeError("pong without t"); // senão a HUD mostra NaN
+      if (!Number.isFinite(t)) return fail("invalid_message"); // senão a HUD mostra NaN
       ping = performance.now() - t;
       emitHud();
     }
@@ -171,7 +178,7 @@ export function createMountGame(deps: GameDeps) {
       applySnapshot(message.snapshot);
       if (status === "connecting" || status === "disconnected") status = "running";
       emitHud(); // um onHud só por welcome, já com o status novo
-      sendPing(); // a primeira medida não espera o intervalo
+      startPinging();
     }
 
     function onSnapshot(next: Snapshot): void {
@@ -252,7 +259,7 @@ export function createMountGame(deps: GameDeps) {
         unmounted = true;
         if (frameId !== null) cancelAnimationFrame(frameId);
         if (ending !== null) clearTimeout(ending);
-        clearInterval(pinger);
+        if (pinger !== null) clearInterval(pinger);
         socket.close();
         input.dispose();
         resizer?.disconnect();
