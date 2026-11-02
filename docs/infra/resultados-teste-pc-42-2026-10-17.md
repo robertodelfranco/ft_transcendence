@@ -1,10 +1,10 @@
-# Resultados do teste no PC da 42 (17/10/2026)
+# Resultados do teste no PC da 42 (17/10 e 01/11/2026)
 
 > Execução do [roteiro de teste no PC da 42](roteiro-teste-pc-42.md) (versão com o passo 8, da branch `31-roteiro-stack-real`) contra a `main` em `0c05d7b`.
 >
 > - **Servidor:** c1r5p1.42sp.org.br / 10.11.5.1, login `gyasuhir` (Akita).
 > - **Quem fez o quê:** terminal e navegador pelo Akita.
-> - **O que falta:** só o que depende de um 2º PC. O passo a passo, para qualquer pessoa do time, está em [teste-2-pcs.md](teste-2-pcs.md).
+> - **2º PC:** feito em 01/11, no cluster 3 ([resultado](#pendente-2º-pc)). Falta só a resposta do staff sobre o goinfre (N5).
 
 ## Resumo para a reunião
 
@@ -14,10 +14,10 @@
 |---|---|---|---|
 | Ambiente da demo | **direto no PC da 42, sem VM** | build do zero em ~1 min (pull + build); 4,8 GB no goinfre, que tem 51 GB livres; o home não é tocado | alta |
 | Portas | **`PROXY_HTTP_PORT=8080`, `PROXY_HTTPS_PORT=8443`** | 80 e 443 falham no Docker rootless (`cannot expose privileged port`); 8080 e 8443 sobem | alta |
-| `PUBLIC_HOST` | **`<hostname-do-PC>:8443`** (ex.: `c1r5p1.42sp.org.br:8443`) | redirect `http://…:8080/x?q` → `https://<host>:8443/x?q` em qualquer nome de entrada | alta (alcance de outro PC: D1) |
+| `PUBLIC_HOST` | **`<hostname-do-PC>:8443`** (ex.: `c1r5p1.42sp.org.br:8443`) | redirect `http://…:8080/x?q` → `https://<host>:8443/x?q` em qualquer nome de entrada | alta; outro PC alcança em 01/11 (D1) |
 | SAN do certificado | **hostname, IP, `<ip-com-hifens>.nip.io`, `localhost`, `127.0.0.1`** | `curl --cacert` e o Chrome validam os três nomes, com cadeado limpo | alta |
-| CA no Chrome | **importar o `rootCA.pem` pela interface, sem sudo** | funcionou no Chrome 155 (gerenciador de certificados novo). Plano B: `TRUST_STORES=nss mkcert -install`, porque o PC tem `certutil` | alta |
-| IP real do cliente | **override de usuário com o port driver `slirp4netns`** em quem serve a demo | sem ele, todo cliente aparece como `172.18.0.1` e o rate limit vira global; com ele, o Nginx vê o IP real e um IP travado não trava o outro | alta (com IPs remotos: D4) |
+| CA no Chrome | **importar o `rootCA.pem` pela interface, sem sudo** | funcionou no Chrome 155 (gerenciador de certificados novo). Plano B: `TRUST_STORES=nss mkcert -install`, porque o PC tem `certutil`. Em 01/11, funcionou no Chrome 156 de outro login (D2) | alta |
+| IP real do cliente | **override de usuário com o port driver `slirp4netns`** em quem serve a demo | sem ele, todo cliente aparece como `172.18.0.1` e o rate limit vira global; com ele, o Nginx vê o IP real e um IP travado não trava o outro | alta; com IP remoto em 01/11 (D4) |
 | `X-Forwarded-For` forjado | não fura o rate limit | continua 429 com cabeçalho forjado, porque o Nginx substitui o valor (decisão 6) | alta |
 | Exporters (D3) | **`node-exporter` funciona; cAdvisor também, com volumes próprios do rootless** | 1504 séries `node_*`; 7808 `container_*` com os containers por nome só montando o socket do containerd rootless | alta. Recomendação: só `node-exporter`, que é mais simples e não depende de caminho de rootless |
 | F8.3 | **clone limpo + `.env` + `docker compose up` funciona** numa máquina que não é a de quem escreveu o compose | 4 serviços `healthy`; dados sobrevivem ao `down`; uma cabeça de Alembic | alta |
@@ -26,9 +26,9 @@
 | Postgres | **volume nomeado** (fica no `data-root`, então no goinfre) | consequência da linha anterior | alta |
 | `nip.io` para o OAuth do Google | **viável do lado da rede** | `10-11-5-1.nip.io` resolve na rede da 42 | alta para o DNS; se o Google aceita, é o "Em aberto" 4 do `infra.md` (sai do formulário, não da rede) |
 
-### Pendências: impacto e confiança
+### Pendências de 17/10: impacto e confiança
 
-Tudo isto depende de um 2º PC. O passo a passo é o [teste-2-pcs.md](teste-2-pcs.md), uns 40 min com duas pessoas.
+**Todas fechadas em 01/11, com OK** ([resultado](#pendente-2º-pc)). A tabela fica como a avaliação de risco feita em 17/10.
 
 | # | O que falta | Confiança hoje | Impacto se falhar |
 |---|---|---|---|
@@ -38,7 +38,9 @@ Tudo isto depende de um 2º PC. O passo a passo é o [teste-2-pcs.md](teste-2-pc
 | D4 | o rate limit separa o PC2 do PC1 | alta: dois IPs de origem diferentes (10.11.5.1 e 10.0.2.2) já caíram em baldes separados com o `slirp4netns` | médio: se falhar, o rate limit vira global na demo (5 senhas erradas travam todos por 60 s; 5 cadastros/min para a sala inteira) |
 | D5 | portas internas (8000, 5432, 9090, 9100, 3000) fechadas para outro PC | muito alta: só o `proxy` publica porta, e do próprio servidor estão todas fechadas | baixo |
 
-### Prazos
+### Prazos (de 17/10)
+
+O teste com 2 PCs aconteceu em 01/11, depois do C3.
 
 - **O C3 (sex 23/10) é o primeiro checkpoint com duas máquinas.** O teste com 2 PCs precisa vir **antes**, para sobrar tempo de reagir se a D1 falhar.
 - **O Akita não volta à 42 antes de 24–25/10**, depois do C3. Por isso o [teste-2-pcs.md](teste-2-pcs.md) foi escrito para qualquer pessoa do time servir do próprio login. Se alguém for à 42 durante a semana, vale fazer.
@@ -48,18 +50,25 @@ Tudo isto depende de um 2º PC. O passo a passo é o [teste-2-pcs.md](teste-2-pc
 
 | Achado | Dono | Impacto |
 |---|---|---|
-| **`POST /api/auth/refresh` → 404 no console a cada carregamento.** A casca chama a rota ao carregar (`frontend/src/api/client.ts`, `AuthProvider`), e o backend ainda não tem a rota (F6.3; `backend/app/auth/router.py`: "/refresh e /logout entram na F6.3"). Pelo [auth.md](../contracts/auth.md) §2.2 e §4 decisão 4, sem cookie ela responde 200 `{"authenticated": false}`, e o erro some sem mudar a infra | Augusto (F6.3) | **Hoje a `main` reprova o critério de console limpo.** Pré-requisito do C3 |
-| **`/media/` não está roteado.** O `avatar_url` padrão (`/media/avatars/default.png`) devolve o `index.html` do SPA (200 `text/html`). Falta a decisão 13 do [infra.md](../contracts/infra.md): volume `media` + `location /media/` no proxy | Akita (F8) | avatar quebrado na primeira tela que mostrar um |
+| **Resolvido em 21/10 (F6.3, #131).** **`POST /api/auth/refresh` → 404 no console a cada carregamento.** A casca chama a rota ao carregar (`frontend/src/api/client.ts`, `AuthProvider`), e o backend ainda não tem a rota (F6.3; `backend/app/auth/router.py`: "/refresh e /logout entram na F6.3"). Pelo [auth.md](../contracts/auth.md) §2.2 e §4 decisão 4, sem cookie ela responde 200 `{"authenticated": false}`, e o erro some sem mudar a infra | Augusto (F6.3) | **Hoje a `main` reprova o critério de console limpo.** Pré-requisito do C3 |
+| **Resolvido (#120).** **`/media/` não está roteado.** O `avatar_url` padrão (`/media/avatars/default.png`) devolve o `index.html` do SPA (200 `text/html`). Falta a decisão 13 do [infra.md](../contracts/infra.md): volume `media` + `location /media/` no proxy | Akita (F8) | avatar quebrado na primeira tela que mostrar um |
 | **Extensões do Chrome sujam a aba Issues.** Um aviso "CSP blocks eval" apareceu, mas o site não manda CSP nem usa `eval`. Some em janela anônima. O perfil do PC tinha 17 extensões (MetaMask, Dark Reader, AdBlock...) | todos | **Demonstrar em janela anônima ou num perfil sem extensões**, na C3 e na avaliação |
 | **O `data-root` no goinfre não é padrão da 42.** Quem servir a demo precisa configurá-lo, senão ~5 GB vão para o home (11 GB no total) | quem servir | [teste-2-pcs.md](teste-2-pcs.md) §1.3 |
 | **O goinfre e o certificado são por PC.** Trocar de PC significa refazer o pull e o build (~1 min) e um `mkcert` novo; a CA e o `mkcert` ficam no home e acompanham o login | quem servir | planejar a demo num PC já preparado, ou com 2 min de folga |
 
 ### Próximos passos
 
-1. Rodar o [teste-2-pcs.md](teste-2-pcs.md) antes de 23/10, ou em 24–25/10 com o Akita.
-2. Com a D1 confirmada: atualizar o `infra.md` §5 item 1 (fechar o "Em aberto" com PC direto, 8080/8443 e `PUBLIC_HOST=<host>:8443`), a §2.1 (as portas publicadas) e a seção da demo com o override do `slirp4netns`.
-3. Aplicar no roteiro as correções do fim deste arquivo.
-4. Fechar o #31.
+1. ✅ Rodar o [teste-2-pcs.md](teste-2-pcs.md): feito em 01/11.
+2. ✅ Atualizar o [infra.md](../contracts/infra.md): §2.4 e "Em aberto" 1 e 4, em 02/11.
+3. ✅ Aplicar no roteiro as correções do fim deste arquivo.
+4. ✅ Fechar o #31.
+
+Depois de 01/11:
+
+5. Lembrete: o D6 usou o secret antigo. Basta trocar o `FT_CLIENT_SECRET` pelo novo no `.env` de quem serve, antes da entrega ou na próxima ida à 42 ([teste-2-pcs.md](teste-2-pcs.md) §0.2).
+6. Atualizar o `.env` de casa com as chaves da `main` (achado de 01/11).
+7. Decidir o redirect para o `PUBLIC_HOST` ([infra.md](../contracts/infra.md) "Em aberto" 6), antes do ensaio do C5.
+8. Registrar aqui a resposta do ticket do goinfre (N5), que entra na F8.6.
 
 ---
 
@@ -121,19 +130,78 @@ Sem o socket do containerd, o factory do Docker falha (`unable to create contain
 
 Siga o [teste-2-pcs.md](teste-2-pcs.md). O script do cliente é o [cliente-pc2.sh](cliente-pc2.sh), que recebe o host, o IP e a CA por argumento. O kit em `/sgoinfre/gyasuhir/transcendence-test/` vale só para o c1r5p1 servido pelo Akita.
 
+Executado em **01/11/2026**, seguindo o [teste-2-pcs.md](teste-2-pcs.md), contra a `main` em `5143002`.
+
+- **Servidor (PC A):** c3r2p2.42sp.org.br / 10.13.2.2, login `gyasuhir` (Akita). `PUBLIC_HOST=c3r2p2.42sp.org.br:8443`, `slirp4netns` e `data-root` no goinfre já estavam configurados no login.
+- **Clientes, todos no cluster 3:** c3r3p1 / 10.13.3.1 (PC B) e 10.13.2.1 (3º PC, só nas partidas).
+- **Outro cluster: não feito, por decisão.** A avaliação será dentro de um cluster só (confirmado pelo time em 01/11). Cada cluster é uma sub-rede própria (`10.13.x.x` no c3), então a regra que importa para a demo é a de dentro da sub-rede, e ela passou.
+
 | # | Validação | Data / PCs | Resultado |
 |---|---|---|---|
-| D1 | o 2º PC alcança o servidor por hostname, IP e `nip.io` | | pendente |
-| D2 | CA importada pela interface noutro Chrome; cadeado pelos três nomes; console só com o 404 do `/refresh` | | pendente |
-| D3 | casca, `/api/health`, textura e redirect com a porta, vistos do 2º PC | | pendente |
-| D4 | login travado no servidor não trava o 2º PC (`401`, não `429`), e o IP do 2º PC aparece no log do proxy | | pendente |
-| D5 | portas 8000, 5432, 9090, 9100 e 3000 do servidor fechadas para o 2º PC | | pendente (do próprio servidor: todas fechadas) |
+| D1 | o 2º PC alcança o servidor por hostname, IP e `nip.io` | 01/11 · c3r2p2 → c3r3p1 | **OK.** Os dois nomes resolvem para 10.13.2.2, e o HTTP na 8080 dá `301` nos três. Não há firewall entre PCs do mesmo cluster |
+| D2 | CA importada pela interface noutro Chrome; cadeado pelos três nomes; console limpo | 01/11 · c3r3p1, Chrome 156 | **OK pelo hostname.** Cadeado limpo nos três nomes, mas pelo IP e pelo `nip.io` o console mostra `POST /api/auth/refresh` → **403** `forbidden` "origin not allowed" (achado abaixo) |
+| D3 | casca, `/api/health`, textura e redirect com a porta, vistos do 2º PC | 01/11 · c3r3p1 | **OK.** `200` nas 9 combinações de nome e caminho; `Location: https://c3r2p2.42sp.org.br:8443/` |
+| D4 | login travado no servidor não trava o 2º PC (`401`, não `429`), e o IP do 2º PC aparece no log do proxy | 01/11 · c3r2p2 → c3r3p1 | **OK.** O PC A tomou `429` às 15:28:55, e o PC B tomou `401` às 15:29:00. O log do proxy mostra `10.13.3.1`, sem nenhuma linha `172.18.0.1` |
+| D5 | portas 8000, 5432, 9090, 9100, 9187 e 3000 do servidor fechadas para o 2º PC | 01/11 · c3r3p1 | **OK para a stack.** Todas fechadas, menos a **9100**, que é o `prometheus-node-exporter` do sistema do PC (usuário `prometheus`), e não o nosso, que não publica porta (achado abaixo) |
+| D6 | login pela 42 de outro PC | 01/11 · c3r3p1 e 3º PC | **OK.** Usou o secret atual. A intra aceitou 3 URLs de retorno, com hostname, porta e `nip.io`, sem limite visível: `https://localhost/…`, `https://c3r2p2.42sp.org.br:8443/…` e `https://10-13-2-2.nip.io:8443/…` (`/api/auth/oauth/42/callback`). A URL nova valeu logo depois do cadastro. 3 contas da 42 diferentes entraram, inclusive de quem não é dono do app (`via_oauth = 3` no banco) |
+| D7 | Grafana de outro PC: login, `401` sem login, redirect com a porta, console | 01/11 · c3r3p1 | **OK.** Login de admin de outro PC; `/grafana/api/dashboards/home` sem login → `401`; `/grafana` → `301` para `https://c3r2p2.42sp.org.br:8443/grafana/`; os 4 dashboards provisionados aparecem (Catacombs 42, Host, Jogo e backend, Postgres) |
+| D8 | co-op entre 2 PCs até o fim; reconexão em menos de 30 s e expiração depois de 30 s; Match `finished` | 01/11 · c3r2p2 + c3r3p1 | **OK.** Match 4: o PC B fechou às 16:30:08 e voltou às 16:30:22 (14 s) na mesma partida, que terminou `win`/`boss_defeated` com 2 players. Match 7: um player saiu e esperou 40 s, ficou com `disconnected_at_end = true` e sumiu do lobby, e o outro terminou `win`/`boss_defeated`. Console limpo |
+| N1 | co-op com N players em M PCs; sincronia, alvo dos inimigos, tick no Grafana, console | 01/11 · 3 players em 3 PCs | **OK.** Match 1: 3 players (10.13.2.2, 10.13.3.1, 10.13.2.1), cada um com a própria conta da 42, `win`/`boss_defeated`. No dia (7 Matches, 5 `finished`), o tick ficou com média de **0,16 ms**, e os 10.714 ticks abaixo de 1 ms, contra um orçamento de 33 ms (30 Hz). Nenhum 5xx nem exceção no backend |
+| N2 | WebGL acelerado? GPU; fps parado, andando e na luta, em janela e em tela cheia | 01/11 · todos os PCs, iguais | **OK.** WebGL: Hardware accelerated. GPU: `ANGLE (Intel, Mesa Intel(R) UHD Graphics 770 (ADL-S GT1), OpenGL 4.6 (Core Profile) Mesa 23.2.1-1ubuntu3.1~22.04.4)`. **60 fps cravados** em todas as situações; ao entrar em tela cheia (`F11`), cai para 58 por um instante e volta a 60 |
+| N3 | versão do Chrome em cada PC; está atualizado? | 01/11 · todos os PCs, iguais | **Chrome 156.0.8078.79** (Official Build, x86_64). Em 17/10, era o 155. Não foi anotado se aparecia "atualizado" |
+| N4 | login sem Docker configurado | — | não feito |
+| N5 | respostas do staff: goinfre, local da defesa, mudanças nos PCs | 01/11 | **Local:** a avaliação é dentro de um cluster só. **Goinfre:** ninguém soube dizer quando ele é limpo; o Akita abriu um ticket, e a resposta entra aqui. **Mudanças nos PCs até 21/11:** pendente, no mesmo ticket |
+
+### Achados de 01/11
+
+| Achado | Dono | Impacto |
+|---|---|---|
+| **Pelo IP ou pelo `nip.io`, `POST /api/auth/refresh` → 403 no console.** O `same_origin` ([deps.py](../../backend/app/auth/deps.py)) aceita só `Origin: https://${PUBLIC_HOST}`, como manda o [auth.md](../contracts/auth.md) §2.2. A casca chama o `/refresh` ao carregar, então quem abre o site por `https://10.13.2.2:8443` vê um 403 vermelho. O cookie de refresh também é por host, então a sessão não se mantém por esse nome | Akita (Nginx) ou Augusto (auth) | **Console sujo se o avaliador digitar o IP.** Proposta: no Nginx, qualquer `Host` diferente do `PUBLIC_HOST` leva `301` para `https://$PUBLIC_HOST`, e a regra de Origin fica como está. Até lá, a demo usa só o hostname |
+| **A porta 9100 pode estar aberta no PC da 42.** Alguns PCs (o c3r2p2 sim; o c1r5p1, em 17/10, não) rodam o `prometheus-node-exporter` do sistema. Não é da stack | — | Nenhum para o projeto. Se o avaliador rodar um port scan, a 9100 responde, e a explicação é esta |
+| **O `.env` de casa estava atrás da `main`.** Faltavam 19 chaves, entre elas o `JWT_SECRET` e as `GF_*` de sub-path. No PC A, elas foram copiadas do `.env.example`, e o `JWT_SECRET` foi gerado na hora | Akita | Sem o `GF_SERVER_SERVE_FROM_SUB_PATH`, o D7 quebraria. Atualizar o `.env` de casa e rodar o `diff` de chaves do §1.6 antes de cada demo |
 
 ## Correções propostas para o roteiro
 
-O roteiro vive na branch `31-roteiro-stack-real`.
+Aplicadas no [roteiro](roteiro-teste-pc-42.md), que já está na `main`.
 
 1. **Passo 0:** avisar que o goinfre e o certificado são por PC, e que o `data-root` no goinfre precisa ser configurado ([teste-2-pcs.md](teste-2-pcs.md) §1.3).
 2. **Passo 6:** volumes do cAdvisor no rootless (acima).
 3. **Passo 7:** o `/sgoinfre/<login>` nasce `drwx------`, então o `rootCA.pem` só chega ao cliente com `chmod 711` + `chmod 755` numa pasta própria, ou por Slack. Incluir também o caminho do Chrome novo: `chrome://settings/certificates` → Certificados locais → Personalizado → Instalados por você → Certificados confiáveis → Importar.
 4. **Passo novo, depois do 8:** conferir o IP de origem no `docker compose logs proxy` e, no rootless, aplicar o override do `slirp4netns`.
+
+## Saída do cliente-pc2.sh (01/11, c3r3p1 → c3r2p2)
+
+```
+== cliente: c3r3p1.42sp.org.br 10.13.3.1  2026-11-01 15:29:00
+== servidor: c3r2p2.42sp.org.br 10.13.2.2 10-13-2-2.nip.io
+== CA: subject=O = mkcert development CA, OU = gyasuhir@c3r8p2.42sp.org.br, CN = mkcert gyasuhir@c3r8p2.42sp.org.br
+== D1: DNS (esperado: os dois nomes resolvem para 10.13.2.2)
+10.13.2.2       c3r2p2.42sp.org.br
+10.13.2.2       10-13-2-2.nip.io
+== D1: alcance HTTP na 8080 (esperado: 301 nos três)
+  c3r2p2.42sp.org.br     HTTP/1.1 301 Moved Permanently
+  10.13.2.2              HTTP/1.1 301 Moved Permanently
+  10-13-2-2.nip.io       HTTP/1.1 301 Moved Permanently
+== D3: HTTPS validando a CA na 8443 (esperado: 200 em tudo)
+  c3r2p2.42sp.org.br     /                                200 text/html
+  c3r2p2.42sp.org.br     /api/health                      200 application/json
+  c3r2p2.42sp.org.br     /assets/map/dungeon_wall_1.png   200 image/png
+  10.13.2.2              /                                200 text/html
+  10.13.2.2              /api/health                      200 application/json
+  10.13.2.2              /assets/map/dungeon_wall_1.png   200 image/png
+  10-13-2-2.nip.io       /                                200 text/html
+  10-13-2-2.nip.io       /api/health                      200 application/json
+  10-13-2-2.nip.io       /assets/map/dungeon_wall_1.png   200 image/png
+== D3: o redirect leva a porta junto (esperado: Location: https://c3r2p2.42sp.org.br:8443/)
+Location: https://c3r2p2.42sp.org.br:8443/
+== D5: portas internas do servidor (esperado: fechada em todas)
+  porta 8000  fechada
+  porta 5432  fechada
+  porta 9090  fechada
+  porta 9100  ABERTA (problema!)
+  porta 9187  fechada
+  porta 3000  fechada
+== D4: rate limit por IP (o servidor travou o login ANTES; esperado: 401, não 429)
+  login com senha errada a partir deste PC: 401
+== fim
+```
