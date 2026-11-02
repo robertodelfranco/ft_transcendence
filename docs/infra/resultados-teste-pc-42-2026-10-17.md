@@ -1,4 +1,4 @@
-# Resultados do teste no PC da 42 (17/10/2026)
+# Resultados do teste no PC da 42 (17/10 e 01/11/2026)
 
 > Execução do [roteiro de teste no PC da 42](roteiro-teste-pc-42.md) (versão com o passo 8, da branch `31-roteiro-stack-real`) contra a `main` em `0c05d7b`.
 >
@@ -14,10 +14,10 @@
 |---|---|---|---|
 | Ambiente da demo | **direto no PC da 42, sem VM** | build do zero em ~1 min (pull + build); 4,8 GB no goinfre, que tem 51 GB livres; o home não é tocado | alta |
 | Portas | **`PROXY_HTTP_PORT=8080`, `PROXY_HTTPS_PORT=8443`** | 80 e 443 falham no Docker rootless (`cannot expose privileged port`); 8080 e 8443 sobem | alta |
-| `PUBLIC_HOST` | **`<hostname-do-PC>:8443`** (ex.: `c1r5p1.42sp.org.br:8443`) | redirect `http://…:8080/x?q` → `https://<host>:8443/x?q` em qualquer nome de entrada | alta (alcance de outro PC: D1) |
+| `PUBLIC_HOST` | **`<hostname-do-PC>:8443`** (ex.: `c1r5p1.42sp.org.br:8443`) | redirect `http://…:8080/x?q` → `https://<host>:8443/x?q` em qualquer nome de entrada | alta; outro PC alcança em 01/11 (D1) |
 | SAN do certificado | **hostname, IP, `<ip-com-hifens>.nip.io`, `localhost`, `127.0.0.1`** | `curl --cacert` e o Chrome validam os três nomes, com cadeado limpo | alta |
-| CA no Chrome | **importar o `rootCA.pem` pela interface, sem sudo** | funcionou no Chrome 155 (gerenciador de certificados novo). Plano B: `TRUST_STORES=nss mkcert -install`, porque o PC tem `certutil` | alta |
-| IP real do cliente | **override de usuário com o port driver `slirp4netns`** em quem serve a demo | sem ele, todo cliente aparece como `172.18.0.1` e o rate limit vira global; com ele, o Nginx vê o IP real e um IP travado não trava o outro | alta (com IPs remotos: D4) |
+| CA no Chrome | **importar o `rootCA.pem` pela interface, sem sudo** | funcionou no Chrome 155 (gerenciador de certificados novo). Plano B: `TRUST_STORES=nss mkcert -install`, porque o PC tem `certutil`. Em 01/11, funcionou no Chrome 156 de outro login (D2) | alta |
+| IP real do cliente | **override de usuário com o port driver `slirp4netns`** em quem serve a demo | sem ele, todo cliente aparece como `172.18.0.1` e o rate limit vira global; com ele, o Nginx vê o IP real e um IP travado não trava o outro | alta; com IP remoto em 01/11 (D4) |
 | `X-Forwarded-For` forjado | não fura o rate limit | continua 429 com cabeçalho forjado, porque o Nginx substitui o valor (decisão 6) | alta |
 | Exporters (D3) | **`node-exporter` funciona; cAdvisor também, com volumes próprios do rootless** | 1504 séries `node_*`; 7808 `container_*` com os containers por nome só montando o socket do containerd rootless | alta. Recomendação: só `node-exporter`, que é mais simples e não depende de caminho de rootless |
 | F8.3 | **clone limpo + `.env` + `docker compose up` funciona** numa máquina que não é a de quem escreveu o compose | 4 serviços `healthy`; dados sobrevivem ao `down`; uma cabeça de Alembic | alta |
@@ -26,9 +26,9 @@
 | Postgres | **volume nomeado** (fica no `data-root`, então no goinfre) | consequência da linha anterior | alta |
 | `nip.io` para o OAuth do Google | **viável do lado da rede** | `10-11-5-1.nip.io` resolve na rede da 42 | alta para o DNS; se o Google aceita, é o "Em aberto" 4 do `infra.md` (sai do formulário, não da rede) |
 
-### Pendências: impacto e confiança
+### Pendências de 17/10: impacto e confiança
 
-Tudo isto depende de um 2º PC. O passo a passo é o [teste-2-pcs.md](teste-2-pcs.md), uns 40 min com duas pessoas.
+**Todas fechadas em 01/11, com OK** ([resultado](#pendente-2º-pc)). A tabela fica como a avaliação de risco feita em 17/10.
 
 | # | O que falta | Confiança hoje | Impacto se falhar |
 |---|---|---|---|
@@ -38,7 +38,9 @@ Tudo isto depende de um 2º PC. O passo a passo é o [teste-2-pcs.md](teste-2-pc
 | D4 | o rate limit separa o PC2 do PC1 | alta: dois IPs de origem diferentes (10.11.5.1 e 10.0.2.2) já caíram em baldes separados com o `slirp4netns` | médio: se falhar, o rate limit vira global na demo (5 senhas erradas travam todos por 60 s; 5 cadastros/min para a sala inteira) |
 | D5 | portas internas (8000, 5432, 9090, 9100, 3000) fechadas para outro PC | muito alta: só o `proxy` publica porta, e do próprio servidor estão todas fechadas | baixo |
 
-### Prazos
+### Prazos (de 17/10)
+
+O teste com 2 PCs aconteceu em 01/11, depois do C3.
 
 - **O C3 (sex 23/10) é o primeiro checkpoint com duas máquinas.** O teste com 2 PCs precisa vir **antes**, para sobrar tempo de reagir se a D1 falhar.
 - **O Akita não volta à 42 antes de 24–25/10**, depois do C3. Por isso o [teste-2-pcs.md](teste-2-pcs.md) foi escrito para qualquer pessoa do time servir do próprio login. Se alguém for à 42 durante a semana, vale fazer.
@@ -48,18 +50,25 @@ Tudo isto depende de um 2º PC. O passo a passo é o [teste-2-pcs.md](teste-2-pc
 
 | Achado | Dono | Impacto |
 |---|---|---|
-| **`POST /api/auth/refresh` → 404 no console a cada carregamento.** A casca chama a rota ao carregar (`frontend/src/api/client.ts`, `AuthProvider`), e o backend ainda não tem a rota (F6.3; `backend/app/auth/router.py`: "/refresh e /logout entram na F6.3"). Pelo [auth.md](../contracts/auth.md) §2.2 e §4 decisão 4, sem cookie ela responde 200 `{"authenticated": false}`, e o erro some sem mudar a infra | Augusto (F6.3) | **Hoje a `main` reprova o critério de console limpo.** Pré-requisito do C3 |
-| **`/media/` não está roteado.** O `avatar_url` padrão (`/media/avatars/default.png`) devolve o `index.html` do SPA (200 `text/html`). Falta a decisão 13 do [infra.md](../contracts/infra.md): volume `media` + `location /media/` no proxy | Akita (F8) | avatar quebrado na primeira tela que mostrar um |
+| **Resolvido em 21/10 (F6.3, #131).** **`POST /api/auth/refresh` → 404 no console a cada carregamento.** A casca chama a rota ao carregar (`frontend/src/api/client.ts`, `AuthProvider`), e o backend ainda não tem a rota (F6.3; `backend/app/auth/router.py`: "/refresh e /logout entram na F6.3"). Pelo [auth.md](../contracts/auth.md) §2.2 e §4 decisão 4, sem cookie ela responde 200 `{"authenticated": false}`, e o erro some sem mudar a infra | Augusto (F6.3) | **Hoje a `main` reprova o critério de console limpo.** Pré-requisito do C3 |
+| **Resolvido (#120).** **`/media/` não está roteado.** O `avatar_url` padrão (`/media/avatars/default.png`) devolve o `index.html` do SPA (200 `text/html`). Falta a decisão 13 do [infra.md](../contracts/infra.md): volume `media` + `location /media/` no proxy | Akita (F8) | avatar quebrado na primeira tela que mostrar um |
 | **Extensões do Chrome sujam a aba Issues.** Um aviso "CSP blocks eval" apareceu, mas o site não manda CSP nem usa `eval`. Some em janela anônima. O perfil do PC tinha 17 extensões (MetaMask, Dark Reader, AdBlock...) | todos | **Demonstrar em janela anônima ou num perfil sem extensões**, na C3 e na avaliação |
 | **O `data-root` no goinfre não é padrão da 42.** Quem servir a demo precisa configurá-lo, senão ~5 GB vão para o home (11 GB no total) | quem servir | [teste-2-pcs.md](teste-2-pcs.md) §1.3 |
 | **O goinfre e o certificado são por PC.** Trocar de PC significa refazer o pull e o build (~1 min) e um `mkcert` novo; a CA e o `mkcert` ficam no home e acompanham o login | quem servir | planejar a demo num PC já preparado, ou com 2 min de folga |
 
 ### Próximos passos
 
-1. Rodar o [teste-2-pcs.md](teste-2-pcs.md) antes de 23/10, ou em 24–25/10 com o Akita.
-2. Com a D1 confirmada: atualizar o `infra.md` §5 item 1 (fechar o "Em aberto" com PC direto, 8080/8443 e `PUBLIC_HOST=<host>:8443`), a §2.1 (as portas publicadas) e a seção da demo com o override do `slirp4netns`.
-3. Aplicar no roteiro as correções do fim deste arquivo.
-4. Fechar o #31.
+1. ✅ Rodar o [teste-2-pcs.md](teste-2-pcs.md): feito em 01/11.
+2. ✅ Atualizar o [infra.md](../contracts/infra.md): §2.4 e "Em aberto" 1 e 4, em 02/11.
+3. ✅ Aplicar no roteiro as correções do fim deste arquivo.
+4. ✅ Fechar o #31.
+
+Depois de 01/11:
+
+5. **Trocar o `FT_CLIENT_SECRET` até 06/11.** O D6 usou o secret atual, que vence nesse dia ([teste-2-pcs.md](teste-2-pcs.md) §0.2).
+6. Atualizar o `.env` de casa com as chaves da `main` (achado de 01/11).
+7. Decidir o redirect para o `PUBLIC_HOST` ([infra.md](../contracts/infra.md) "Em aberto" 6), antes do ensaio do C5.
+8. Registrar aqui a resposta do ticket do goinfre (N5), que entra na F8.6.
 
 ---
 
@@ -153,7 +162,7 @@ Executado em **01/11/2026**, seguindo o [teste-2-pcs.md](teste-2-pcs.md), contra
 
 ## Correções propostas para o roteiro
 
-O roteiro vive na branch `31-roteiro-stack-real`.
+Aplicadas no [roteiro](roteiro-teste-pc-42.md), que já está na `main`.
 
 1. **Passo 0:** avisar que o goinfre e o certificado são por PC, e que o `data-root` no goinfre precisa ser configurado ([teste-2-pcs.md](teste-2-pcs.md) §1.3).
 2. **Passo 6:** volumes do cAdvisor no rootless (acima).

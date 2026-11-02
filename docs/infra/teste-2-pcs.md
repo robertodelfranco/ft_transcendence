@@ -2,6 +2,8 @@
 
 > Fecha o que o [teste de 17/10](resultados-teste-pc-42-2026-10-17.md) não conseguiu provar com uma máquina só: **outro PC da 42 alcança a stack, vê o cadeado limpo e o rate limit separa os clientes por IP.** Escrito para qualquer pessoa do time seguir sem contexto prévio.
 >
+> **Executado em 01/11, no cluster 3:** D1–D8 e N1–N3 OK, outro cluster não feito (a avaliação é num cluster só), N4 não feito, N5 com o goinfre pendente. [Resultado e achados](resultados-teste-pc-42-2026-10-17.md#pendente-2º-pc).
+>
 > **Data:** domingo, 01/11 (estava marcado para 31/10). O Akita serve, com 1 ou 2 pessoas do time. Como vem depois do C4 (30/10), o teste também cobre o que a S4 entregou: login pela 42, Grafana e co-op entre os PCs ([Parte 3](#parte-3-o-que-a-s4-entregou)). Além disso, cobre o que só se prova no hardware e na rede da 42: co-op com 3 ou mais players, fps, versão do Chrome, um login sem Docker configurado e as perguntas ao staff ([Parte 4](#parte-4-o-que-só-sai-na-42)). **Tudo o que depende de estar na 42 precisa sair hoje.**
 
 ## Por que importa
