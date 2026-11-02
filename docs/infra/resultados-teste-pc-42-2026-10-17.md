@@ -65,7 +65,7 @@ O teste com 2 PCs aconteceu em 01/11, depois do C3.
 
 Depois de 01/11:
 
-5. **Trocar o `FT_CLIENT_SECRET` até 06/11.** O D6 usou o secret atual, que vence nesse dia ([teste-2-pcs.md](teste-2-pcs.md) §0.2).
+5. Lembrete: o D6 usou o secret antigo. Basta trocar o `FT_CLIENT_SECRET` pelo novo no `.env` de quem serve, antes da entrega ou na próxima ida à 42 ([teste-2-pcs.md](teste-2-pcs.md) §0.2).
 6. Atualizar o `.env` de casa com as chaves da `main` (achado de 01/11).
 7. Decidir o redirect para o `PUBLIC_HOST` ([infra.md](../contracts/infra.md) "Em aberto" 6), antes do ensaio do C5.
 8. Registrar aqui a resposta do ticket do goinfre (N5), que entra na F8.6.
