@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatClock, recentKills } from "./scoreboard";
+import { formatClock, recentKills } from "./scoreboardUtils";
 
 describe("formatClock", () => {
   it.each([
