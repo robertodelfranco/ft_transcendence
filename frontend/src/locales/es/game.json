@@ -6,7 +6,9 @@
   "maps": {
     "dungeon_map": "Mazmorra",
     "enemy": "Salones enemigos",
-    "enemy_sewer": "Salones de la cloaca"
+    "enemy_sewer": "Salones de la cloaca",
+    "pvp_crossroads": "Encrucijada",
+    "pvp_ring": "Anillo"
   },
   "themes": {
     "dungeon": "Mazmorra",
