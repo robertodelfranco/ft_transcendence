@@ -1,7 +1,8 @@
 """Perfil, avatar e amigos (i18n.md §2.7). Ler o próprio perfil é GET /api/auth/me, do auth."""
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, UploadFile
+from fastapi import APIRouter, Depends, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import CurrentUser
@@ -14,13 +15,16 @@ from app.core.ratelimit import RateLimit
 from app.db.session import DbSession
 from app.users import service
 from app.users.avatar import MAX_AVATAR_BYTES, InvalidAvatar, discard_avatar, save_avatar
-from app.users.schemas import ProfileUser, UpdateMeIn, UserId
+from app.users.schemas import Friend, FriendList, ProfileUser, UpdateMeIn, UserId
+from app.ws.manager import ConnectionManager, get_connection_manager
 
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 # regravar com o Pillow custa CPU (i18n.md §2.7); o uso normal é um envio de vez em quando
 AVATAR_UPLOADS = RateLimit(10, 60, key="user")
+
+Connections = Annotated[ConnectionManager, Depends(get_connection_manager)]
 
 
 @router.patch("/me")
@@ -52,6 +56,24 @@ async def delete_avatar(request: Request, user: CurrentUser, session: DbSession)
 	return await private_user(session, user)
 
 
+@router.get("/me/friends")
+async def list_friends(user: CurrentUser, session: DbSession, connections: Connections) -> FriendList:
+	return FriendList(items=await service.list_friends(session, user, connections))
+
+
+@router.put("/me/friends/{user_id}")
+async def add_friend(user_id: UserId, user: CurrentUser, session: DbSession, connections: Connections) -> Friend:
+	friend = await service.add_friend(session, user, user_id, connections)
+	await session.commit()
+	return friend
+
+
+@router.delete("/me/friends/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_friend(user_id: UserId, user: CurrentUser, session: DbSession) -> None:
+	await service.remove_friend(session, user, user_id)
+	await session.commit()
+
+
 @router.get("/{user_id}")
 async def get_profile(user_id: UserId, user: CurrentUser, session: DbSession) -> ProfileUser:
 	return await service.profile(session, user, user_id)
@@ -70,4 +92,3 @@ async def _replace_avatar(session: AsyncSession, user: User, url: str | None, me
 		discard_avatar(media_dir, url)
 		raise
 	discard_avatar(media_dir, old) # unlink é instantâneo: não vale uma thread
-	

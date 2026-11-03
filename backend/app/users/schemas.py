@@ -2,10 +2,11 @@
 
 As regras por campo vêm de app/auth/schemas.py: o username vale igual no cadastro e na edição.
 """
+from datetime import datetime
 from typing import Annotated, Self
 
 from fastapi import Path
-from pydantic import model_validator
+from pydantic import BaseModel, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.auth.models import Language
@@ -25,9 +26,17 @@ class UpdateMeIn(Input):
 		if self.username is None and self.preferred_language is None:
 			raise PydanticCustomError("required", "send username or preferred_language")
 		return self
-	
+
 
 class ProfileUser(PublicUser):
 	is_friend: bool # quem pede tem este User como amigo
 	is_me: bool
-	
+
+
+class Friend(PublicUser):
+	online: bool # ConnectionManager.is_online: daqui em diante, quem atualiza é o presence do /ws/app
+	since: datetime # friendships.created_at
+
+
+class FriendList(BaseModel):
+	items: list[Friend]
