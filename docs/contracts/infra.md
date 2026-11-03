@@ -117,6 +117,7 @@ GF_ANALYTICS_REPORTING_ENABLED=false
 GF_ANALYTICS_CHECK_FOR_UPDATES=false
 GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false
 GF_NEWS_NEWS_FEED_ENABLED=false
+GF_PLUGINS_PREINSTALL_DISABLED=true
 ```
 
 A URL do banco é montada pelo `pydantic-settings` a partir das cinco variáveis de Postgres; não há `DATABASE_URL` separada, para não existirem duas fontes da mesma informação.

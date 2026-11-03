@@ -102,6 +102,10 @@ services:
       GF_ANALYTICS_CHECK_FOR_UPDATES: ${GF_ANALYTICS_CHECK_FOR_UPDATES:-false}
       GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: ${GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES:-false}
       GF_NEWS_NEWS_FEED_ENABLED: ${GF_NEWS_NEWS_FEED_ENABLED:-false}
+      # sem o instalador de plugins do startup: os plugins ficam os da imagem (o prometheus vem
+      # nela). Ligado, ele troca o plugin pela versão do grafana.com no meio do up, e o datasource
+      # some por ~5 s (o health dava 404 no CI)
+      GF_PLUGINS_PREINSTALL_DISABLED: ${GF_PLUGINS_PREINSTALL_DISABLED:-true}
     # só as duas pastas nossas: montar o provisioning inteiro esconde as pastas plugins/ e
     # alerting/ da imagem, e o Grafana registra um erro por pasta a cada subida
     volumes:
