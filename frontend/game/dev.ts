@@ -1,5 +1,6 @@
 import { AssetLoader } from "./src/render/assets";
 import type { Assets } from "./src/render/assets";
+import { themes } from "./src/render/themes";
 import { ThreeRenderer, type ViewState } from "./src/render/renderer";
 import { galleryCamera, galleryView, type GalleryKind } from "./fixtures/billboards";
 import { applyGridDelta, buildViewState } from "./src/net/viewstate";
@@ -17,6 +18,8 @@ canvas.style.width = "100vw";
 canvas.style.height = "100vh";
 
 const welcome = example.welcome as WelcomeMessage;
+const requestedTheme = new URLSearchParams(window.location.search).get("theme");
+const theme = requestedTheme === "sewer" ? "sewer" : "dungeon";
 const snapshot = example.snapshot as Snapshot;
 const grid = applyGridDelta(welcome.map.grid, snapshot.grid_delta);
 const initialView = buildViewState(
@@ -61,6 +64,7 @@ function showPointerLockError(): void {
 // A casca recebe os mesmos códigos para apresentar o estado de erro.
 const messages = {
   "pt-BR": {
+    theme_label: "Tema", dungeon: "Masmorra", sewer: "Esgoto",
     gallery_label: "Galeria de entidades",
     original_snapshot: "Snapshot original",
     enemy: "Enemy",
@@ -76,6 +80,7 @@ const messages = {
     pointer_lock_failed: "Não foi possível capturar o mouse. Clique na cena para tentar novamente.",
   },
   en: {
+    theme_label: "Theme", dungeon: "Dungeon", sewer: "Sewer",
     gallery_label: "Entity gallery",
     original_snapshot: "Original Snapshot",
     enemy: "Enemy",
@@ -91,6 +96,7 @@ const messages = {
     pointer_lock_failed: "The mouse could not be captured. Click the scene to try again.",
   },
   es: {
+    theme_label: "Tema", dungeon: "Mazmorra", sewer: "Alcantarillado",
     gallery_label: "Galería de entidades",
     original_snapshot: "Snapshot original",
     enemy: "Enemy",
@@ -149,6 +155,25 @@ galleryOptions.forEach(value => {
 gallerySelect.disabled = true;
 galleryLabel.append(gallerySelect);
 controls.append(galleryLabel);
+const themeLabel = document.createElement("label");
+themeLabel.textContent = messages[language].theme_label;
+const themeSelect = document.createElement("select");
+for (const value of ["dungeon", "sewer"] as const) {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = messages[language][value];
+  themeSelect.append(option);
+}
+themeSelect.value = theme;
+function selectTheme(): void {
+  // Recarregar passa pelo dispose da página e mantém o Grid da fixture.
+  const url = new URL(window.location.href);
+  url.searchParams.set("theme", themeSelect.value);
+  window.location.assign(url.href);
+}
+themeSelect.addEventListener("change", selectTheme);
+themeLabel.append(themeSelect);
+controls.append(themeLabel);
 document.body.append(controls);
 
 function selectGallery(): void {
@@ -269,6 +294,7 @@ function dispose(): void {
   closedButton.removeEventListener("click", showClosedDoor);
   snapshotButton.removeEventListener("click", applySnapshot);
   gallerySelect.removeEventListener("change", selectGallery);
+  themeSelect.removeEventListener("change", selectTheme);
   controls.remove();
   renderer?.dispose();
   assets?.dispose();
@@ -277,7 +303,7 @@ function dispose(): void {
 
 async function start(): Promise<void> {
   try {
-    assets = await new AssetLoader().load();
+    assets = await new AssetLoader().load(themes[theme]);
     if (disposed) {
       assets.dispose();
       return;

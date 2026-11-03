@@ -1,6 +1,7 @@
 // Ponto de entrada do jogo para a casca (mount-game.md §2.6): só mountGame e os tipos públicos.
 import { createMountGame, type SceneRenderer } from "./mount";
 import { AssetLoader, type Assets } from "./render/assets";
+import { themes } from "./render/themes";
 import { ThreeRenderer } from "./render/renderer";
 
 export type { EndResult, HudState, HudStatus, MountedGame, MountOptions } from "./api";
@@ -13,9 +14,8 @@ function createThreeScene(canvas: HTMLCanvasElement): SceneRenderer {
   let disposed = false;
 
   return {
-    async init(map) {
-      // só o dungeon existe por enquanto; o sewer entra com os Themes do Render (mount-game.md §5.3)
-      const loaded = await new AssetLoader().load();
+    async init(map, theme) {
+      const loaded = await new AssetLoader().load(themes[theme]);
       if (disposed) {
         loaded.dispose();
         return;

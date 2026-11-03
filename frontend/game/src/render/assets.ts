@@ -1,18 +1,11 @@
 import * as THREE from "three";
-import { BILLBOARD_URLS, createBillboardAssets, type BillboardAssets } from "./billboardAssets";
+import { billboardUrls, createBillboardAssets, type BillboardAssets } from "./billboardAssets";
 
-export const dungeonTheme = {
-  floor: 0x545454,
-  ceiling: 0x161e00,
-  walls: {
-    no: "/assets/map/dungeon_wall_1.png",
-    so: "/assets/map/dungeon_wall_9.png",
-    we: "/assets/map/dungeon_wall_2.png",
-    ea: "/assets/map/dungeon_wall_10.png",
-  },
-};
+import { dungeonTheme, type Theme } from "./themes";
 
 export interface Assets {
+  light: Theme["light"];
+  fogDensity: number;
   floor: number;
   ceiling: number;
   walls: Record<"no" | "so" | "we" | "ea", THREE.Texture>;
@@ -25,7 +18,7 @@ export interface Assets {
 
 // O chamador possui os assets e os libera depois do Renderer.
 export class AssetLoader {
-  async load(theme = dungeonTheme): Promise<Assets> {
+  async load(theme: Theme = dungeonTheme): Promise<Assets> {
     const urls = {
       ...theme.walls,
       door: "/assets/map/door_2.png",
@@ -33,7 +26,8 @@ export class AssetLoader {
       fireball: "/assets/player/fireball_1.png",
     };
     // A fireball da mão também é um quadro dos billboards: uma carga e um proprietário por URL.
-    const assetUrls = [...new Set([...Object.values(urls), ...BILLBOARD_URLS])];
+    const sprites = billboardUrls(theme);
+    const assetUrls = [...new Set([...Object.values(urls), ...Object.values(sprites).flat()])];
     const loader = new THREE.TextureLoader();
     const results = await Promise.allSettled(
       assetUrls.map(url => loader.loadAsync(url)),
@@ -56,7 +50,7 @@ export class AssetLoader {
     });
     let billboards: BillboardAssets;
     try {
-      billboards = createBillboardAssets(textures);
+      billboards = createBillboardAssets(textures, sprites);
     } catch (error) {
       textures.forEach(texture => texture.dispose());
       throw new Error("asset_load_failed", { cause: error });
@@ -64,6 +58,8 @@ export class AssetLoader {
     const texture = (slot: keyof typeof urls) => textures.get(urls[slot])!;
     let disposed = false;
     return {
+      light: theme.light,
+      fogDensity: theme.fogDensity,
       floor: theme.floor,
       ceiling: theme.ceiling,
       walls: { no: texture("no"), so: texture("so"), we: texture("we"), ea: texture("ea") },
