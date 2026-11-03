@@ -15,7 +15,7 @@ from app.core.ratelimit import RateLimit
 from app.db.session import DbSession
 from app.users import service
 from app.users.avatar import MAX_AVATAR_BYTES, InvalidAvatar, discard_avatar, save_avatar
-from app.users.schemas import Friend, FriendList, ProfileUser, UpdateMeIn, UserId
+from app.users.schemas import (Friend, FriendList, ProfileUser, Search, SearchLimit, UpdateMeIn, UserId, UserList)
 from app.ws.manager import ConnectionManager, get_connection_manager
 
 
@@ -23,8 +23,16 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 # regravar com o Pillow custa CPU (i18n.md §2.7); o uso normal é um envio de vez em quando
 AVATAR_UPLOADS = RateLimit(10, 60, key="user")
+# a casca busca enquanto o User digita; 60 por minuto cobre isso e segura quem varre a tabela
+USER_SEARCHES = RateLimit(60, 60, key="user")
 
 Connections = Annotated[ConnectionManager, Depends(get_connection_manager)]
+
+
+@router.get("", dependencies=[Depends(USER_SEARCHES)])
+async def search_users(search: Search, user: CurrentUser,
+		session: DbSession, limit: SearchLimit = 10) -> UserList:
+	return UserList(items=await service.search_users(session, user, search, limit))
 
 
 @router.patch("/me")
@@ -62,7 +70,8 @@ async def list_friends(user: CurrentUser, session: DbSession, connections: Conne
 
 
 @router.put("/me/friends/{user_id}")
-async def add_friend(user_id: UserId, user: CurrentUser, session: DbSession, connections: Connections) -> Friend:
+async def add_friend(user_id: UserId, user: CurrentUser, session: DbSession,
+		connections: Connections) -> Friend:
 	friend = await service.add_friend(session, user, user_id, connections)
 	await session.commit()
 	return friend

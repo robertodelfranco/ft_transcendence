@@ -5,7 +5,7 @@ As regras por campo vêm de app/auth/schemas.py: o username vale igual no cadast
 from datetime import datetime
 from typing import Annotated, Self
 
-from fastapi import Path
+from fastapi import Path, Query
 from pydantic import BaseModel, model_validator
 from pydantic_core import PydanticCustomError
 
@@ -15,6 +15,9 @@ from app.auth.schemas import Input, PublicUser, Username
 
 # o id é BIGINT no Postgres: acima disso o asyncpg recusa o parâmetro, e a rota daria 500
 UserId = Annotated[int, Path(ge=1, le=2**63 - 1)]
+# prefixo do username, no mesmo alfabeto dele: a casca manda em minúsculas, como no cadastro
+Search = Annotated[str, Query(min_length=2, max_length=20, pattern=r"^[a-z0-9_]+$")]
+SearchLimit = Annotated[int, Query(ge=1, le=20)]
 
 
 class UpdateMeIn(Input):
@@ -36,6 +39,10 @@ class ProfileUser(PublicUser):
 class Friend(PublicUser):
 	online: bool # ConnectionManager.is_online: daqui em diante, quem atualiza é o presence do /ws/app
 	since: datetime # friendships.created_at
+
+
+class UserList(BaseModel):
+	items: list[PublicUser]
 
 
 class FriendList(BaseModel):

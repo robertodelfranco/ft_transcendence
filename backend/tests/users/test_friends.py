@@ -1,5 +1,5 @@
 # backend/tests/users/test_friends.py
-# Amigos (i18n.md §2.7) contra o Postgres, com o online vindo do ConnectionManager.
+# Amigos e busca de Users (i18n.md §2.7) contra o Postgres, com o online vindo do ConnectionManager.
 import pytest
 from sqlalchemy import select
 
@@ -136,3 +136,61 @@ async def test_remove_is_idempotent(client, db_session, app, target):
 	_, auth = await new_user(db_session, app, "caio")
 	user_id = other.id if target == "stranger" else 999999999
 	assert (await client.delete(f"{FRIENDS}/{user_id}", headers=auth)).status_code == 204
+
+
+# ---------- GET /api/users?search= ----------
+
+async def search(client, auth, query: str):
+	return await client.get(f"/api/users?{query}", headers=auth)
+
+
+async def test_search_by_prefix_sorted_and_without_me(client, db_session, app):
+	for name in ["carla", "caio_42", "rafael", "cadu"]:
+		await new_user(db_session, app, name)
+	_, auth = await new_user(db_session, app, "caio")
+	body = (await search(client, auth, "search=ca")).json()
+	assert [user["username"] for user in body["items"]] == ["cadu", "caio_42", "carla"]
+	assert set(body["items"][0]) == {"id", "username", "avatar_url", "created_at"} # PublicUser
+
+
+async def test_underscore_is_not_a_wildcard(client, db_session, app):
+	await new_user(db_session, app, "a_bc")
+	await new_user(db_session, app, "axbc")
+	_, auth = await new_user(db_session, app, "caio")
+	body = (await search(client, auth, "search=a_")).json()
+	assert [user["username"] for user in body["items"]] == ["a_bc"]
+
+
+async def test_search_limit(client, db_session, app):
+	for index in range(12):
+		await new_user(db_session, app, f"user{index:02}")
+	_, auth = await new_user(db_session, app, "caio")
+	assert len((await search(client, auth, "search=user")).json()["items"]) == 10 # default
+	assert len((await search(client, auth, "search=user&limit=3")).json()["items"]) == 3
+
+
+@pytest.mark.parametrize("query, fields", [
+	("", {"search": "required"}),
+	("search=c", {"search": "too_short"}),
+	(f"search={'a' * 21}", {"search": "too_long"}),
+	("search=Caio", {"search": "invalid_format"}), # a casca manda em minúsculas
+	("search=ca%25", {"search": "invalid_format"}), # o % do LIKE não passa da validação
+	("search=ca&limit=21", {"limit": "invalid_value"}),
+	("search=ca&limit=0", {"limit": "invalid_value"}),
+])
+async def test_invalid_searches_are_422(client, db_session, app, query, fields):
+	_, auth = await new_user(db_session, app, "caio")
+	response = await search(client, auth, query)
+	assert response.status_code == 422
+	error = response.json()["error"]
+	assert (error["code"], error["fields"]) == ("validation_error", fields)
+
+
+async def test_the_61st_search_in_a_minute_is_429(client, db_session, app):
+	_, auth = await new_user(db_session, app, "caio")
+	codes = [(await search(client, auth, "search=ca")).status_code for _ in range(61)]
+	assert codes == [200] * 60 + [429]
+
+
+async def test_search_needs_a_session(client):
+	assert (await client.get("/api/users?search=ca")).status_code == 401

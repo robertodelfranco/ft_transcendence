@@ -48,6 +48,16 @@ async def profile(session: AsyncSession, me: User, user_id: int) -> ProfileUser:
 	is_friend = await session.get(Friendship, (me.id, user.id)) is not None
 	return ProfileUser(**public_user(user).model_dump(), is_friend=is_friend, is_me=user.id == me.id)
 
+
+async def search_users(session: AsyncSession, me: User, prefix: str, 
+		limit: int) -> list[PublicUser]:
+	# autoescape: "_" é coringa no LIKE, e "a_b" acharia "axb"
+	users = await session.scalars(select(User)
+		.where(User.username.startswith(prefix, autoescape=True), User.id != me.id)
+		.order_by(User.username).limit(limit))
+	return [public_user(user) for user in users]
+
+
 def friend(user: User, since: datetime, connections: ConnectionManager) -> Friend:
 	# is_online, e não os dicionários do manager (ws-manager.md §2.3): é a mesma regra do /ws/app
 	return Friend(**public_user(user).model_dump(), online=connections.is_online(user.id), since=since)
@@ -61,7 +71,8 @@ async def list_friends(session: AsyncSession, me: User, connections: ConnectionM
 	return [friend(user, since, connections) for user, since in rows]
 
 
-async def add_friend(session: AsyncSession, me: User, friend_id: int, connections: ConnectionManager) -> Friend:
+async def add_friend(session: AsyncSession, me: User, friend_id: int,
+		connections: ConnectionManager) -> Friend:
 	if friend_id == me.id:
 		raise ApiError(409, "cannot_friend_self", "cannot add yourself as a friend")
 	user = await session.get(User, friend_id)
