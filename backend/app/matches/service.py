@@ -1,4 +1,4 @@
-"""Catálogo de Maps e criação de Match (matches-api.md §2.2, rooms.md §2.2).
+"""Catálogo de Maps, criação de Match e o resultado gravado (matches-api.md §2.2 e §2.4, rooms.md §2.2).
 
 Cada mudança no lobby vai para todo /ws/app pelas funções `publish_*`, sempre **depois** do
 commit: quem recebe o aviso e busca por HTTP já acha o banco atualizado (ws-manager.md §2.5).
@@ -8,18 +8,18 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import Request
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
 from app.auth.schemas import DEFAULT_AVATAR_URL
 from app.core.errors import ApiError
-from app.game import Mode, load_map
+from app.game import TICK_RATE, Mode, load_map
 from app.game.protocol import options_payload
 from app.game.rooms import MAX_PLAYERS, MIN_PLAYERS, RoomInfo, RoomManager, now
 from app.game.world import MAPS_DIR
-from app.matches.models import Match
-from app.matches.schemas import CreateMatchIn, parse_options
+from app.matches.models import Match, MatchPlayer
+from app.matches.schemas import CreateMatchIn, MatchDetail, MatchPlayerRow, parse_options
 from app.ws.app_events import publish_lobby_removed, publish_lobby_update, publish_match_started
 from app.ws.manager import ConnectionManager
 
@@ -133,3 +133,31 @@ async def leave_when_offline(rooms: RoomManager, connections: ConnectionManager,
 		return
 	async with sessions() as session: # o __aenter__ não suspende: o status não muda no meio
 		await leave_match(session, rooms, connections, match_id, user_id)
+
+
+# ---------- resultado ----------
+
+# as colunas de match_players que a tela mostra; username e avatar_url vêm de users
+_PLAYER_COLUMNS = MatchPlayerRow.model_fields.keys() - {"username", "avatar_url"}
+
+
+async def match_result(session: AsyncSession, match_id: int) -> MatchDetail:
+	"""O Match terminado, lido só do banco, mesmo com a Room viva (matches-api.md decisão 8)."""
+	match = await session.get(Match, match_id)
+	if match is None:
+		raise ApiError(404, "match_not_found", f"match {match_id} not found")
+	if match.status == "aborted":
+		raise ApiError(409, "match_aborted", f"match {match_id} was aborted")
+	if match.status != "finished":
+		# running: o game_over já saiu, mas o record_match_result ainda não gravou (§2.4)
+		raise ApiError(409, "match_not_finished", f"match {match_id} is {match.status}")
+	rows = await session.execute(select(MatchPlayer, User.username, User.avatar_url)
+		.join(User, User.id == MatchPlayer.user_id)
+		.where(MatchPlayer.match_id == match_id).order_by(MatchPlayer.user_id))
+	players = [MatchPlayerRow(**{name: getattr(player, name) for name in _PLAYER_COLUMNS},
+		username=username, avatar_url=avatar_url or DEFAULT_AVATAR_URL)
+		for player, username, avatar_url in rows]
+	return MatchDetail(match_id=match.id, created_by=match.created_by, mode=match.mode,
+		map=match.map, status=match.status, options=match.options, started_at=match.started_at,
+		ended_at=match.ended_at, duration_s=match.duration_ticks // TICK_RATE, result=match.result,
+		reason=match.reason, players=players)

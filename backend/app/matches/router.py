@@ -9,7 +9,7 @@ from app.db.session import DbSession
 from app.game import Mode
 from app.game.rooms import RoomManager, get_room_manager
 from app.matches import service
-from app.matches.schemas import CreateMatchIn, ReadyIn
+from app.matches.schemas import CreateMatchIn, MatchDetail, MatchId, ReadyIn
 from app.matches.service import Catalog, get_catalog
 from app.ws.app_events import publish_lobby_update
 from app.ws.manager import ConnectionManager, get_connection_manager
@@ -38,8 +38,14 @@ async def list_matches(_: CurrentUser, rooms: Rooms, mode: Mode | None = None) -
 
 @router.get("/matches/{match_id}")
 async def get_match(match_id: int, _: CurrentUser, rooms: Rooms) -> dict[str, Any]:
-	# só a Room viva por enquanto; o MatchDetail de partida terminada vem com a F5.3
+	# só a Room viva; o Match terminado sai do banco em /result (matches-api.md decisão 8)
 	return rooms.info(match_id).to_payload()
+
+
+@router.get("/matches/{match_id}/result")
+async def get_match_result(match_id: MatchId, _: CurrentUser, session: DbSession) -> MatchDetail:
+	# qualquer User logado: o link do histórico de terceiros abre esta rota (decisão 7)
+	return await service.match_result(session, match_id)
 
 
 @router.post("/matches/{match_id}/join")
