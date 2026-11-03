@@ -1,3 +1,4 @@
+import type { GameAudio } from "./audio/gameAudio";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { EndResult, HudState, MountedGame } from "./api";
 import { createMountGame, type SceneRenderer } from "./mount";
@@ -50,6 +51,7 @@ const WELCOME = {
       keys: 0, alive: true, connected: true }] },
 } satisfies WelcomeMessage;
 
+let audio: GameAudio;
 let ws: FakeWebSocket;
 let renderer: FakeRenderer;
 let huds: HudState[];
@@ -81,11 +83,16 @@ beforeEach(() => {
     return frames.length;
   });
   vi.stubGlobal("cancelAnimationFrame", () => { frames = []; });
+  audio = {
+    unlock: vi.fn(async () => {}), playStep: vi.fn(), playFire: vi.fn(), playHit: vi.fn(),
+    startMusic: vi.fn(), stopMusic: vi.fn(), stopAll: vi.fn(), dispose: vi.fn(async () => {}),
+  };
   renderer = new FakeRenderer();
   huds = [];
   ends = [];
   const mountGame = createMountGame({
     createRenderer: () => renderer,
+    createAudio: () => audio,
     createWebSocket: () => (ws = new FakeWebSocket()),
   });
   game = mountGame(document.createElement("canvas"), {
@@ -351,4 +358,39 @@ test("game_over draws the final authoritative pose without pending movement", as
   const view = renderer.views.at(-1);
   expect(view?.localPlayer).toMatchObject({ x: 2, y: 2 });
   expect(view?.camera).toMatchObject({ x: 2, y: 2 });
+});
+
+
+test("audio waits for interaction, plays only local hit Events, and stops at game over", async () => {
+  await connect();
+  expect(audio.unlock).not.toHaveBeenCalled();
+  expect(audio.startMusic).not.toHaveBeenCalled();
+  window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+  await vi.advanceTimersByTimeAsync(0);
+  expect(audio.startMusic).toHaveBeenCalledTimes(1);
+  const hit = { v: 1, type: "event", tick: 1, name: "player_hit",
+    data: { target: 8, by: 9, source: "fireball", amount: 1, absorbed: 0 } };
+  ws.receive(hit);
+  expect(audio.playHit).not.toHaveBeenCalled();
+  ws.receive({ ...hit, data: { ...hit.data, target: 7 } });
+  expect(audio.playHit).toHaveBeenCalledTimes(1);
+  ws.receive({ v: 1, type: "event", tick: 2, name: "game_over",
+    data: { result: "win", winner_ids: [7], reason: "boss_dead" } });
+  expect(audio.stopAll).toHaveBeenCalled();
+  ws.receive({ ...hit, data: { ...hit.data, target: 7 } });
+  expect(audio.playHit).toHaveBeenCalledTimes(1);
+  game.unmount();
+  expect(audio.dispose).toHaveBeenCalledTimes(1);
+});
+
+test("an audio activation failure does not terminate the Room and can be retried", async () => {
+  await connect();
+  vi.mocked(audio.unlock).mockRejectedValueOnce(new Error("audio_unavailable"));
+  window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+  await vi.advanceTimersByTimeAsync(0);
+  expect(lastHud().status).toBe("running");
+  expect(audio.startMusic).not.toHaveBeenCalled();
+  window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+  await vi.advanceTimersByTimeAsync(0);
+  expect(audio.startMusic).toHaveBeenCalledTimes(1);
 });

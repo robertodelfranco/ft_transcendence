@@ -1,3 +1,4 @@
+import { createGameAudio, type GameAudio } from "./audio/gameAudio";
 // Liga socket, laço de Input, teclado e Renderer atrás de mountGame (mount-game.md §2.6 e §5.2).
 // O Renderer chega por fábrica: o laço não conhece Three.js, e os testes usam um falso.
 import type { EndResult, HudState, HudStatus, MountedGame, MountOptions } from "./api";
@@ -28,6 +29,7 @@ export interface SceneRenderer {
 export interface GameDeps {
   createRenderer: (canvas: HTMLCanvasElement) => SceneRenderer;
   createWebSocket?: WebSocketFactory;
+  createAudio?: () => GameAudio;
 }
 
 export function defaultWsUrl(matchId: number): string {
@@ -56,6 +58,47 @@ export function createMountGame(deps: GameDeps) {
     let pinger: ReturnType<typeof setInterval> | null = null;
 
     const minimap = opts.minimapCanvas ? new Minimap(opts.minimapCanvas) : null;
+    const audio = (deps.createAudio ?? createGameAudio)();
+    let audioReady = false;
+    let unlocking = false;
+    let previousPosition: { x: number; y: number } | null = null;
+    let stepDistance = 0;
+
+    function audioActive(): boolean {
+      return !unmounted && status === "running" && ending === null && !document.hidden;
+    }
+
+    function syncAudio(): void {
+      previousPosition = null;
+      stepDistance = 0;
+      if (audioReady && audioActive()) audio.startMusic();
+      else audio.stopAll();
+    }
+
+    function unlockAudio(event: Event): void {
+      if (event instanceof KeyboardEvent) {
+        const target = event.target;
+        if (event.repeat || !(event.code === "Space" || event.code === "KeyF"
+          || ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowLeft", "ArrowRight"].includes(event.code))) return;
+        if (target instanceof HTMLElement && (target.isContentEditable
+          || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
+      }
+      if (unlocking || unmounted) return;
+      unlocking = true;
+      void audio.unlock().then(() => {
+        if (!unmounted) {
+          audioReady = true;
+          syncAudio();
+        }
+      }).catch(() => {
+        // Audio facultativo: uma nova interação permite tentar novamente sem encerrar a Room.
+        audioReady = false;
+      }).finally(() => { unlocking = false; });
+    }
+
+    canvas.addEventListener("click", unlockAudio);
+    window.addEventListener("keydown", unlockAudio);
+    document.addEventListener("visibilitychange", syncAudio);
     const renderer = deps.createRenderer(canvas);
     const socket = createGameSocket({
       url: opts.wsUrl ?? defaultWsUrl(opts.matchId),
@@ -70,7 +113,11 @@ export function createMountGame(deps: GameDeps) {
       },
       createWebSocket: deps.createWebSocket,
     });
-    const loop = createPredictionLoop((message) => socket.send(message));
+    const loop = createPredictionLoop((message) => {
+      socket.send(message);
+      if (audioReady && audioActive() && loop.localPlayer()?.alive
+          && message.type === "action" && message.kind === "fire") audio.playFire();
+    });
     const input = captureInput(canvas, (kind) => loop.action(kind));
     const resizer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(resize);
     resizer?.observe(canvas);
@@ -122,6 +169,7 @@ export function createMountGame(deps: GameDeps) {
       // fim e erro não voltam atrás: um close atrasado não apaga o resultado
       if (status === next || status === "finished" || status === "error") return;
       status = next;
+      syncAudio();
       emitHud();
     }
 
@@ -129,6 +177,7 @@ export function createMountGame(deps: GameDeps) {
       if (status === "error" || status === "finished") return;
       error = code;
       status = "error";
+      syncAudio();
       socket.close();
       emitHud();
     }
@@ -177,6 +226,7 @@ export function createMountGame(deps: GameDeps) {
       }
       applySnapshot(message.snapshot);
       if (status === "connecting" || status === "disconnected") status = "running";
+      syncAudio();
       emitHud(); // um onHud só por welcome, já com o status novo
       startPinging();
     }
@@ -197,11 +247,16 @@ export function createMountGame(deps: GameDeps) {
     }
 
     function onEvent(message: EventMessage): void {
+      if (audioReady && audioActive() && message.name === "player_hit"
+          && (message.data.target === welcome?.user_id || message.data.by === welcome?.user_id)) {
+        audio.playHit();
+      }
       if (message.name === "player_died") {
         const { player_id, by } = message.data;
         killfeed = [...killfeed, { by, victim: player_id, tick: message.tick }].slice(-KILLFEED_MAX);
         emitHud();
       } else if (message.name === "game_over" && ending === null) {
+        audio.stopAll();
         const { result, winner_ids, reason } = message.data;
         const end: EndResult = { result, winnerIds: winner_ids, reason };
         // espera a animação de morte do Boss antes da tela de fim (mount-game.md §5.5);
@@ -225,6 +280,25 @@ export function createMountGame(deps: GameDeps) {
       lastFrameMs = nowMs;
       const mouseDx = input.takeMouseDx(); // lido sempre, para não acumular giro fora da partida
       if (status === "running" && ending === null) loop.frame(dtS, input.keys, mouseDx);
+      const position = loop.localPlayer();
+      const moving = input.keys.up || input.keys.down || input.keys.left || input.keys.right;
+      if (audioReady && audioActive() && position?.alive && moving) {
+        if (previousPosition !== null) {
+          const distance = Math.hypot(position.x - previousPosition.x, position.y - previousPosition.y);
+          // Ignora saltos de respawn/correção e não recupera passos de uma aba suspensa.
+          if (distance < 0.5 && dtS < 0.2) {
+            stepDistance += distance;
+            if (stepDistance >= 0.7) {
+              audio.playStep();
+              stepDistance %= 0.7;
+            }
+          } else stepDistance = 0;
+        }
+        previousPosition = { x: position.x, y: position.y };
+      } else {
+        previousPosition = null;
+        stepDistance = 0;
+      }
       if (rendererReady && view !== null) {
         const predicted = ending === null && status !== "finished"
           ? loop.localPlayer()
@@ -259,6 +333,10 @@ export function createMountGame(deps: GameDeps) {
         unmounted = true;
         if (frameId !== null) cancelAnimationFrame(frameId);
         if (ending !== null) clearTimeout(ending);
+        canvas.removeEventListener("click", unlockAudio);
+        window.removeEventListener("keydown", unlockAudio);
+        document.removeEventListener("visibilitychange", syncAudio);
+        void audio.dispose().catch(() => { /* A Room já foi desmontada. */ });
         if (pinger !== null) clearInterval(pinger);
         socket.close();
         input.dispose();
