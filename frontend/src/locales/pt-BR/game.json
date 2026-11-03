@@ -6,7 +6,9 @@
   "maps": {
     "dungeon_map": "Masmorra",
     "enemy": "Salões inimigos",
-    "enemy_sewer": "Salões do esgoto"
+    "enemy_sewer": "Salões do esgoto",
+    "pvp_crossroads": "Encruzilhada",
+    "pvp_ring": "Anel"
   },
   "themes": {
     "dungeon": "Masmorra",

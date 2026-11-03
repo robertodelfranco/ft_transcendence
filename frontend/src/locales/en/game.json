@@ -6,7 +6,9 @@
   "maps": {
     "dungeon_map": "Dungeon",
     "enemy": "Enemy halls",
-    "enemy_sewer": "Sewer halls"
+    "enemy_sewer": "Sewer halls",
+    "pvp_crossroads": "Crossroads",
+    "pvp_ring": "Ring"
   },
   "themes": {
     "dungeon": "Dungeon",
