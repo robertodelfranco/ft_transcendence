@@ -1,6 +1,6 @@
 # Contrato: API REST de lobby e estatísticas (`matches-api.md`)
 
-**Estado:** S4, 25/10: lobby na `main` (F5.2); resultado, histórico, estatísticas e conquistas fechados para a F7.8, com a assinatura do Caio pendente (PR do #155). **Escreve:** Akita. **Assina:** Caio (monta lobby, tela de resultado, histórico, estatísticas, conquistas e leaderboard só com este arquivo).
+**Estado:** S5, 03/11: lobby (F5.2) e resultado (`GET /api/matches/{id}/result`, #155) implementados; resultado, histórico, estatísticas e conquistas fechados para a F7.8 e assinados pelo Caio em 27/10 (#165). **Escreve:** Akita. **Assina:** Caio (monta lobby, tela de resultado, histórico, estatísticas, conquistas e leaderboard só com este arquivo).
 
 ## 1. Para que serve
 
@@ -248,15 +248,15 @@ Conquistas do User 7 depois dessa partida (`GET /api/users/7/achievements`):
 5. **`duration_s`, `win_rate` e `xp_to_next_level` vão calculados na resposta.** A tela não deve conhecer `TICK_RATE` nem a fórmula de level; é o mesmo princípio do canvas não ter texto.
 6. **Rate limit em `POST /api/matches`** (proposta: 10/min por User, dependência `RateLimit` do Augusto): criar Lobby é a única rota que aloca memória no servidor por requisição.
 7. **Perfil, histórico e leaderboard são `GET` por `user_id`, não por `me`.** A mesma rota serve o próprio perfil e o de terceiros, que é o que o módulo *Standard user management* pede. `/api/users/me/...` não existe aqui — a casca já sabe o próprio `user_id` pelo `/api/auth/me`.
-8. **Resultado em rota própria, `/result`, lido só do banco** (proposta de 25/10; assinatura do Caio no PR do #155). A alternativa era uma rota só, devolvendo `RoomInfo` ou `MatchDetail` conforme o estado. Com duas, cada rota tem um formato só: o FastAPI valida a resposta e o tipo da tela é fixo. A separação entre memória (Room) e banco (Match) fica na URL, como na decisão 1. A rota da sala de espera não muda. E o "ainda não gravado" vira um 409 que a tela trata, em vez de um `RoomInfo` inesperado. O custo é uma rota e dois `code` a mais.
+8. **Resultado em rota própria, `/result`, lido só do banco** (proposta de 25/10; assinada pelo Caio em 27/10, #165). A alternativa era uma rota só, devolvendo `RoomInfo` ou `MatchDetail` conforme o estado. Com duas, cada rota tem um formato só: o FastAPI valida a resposta e o tipo da tela é fixo. A separação entre memória (Room) e banco (Match) fica na URL, como na decisão 1. A rota da sala de espera não muda. E o "ainda não gravado" vira um 409 que a tela trata, em vez de um `RoomInfo` inesperado. O custo é uma rota e dois `code` a mais.
 
 ## 5. Em aberto
 
 | # | Questão | Quem decide | Quando |
 |---|---|---|---|
-| 1 | Campos que a tela de lobby, a de resultado, a de histórico e a de estatísticas realmente precisam (pergunta 5 do briefing do Caio). **Lobby e sala de espera (20/10, Caio):** o `RoomInfo` atual basta. **Resultado, histórico e estatísticas (25/10):** o que o [caminho-4-caio.md](../slices/caminho-4-caio.md) §7 pediu entrou: `MatchDetail` assim que o Match termina, na rota `/result` (§2.4); `xp_gained`, `elo_before` e `elo_after` por Player; `match_id` nas conquistas (§2.3). Os exemplos da §3 seguem as fórmulas do [progression.md](progression.md). | Caio | assinatura no PR do #155 |
-| 2 | Proposto em 25/10: o histórico não mostra `aborted`. Partida abortada não tem `match_players`, e nenhuma tela precisa dela; sem `include_aborted` (§2.3). | Caio e Akita | assinatura no PR do #155 |
+| 1 | Campos que a tela de lobby, a de resultado, a de histórico e a de estatísticas realmente precisam (pergunta 5 do briefing do Caio). **Lobby e sala de espera (20/10, Caio):** o `RoomInfo` atual basta. **Resultado, histórico e estatísticas (25/10):** o que o [caminho-4-caio.md](../slices/caminho-4-caio.md) §7 pediu entrou: `MatchDetail` assim que o Match termina, na rota `/result` (§2.4); `xp_gained`, `elo_before` e `elo_after` por Player; `match_id` nas conquistas (§2.3). Os exemplos da §3 seguem as fórmulas do [progression.md](progression.md). | Caio | assinado em 27/10 (#165) |
+| 2 | Proposto em 25/10: o histórico não mostra `aborted`. Partida abortada não tem `match_players`, e nenhuma tela precisa dela; sem `include_aborted` (§2.3). | Caio e Akita | assinado em 27/10 (#165) |
 | 3 | Resolvido em 12/10: tudo autenticado ([i18n.md](i18n.md) §4, decisão 6). | Caio (PO) | feito |
-| 4 | Proposto em 25/10: o `catalog` vem da API, em `GET /api/users/{id}/achievements` (§2.3). O catálogo mora no código do backend (F5.7), e o front só traduz o `code`. | Caio e Akita | assinatura no PR do #155 |
-| 5 | Proposto em 25/10: duas rotas. `GET /api/matches/{id}` fica só com a Room viva, e `GET /api/matches/{id}/result` devolve o `MatchDetail` do banco (§4, decisão 8). | Caio | assinatura no PR do #155 |
+| 4 | Proposto em 25/10: o `catalog` vem da API, em `GET /api/users/{id}/achievements` (§2.3). O catálogo mora no código do backend (F5.7), e o front só traduz o `code`. | Caio e Akita | assinado em 27/10 (#165) |
+| 5 | Proposto em 25/10: duas rotas. `GET /api/matches/{id}` fica só com a Room viva, e `GET /api/matches/{id}/result` devolve o `MatchDetail` do banco (§4, decisão 8). | Caio | assinado em 27/10 (#165) |
 
