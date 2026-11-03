@@ -1,3 +1,4 @@
+import { createGameAudio } from "./src/audio/gameAudio";
 import { AssetLoader } from "./src/render/assets";
 import type { Assets } from "./src/render/assets";
 import { themes } from "./src/render/themes";
@@ -37,6 +38,8 @@ const player = view.localPlayer;
 let renderer: ThreeRenderer | undefined;
 let assets: Assets | undefined;
 let disposed = false;
+const audio = createGameAudio();
+let musicPlaying = false;
 let frame = 0;
 let yaw = Math.atan2(-player.dx, -player.dy);
 let pitch = 0;
@@ -65,6 +68,7 @@ function showPointerLockError(): void {
 const messages = {
   "pt-BR": {
     theme_label: "Tema", dungeon: "Masmorra", sewer: "Esgoto",
+    audio_step: "Ouvir passo", audio_fire: "Ouvir tiro", audio_hit: "Ouvir acerto", audio_music: "Alternar música", audio_unavailable: "Áudio indisponível. Tente novamente após interagir com a página.",
     gallery_label: "Galeria de entidades",
     original_snapshot: "Snapshot original",
     enemy: "Enemy",
@@ -81,6 +85,7 @@ const messages = {
   },
   en: {
     theme_label: "Theme", dungeon: "Dungeon", sewer: "Sewer",
+    audio_step: "Play footstep", audio_fire: "Play shot", audio_hit: "Play hit", audio_music: "Toggle music", audio_unavailable: "Audio unavailable. Try again after interacting with the page.",
     gallery_label: "Entity gallery",
     original_snapshot: "Original Snapshot",
     enemy: "Enemy",
@@ -97,6 +102,7 @@ const messages = {
   },
   es: {
     theme_label: "Tema", dungeon: "Mazmorra", sewer: "Alcantarillado",
+    audio_step: "Escuchar paso", audio_fire: "Escuchar disparo", audio_hit: "Escuchar impacto", audio_music: "Alternar música", audio_unavailable: "Audio no disponible. Vuelve a intentarlo tras interactuar con la página.",
     gallery_label: "Galería de entidades",
     original_snapshot: "Snapshot original",
     enemy: "Enemy",
@@ -174,6 +180,40 @@ function selectTheme(): void {
 themeSelect.addEventListener("change", selectTheme);
 themeLabel.append(themeSelect);
 controls.append(themeLabel);
+// Cliques explícitos permitem ouvir e ajustar cada som sem socket ou Action real.
+const audioControls = document.createElement("div");
+const audioHandlers: Array<() => void> = [];
+const audioButtons: HTMLButtonElement[] = [];
+const sounds = {
+  audio_step: () => audio.playStep(),
+  audio_fire: () => audio.playFire(),
+  audio_hit: () => audio.playHit(),
+  audio_music: () => {
+    musicPlaying = !musicPlaying;
+    if (musicPlaying) audio.startMusic();
+    else audio.stopMusic();
+  },
+};
+for (const key of Object.keys(sounds) as Array<keyof typeof sounds>) {
+  const button = document.createElement("button");
+  button.textContent = messages[language][key];
+  const handler = () => {
+    void audio.unlock().then(() => {
+      if (disposed) return;
+      sounds[key]();
+      if (key === "audio_music") button.setAttribute("aria-pressed", String(musicPlaying));
+      if (errorPanel.dataset.code === "audio_unavailable") errorPanel.hidden = true;
+    }).catch(() => {
+      if (!disposed) showError("audio_unavailable");
+    });
+  };
+  if (key === "audio_music") button.setAttribute("aria-pressed", "false");
+  button.addEventListener("click", handler);
+  audioButtons.push(button);
+  audioHandlers.push(handler);
+  audioControls.append(button);
+}
+controls.append(audioControls);
 document.body.append(controls);
 
 function selectGallery(): void {
@@ -294,6 +334,9 @@ function dispose(): void {
   closedButton.removeEventListener("click", showClosedDoor);
   snapshotButton.removeEventListener("click", applySnapshot);
   gallerySelect.removeEventListener("change", selectGallery);
+  audioButtons.forEach((button, index) =>
+    button.removeEventListener("click", audioHandlers[index]));
+  void audio.dispose().catch(() => { /* A página já está sendo descartada. */ });
   themeSelect.removeEventListener("change", selectTheme);
   controls.remove();
   renderer?.dispose();
