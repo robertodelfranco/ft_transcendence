@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { HudState } from "../../game/src/index";
-import { nameOf, type HudPlayer } from "./players";
-import { recentKills } from "./scoreboard";
+import { nameOf, type HudPlayer } from "./playerUtils";
+import { recentKills } from "./scoreboardUtils";
 
 // Topo direito no pvp (hud.md §5): só mortes de Player, a mais recente primeiro. Não é região viva:
 // anunciar cada Frag atrapalharia quem joga com leitor de tela

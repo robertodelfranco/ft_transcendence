@@ -97,9 +97,9 @@ export class Billboards {
       draw("boss", boss.state, this.assets.boss, bossClips[boss.state], boss.x, boss.y, 0.95);
     }
     for (const projectile of view.projectiles) {
-      // No Theme dungeon, o contrato usa os mesmos PNGs nos dois Projectiles.
+      // Fireball do Player é comum; bullet do Boss segue o Theme.
       draw(`projectile:${projectile.id}`, `${projectile.kind}:${projectile.state}`,
-        this.assets.fireball, projectileClips[projectile.state],
+        this.assets[projectile.kind], projectileClips[projectile.state],
         projectile.x, projectile.y, 0.18, false);
     }
     for (const player of view.otherPlayers) {

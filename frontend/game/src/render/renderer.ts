@@ -61,9 +61,9 @@ export class ThreeRenderer implements Renderer {
       const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 100);
 
       scene.background = new THREE.Color(assets.ceiling);
-      scene.fog = new THREE.FogExp2(assets.ceiling, 0.08);
-      scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-      const light = new THREE.DirectionalLight(0xffffff, 0.35);
+      scene.fog = new THREE.FogExp2(assets.ceiling, assets.fogDensity);
+      scene.add(new THREE.AmbientLight(assets.light.ambient, 0.4));
+      const light = new THREE.DirectionalLight(assets.light.directional, 0.35);
       light.position.set(2, 4, 1);
       scene.add(light);
 
@@ -125,7 +125,7 @@ export class ThreeRenderer implements Renderer {
       ceiling.receiveShadow = true;
       scene.add(floor, ceiling);
 
-      this.torches = new Torches(grid);
+      this.torches = new Torches(grid, assets.light);
       this.resources.push(this.torches);
       scene.add(this.torches.object);
       this.billboards = new Billboards(assets.billboards);

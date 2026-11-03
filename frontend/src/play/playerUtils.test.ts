@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nameOf, orderPlayers } from "./players";
+import { nameOf, orderPlayers } from "./playerUtils";
 
 const player = (id: number) => ({ id, name: `p${id}`, hp: 10, alive: true, connected: true });
 

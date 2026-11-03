@@ -1,21 +1,21 @@
 import * as THREE from "three";
+import { dungeonTheme, type Theme } from "./themes";
 
 const sequence = (prefix: string, count: number) =>
   Array.from({ length: count }, (_, i) => `/assets/${prefix}${i}.png`);
 
-// Theme dungeon. A escolha entre Themes entra na F3.8.
-const urls = {
-  enemy: sequence("enemy/skeleton/skeleton_", 10),
-  boss: sequence("enemy/boss_mage/boss_mage_", 10),
+export const billboardUrls = (theme: Theme = dungeonTheme) => ({
+  enemy: sequence(theme.sprites.enemy, 10),
+  boss: sequence(theme.sprites.boss, 10),
+  bullet: sequence(theme.sprites.bullet, 4),
   fireball: sequence("player/fireball_", 4),
   key: ["/assets/collectables/key.png"],
   potion: ["/assets/collectables/pot.png"],
   mana: ["/assets/placeholders/mana.svg"],
   armor: ["/assets/placeholders/armor.svg"],
   player: ["/assets/placeholders/player.svg"],
-};
+});
 
-export const BILLBOARD_URLS = [...new Set(Object.values(urls).flat())];
 
 export interface SpriteFrame {
   texture: THREE.Texture;
@@ -30,11 +30,14 @@ export interface SpriteSheet {
   referenceHeight: number;
 }
 
-export type BillboardAssets = Record<keyof typeof urls, SpriteSheet>;
+export type BillboardAssets = Record<keyof ReturnType<typeof billboardUrls>, SpriteSheet>;
 
 // Mede transparência uma vez no carregamento; nunca durante o render.
 // A base opaca encosta no chão, mesmo com margem transparente no PNG.
-export function createBillboardAssets(textures: ReadonlyMap<string, THREE.Texture>): BillboardAssets {
+export function createBillboardAssets(
+  textures: ReadonlyMap<string, THREE.Texture>,
+  urls = billboardUrls(),
+): BillboardAssets {
   const entries = Object.entries(urls).map(([kind, paths]) => {
     let referenceHeight = 1;
     const frames = paths.map(path => {

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { orderPlayers, type HudPlayer } from "./players";
+import { orderPlayers, type HudPlayer } from "./playerUtils";
 
 // Topo esquerdo no coop (hud.md §3). Morto e desconectado são estados independentes, cada um com
 // rótulo além do esmaecido. O nome longo é cortado na tela, mas o texto continua inteiro para o

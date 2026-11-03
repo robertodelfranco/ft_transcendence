@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { dungeonTheme, type Theme } from "./themes";
 
 // Valores iniciais para medição na F3.5, não limites de performance aprovados.
 const LIGHT_LIMIT = 4;
@@ -13,7 +14,7 @@ export class Torches {
   private readonly resources: Array<{ dispose(): void }> = [];
   private elapsed = 0;
 
-  constructor(grid: readonly string[]) {
+  constructor(grid: readonly string[], lightColors: Theme["light"] = dungeonTheme.light) {
     grid.forEach((row, y) => {
       [...row].forEach((cell, x) => {
         if (cell === "T") this.positions.push(new THREE.Vector3(x + 0.5, 0.78, y + 0.5));
@@ -25,7 +26,7 @@ export class Torches {
     const stemGeometry = new THREE.CylinderGeometry(0.035, 0.045, 0.5, 6);
     const flameGeometry = new THREE.ConeGeometry(0.08, 0.2, 6);
     const stemMaterial = new THREE.MeshLambertMaterial({ color: 0x58381e });
-    const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xffb347 });
+    const flameMaterial = new THREE.MeshBasicMaterial({ color: lightColors.flame });
     // Cor HDR na chama alimenta o bloom, sem aumentar o alcance da PointLight.
     flameMaterial.color.multiplyScalar(3);
     this.resources.push(stemGeometry, flameGeometry, stemMaterial, flameMaterial);
@@ -51,7 +52,7 @@ export class Torches {
     // Pool fixo: mover fontes existentes evita criar luzes e shaders por quadro.
     const lightCount = Math.min(LIGHT_LIMIT, this.positions.length);
     for (let i = 0; i < lightCount; i++) {
-      const light = new THREE.PointLight(0xffaa55, LIGHT_INTENSITY, LIGHT_RANGE);
+      const light = new THREE.PointLight(lightColors.torch, LIGHT_INTENSITY, LIGHT_RANGE);
       light.position.copy(this.positions[i]);
       light.castShadow = i < SHADOW_LIMIT;
       light.shadow.mapSize.set(256, 256);
