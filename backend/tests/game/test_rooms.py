@@ -374,7 +374,9 @@ async def test_repeated_failures_close_the_room_with_4503(manager, connections, 
 	await connections.connect(7, "game", ws, match_id=12)
 	await connections.connect(9, "game", other, match_id=13)
 	manager.start(12)
-	await until(lambda: ws.close_code is not None)
+	(task,) = room_tasks()
+	# a task só termina depois do _abort inteiro: o socket fecha antes, e o banco grava depois
+	await until(task.done)
 
 	assert ws.close_code == CloseCode.SERVER_SHUTDOWN
 	assert ws.messages[-1]["code"] == "server_shutdown"
