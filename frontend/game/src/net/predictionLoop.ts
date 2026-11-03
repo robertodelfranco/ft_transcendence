@@ -7,6 +7,9 @@ import { reconcilePlayer, type PendingInput } from "./reconciliation";
 import { applyGridDelta } from "./viewstate";
 
 const STEP_S = 1 / TICK_RATE;
+const SMOOTH_DISTANCE = 0.05; // célula
+const SMOOTH_TIME_S = 0.1;
+const FLOAT_NOISE_DISTANCE = 1e-9; // não reinicia a correção por arredondamento
 // aba que volta do segundo plano não despeja centenas de Inputs: 5 passos são ~166 ms de jogo
 export const MAX_STEPS_PER_FRAME = 5;
 
@@ -25,6 +28,7 @@ interface Running {
   previous: Body;
   current: Body;
   pending: PendingInput[];
+  visualOffset: { x: number; y: number; remainingS: number };
 }
 
 function worldFromSnapshot(
@@ -85,6 +89,7 @@ export function createPredictionLoop(send: (message: ClientMessage) => void): Pr
         previous: body,
         current: body,
         pending: [],
+        visualOffset: { x: 0, y: 0, remainingS: 0 },
       };
       seq = 0; // recomeça a cada conexão (ws-messages.md §2.2)
       accumulatorS = 0;
@@ -108,6 +113,18 @@ export function createPredictionLoop(send: (message: ClientMessage) => void): Pr
         y: body.y - state.current.y,
         angle: body.angle - state.current.angle,
       };
+      const error = Math.hypot(correction.x, correction.y);
+      const sameLife = me.alive === state.player.alive;
+      if (import.meta.env.DEV && sameLife && me.alive) {
+        console.assert(error < SMOOTH_DISTANCE, "prediction diverged", { error, tick: snapshot.tick });
+      }
+      const smooth = sameLife && me.alive && error < SMOOTH_DISTANCE;
+      const visualOffset = smooth ? {
+        // previous e current mudam juntos; o offset preserva a posição desenhada.
+        x: state.visualOffset.x - correction.x,
+        y: state.visualOffset.y - correction.y,
+        remainingS: error > FLOAT_NOISE_DISTANCE ? SMOOTH_TIME_S : state.visualOffset.remainingS,
+      } : { x: 0, y: 0, remainingS: 0 };
 
       run = {
         ...state,
@@ -115,7 +132,8 @@ export function createPredictionLoop(send: (message: ClientMessage) => void): Pr
         world,
         current: body,
         pending,
-        previous: me.alive === state.player.alive ? {
+        visualOffset,
+        previous: sameLife ? {
           x: state.previous.x + correction.x,
           y: state.previous.y + correction.y,
           angle: state.previous.angle + correction.angle,
@@ -125,6 +143,15 @@ export function createPredictionLoop(send: (message: ClientMessage) => void): Pr
 
     frame(frameDtS, keys, frameMouseDx) {
       if (run === null) return;
+      if (run.visualOffset.remainingS > 0) {
+        const remainingS = run.visualOffset.remainingS;
+        const factor = Math.max(0, 1 - frameDtS / remainingS);
+        run.visualOffset = {
+          x: run.visualOffset.x * factor,
+          y: run.visualOffset.y * factor,
+          remainingS: Math.max(0, remainingS - frameDtS),
+        };
+      }
       mouseDx += frameMouseDx;
       accumulatorS += frameDtS;
       let steps = 0;
@@ -149,8 +176,8 @@ export function createPredictionLoop(send: (message: ClientMessage) => void): Pr
       const angle = previous.angle + (current.angle - previous.angle) * alpha;
       return {
         ...run.player,
-        x: previous.x + (current.x - previous.x) * alpha,
-        y: previous.y + (current.y - previous.y) * alpha,
+        x: previous.x + (current.x - previous.x) * alpha + run.visualOffset.x,
+        y: previous.y + (current.y - previous.y) * alpha + run.visualOffset.y,
         dx: Math.sin(angle),
         dy: -Math.cos(angle),
       };

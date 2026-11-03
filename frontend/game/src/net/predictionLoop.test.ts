@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { PLAYER_SPEED, TICK_RATE } from "../rules";
 import type { ClientMessage, Keys, PlayerSnapshot, Snapshot, WelcomeMessage } from "../types";
 import { createPredictionLoop, MAX_STEPS_PER_FRAME, type PredictionLoop } from "./predictionLoop";
@@ -24,10 +24,13 @@ let sent: ClientMessage[];
 let loop: PredictionLoop;
 
 beforeEach(() => {
+  vi.spyOn(console, "assert").mockImplementation(() => {});
   sent = [];
   loop = createPredictionLoop((message) => sent.push(message));
   loop.start(WELCOME);
 });
+
+afterEach(() => vi.restoreAllMocks());
 
 const inputs = () => sent.filter((message) => message.type === "input");
 
@@ -124,6 +127,56 @@ test("a correction starts from the official pose and reapplies pending Inputs", 
 
   expect(loop.localPlayer()?.x).toBeCloseTo(3);
   expect(loop.localPlayer()?.y).toBeCloseTo(3 - STEP);
+});
+
+test("a small correction keeps the drawn position and finishes in 100 ms", () => {
+  loop.onSnapshot(snapshotAfter(0, { x: 2.54 }));
+  expect(loop.localPlayer()?.x).toBeCloseTo(2.5);
+  expect(console.assert).toHaveBeenCalledWith(true, "prediction diverged",
+    { error: expect.closeTo(0.04), tick: 2 });
+
+  loop.frame(0.05, NONE, 0);
+  expect(loop.localPlayer()?.x).toBeCloseTo(2.52);
+  loop.frame(0.05, NONE, 0);
+  expect(loop.localPlayer()?.x).toBeCloseTo(2.54);
+});
+
+test("successive small corrections preserve the current drawn position", () => {
+  loop.onSnapshot(snapshotAfter(0, { x: 2.54 }));
+  loop.frame(0.05, NONE, 0);
+  expect(loop.localPlayer()?.x).toBeCloseTo(2.52);
+
+  loop.onSnapshot(snapshotAfter(0, { x: 2.56 }));
+  expect(loop.localPlayer()?.x).toBeCloseTo(2.52);
+  loop.frame(0.1, NONE, 0);
+  expect(loop.localPlayer()?.x).toBeCloseTo(2.56);
+});
+
+test("floating point noise does not restart an unfinished correction", () => {
+  loop.onSnapshot(snapshotAfter(0, { x: 2.54 }));
+  loop.frame(0.05, NONE, 0);
+  loop.onSnapshot(snapshotAfter(0, { x: 2.54 + 1e-12 }));
+  loop.frame(0.05, NONE, 0);
+
+  expect(loop.localPlayer()?.x).toBeCloseTo(2.54);
+});
+
+test("a large correction teleports and raises the development assertion", () => {
+  loop.onSnapshot(snapshotAfter(0, { x: 2.56 }));
+  expect(loop.localPlayer()?.x).toBeCloseTo(2.56);
+  expect(console.assert).toHaveBeenCalledWith(false, "prediction diverged",
+    { error: expect.closeTo(0.06), tick: 2 });
+});
+
+test("a new welcome discards an unfinished visual correction", () => {
+  loop.onSnapshot(snapshotAfter(0, { x: 2.54 }));
+  loop.frame(0.05, NONE, 0);
+
+  const welcome: WelcomeMessage = structuredClone(WELCOME);
+  welcome.snapshot.players[0].x = 3;
+  loop.start(welcome);
+
+  expect(loop.localPlayer()?.x).toBeCloseTo(3);
 });
 
 test("an opened Door changes collisions before replaying pending Inputs", () => {

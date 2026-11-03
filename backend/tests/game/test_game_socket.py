@@ -8,6 +8,7 @@ import pytest
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
+import app.game.rooms as game_rooms
 from app.auth.models import User
 from app.auth.security import InvalidToken
 from app.game import Mode, RoomOptions
@@ -202,6 +203,68 @@ async def test_a_newer_socket_replaces_the_old_one_and_the_player_stays_connecte
 	assert old.close_code == CloseCode.REPLACED
 	await until(lambda: any(m["type"] == "welcome" for m in new.messages))
 	assert player(rooms, 7).connected
+
+
+@pytest.mark.anyio
+async def test_coming_back_gets_a_welcome_with_the_state_kept(open_socket, rooms):
+	first = open_socket()
+	first.client_send(join(7))
+	await until(lambda: player(rooms, 7).connected)
+	player(rooms, 7).hp, player(rooms, 7).keys = 4, 2
+	first.client_close()
+	await first.task
+	assert not player(rooms, 7).connected
+
+	again = open_socket()
+	again.client_send(join(7))
+	await until(lambda: any(m["type"] == "welcome" for m in again.messages))
+	me = next(p for p in again.messages[0]["snapshot"]["players"] if p["id"] == 7)
+	assert (me["hp"], me["keys"], me["connected"]) == (4, 2, True)
+
+
+@pytest.mark.anyio
+async def test_a_player_whose_grace_period_expired_is_4403(open_socket, rooms, monkeypatch):
+	monkeypatch.setattr(game_rooms, "GRACE_TICKS", 1)
+	rooms.player_disconnected(MATCH, 7) # recomeça o prazo de quem nunca conectou, agora curto
+	await until(lambda: player(rooms, 7).left)
+	ws = open_socket()
+	ws.client_send(join(7))
+	await until(lambda: ws.close_code is not None)
+	assert ws.close_code == CloseCode.NOT_A_MEMBER
+
+
+@pytest.mark.anyio
+async def test_the_grace_period_expiring_while_the_old_socket_closes_is_4403(fake_ws, monkeypatch):
+	# close_timeout_s longo: o socket velho segura o connect do novo pelo tempo que o teste quiser
+	connections = ConnectionManager(close_timeout_s=1.0)
+	rooms = RoomManager(connections, load=lambda name, mode: parse_map(GRID, name, mode))
+	rooms.create(MATCH, Mode.COOP, "arena", 5, RoomOptions(), created_by=7)
+	for user_id in (7, 9):
+		rooms.join(MATCH, user_id, f"user{user_id}", "/media/avatars/default.png")
+	rooms.start(MATCH)
+	old = fake_ws() # um socket game que sobrou de uma partida anterior
+	await connections.connect(7, "game", old, match_id=MATCH - 1)
+	old.flowing.clear() # o error do 4408 trava: o connect do novo fica esperando
+	new = fake_ws()
+	task = asyncio.create_task(serve(new, MATCH, rooms=rooms, connections=connections,
+		authenticate=authenticate))
+	try:
+		new.client_send(join(7))
+		await until(lambda: not connections.in_game(7, MATCH - 1)) # join aceito, connect parado
+		monkeypatch.setattr(game_rooms, "GRACE_TICKS", 1)
+		rooms.player_disconnected(MATCH, 7)
+		await until(lambda: player(rooms, 7).left)
+		old.flowing.set()
+		await until(lambda: task.done()) # sem a revalidação, o serve ficaria lendo para sempre
+
+		assert new.close_code == CloseCode.NOT_A_MEMBER
+		assert all(m["type"] != "welcome" for m in new.messages)
+		assert not player(rooms, 7).connected
+		assert not connections.in_game(7, MATCH)
+	finally:
+		task.cancel()
+		await rooms.close()
+		await connections.close_all(1000)
 
 
 # ---------- N Players e limite de mensagens (F2.6) ----------

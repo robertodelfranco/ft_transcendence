@@ -167,7 +167,7 @@ Vale para o `/ws/app` (Caio, F7.1) e, fora da partida terminada, para o `/ws/gam
 | `4408` | não reconecta: outra aba assumiu. Mostra o aviso traduzido |
 | `4400` | não reconecta (é bug); mostra erro |
 | `4403`, `4404`, `4409` | não reconecta: a Room não aceita este User (não é membro, não existe, ou ainda está no Lobby, ou está cheia), e tentar de novo daria o mesmo resultado. Mostra o erro traduzido e volta ao lobby. Só existem no `/ws/game` |
-| `4429`, `4503`, `1006` (queda sem fechamento) e os demais | reconecta com espera crescente: 1, 2, 4, 8, 16 s, depois a cada 30 s, cada uma com até 20 % de variação aleatória para as abas não voltarem juntas |
+| `4429`, `4503`, `1006` (queda sem fechamento) e os demais | reconecta com espera crescente: 1, 2, 4, 8, 16 s, depois a cada 30 s, cada uma com até 20 % de variação aleatória para as abas não voltarem juntas. No `/ws/game`, 1, 2, 4 s e depois a cada 8 s: com 30 s de Grace period, uma espera maior perderia a volta (F2.10) |
 
 Durante a reconexão do `/ws/app`, a casca mantém a tela e marca os status online como desconhecidos; o `welcome` seguinte traz o estado inteiro de novo. A tela de lobby refaz o `GET /api/matches` depois de cada `welcome` novo, porque perdeu as mensagens do intervalo.
 

@@ -8,12 +8,15 @@ import { createPredictionLoop } from "./net/predictionLoop";
 import { createGameSocket, type WebSocketFactory } from "./net/socket";
 import { buildHud, buildViewState, createGridTracker, emptyHud, type Killfeed,
   type ViewState } from "./net/viewstate";
+import { Minimap } from "./render/minimap";
 import { BOSS_DYING_S } from "./rules";
 import type { EventMessage, GridCell, RoomOptions, ServerMessage, Snapshot,
   WelcomeMessage } from "./types";
 
 // proposta para mount-game.md §5.5: as últimas 5 eliminações
 const KILLFEED_MAX = 5;
+// proposta mount-game.md §5.5: um ping a cada 2 s; RTT em ms
+const PING_INTERVAL_MS = 2000;
 
 // O que o jogo precisa de um Renderer; a fábrica junta o AssetLoader e o ThreeRenderer
 export interface SceneRenderer {
@@ -51,7 +54,10 @@ export function createMountGame(deps: GameDeps) {
     let ending: ReturnType<typeof setTimeout> | null = null;
     let frameId: number | null = null;
     let lastFrameMs: number | null = null;
+    let ping: number | null = null;
+    let pinger: ReturnType<typeof setInterval> | null = null;
 
+    const minimap = opts.minimapCanvas ? new Minimap(opts.minimapCanvas) : null;
     const audio = (deps.createAudio ?? createGameAudio)();
     let audioReady = false;
     let unlocking = false;
@@ -115,13 +121,37 @@ export function createMountGame(deps: GameDeps) {
     const input = captureInput(canvas, (kind) => loop.action(kind));
     const resizer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(resize);
     resizer?.observe(canvas);
+    if (opts.minimapCanvas) resizer?.observe(opts.minimapCanvas);
 
     function hud(): HudState {
-      if (welcome === null || snapshot === null) return emptyHud(status, error);
+      if (welcome === null || snapshot === null) {
+        return emptyHud(status, welcome?.room.mode ?? null, error);
+      }
       const context = { userId: welcome.user_id, mode: welcome.room.mode,
         options: welcome.room.options };
-      const state = buildHud(snapshot, context, killfeed, status);
+      const state = { ...buildHud(snapshot, context, killfeed, status), ping };
       return error === undefined ? state : { ...state, error };
+    }
+
+    // só depois do welcome: numa Reconnection o join ainda espera o token, e o servidor fecha
+    // com 4400 qualquer mensagem que chegue antes dele
+    function sendPing(): void {
+      if (status === "running") socket.send({ v: 1, type: "ping", t: performance.now() });
+    }
+
+    // cada welcome recomeça a contagem: o primeiro ping sai já, os outros a cada 2 s
+    function startPinging(): void {
+      if (pinger !== null) clearInterval(pinger);
+      sendPing();
+      pinger = setInterval(sendPing, PING_INTERVAL_MS);
+    }
+
+    // o servidor devolve o t intacto: o RTT sai do relógio do próprio cliente, sem sincronizar
+    // relógios entre as máquinas
+    function onPong(t: number): void {
+      if (!Number.isFinite(t)) return fail("invalid_message"); // senão a HUD mostra NaN
+      ping = performance.now() - t;
+      emitHud();
     }
 
     // só avisa a casca quando algo mudou: a maioria dos Snapshots não mexe em HP, Mana ou placar,
@@ -154,6 +184,7 @@ export function createMountGame(deps: GameDeps) {
 
     // depois do game_over não há partida para onde voltar: o servidor recusaria com 4404
     function onReconnecting(): void {
+      ping = null; // a medida da conexão que caiu não diz nada da próxima
       if (ending === null) setStatus("disconnected");
       else socket.close();
     }
@@ -164,7 +195,7 @@ export function createMountGame(deps: GameDeps) {
           case "welcome": return onWelcome(message);
           case "snapshot": return onSnapshot(message);
           case "event": return onEvent(message);
-          case "pong": return; // RTT entra com a F2.12
+          case "pong": return onPong(message.t);
           case "error": return; // o socket decide pelo código do close
         }
       } catch {
@@ -197,6 +228,7 @@ export function createMountGame(deps: GameDeps) {
       if (status === "connecting" || status === "disconnected") status = "running";
       syncAudio();
       emitHud(); // um onHud só por welcome, já com o status novo
+      startPinging();
     }
 
     function onSnapshot(next: Snapshot): void {
@@ -237,7 +269,9 @@ export function createMountGame(deps: GameDeps) {
     }
 
     function resize(): void {
-      if (rendererReady && !unmounted) renderer.resize(canvas.clientWidth, canvas.clientHeight);
+      if (unmounted) return;
+      minimap?.resize();
+      if (rendererReady) renderer.resize(canvas.clientWidth, canvas.clientHeight);
     }
 
     function frame(nowMs: number): void {
@@ -284,7 +318,9 @@ export function createMountGame(deps: GameDeps) {
 
         // os outros, os Enemies, o Boss e os Projectiles a now − 100 ms (F2.8)
         const others = interpolator?.sample(nowMs) ?? null;
-        renderer.render(others === null ? drawing : { ...drawing, ...others }, dtS);
+        const rendered = others === null ? drawing : { ...drawing, ...others };
+        renderer.render(rendered, dtS);
+        minimap?.render(rendered, canvas.clientWidth / canvas.clientHeight || 1);
       }
     }
 
@@ -301,10 +337,12 @@ export function createMountGame(deps: GameDeps) {
         window.removeEventListener("keydown", unlockAudio);
         document.removeEventListener("visibilitychange", syncAudio);
         void audio.dispose().catch(() => { /* A Room já foi desmontada. */ });
+        if (pinger !== null) clearInterval(pinger);
         socket.close();
         input.dispose();
         resizer?.disconnect();
         renderer.dispose(); // também no meio do init: o Renderer libera o que já tinha criado
+        minimap?.dispose();
       },
     };
   };

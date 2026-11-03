@@ -11,6 +11,74 @@
     "mana": "Mana",
     "armor": "Armor",
     "keys": "Keys",
-    "ofMax": "{{value}}/{{max}}"
+    "ofMax": "{{value}}/{{max}}",
+    "lowHp": "Low health"
+  },
+  "stale": "Values from before the connection dropped.",
+  "ping": {
+    "label": "Ping",
+    "none": "—",
+    "unavailable": "unavailable",
+    "ms": "{{ms}} ms"
+  },
+  "death": {
+    "coop": "You died. Waiting for the match to end.",
+    "pvp": "You died. Waiting to respawn."
+  },
+  "players": {
+    "label": "Players",
+    "you": "(you)",
+    "hp": "Health {{hp}}",
+    "dead": "dead",
+    "offline": "disconnected"
+  },
+  "unknownPlayer": "Player #{{id}}",
+  "scoreboard": {
+    "label": "Scoreboard",
+    "frags": "Frags: {{frags}}",
+    "timeLeft": "Time left",
+    "unavailable": "Scoreboard unavailable"
+  },
+  "feed": {
+    "label": "Recent Frags",
+    "frag": "{{by}} fragged {{victim}}",
+    "died": "{{victim}} died."
+  },
+  "help": {
+    "title": "Controls and goal",
+    "goal": {
+      "coop": "Goal: defeat the Boss. If everyone dies, the team loses; there is no respawn.",
+      "pvp": "Goal: reach the Frag limit, or have more Frags when time runs out. Whoever dies respawns."
+    },
+    "controls": {
+      "move": {
+        "keys": "W A S D",
+        "action": "Move forward, back and sideways"
+      },
+      "turn": {
+        "keys": "← →",
+        "action": "Turn"
+      },
+      "mouse": {
+        "keys": "Mouse",
+        "action": "Turn (click the scene to capture the mouse)"
+      },
+      "sprint": {
+        "keys": "Shift",
+        "action": "Run"
+      },
+      "fire": {
+        "keys": "Space",
+        "action": "Fire"
+      },
+      "door": {
+        "keys": "F",
+        "action": "Open door"
+      },
+      "release": {
+        "keys": "Esc",
+        "action": "Release the mouse"
+      }
+    }
   }
 }

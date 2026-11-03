@@ -19,7 +19,9 @@
     "terms": "Termos de Serviço"
   },
   "home": {
-    "tagline": "Uma masmorra em 3D no navegador: jogue com até 5 amigos ou duele em 1 contra 1."
+    "tagline": "Uma masmorra em 3D no navegador: jogue com até 5 amigos ou duele em 1 contra 1.",
+    "login": "Entrar",
+    "signup": "Criar conta"
   },
   "notFound": {
     "title": "Página não encontrada",

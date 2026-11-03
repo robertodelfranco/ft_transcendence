@@ -1,0 +1,12 @@
+# Pelo nome de serviço na rede transcendence (infra.md §2.6). O uid é fixo porque os dashboards
+# apontam para ele; editable: false porque o que vale é este arquivo, não a UI.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false

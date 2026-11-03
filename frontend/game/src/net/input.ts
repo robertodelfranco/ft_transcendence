@@ -22,10 +22,11 @@ export interface InputCapture {
 const released = (): Keys => ({ up: false, down: false, left: false, right: false,
   rot_left: false, rot_right: false, sprint: false });
 
-// quem digita num campo da casca não anda nem atira, e o Espaço continua escrevendo espaço
+// quem usa um controle da casca (campo, botão, link) não anda nem atira, e a tecla faz o que
+// faria: o Espaço escreve espaço no campo e aperta o botão em foco
 function isTyping(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable
-    || target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT");
+    || target.closest("button, a, input, textarea, select, summary") !== null);
 }
 
 export function captureInput(canvas: HTMLCanvasElement, onAction: (kind: ActionKind) => void,

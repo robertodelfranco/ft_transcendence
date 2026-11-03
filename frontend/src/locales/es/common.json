@@ -19,7 +19,9 @@
     "terms": "Términos del Servicio"
   },
   "home": {
-    "tagline": "Una mazmorra en 3D en tu navegador: juega con hasta 5 amigos o duela 1 contra 1."
+    "tagline": "Una mazmorra en 3D en tu navegador: juega con hasta 5 amigos o duela 1 contra 1.",
+    "login": "Iniciar sesión",
+    "signup": "Crear cuenta"
   },
   "notFound": {
     "title": "Página no encontrada",

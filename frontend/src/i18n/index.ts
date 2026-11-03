@@ -51,8 +51,8 @@ void i18n.use(initReactI18next).init({
   debug: false, // console limpo (i18n.md §2.5)
 });
 
-// Chamada pelo seletor: troca na hora e lembra a escolha. 
-// O PATCH no perfil entra com o F7.1.
+// Chamada pelo seletor e pelo AuthContext: troca na hora e lembra a escolha no navegador.
+// Gravar no perfil é do LanguageSelector, que sabe se há sessão
 export function changeLanguage(language: Language): void {
   storeLanguage(language);
   void i18n.changeLanguage(language);

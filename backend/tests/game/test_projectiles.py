@@ -179,6 +179,6 @@ def test_dead_or_gone_player_does_not_stop_a_projectile(field):
 	room = new_room(mode=Mode.PVP)
 	other = room.players[9]
 	setattr(other, field, field == "left") # morto, ou fora da partida
-	shot = shoot(room, x=15.5, owner_id=7)
-	fly_until_hit(room, shot)
-	assert shot.x > other.x # só parou na parede
+	shot = shoot(room, x=17.25, owner_id=7)
+	step(room, DT) # leave encerra o PvP neste Tick; o Projectile ainda voa antes do game_over
+	assert shot.x > other.x

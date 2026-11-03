@@ -5,6 +5,7 @@ import invalidCredentials from "./fixtures/invalidCredentials.json";
 import unauthorized from "./fixtures/unauthorized.json";
 import { appSocketHandlers } from "./appSocketHandlers";
 import { lobbyHandlers } from "./lobbyHandlers";
+import { usersHandlers } from "./usersHandlers";
 
 // Senha aceita pelo mock (a do exemplo do auth §3)
 export const MOCK_PASSWORD = "osDda42";
@@ -54,5 +55,6 @@ export const handlers = [
   ),
 
   ...lobbyHandlers,
+  ...usersHandlers,
   ...appSocketHandlers,
 ];

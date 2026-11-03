@@ -11,6 +11,9 @@ class CoopRuleset:
 	def on_player_death(self, room: Room, player: Player, events: list[Event]) -> None:
 		pass # sem respawn no coop
 
+	def on_tick(self, room: Room, events: list[Event]) -> None:
+		pass # sem efeito por Tick no coop
+
 	def check_end(self, room: Room) -> dict | None:
 		# o Boss vem primeiro: Boss e último Player morrendo no mesmo Tick é vitória
 		if room.boss is not None and room.boss.state == BossState.DYING:

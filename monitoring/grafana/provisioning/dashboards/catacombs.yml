@@ -1,0 +1,12 @@
+# Os JSON desta pasta viram os dashboards da pasta "Catacombs 42" (infra.md, decisão 15).
+# Sem apagar nem salvar pela UI: mudar um painel é mudar o JSON e abrir PR.
+apiVersion: 1
+
+providers:
+  - name: catacombs
+    folder: Catacombs 42
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/provisioning/dashboards

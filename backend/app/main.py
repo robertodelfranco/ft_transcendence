@@ -21,6 +21,7 @@ from app.matches.router import router as matches_router
 from app.db.session import SessionLocal
 from app.matches.results import abort_unfinished
 from app.matches.service import leave_when_offline, load_catalog
+from app.users.router import router as users_router
 from app.ws.app_events import DbFriendGraph, notify_presence
 from app.ws.manager import ConnectionManager
 from app.ws.router import router as app_socket_router
@@ -87,6 +88,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 	app.include_router(health.router)
 	app.include_router(metrics_router)
 	app.include_router(auth_router)
+	app.include_router(users_router)
 	app.include_router(matches_router)
 	app.include_router(game_router)
 	app.include_router(app_socket_router)

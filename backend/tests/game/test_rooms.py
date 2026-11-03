@@ -457,6 +457,113 @@ async def test_close_also_cancels_a_finished_room_waiting_its_ttl(manager):
 	assert task.cancelled()
 
 
+# ---------- Grace period (F2.10, arq. §7.3) ----------
+
+@pytest.fixture
+def short_grace(monkeypatch):
+	monkeypatch.setattr(rooms, "GRACE_TICKS", 6) # 0,2 s em vez de 30 s
+
+
+def events_of(ws, user_id: int) -> list[str]:
+	return [m["name"] for m in ws.messages
+		if m["type"] == "event" and m["data"].get("player_id") == user_id]
+
+
+async def test_coming_back_within_the_grace_period_keeps_the_player(manager, connections, fake_ws,
+		short_grace):
+	lobby(manager, players=(7, 9))
+	manager.start(12)
+	room = manager.game_room(12)
+	ws9 = fake_ws()
+	await connections.connect(9, "game", ws9, match_id=12)
+	manager.player_connected(12, 9)
+	manager.player_connected(12, 7)
+	room.players[7].hp, room.players[7].keys = 4, 2
+	deadline = room.tick + rooms.GRACE_TICKS
+	manager.player_disconnected(12, 7)
+	await until(lambda: room.tick >= deadline - 3)
+	manager.player_connected(12, 7)
+	await until(lambda: room.tick >= deadline + 3)
+
+	player = room.players[7]
+	assert player.connected and not player.left
+	assert (player.hp, player.keys) == (4, 2)
+	assert manager.room_of(7) == 12
+	assert events_of(ws9, 7) == ["player_joined", "player_disconnected", "player_reconnected"]
+
+
+async def test_the_grace_period_expiring_takes_the_player_out_of_a_coop(manager, connections,
+		fake_ws, short_grace):
+	lobby(manager, players=(7, 9))
+	manager.start(12)
+	room = manager.game_room(12)
+	ws9 = fake_ws()
+	await connections.connect(9, "game", ws9, match_id=12)
+	manager.player_connected(12, 9)
+	manager.player_connected(12, 7)
+	manager.player_disconnected(12, 7)
+	await until(lambda: "player_left" in events_of(ws9, 7))
+
+	assert room.players[7].left
+	assert manager.room_of(7) is None # livre para entrar em outra Room
+	assert manager.room_of(9) == 12
+	assert room.result is None # quem ficou continua jogando
+
+
+async def test_everyone_expiring_ends_the_coop_with_a_forfeit(manager, results, short_grace):
+	lobby(manager, players=(7, 9))
+	manager.start(12)
+	for user_id in (7, 9):
+		manager.player_connected(12, user_id)
+		manager.player_disconnected(12, user_id)
+	await until(lambda: results.recorded)
+
+	((_, outcome, _),) = results.recorded
+	assert (outcome.result, outcome.reason) == ("loss", "forfeit")
+	assert all(player.disconnected_at_end for player in outcome.players)
+
+
+async def test_connecting_after_the_grace_period_expired_is_refused(manager, short_grace):
+	lobby(manager, players=(7, 9))
+	manager.start(12)
+	room = manager.game_room(12)
+	manager.player_connected(12, 9)
+	await until(lambda: room.players[7].left)
+
+	assert manager.player_connected(12, 7) is False
+	assert not room.players[7].connected
+	assert manager.player_connected(13, 7) is False # Room que não existe mais: recusa, não levanta
+
+
+async def test_who_never_opens_the_socket_expires_counting_from_the_start(manager, short_grace):
+	lobby(manager, players=(7, 9))
+	manager.start(12)
+	room = manager.game_room(12)
+	manager.player_connected(12, 9)
+	await until(lambda: room.players[7].left)
+	assert room.tick > rooms.GRACE_TICKS
+	assert not room.players[9].left
+
+
+async def test_a_disconnect_after_game_over_starts_no_grace_period(manager, monkeypatch,
+		short_grace):
+	monkeypatch.setattr(rooms, "DYING_TICKS", 10_000) # o Tick continua andando depois do game_over
+	lobby(manager)
+	manager.start(12)
+	room = manager.game_room(12)
+	manager.player_connected(12, 7)
+	end_game(manager)
+	await until(lambda: manager.info(12).status == "finished")
+	manager.player_disconnected(12, 7)
+	ticks = room.tick
+	await until(lambda: room.tick >= ticks + rooms.GRACE_TICKS + 3)
+	assert not room.players[7].left
+
+
+async def test_a_disconnect_from_a_removed_room_is_not_an_error(manager):
+	manager.player_disconnected(99, 7)
+
+
 # ---------- app ----------
 
 async def test_the_app_hands_its_room_manager_to_the_routes(app):

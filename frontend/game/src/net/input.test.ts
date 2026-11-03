@@ -61,6 +61,16 @@ test("typing in a text field neither moves, fires nor blocks the space", () => {
   expect(space.defaultPrevented).toBe(false);
 });
 
+test("space on a focused shell button neither fires nor is blocked", () => {
+  const button = document.createElement("button");
+  document.body.append(button);
+  const space = new KeyboardEvent("keydown", { code: "Space", bubbles: true, cancelable: true });
+  button.dispatchEvent(space);
+  button.remove();
+  expect(actions).toEqual([]);
+  expect(space.defaultPrevented).toBe(false);
+});
+
 test("losing focus releases every key", () => {
   press("KeyW");
   press("ShiftLeft");
