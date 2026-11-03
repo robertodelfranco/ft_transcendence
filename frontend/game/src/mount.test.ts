@@ -104,6 +104,7 @@ beforeEach(() => {
 afterEach(() => {
   game.unmount();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   vi.useRealTimers();
 });
 
@@ -393,4 +394,74 @@ test("an audio activation failure does not terminate the Room and can be retried
   window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
   await vi.advanceTimersByTimeAsync(0);
   expect(audio.startMusic).toHaveBeenCalledTimes(1);
+});
+
+test("visual damage is local, includes Armor absorption, and expires", async () => {
+  await connect();
+  const clock = vi.spyOn(performance, "now").mockReturnValue(100);
+  const hit = { v: 1, type: "event", tick: 1, name: "player_hit",
+    data: { target: 8, by: 7, source: "fireball", amount: 1, absorbed: 0 } };
+  ws.receive(hit);
+  await runFrame(100);
+  expect(renderer.views.at(-1)?.feedback?.damage).toBe(0);
+  ws.receive({ ...hit, data: { ...hit.data, target: 7, amount: 0, absorbed: 1 } });
+  await runFrame(116);
+  expect(renderer.views.at(-1)?.feedback?.damage).toBeGreaterThan(0);
+  await runFrame(400);
+  expect(renderer.views.at(-1)?.feedback?.damage).toBe(0);
+  clock.mockRestore();
+});
+
+test("visual death and PvP respawn follow Snapshots, not remote death Events", async () => {
+  ws.open();
+  await vi.advanceTimersByTimeAsync(0);
+  ws.receive({ ...WELCOME, room: { ...WELCOME.room, mode: "pvp" } });
+  await vi.advanceTimersByTimeAsync(0);
+  const clock = vi.spyOn(performance, "now").mockReturnValue(100);
+  ws.receive({ v: 1, type: "event", tick: 1, name: "player_died", data: { player_id: 8, by: 7 } });
+  await runFrame(100);
+  expect(renderer.views.at(-1)?.feedback?.dead).toBe(false);
+  ws.receive({ v: 1, type: "snapshot", ...WELCOME.snapshot, tick: 2,
+    players: [{ ...WELCOME.snapshot.players[0], alive: false, hp: 0 }] });
+  await runFrame(116);
+  expect(renderer.views.at(-1)?.feedback?.dead).toBe(true);
+  clock.mockReturnValue(200);
+  ws.receive({ v: 1, type: "snapshot", ...WELCOME.snapshot, tick: 4 });
+  await runFrame(200);
+  expect(renderer.views.at(-1)?.feedback).toMatchObject({ dead: false, respawn: 1 });
+  clock.mockRestore();
+});
+
+test("reconnection clears transients and does not infer respawn across the welcome", async () => {
+  await connect();
+  const clock = vi.spyOn(performance, "now").mockReturnValue(100);
+  ws.receive({ v: 1, type: "event", tick: 1, name: "player_hit",
+    data: { target: 7, by: null, source: "enemy", amount: 1, absorbed: 0 } });
+  await runFrame(100);
+  expect(renderer.views.at(-1)?.feedback?.damage).toBe(1);
+  ws.drop(1006);
+  await runFrame(116);
+  expect(renderer.views.at(-1)?.feedback).toBeUndefined();
+  // O welcome restaura a apresentação mesmo quando já havia estado antes da queda.
+  await vi.advanceTimersByTimeAsync(2000);
+  ws.open();
+  await vi.advanceTimersByTimeAsync(0);
+  ws.receive(WELCOME);
+  await runFrame(200);
+  expect(renderer.views.at(-1)?.feedback).toEqual({ dead: false, damage: 0, respawn: 0 });
+  clock.mockRestore();
+});
+
+test("game over suppresses visual feedback and unmount stops drawing", async () => {
+  await connect();
+  ws.receive({ v: 1, type: "event", tick: 1, name: "player_hit",
+    data: { target: 7, by: null, source: "enemy", amount: 1, absorbed: 0 } });
+  ws.receive({ v: 1, type: "event", tick: 2, name: "game_over",
+    data: { result: "loss", winner_ids: [], reason: "all_dead" } });
+  await runFrame(100);
+  expect(renderer.views.at(-1)?.feedback).toBeUndefined();
+  const count = renderer.views.length;
+  game.unmount();
+  await runFrame(200);
+  expect(renderer.views).toHaveLength(count);
 });

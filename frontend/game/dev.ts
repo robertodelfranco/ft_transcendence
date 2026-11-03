@@ -7,6 +7,7 @@ import { galleryCamera, galleryView, type GalleryKind } from "./fixtures/billboa
 import { applyGridDelta, buildViewState } from "./src/net/viewstate";
 import type { Snapshot, WelcomeMessage } from "./src/types";
 import example from "./fixtures/snapshot.example.json";
+import { createPlayerFeedback } from "./src/render/playerFeedback";
 
 // Demo local F3.3/F3.4: usa o Snapshot da Simulation e uma galeria visual, sem socket.
 const canvas = document.querySelector<HTMLCanvasElement>("#game");
@@ -39,6 +40,8 @@ let renderer: ThreeRenderer | undefined;
 let assets: Assets | undefined;
 let disposed = false;
 const audio = createGameAudio();
+const demoFeedback = createPlayerFeedback();
+demoFeedback.snapshot(true, "pvp", performance.now());
 let musicPlaying = false;
 let frame = 0;
 let yaw = Math.atan2(-player.dx, -player.dy);
@@ -67,6 +70,7 @@ function showPointerLockError(): void {
 // A casca recebe os mesmos códigos para apresentar o estado de erro.
 const messages = {
   "pt-BR": {
+    effects_description: "Efeitos locais de demonstração (PvP):", effect_hit: "Receber dano", effect_die: "Morrer", effect_respawn: "Renascer", effect_alive: "Estado da demo: vivo", effect_dead: "Estado da demo: morto",
     theme_label: "Tema", dungeon: "Masmorra", sewer: "Esgoto",
     audio_step: "Ouvir passo", audio_fire: "Ouvir tiro", audio_hit: "Ouvir acerto", audio_music: "Alternar música", audio_unavailable: "Áudio indisponível. Tente novamente após interagir com a página.",
     gallery_label: "Galeria de entidades",
@@ -84,6 +88,7 @@ const messages = {
     pointer_lock_failed: "Não foi possível capturar o mouse. Clique na cena para tentar novamente.",
   },
   en: {
+    effects_description: "Local demonstration effects (PvP):", effect_hit: "Take damage", effect_die: "Die", effect_respawn: "Respawn", effect_alive: "Demo state: alive", effect_dead: "Demo state: dead",
     theme_label: "Theme", dungeon: "Dungeon", sewer: "Sewer",
     audio_step: "Play footstep", audio_fire: "Play shot", audio_hit: "Play hit", audio_music: "Toggle music", audio_unavailable: "Audio unavailable. Try again after interacting with the page.",
     gallery_label: "Entity gallery",
@@ -101,6 +106,7 @@ const messages = {
     pointer_lock_failed: "The mouse could not be captured. Click the scene to try again.",
   },
   es: {
+    effects_description: "Efectos locales de demostración (PvP):", effect_hit: "Recibir daño", effect_die: "Morir", effect_respawn: "Reaparecer", effect_alive: "Estado de la demo: vivo", effect_dead: "Estado de la demo: muerto",
     theme_label: "Tema", dungeon: "Mazmorra", sewer: "Alcantarillado",
     audio_step: "Escuchar paso", audio_fire: "Escuchar disparo", audio_hit: "Escuchar impacto", audio_music: "Alternar música", audio_unavailable: "Audio no disponible. Vuelve a intentarlo tras interactuar con la página.",
     gallery_label: "Galería de entidades",
@@ -214,9 +220,45 @@ for (const key of Object.keys(sounds) as Array<keyof typeof sounds>) {
   audioControls.append(button);
 }
 controls.append(audioControls);
+// Simula apenas feedback visual; não envia Action nem altera regras da partida.
+const effectControls = document.createElement("div");
+const effectDescription = document.createElement("p");
+effectDescription.textContent = messages[language].effects_description;
+const effectStatus = document.createElement("p");
+effectStatus.setAttribute("role", "status");
+effectStatus.textContent = messages[language].effect_alive;
+effectControls.append(effectDescription);
+const effectButtons: HTMLButtonElement[] = [];
+const effectHandlers: Array<() => void> = [];
+const effects = {
+  effect_hit: () => demoFeedback.hit(performance.now()),
+  effect_die: () => {
+    demoFeedback.snapshot(false, "pvp", performance.now());
+    effectStatus.textContent = messages[language].effect_dead;
+  },
+  effect_respawn: () => {
+    demoFeedback.snapshot(true, "pvp", performance.now());
+    effectStatus.textContent = messages[language].effect_alive;
+  },
+};
+for (const key of Object.keys(effects) as Array<keyof typeof effects>) {
+  const button = document.createElement("button");
+  button.textContent = messages[language][key];
+  button.disabled = true;
+  const handler = effects[key];
+  button.addEventListener("click", handler);
+  effectButtons.push(button);
+  effectHandlers.push(handler);
+  effectControls.append(button);
+}
+effectControls.append(effectStatus);
+controls.append(effectControls);
 document.body.append(controls);
 
 function selectGallery(): void {
+  demoFeedback.reset();
+  demoFeedback.snapshot(true, "pvp", performance.now());
+  effectStatus.textContent = messages[language].effect_alive;
   galleryElapsed = 0;
   const selected = gallerySelect.value;
   if (selected === "original_snapshot") {
@@ -247,6 +289,7 @@ function showInitError(error: unknown): void {
   renderer?.dispose();
   assets?.dispose();
   closedButton.disabled = snapshotButton.disabled = gallerySelect.disabled = true;
+  effectButtons.forEach(button => { button.disabled = true; });
   if (!disposed) showError(error instanceof Error && error.message === "asset_load_failed"
     ? "asset_load_failed" : "renderer_init_failed");
 }
@@ -337,6 +380,8 @@ function dispose(): void {
   audioButtons.forEach((button, index) =>
     button.removeEventListener("click", audioHandlers[index]));
   void audio.dispose().catch(() => { /* A página já está sendo descartada. */ });
+  effectButtons.forEach((button, index) => button.removeEventListener("click", effectHandlers[index]));
+  demoFeedback.reset();
   themeSelect.removeEventListener("change", selectTheme);
   controls.remove();
   renderer?.dispose();
@@ -354,6 +399,7 @@ async function start(): Promise<void> {
     await initRenderer();
     if (disposed) return;
     closedButton.disabled = snapshotButton.disabled = gallerySelect.disabled = false;
+    effectButtons.forEach(button => { button.disabled = false; });
     let previous = performance.now();
     function draw(now: number): void {
       if (disposed) return;
@@ -372,7 +418,7 @@ async function start(): Promise<void> {
           grid: [...gallery.grid],
         };
       }
-      renderer!.render(renderedView, dt);
+      renderer!.render({ ...renderedView, feedback: demoFeedback.state(now) }, dt);
       previous = now;
       frame = requestAnimationFrame(draw);
     }

@@ -9,6 +9,7 @@ import { createGameSocket, type WebSocketFactory } from "./net/socket";
 import { buildHud, buildViewState, createGridTracker, emptyHud, type Killfeed,
   type ViewState } from "./net/viewstate";
 import { Minimap } from "./render/minimap";
+import { createPlayerFeedback } from "./render/playerFeedback";
 import { BOSS_DYING_S } from "./rules";
 import type { EventMessage, GridCell, RoomOptions, ServerMessage, Snapshot,
   WelcomeMessage } from "./types";
@@ -58,6 +59,7 @@ export function createMountGame(deps: GameDeps) {
     let pinger: ReturnType<typeof setInterval> | null = null;
 
     const minimap = opts.minimapCanvas ? new Minimap(opts.minimapCanvas) : null;
+    const feedback = createPlayerFeedback();
     const audio = (deps.createAudio ?? createGameAudio)();
     let audioReady = false;
     let unlocking = false;
@@ -69,6 +71,7 @@ export function createMountGame(deps: GameDeps) {
     }
 
     function syncAudio(): void {
+      if (!audioActive()) feedback.clearTransient();
       previousPosition = null;
       stepDistance = 0;
       if (audioReady && audioActive()) audio.startMusic();
@@ -207,6 +210,7 @@ export function createMountGame(deps: GameDeps) {
     // vem também em cada Reconnection: o laço recomeça o seq, o Renderer não é refeito
     function onWelcome(message: WelcomeMessage): void {
       welcome = message;
+      feedback.reset();
       trackGrid = createGridTracker(message.map.grid);
       interpolator = createInterpolator(message.user_id); // cada Reconnection começa um buffer novo
       try {
@@ -244,9 +248,20 @@ export function createMountGame(deps: GameDeps) {
       view = buildViewState(next, trackGrid(next.grid_delta), welcome.user_id, welcome.room.mode);
       interpolator?.push(next, performance.now()); // o mesmo relógio do nowMs do rAF
       snapshot = next;
+      const localId = welcome.user_id;
+      const localPlayer = next.players.find(player => player.id === localId);
+      if (localPlayer) {
+        feedback.snapshot(localPlayer.alive, welcome.room.mode, performance.now());
+        if (status !== "running" || ending !== null || document.hidden) feedback.clearTransient();
+      }
     }
 
     function onEvent(message: EventMessage): void {
+      if (audioActive() && message.name === "player_hit"
+          && message.data.target === welcome?.user_id
+          && message.data.amount + message.data.absorbed > 0) {
+        feedback.hit(performance.now());
+      }
       if (audioReady && audioActive() && message.name === "player_hit"
           && (message.data.target === welcome?.user_id || message.data.by === welcome?.user_id)) {
         audio.playHit();
@@ -257,6 +272,7 @@ export function createMountGame(deps: GameDeps) {
         emitHud();
       } else if (message.name === "game_over" && ending === null) {
         audio.stopAll();
+        feedback.clearTransient();
         const { result, winner_ids, reason } = message.data;
         const end: EndResult = { result, winnerIds: winner_ids, reason };
         // espera a animação de morte do Boss antes da tela de fim (mount-game.md §5.5);
@@ -319,7 +335,9 @@ export function createMountGame(deps: GameDeps) {
         // os outros, os Enemies, o Boss e os Projectiles a now − 100 ms (F2.8)
         const others = interpolator?.sample(nowMs) ?? null;
         const rendered = others === null ? drawing : { ...drawing, ...others };
-        renderer.render(rendered, dtS);
+        const showingFeedback = status === "running" && ending === null && !document.hidden;
+        renderer.render({ ...rendered,
+          feedback: showingFeedback ? feedback.state(nowMs) : undefined }, dtS);
         minimap?.render(rendered, canvas.clientWidth / canvas.clientHeight || 1);
       }
     }
@@ -331,6 +349,7 @@ export function createMountGame(deps: GameDeps) {
       unmount() {
         if (unmounted) return;
         unmounted = true;
+        feedback.reset();
         if (frameId !== null) cancelAnimationFrame(frameId);
         if (ending !== null) clearTimeout(ending);
         canvas.removeEventListener("click", unlockAudio);
