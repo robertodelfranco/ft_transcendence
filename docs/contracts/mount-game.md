@@ -209,6 +209,7 @@ type ProjectileView = {
 type DoorView = { x: number; y: number; open: boolean; locked: boolean };
 type CameraView = { x: number; y: number; dx: number; dy: number; pitch: number };
 interface ViewState {
+  feedback?: { damage: number; dead: boolean; respawn: number };
   localPlayer: PlayerView;
   otherPlayers: PlayerView[];
   enemies: EnemyView[];
@@ -282,3 +283,22 @@ Fechar FOV e política de resize com documentação oficial e teste visual: o va
 Propor capturar falhas de `init` na integração, liberar recursos parciais e emitir `onHud` com código traduzível; o código de asset ainda precisa entrar no catálogo de erros. Confirmar quais assets são obrigatórios e testar URL ausente, imagem corrompida e falha de som. Callback de erro sozinho não comprova console limpo no navegador.
 
 Meta da arquitetura: 60 fps com 5 Players, 20 Enemies e 10 Projectiles, e dez trocas de Room sem crescimento de memória. Medir com Boss, registrar máquina, navegador, resolução interna, sombras e bloom. Não há medição de FPS, memória ou luzes neste documento; nenhum número de luzes é garantia de performance.
+
+
+### F3.7 — Feedback visual local (#194)
+
+O `ViewState` admite o campo opcional `feedback`, com `damage` e `respawn` como
+intensidades visuais entre 0 e 1 e `dead` como estado visual de morte. Ausente
+significa nenhum efeito. Esse campo é derivado no cliente, não faz parte do
+Snapshot, do protocolo ou do `HudState`; não altera dano, posição ou regras.
+
+O mount ativa dano por `player_hit` dirigido ao Player local, inclusive quando
+absorvido pela Armor. A vida/morte é lida do Snapshot. A transição de morto para
+vivo produz feedback de retorno só no PvP; o welcome de reconexão restaura o
+estado sem gerar transiente. Desconexão, término e aba oculta cancelam transientes;
+unmount descarta o estado. A HUD mantém os avisos textuais existentes.
+
+O Renderer desenha bordas transparentes depois da cena e da mão, preservando o
+centro e a visão do companheiro no coop. Com `prefers-reduced-motion: reduce`,
+só a borda estática de morte permanece. Não são criados textos no canvas nem
+atalhos de teclado. Limites e roteiro: [efeitos-f3.7.md](../efeitos-f3.7.md).

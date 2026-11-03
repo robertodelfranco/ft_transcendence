@@ -10,10 +10,13 @@ import { HandOverlay } from "./handOverlay";
 import { Billboards } from "./billboards";
 import { Torches } from "./torches";
 import { FireballParticles } from "./fireballParticles";
+import { PlayerFeedbackOverlay } from "./playerFeedbackOverlay";
+import type { PlayerFeedbackState } from "./playerFeedback";
 
 export type GameMap = { grid: string[] };
 export type CameraView = Pick<PlayerSnapshot, "x" | "y" | "dx" | "dy"> & { pitch: number };
 export interface ViewState {
+  feedback?: PlayerFeedbackState; // visual local; ausente equivale a nenhum efeito
   localPlayer: PlayerSnapshot;
   otherPlayers: PlayerSnapshot[];
   enemies: Snapshot["enemies"];
@@ -43,6 +46,7 @@ export class ThreeRenderer implements Renderer {
   private billboards: Billboards | null = null;
   private torches: Torches | null = null;
   private fireballParticles: FireballParticles | null = null;
+  private playerFeedback: PlayerFeedbackOverlay | null = null;
   private resources: Array<{ dispose(): void }> = [];
   private disposed = false;
 
@@ -138,6 +142,8 @@ export class ThreeRenderer implements Renderer {
       this.doorTexture = assets.door;
       this.handOverlay = new HandOverlay(assets.hand, assets.fireball);
       this.resources.push(this.handOverlay);
+      this.playerFeedback = new PlayerFeedbackOverlay();
+      this.resources.push(this.playerFeedback);
       const composer = new EffectComposer(this.renderer);
       this.resources.push(composer);
       const renderPass = new RenderPass(scene, camera);
@@ -182,6 +188,7 @@ export class ThreeRenderer implements Renderer {
     // Bloom e conversão de cor da cena primeiro; a mão continua nítida por cima.
     this.composer.render(dt);
     this.handOverlay?.render(this.renderer);
+    this.playerFeedback?.render(this.renderer, view.feedback);
   }
 
   resize(width: number, height: number): void {
@@ -218,6 +225,7 @@ export class ThreeRenderer implements Renderer {
     this.billboards = null;
     this.torches = null;
     this.fireballParticles = null;
+    this.playerFeedback = null;
     this.renderer.dispose();
   }
 }
