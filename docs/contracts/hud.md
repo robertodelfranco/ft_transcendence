@@ -1,6 +1,7 @@
 # F4.3 — Especificação da HUD coop e PvP
 
-**Data:** 22/10/2026. **Estado:** proposta de conteúdo pronta para revisão. Revisão da F7.6 (Caio) registrada em 26/10, §11: as cinco decisões estão fechadas (1 e 4 entraram com a #168, do Augusto).
+**Data inicial:** 22/10/2026. **Conferência documental:** 03/11/2026.
+**Estado:** especificação disponível; decisões anteriores da revisão do Caio registradas na §11. Aceite integral de Caio e Augusto a confirmar pela lista da §12. As cinco decisões da §11 estão fechadas (1 e 4 entraram com a #168, do Augusto); isso não representa aprovação de todos os critérios desta entrega.
 **Escreve:** Rafael. **Revisam:** Caio (F7.6 e i18n) e Augusto (`HudState` e integração).
 Roberto revisa qualquer dúvida sobre regras; esta especificação não altera a Simulation.
 
@@ -14,14 +15,14 @@ React desenha toda a HUD em DOM, com i18n em pt-BR, en e es. O canvas contém ce
 A casca recebe `onHud` e `onEnd`; não lê Snapshot, não abre um segundo socket do jogo e não calcula dano, coleta, respawn ou vitória.
 A identidade do User local vem do contexto autenticado. O Mode vem do `HudState.mode` (§11.1); a HUD não precisa das RoomOptions. Não inferir Mode de `scoreboard === null`: isso também ocorre antes do primeiro `welcome`.
 
-Na cópia inspecionada em 22/10, `Play.tsx` é uma página provisória de conexão, `ping` chega como `null` e o jogo guarda os últimos cinco registros do feed. Estes são fatos da implementação, não aceites da F7.6.
+Na base conferida em 03/11 (`022cb09`), `Play.tsx` monta `Match`, que usa os componentes da HUD; o jogo já calcula RTT em ms e guarda os últimos cinco registros do feed. A apresentação usa o namespace `hud` nos três idiomas. A presença desses arquivos não comprova os aceites funcionais da F7.6; a §12 separa a conferência documental da revisão e do teste em navegador.
 
 ## 2. Composição e prioridade
 
 | Região | coop | pvp |
 |---|---|---|
 | Topo esquerdo | Lista de Players, HP e estado | Dois Players, Frags e relógio |
-| Topo direito | Ping e acesso à ajuda de controles | Ping e kill feed |
+| Topo direito | Ping e acesso à ajuda de controles | Ping, acesso à ajuda de controles e kill feed |
 | Centro | Aviso de conexão, morte ou erro quando necessário | Aviso de conexão, espera de respawn ou erro |
 | Rodapé esquerdo | HP, Mana, Armor e chaves do Player local | HP, Mana, Armor e chaves do Player local |
 | Rodapé direito | Área reservada para o minimapa F3.6 | Área reservada para o minimapa F3.6 |
@@ -45,7 +46,7 @@ Os recursos permanecem os do Player local quando a câmera acompanha um companhe
 Para HP dos companheiros, usar número absoluto: o contrato não fornece máximo por participante.
 Morte e desconexão são estados independentes; um Player pode estar morto e desconectado. Exibir ambos quando aplicável.
 
-Proposta visual de HP baixo: `hp > 0` e `hp / maxHp <= 0,25`, somente com máximo positivo; usar ícone/rótulo além da cor. É um limiar visual, não uma regra de dano.
+Limiar visual de HP baixo, já usado em `src/play/bars.ts`: `hp > 0` e `hp / maxHp <= 0,25`, somente com máximo positivo; usar ícone/rótulo além da cor. É um limiar visual, não uma regra de dano.
 Barra usa proporção limitada entre 0 e 1, sem alterar o número recebido. Máximo zero antes do `welcome` não gera divisão nem barra vazia de morte.
 Não sinalizar tiro disponível com base só na Mana: o contrato não informa cooldown à HUD.
 
@@ -70,12 +71,12 @@ Não sinalizar tiro disponível com base só na Mana: o contrato não informa co
 
 ## 5. Kill feed
 
-Proposta compatível com o contrato: feed visível só no PvP, com até cinco registros de morte de Player, mais recente primeiro. Não representa Kills de Enemy/Boss.
+Apresentação especificada, já usada em `src/play/KillFeed.tsx`: feed visível só no PvP, com até cinco registros de morte de Player, mais recente primeiro. Não representa Kills de Enemy/Boss.
 Cada linha resolve `by` e `victim` em `players`; se o nome não estiver disponível, usar fallback traduzido com o id. `by = null` recebe mensagem neutra de morte, sem inventar atacante.
 
 Os registros permanecem até serem substituídos ou a página desmontar; não há expiração por tempo nesta entrega. O `tick` não é horário civil.
 Não acrescentar novamente a lista inteira a cada `onHud`: ela já é o feed acumulado. Preservar registros distintos mesmo se os nomes forem iguais.
-A política de cinco linhas e a ordem visual precisam do aceite de Caio e Augusto; não mudam o tipo público.
+Cinco linhas e a ordem visual já aparecem na implementação conferida; o aceite dos consumidores continua pendente de registro na §12. Não mudam o tipo público.
 
 ## 6. Conexão, término e controles
 
@@ -119,7 +120,7 @@ Respeitar redução de movimento para efeitos visuais da HUD; dano não exige fl
 | Fim coop, vitória/derrota local PvP e empate | Resultado coerente com `winnerIds`, sem cortar a animação nem duplicar espera |
 | pt-BR, en, es; nomes longos; janela estreita; teclado | Textos traduzidos, recursos/placar acessíveis, sem Actions ao usar controles da página |
 
-Esses cenários são roteiro de validação, ainda não executado. Fixtures de `HudState` e callbacks falsos podem validar a apresentação; partida real confirma a integração.
+Esses cenários são roteiro de validação; esta conferência documental não os declara executados. Existem testes de apresentação em `src/play/*.test.tsx` e `src/pages/Play.test.tsx`, mas sua presença não comprova o resultado da execução nem a integração em partida real. A §10 preserva o registro histórico de testes da base de dados da HUD.
 
 ## 9. Revisão necessária
 
@@ -129,7 +130,7 @@ Esses cenários são roteiro de validação, ainda não executado. Fixtures de `
 | Augusto | Feed de cinco registros, RTT em ms e emissão de `onHud` apenas quando seu conteúdo muda, como implementado hoje |
 | Caio e Augusto | Recursos locais durante acompanhamento de companheiro; foco/Pointer Lock e estado de asset ainda carregando |
 
-O conteúdo está proposto; aceite funcional depende da revisão e da implementação/validação da F7.6. Não há mudança de schema, API ou protocolo nesta entrega.
+A apresentação tem implementação na base conferida, mas o aceite funcional depende da revisão e validação da F7.6. Não há mudança de schema, API ou protocolo nesta entrega.
 
 ## 10. Registro de validação — issue #142
 
@@ -157,3 +158,74 @@ Revisão do Caio na #143 (23/10), fechada aqui depois do merge. As decisões 2, 
 Motivos da decisão 1: o `welcome` chega também a cada Reconnection, então o Mode fica sempre certo, por uma fonte só. O `GET` acrescentaria carregamento, erro e corrida com o socket, e a rota muda de formato quando a partida acaba ([matches-api.md](matches-api.md), “Em aberto” 5). A ajuda do PvP descreve o objetivo sem números (§4), por isso as RoomOptions não entram no `HudState`.
 
 Motivos da decisão 4: a política de captura de teclas pertence ao jogo, e a correção cabe no `isTyping` com um `closest`, testável no `input.test.ts`. Barrar o evento na casca (`stopPropagation` em volta da HUD) espalharia a regra pelos dois lados e, se alcançasse o `keyup`, deixaria tecla de movimento presa.
+
+
+## 12. Conferência de completude da #142 — 03/11/2026
+
+### Cobertura da entrega
+
+| Requisito da issue | Onde está definido | Dados necessários disponíveis |
+|---|---|---|
+| Composição e prioridade | §2, regiões e ordem em conflito de espaço | `mode`, `status`; valores dos grupos abaixo |
+| HP, Mana, Armor e chaves | §3, barras, números, zeros e limiar de HP | `hp`, `maxHp`, `mana`, `maxMana`, `armor`, `keys` |
+| Lista de Players | §3 e coop na §4, local primeiro e estados independentes | `players`, id local do contexto autenticado |
+| Placar e relógio PvP | PvP na §4, ordem recebida e `mm:ss` sem relógio próprio | `scoreboard.players`, `scoreboard.timeLeftS`, `players` |
+| Kill feed | §5, cinco registros, mais recente primeiro e fallback de nomes | `killfeed`, `players` |
+| Morte e respawn | §4 e §6, avisos distintos por Mode | `mode`, `alive`, `status`, `maxHp` positivo para distinguir dados iniciais |
+| Conexão e erros | §6, preservação de valores e nova tentativa manual | `status`, `error`; desmontagem por `unmount` |
+| Término | §6 e §11.2, desfecho local e espera feita pelo jogo | `onEnd.result`, `winnerIds`, `reason`, id local |
+| i18n e acessibilidade | §7 e cenários da §8 | namespace `hud`, `game` para resultado/motivo e catálogo de erros da casca |
+| Vínculo com a integração | §1 e [mount-game.md §2.6](mount-game.md#26-hudstate-e-mountoptions) | [api.ts](../../frontend/game/src/api.ts) |
+
+Nenhum dos itens acima exige campo novo em `HudState`. Antes do primeiro Snapshot,
+`maxHp <= 0` não indica morte; a condição de morte exige `status = running`,
+`mode` conhecido, máximo positivo e `alive = false`, como em `src/play/notices.ts`.
+A conexão perdida tem prioridade sobre morte; o resultado substitui esses avisos.
+
+### Limites explícitos para a F7.6
+
+- Não mostrar cronômetro de respawn, identidade do companheiro observado, HP do
+  Boss ou cooldown: esses dados não estão na interface pública.
+- HP e Mana permanecem locais mesmo com a câmera acompanhando outro Player.
+- RTT é arredondado somente na apresentação. O mount já evita `onHud` repetido
+  quando o conteúdo não muda; a casca não precisa calcular um HUD por frame.
+- O minimapa é desenhado em canvas separado, opcional por `minimapCanvas` em
+  `MountOptions`, na base conferida. A HUD reserva seu espaço e não escreve nele.
+- A ajuda existe nos dois Modes e usa os objetivos da §4 sem inventar limites
+  numéricos de RoomOptions.
+- A §2 descreve prioridade em espaço limitado; conferir legibilidade e ausência
+  de sobreposição com mão/minimapa em janela estreita continua sendo aceite
+  visual, não uma garantia obtida pela leitura das classes CSS.
+
+### Registro de revisão dos consumidores
+
+| Evidência | Situação nesta conferência |
+|---|---|
+| Revisão anterior do Caio sobre Mode, desfecho, erro, foco e token | Registrada na §11; preservada sem novo aceite atribuído |
+| Implementação do Mode e do foco por Augusto | Registrada na §11, #168; não equivale a aceite integral do documento |
+| Aceite de composição, prioridades, i18n e acessibilidade por Caio | A confirmar |
+| Aceite de campos disponíveis, feed, callbacks e estados por Augusto | A confirmar |
+| Teste visual e de integração dos cenários da §8 | Sem nova evidência registrada nesta revisão documental |
+
+Pedido pronto para a revisão, a ser publicado por Rafael:
+
+> Caio e Augusto: a #142 especifica apresentação da HUD em `docs/contracts/hud.md`,
+> vinculada ao `mount-game.md`. A §12 mapeia os critérios da issue para campos já
+> existentes. Caio, confirmar composição/prioridades, avisos, i18n e acessibilidade.
+> Augusto, confirmar dados, feed, callbacks e estados de conexão/término. Se faltar
+> algum dado, registrar o cenário e o campo necessário antes de implementar.
+> As decisões anteriores da §11 foram preservadas. Esta revisão não muda código.
+
+### Validação e entrega desta revisão
+
+Conferência por leitura de `api.ts`, `mount.ts`, `Match.tsx`, `Hud.tsx`,
+`Resources.tsx`, `Players.tsx`, `Scoreboard.tsx`, `KillFeed.tsx`, `Help.tsx`,
+`Ping.tsx`, `notices.ts`, `bars.ts`, `outcome.ts` e dos catálogos `hud`.
+Nenhum comando de build, teste, Docker ou navegador foi executado nesta revisão.
+A falha de resolução dos nomes da HUD no Mac e sua correção na #190 são um assunto
+separado, sem mudança na especificação de apresentação.
+
+Um commit documental: `docs(hud): revisa cobertura e aceites da F4.3 (#142)`.
+Arquivo: `docs/contracts/hud.md`. A alteração deve entrar separada da #192.
+O fechamento da #142 depende da revisão de Caio e Augusto; esta atualização não
+atribui esse aceite nem conclui a validação funcional da F7.6 (#49).

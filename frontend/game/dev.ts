@@ -1,6 +1,7 @@
 import { createGameAudio } from "./src/audio/gameAudio";
 import { AssetLoader } from "./src/render/assets";
 import type { Assets } from "./src/render/assets";
+import { themes } from "./src/render/themes";
 import { ThreeRenderer, type ViewState } from "./src/render/renderer";
 import { galleryCamera, galleryView, type GalleryKind } from "./fixtures/billboards";
 import { applyGridDelta, buildViewState } from "./src/net/viewstate";
@@ -19,6 +20,8 @@ canvas.style.width = "100vw";
 canvas.style.height = "100vh";
 
 const welcome = example.welcome as WelcomeMessage;
+const requestedTheme = new URLSearchParams(window.location.search).get("theme");
+const theme = requestedTheme === "sewer" ? "sewer" : "dungeon";
 const snapshot = example.snapshot as Snapshot;
 const grid = applyGridDelta(welcome.map.grid, snapshot.grid_delta);
 const initialView = buildViewState(
@@ -68,6 +71,7 @@ function showPointerLockError(): void {
 const messages = {
   "pt-BR": {
     effects_description: "Efeitos locais de demonstração (PvP):", effect_hit: "Receber dano", effect_die: "Morrer", effect_respawn: "Renascer", effect_alive: "Estado da demo: vivo", effect_dead: "Estado da demo: morto",
+    theme_label: "Tema", dungeon: "Masmorra", sewer: "Esgoto",
     audio_step: "Ouvir passo", audio_fire: "Ouvir tiro", audio_hit: "Ouvir acerto", audio_music: "Alternar música", audio_unavailable: "Áudio indisponível. Tente novamente após interagir com a página.",
     gallery_label: "Galeria de entidades",
     original_snapshot: "Snapshot original",
@@ -85,6 +89,7 @@ const messages = {
   },
   en: {
     effects_description: "Local demonstration effects (PvP):", effect_hit: "Take damage", effect_die: "Die", effect_respawn: "Respawn", effect_alive: "Demo state: alive", effect_dead: "Demo state: dead",
+    theme_label: "Theme", dungeon: "Dungeon", sewer: "Sewer",
     audio_step: "Play footstep", audio_fire: "Play shot", audio_hit: "Play hit", audio_music: "Toggle music", audio_unavailable: "Audio unavailable. Try again after interacting with the page.",
     gallery_label: "Entity gallery",
     original_snapshot: "Original Snapshot",
@@ -102,6 +107,7 @@ const messages = {
   },
   es: {
     effects_description: "Efectos locales de demostración (PvP):", effect_hit: "Recibir daño", effect_die: "Morir", effect_respawn: "Reaparecer", effect_alive: "Estado de la demo: vivo", effect_dead: "Estado de la demo: muerto",
+    theme_label: "Tema", dungeon: "Mazmorra", sewer: "Alcantarillado",
     audio_step: "Escuchar paso", audio_fire: "Escuchar disparo", audio_hit: "Escuchar impacto", audio_music: "Alternar música", audio_unavailable: "Audio no disponible. Vuelve a intentarlo tras interactuar con la página.",
     gallery_label: "Galería de entidades",
     original_snapshot: "Snapshot original",
@@ -161,6 +167,25 @@ galleryOptions.forEach(value => {
 gallerySelect.disabled = true;
 galleryLabel.append(gallerySelect);
 controls.append(galleryLabel);
+const themeLabel = document.createElement("label");
+themeLabel.textContent = messages[language].theme_label;
+const themeSelect = document.createElement("select");
+for (const value of ["dungeon", "sewer"] as const) {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = messages[language][value];
+  themeSelect.append(option);
+}
+themeSelect.value = theme;
+function selectTheme(): void {
+  // Recarregar passa pelo dispose da página e mantém o Grid da fixture.
+  const url = new URL(window.location.href);
+  url.searchParams.set("theme", themeSelect.value);
+  window.location.assign(url.href);
+}
+themeSelect.addEventListener("change", selectTheme);
+themeLabel.append(themeSelect);
+controls.append(themeLabel);
 // Cliques explícitos permitem ouvir e ajustar cada som sem socket ou Action real.
 const audioControls = document.createElement("div");
 const audioHandlers: Array<() => void> = [];
@@ -352,10 +377,12 @@ function dispose(): void {
   closedButton.removeEventListener("click", showClosedDoor);
   snapshotButton.removeEventListener("click", applySnapshot);
   gallerySelect.removeEventListener("change", selectGallery);
-  audioButtons.forEach((button, index) => button.removeEventListener("click", audioHandlers[index]));
+  audioButtons.forEach((button, index) =>
+    button.removeEventListener("click", audioHandlers[index]));
   void audio.dispose().catch(() => { /* A página já está sendo descartada. */ });
   effectButtons.forEach((button, index) => button.removeEventListener("click", effectHandlers[index]));
   demoFeedback.reset();
+  themeSelect.removeEventListener("change", selectTheme);
   controls.remove();
   renderer?.dispose();
   assets?.dispose();
@@ -364,7 +391,7 @@ function dispose(): void {
 
 async function start(): Promise<void> {
   try {
-    assets = await new AssetLoader().load();
+    assets = await new AssetLoader().load(themes[theme]);
     if (disposed) {
       assets.dispose();
       return;

@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { HudState } from "../../game/src/index";
-import { nameOf } from "./players";
-import { formatClock } from "./scoreboard";
+import { nameOf } from "./playerUtils";
+import { formatClock } from "./scoreboardUtils";
 
 // Topo esquerdo no pvp (hud.md §4): nomes e Frags na ordem do scoreboard, e o relógio do Snapshot.
 // Placar null não vira 0 × 0
