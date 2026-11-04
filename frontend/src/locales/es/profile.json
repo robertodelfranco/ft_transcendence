@@ -1,11 +1,18 @@
 {
   "user": {
-    "title": "Perfil"
+    "title": "Perfil",
+    "since": "Miembro desde {{date}}",
+    "edit": "Editar perfil",
+    "addFriend": "Agregar a amigos",
+    "removeFriend": "Quitar de amigos"
   },
   "settings": {
     "title": "Configuración"
   },
   "friends": {
-    "title": "Amigos"
+    "title": "Amigos",
+    "online": "En línea",
+    "offline": "Desconectado",
+    "unknown": "Conectando…"
   }
 }

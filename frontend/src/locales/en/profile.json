@@ -1,11 +1,18 @@
 {
   "user": {
-    "title": "Profile"
+    "title": "Profile",
+    "since": "Member since {{date}}",
+    "edit": "Edit profile",
+    "addFriend": "Add friend",
+    "removeFriend": "Remove friend"
   },
   "settings": {
     "title": "Settings"
   },
   "friends": {
-    "title": "Friends"
+    "title": "Friends",
+    "online": "Online",
+    "offline": "Offline",
+    "unknown": "Connecting…"
   }
 }
