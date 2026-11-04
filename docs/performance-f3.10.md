@@ -2,20 +2,13 @@
 
 ## Estado
 
-Cena de carga integrada em 04/11/2026 à base `1e0b6c5`, que já contém
-Themes (#190), correção dos nomes da HUD, efeitos do Player (#194) e Maps PvP
-(#197). A branch `192-performance-limpeza` foi atualizada por fast-forward,
-sem criação de commit pelo agente.
+Medido em 04/11/2026: a cena de carga roda a 60 FPS nos dois Themes, com resize
+e console corretos. As dez trocas de Room acharam um vazamento: cada saída deixava
+um `WebGLRenderer` inteiro preso na memória. A causa e a correção estão em
+[Resultados](#resultados).
 
-Na versão anterior, Rafael reportou 60,2 FPS, confirmou resize e console corretos
-e informou que o teste de trocas de Room passou. Não foram fornecidos os valores
-dos snapshots de memória. Esses retornos são preservados como relato do autor,
-sem apresentá-los como medição independente ou como validação da versão integrada.
-
-Em 04/11/2026, após receber o roteiro final, Rafael confirmou todos os itens
-validados na versão integrada: carga nos dois Themes, build, lint, testes
-completos e dez trocas de Room. Validação local reportada pelo autor; o agente
-não executou build, lint, testes, Docker ou navegador nesta integração.
+A cena de carga foi integrada à base `1e0b6c5`, que já contém Themes (#190),
+efeitos do Player (#194) e Maps PvP (#197).
 
 ## Cena de carga
 
@@ -81,75 +74,103 @@ Renderer não comprova o ciclo completo de socket, áudio, timers e listeners.
 O Renderer já possui uma lista de recursos descartáveis. AssetLoader é dono das
 texturas; o adapter descarta Renderer antes dos assets e trata unmount durante a
 carga. O mount cancela RAF, timers, socket, entrada e ResizeObserver. A inspeção
-não comprova ausência de vazamentos; correções dependerão de evidências.
+não pegou o vazamento dos billboards: ele só apareceu no heap snapshot.
 
 ## Resultados
 
-### Cena de carga — retorno do Rafael
+Medições de 04/11/2026, na máquina do Roberto. Não é um PC da 42: lá, o teste
+de 01/11 (N2) mediu 60 FPS numa partida real, no mesmo Chrome, mas a cena de
+carga ainda não rodou num PC da 42.
 
-- FPS reportado: 60,2.
-- Resize/maximização: confirmado como correto pelo autor.
-- Console: confirmado como correto pelo autor.
-- Ambiente completo (Chrome, resolução, energia) e duração exata não registrados.
-- Build, lint e testes completos confirmados pelo autor após integração.
-- Dois Themes: carga, resize e console confirmados pelo autor após integração.
-- FPS por Theme e demais métricas numéricas da repetição não fornecidos;
-  60,2 é o valor reportado na primeira medição, não uma nova medição dos dois Themes.
+| Item | Valor |
+| --- | --- |
+| GPU | AMD Radeon integrada (radeonsi renoir), via ANGLE OpenGL 4.6 |
+| SO | Debian 13, Linux 6.12 |
+| Navegador | Chrome 156.0.8078.79 (mesma versão dos PCs da 42), headless com GPU |
+| Janela | 1280×720 CSS, escala 1 |
 
-### Memória — relato recebido; valores não registrados
+### Build, lint e testes
 
-Rafael informou que o teste passou, sem fornecer valores das capturas. A tabela
-abaixo registra a ausência de valores fornecidos, sem fabricar evidência.
-O autor confirmou novamente a aprovação das dez trocas na base integrada,
-que inclui o ciclo de vida do overlay do Player.
+`npm run build`, `npm run lint` e `npm test` passam (472 testes, mais o novo
+`billboards.test.ts`). Os testes pedem Node 22 ou mais novo, porque o jsdom usa
+uma função do `undici` que o Node 20 não tem; o `.nvmrc` pede 24.
 
-Na aba Memory do Chrome DevTools, usar Heap snapshot e o botão de coleta de
-lixo antes de cada captura. Comparar sempre após sair da Room, sem recarregar
-a página. Evitar guardar objetos do jogo no console, que pode mantê-los vivos.
+### FPS na cena de carga
 
-| Captura | Momento | Tamanho do heap após coleta | Canvas/AudioContext retidos | Observações |
-|---|---|---|---|---|
-| Base | Após uma entrada/saída de aquecimento | Não informado | Não informado | Aprovação geral reportada pelo autor |
-| 1 | Após mais uma entrada/saída | Não informado | Não informado | Aprovação geral reportada pelo autor |
-| 5 | Após cinco entradas/saídas | Não informado | Não informado | Aprovação geral reportada pelo autor |
-| 10 | Após dez entradas/saídas | Não informado | Não informado | Aprovação geral reportada pelo autor |
+60 amostras de 1 s em cada Theme, depois de 10 s de aquecimento:
 
-Comparar os snapshots com Comparison e investigar objetos que continuam vivos.
-Se não for possível iniciar novas Rooms na mesma aba, registrar o impedimento;
-recarregar a página não serve como evidência do unmount.
-Não fechar #192 apenas com o resultado de FPS.
+| Theme | FPS médio | Mínimo | Amostras abaixo de 58 |
+| --- | --- | --- | --- |
+| dungeon | 60,0 | 60 | 0 |
+| sewer | 60,0 | 60 | 0 |
 
-### Resultado na base integrada — confirmação do autor em 04/11/2026
+No resize para 800×600, 1920×1080 e de volta a 1280×720, o buffer do canvas
+acompanha o tamanho CSS e a proporção da câmera se mantém. Console sem warnings
+nem erros.
 
-| Verificação | Resultado |
-|---|---|
-| Build | Aprovado, conforme retorno do Rafael |
-| Lint | Aprovado, conforme retorno do Rafael |
-| Testes completos (game e shell) | Aprovado, conforme retorno do Rafael |
-| Dungeon: FPS, resize e console | Aprovado, conforme retorno do Rafael |
-| Sewer: FPS, resize e console | Aprovado, conforme retorno do Rafael |
-| Dez entradas/saídas na versão integrada | Aprovado, conforme retorno do Rafael |
+### Memória: dez entradas e saídas de Room
 
-Comandos do frontend incluídos no roteiro confirmado pelo autor:
+Cada ciclo cria uma Room co-op com 1 Player, entra na `/play`, espera 6 s, sai
+pelo link do topo (navegação do SPA, sem recarregar a aba) e espera o Grace
+period de 30 s liberar o Player. Antes de cada captura, três coletas de lixo e
+um heap snapshot pelo DevTools Protocol. Um ciclo de aquecimento vem antes da
+base.
+
+**Antes da correção** (`7c171b4`): cada saída deixa preso um `WebGLRenderer`
+inteiro, com o contexto WebGL, o canvas e a tela da partida.
+
+| Ciclo | Heap (MB) | `WebGL2RenderingContext` | `HTMLCanvasElement` | Nós de DOM |
+| --- | --- | --- | --- | --- |
+| base | 6,22 | 2 | 4 | 355 |
+| 1 | 6,67 | 3 | 6 | 465 |
+| 2 | 7,05 | 4 | 8 | 575 |
+| 3 | 7,23 | 5 | 10 | 685 |
+| 5 | 7,52 | 7 | 14 | 905 |
+| 10 | 8,34 | 12 | 24 | 1455 |
+
+**Causa:** todo `THREE.Sprite` usa a mesma geometria, guardada no escopo do
+módulo do Three.js (`let _geometry` em `three/src/objects/Sprite.js`). Cada
+`WebGLRenderer` que a desenha guarda os buffers dela num `WeakMap` interno, com a
+geometria como chave. Como ela nunca recebia `dispose()`, a chave nunca morria e
+o renderer antigo ficava preso. O caminho de retenção no snapshot:
+módulo → `_geometry.index` → `WeakMap` → `WebGLBuffer` → `WebGL2RenderingContext`
+→ `<canvas>`.
+
+**Correção:** `Billboards` guarda a geometria do primeiro Sprite que cria e chama
+`dispose()` nela no próprio `dispose()`. O evento faz cada renderer soltar os
+buffers dela; a geometria continua usável, e o próximo renderer a reenvia para a
+GPU no primeiro draw. O `billboards.test.ts` confere que o evento dispara.
+
+**Depois da correção:** contextos, canvas, nós de DOM e listeners ficam iguais
+nos dez ciclos.
+
+| Ciclo | Heap (MB) | `WebGL2RenderingContext` | `HTMLCanvasElement` | Nós de DOM | Listeners |
+| --- | --- | --- | --- | --- | --- |
+| base | 5,93 | 1 | 2 | 245 | 173 |
+| 1 | 6,28 | 1 | 2 | 245 | 173 |
+| 2 | 6,55 | 1 | 2 | 245 | 173 |
+| 3 | 6,65 | 1 | 2 | 245 | 173 |
+| 5 | 6,77 | 1 | 2 | 245 | 173 |
+| 10 | 7,19 | 1 | 2 | 245 | 173 |
+
+O heap JS ainda sobe cerca de 0,13 MB por ciclo, contra 0,21 MB antes. Nenhum
+recurso nativo acompanha essa subida, e a origem não foi investigada: pode ser
+código compilado pelo V8 ou estado que o lobby acumula.
+
+**Não coberto:** o `AudioContext` não chegou a ser criado no Chrome headless
+(0 em todos os ciclos), então a liberação do áudio não foi medida. A saída
+durante o carregamento, a reconexão e o fim normal da Room (item 6 do roteiro)
+também ficaram de fora.
+
+### Como reproduzir
 
 ```bash
-cd /Users/rafaelheringer/42sp/m06/ft_transcendence/frontend
+cd frontend
 npm run build
 npm run lint
 npm test
 ```
 
-Para a demo, rodar `npm run dev` e usar a porta indicada pelo Vite. Para as trocas,
-usar o projeto completo da mesma branch, sem recarregar a aba entre as Rooms.
-Não atribuir o resultado dos checks antigos aos checks após a integração.
-
-## Entrega
-
-Commit sugerido: `feat(game): adiciona cena de carga para validar performance (F3.10)`.
-Arquivos: `frontend/game/dev.ts`, `frontend/game/fixtures/stress.ts`
-e `docs/performance-f3.10.md`. Sem commit, push ou PR pelo agente.
-
-
-Um PR separado da branch `192-performance-limpeza`, com os três arquivos acima.
-Com os aceites confirmados pelo autor, usar `Closes #192` no corpo do PR. A correção da HUD e os demais merges já
-são parte da base; não entram como mudanças novas no PR de performance.
+Para a cena de carga, rodar `npm run dev` e abrir os links da seção
+[Cena de carga](#cena-de-carga). Para as trocas, usar o projeto completo da mesma
+branch, sem recarregar a aba entre as Rooms.
