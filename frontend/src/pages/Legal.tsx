@@ -22,7 +22,7 @@ export default function Legal({ page }: { page: LegalPage }) {
   usePageTitle(`footer.${page}`);
 
   return (
-    <article className="mx-auto max-w-prose">
+    <article className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-bold text-torch">{t(`footer.${page}`)}</h1>
       <Markdown components={components}>{legalText(page, i18n.resolvedLanguage)}</Markdown>
     </article>
