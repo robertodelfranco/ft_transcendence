@@ -14,6 +14,18 @@ export interface PrivateUser extends PublicUser {
   providers: string[];
 }
 
+// GET /api/users/{id} (i18n.md §2.7): o perfil é PublicUser até para o próprio User
+export interface ProfileUser extends PublicUser {
+  is_friend: boolean; // quem pede tem este User como amigo
+  is_me: boolean;
+}
+
+// GET /api/users/me/friends: o online vale no momento do GET; depois, quem atualiza é o presence
+export interface Friend extends PublicUser {
+  online: boolean;
+  since: string;
+}
+
 // PATCH /api/users/me (i18n.md §2.7): só o que muda, ao menos um campo
 export interface ProfileChanges {
   username?: string;

@@ -1,0 +1,11 @@
+{
+  "user": {
+    "title": "Profile"
+  },
+  "settings": {
+    "title": "Settings"
+  },
+  "friends": {
+    "title": "Friends"
+  }
+}

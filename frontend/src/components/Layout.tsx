@@ -31,9 +31,14 @@ export default function Layout() {
           {t("app.name")}
         </Link>
         <div className="flex items-center gap-4">
-          {status === "authenticated" && (
+          {status === "authenticated" && user && (
             <>
-              <span className="text-sm">{user?.username}</span>
+              {/* o nome leva ao próprio perfil: mostra quem entrou e é o caminho para ele */}
+              <nav aria-label={t("nav.label")} className="flex items-center gap-4 text-sm">
+                <Link to={`/users/${user.id}`} className={linkClass}>{user.username}</Link>
+                <Link to="/friends" className={linkClass}>{t("nav.friends")}</Link>
+                <Link to="/settings" className={linkClass}>{t("nav.settings")}</Link>
+              </nav>
               <button
                 type="button"
                 onClick={handleLogout}
