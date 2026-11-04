@@ -25,6 +25,20 @@
     "title": "Amigos",
     "online": "En línea",
     "offline": "Desconectado",
-    "unknown": "Conectando…"
+    "unknown": "Conectando…",
+    "count_one": "{{count}} amigo",
+    "count_other": "{{count}} amigos",
+    "empty": "Todavía no agregaste a nadie. Usa la búsqueda de abajo.",
+    "remove": "Quitar a {{username}} de amigos",
+    "removeShort": "Quitar",
+    "search": {
+      "heading": "Agregar amigos",
+      "label": "Buscar por nombre de usuario",
+      "hint": "Al menos 2 letras, números o _.",
+      "empty": "No se encontró a nadie.",
+      "add": "Agregar",
+      "addNamed": "Agregar a {{username}} a amigos",
+      "isFriend": "Ya es amigo"
+    }
   }
 }

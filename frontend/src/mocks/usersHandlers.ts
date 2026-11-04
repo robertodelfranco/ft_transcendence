@@ -47,6 +47,25 @@ export const usersHandlers = [
   http.delete("/api/users/me/avatar", () =>
     HttpResponse.json({ ...authResponse.user, avatar_url: "/media/avatars/default.png" })),
 
+  // A lista de amigos e a busca, em ordem de username como na API. Ninguém está online no mock
+  http.get("/api/users/me/friends", () => HttpResponse.json({
+    items: [...friends]
+      .map(([id, since]) => ({ ...findUser(id)!, online: false, since }))
+      .sort((a, b) => a.username.localeCompare(b.username)),
+  })),
+
+  http.get("/api/users", ({ request }) => {
+    const params = new URL(request.url).searchParams;
+    const prefix = params.get("search") ?? "";
+    const limit = Number(params.get("limit") ?? 10);
+    return HttpResponse.json({
+      items: users.items
+        .filter((user) => user.username.startsWith(prefix))
+        .sort((a, b) => a.username.localeCompare(b.username))
+        .slice(0, limit),
+    });
+  }),
+
   http.get("/api/users/:userId", ({ params }) => {
     const user = findUser(params.userId);
     if (!user)

@@ -25,6 +25,20 @@
     "title": "Friends",
     "online": "Online",
     "offline": "Offline",
-    "unknown": "Connecting…"
+    "unknown": "Connecting…",
+    "count_one": "{{count}} friend",
+    "count_other": "{{count}} friends",
+    "empty": "You haven't added anyone yet. Use the search below.",
+    "remove": "Remove {{username}} from friends",
+    "removeShort": "Remove",
+    "search": {
+      "heading": "Add friends",
+      "label": "Search by username",
+      "hint": "At least 2 letters, numbers or _.",
+      "empty": "No one found.",
+      "add": "Add",
+      "addNamed": "Add {{username}} as a friend",
+      "isFriend": "Already a friend"
+    }
   }
 }
