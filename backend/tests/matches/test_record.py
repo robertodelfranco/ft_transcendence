@@ -1,5 +1,6 @@
 # backend/tests/matches/test_record.py
-# Fim de partida no banco (rooms.md §2.5 e §2.6): record_match_result uma vez só e abort_unfinished.
+# Fim de partida no banco (rooms.md §2.5 e §2.6): record_match_result uma vez só, abort_unfinished
+# e o MatchDetail que a tela de resultado lê (matches-api.md §2.4).
 import asyncio
 import uuid
 from contextlib import asynccontextmanager
@@ -12,6 +13,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.auth.models import User
+from app.auth.schemas import DEFAULT_AVATAR_URL
+from app.auth.security import create_access_token
 from app.game import MatchOutcome, PlayerOutcome
 from app.matches.models import Match, MatchPlayer, PlayerStats, UserAchievement
 from app.matches.results import abort_unfinished, record_match_result
@@ -123,6 +126,7 @@ async def test_pvp_result_keeps_won_per_player_and_leaves_elo_and_xp_for_f5_5(db
 
 	rows = await match_players(db_session, match_id)
 	assert [row.won for row in rows] == [True, False]
+	# TODO F5.5 (#157): troque pelo Elo e XP do progression.md §5–7 quando a F5.5 gravar os dois
 	assert {(row.elo_before, row.elo_after, row.xp_gained) for row in rows} == {(None, None, 0)}
 
 
@@ -250,3 +254,88 @@ async def test_abort_after_the_result_changes_nothing(db_session, sessions):
 	assert await abort_unfinished(match_id, sessions=sessions) == 0
 
 	assert await status_of(db_session, match_id) == ("finished", "boss_defeated")
+
+
+# ---------- GET /api/matches/{id}/result ----------
+
+DETAIL_KEYS = {"match_id", "created_by", "mode", "map", "status", "options", "started_at", "ended_at",
+	"duration_s", "result", "reason", "players"}
+
+
+def bearer(app, user_id: int) -> dict[str, str]:
+	secret = app.state.settings.jwt_secret.get_secret_value()
+	return {"Authorization": f"Bearer {create_access_token(user_id, secret, 900)}"}
+
+
+async def test_result_of_a_finished_coop_match_is_open_to_any_logged_user(client, app, db_session, sessions):
+	*ids, viewer = await new_users(db_session, "akita", "caio", "rafael", "augusto")
+	match_id = await new_match(db_session, ids[0])
+	outcome = coop(ids)
+	await record_match_result(match_id, outcome, ENDED, sessions=sessions)
+
+	# quem pede não jogou: o link do histórico de terceiros abre esta rota (decisão 7)
+	response = await client.get(f"/api/matches/{match_id}/result", headers=bearer(app, viewer))
+
+	assert response.status_code == 200
+	body = response.json()
+	assert body.keys() == DETAIL_KEYS
+	assert {key: body[key] for key in DETAIL_KEYS - {"players"}} == {
+		"match_id": match_id, "created_by": ids[0], "mode": "coop", "map": "arena",
+		"status": "finished", "options": {}, "started_at": "2026-10-04T18:02:11Z",
+		"ended_at": "2026-10-04T18:09:47Z", "duration_s": 456, # 13680 Ticks a 30 Hz
+		"result": "win", "reason": "boss_defeated"}
+	# em ordem de user_id; elo é sempre null no coop
+	# TODO F5.5 (#157): xp_gained ainda é o default 0. Quando o record_match_result gravar o XP,
+	# este teste quebra de propósito: troque o 0 pelo XP do progression.md §5 para cada Player
+	assert body["players"] == [
+		{**asdict(p), "username": name, "avatar_url": DEFAULT_AVATAR_URL, "xp_gained": 0,
+			"elo_before": None, "elo_after": None}
+		for p, name in zip(outcome.players, ("akita", "caio", "rafael"))]
+
+
+async def test_pvp_loser_sees_won_false_even_with_result_win(client, app, db_session, sessions):
+	ids = await new_users(db_session, "akita", "roberto")
+	match_id = await new_match(db_session, ids[0], mode="pvp")
+	await record_match_result(match_id, pvp(ids), ENDED, sessions=sessions)
+
+	body = (await client.get(f"/api/matches/{match_id}/result", headers=bearer(app, ids[1]))).json()
+
+	# result é o desfecho da Room; quem ganhou é players[].won (decisão 4)
+	assert (body["mode"], body["result"], body["reason"], body["duration_s"]) == (
+		"pvp", "win", "frag_limit", 155)
+	assert [p["won"] for p in body["players"]] == [True, False]
+
+
+@pytest.mark.parametrize("status, code", [
+	("lobby", "match_not_finished"),
+	("running", "match_not_finished"), # o game_over já saiu, mas a gravação ainda não terminou
+	("aborted", "match_aborted"),
+])
+async def test_a_match_without_result_is_409(client, app, db_session, status, code):
+	(host,) = await new_users(db_session, "akita")
+	match_id = await new_match(db_session, host, status=status)
+
+	response = await client.get(f"/api/matches/{match_id}/result", headers=bearer(app, host))
+
+	assert response.status_code == 409
+	assert response.json()["error"]["code"] == code
+
+
+async def test_an_unknown_match_is_404(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+	# o maior id do BIGINT: passa na validação e não existe
+	response = await client.get(f"/api/matches/{2**63 - 1}/result", headers=bearer(app, user))
+
+	assert response.status_code == 404
+	assert response.json()["error"]["code"] == "match_not_found"
+
+
+async def test_an_id_beyond_bigint_is_422_not_500(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+	response = await client.get(f"/api/matches/{2**63}/result", headers=bearer(app, user))
+	assert response.status_code == 422
+
+
+async def test_result_needs_a_session(client):
+	response = await client.get("/api/matches/1/result")
+	assert response.status_code == 401

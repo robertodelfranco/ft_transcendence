@@ -1,16 +1,21 @@
-"""Corpo do POST /api/matches (matches-api.md §2.2, room-options.md §2.1)."""
+"""Corpo do POST /api/matches (matches-api.md §2.2, room-options.md §2.1) e o MatchDetail (§2.4)."""
+from datetime import datetime
 from typing import Annotated, Any, Literal
 
+from fastapi import Path
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.core.errors import ApiError, validation_fields
 from app.game.state import Mode, PickupOptions, RoomOptions
+from app.matches.models import Reason, Result
 
 
 # os defaults saem da Simulation (fonte única); aqui só entram os limites
 _DEFAULT = RoomOptions()
 
 MapName = Annotated[str, Field(pattern=r"^[a-z0-9_]+$")]
+# o id é BIGINT no Postgres: acima disso o asyncpg recusa o parâmetro, e a rota daria 500
+MatchId = Annotated[int, Path(ge=1, le=2**63 - 1)]
 
 
 class Input(BaseModel):
@@ -60,3 +65,40 @@ def parse_options(mode: Mode, raw: dict[str, Any]) -> RoomOptions:
 
 class ReadyIn(Input):
 	ready: bool
+
+
+# ---------- MatchDetail (matches-api.md §2.4) ----------
+
+class MatchPlayerRow(BaseModel):
+	user_id: int
+	username: str
+	avatar_url: str
+	won: bool
+	survived: bool
+	disconnected_at_end: bool
+	kills: int
+	frags: int
+	deaths: int
+	damage_dealt: int
+	damage_taken: int
+	armor_absorbed: int
+	keys_collected: int
+	potions_used: int
+	xp_gained: int
+	elo_before: int | None # só no pvp
+	elo_after: int | None
+
+
+class MatchDetail(BaseModel):
+	match_id: int
+	created_by: int
+	mode: Mode
+	map: str
+	status: Literal["finished"] # lobby, running e aborted são 409
+	options: dict[str, Any] # as RoomOptions normalizadas, como gravadas no create
+	started_at: datetime
+	ended_at: datetime
+	duration_s: int # já convertido de Ticks: a tela não conhece o TICK_RATE (decisão 5)
+	result: Result # desfecho da Room; quem ganhou é players[].won (decisão 4)
+	reason: Reason
+	players: list[MatchPlayerRow] # em ordem de user_id
