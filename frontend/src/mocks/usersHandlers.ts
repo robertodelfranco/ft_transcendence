@@ -7,9 +7,11 @@ const me = authResponse.user;
 
 // Amizade unilateral do User do mock: friend_id → since. O roberto já é amigo
 let friends = new Map<number, string>();
+let avatarUploads = 0; // cada envio ganha um nome novo, como no backend
 
 export function resetMockUsers(): void {
   friends = new Map([[3, "2026-10-20T18:00:00Z"]]);
+  avatarUploads = 0;
 }
 resetMockUsers();
 
@@ -35,6 +37,15 @@ export const usersHandlers = [
     const changes = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json({ ...authResponse.user, ...changes });
   }),
+
+  // O PUT devolve o PrivateUser com um avatar novo; o DELETE volta ao padrão
+  http.put("/api/users/me/avatar", () => {
+    avatarUploads += 1;
+    return HttpResponse.json({ ...authResponse.user, avatar_url: `/media/avatars/7-mock${avatarUploads}.png` });
+  }),
+
+  http.delete("/api/users/me/avatar", () =>
+    HttpResponse.json({ ...authResponse.user, avatar_url: "/media/avatars/default.png" })),
 
   http.get("/api/users/:userId", ({ params }) => {
     const user = findUser(params.userId);

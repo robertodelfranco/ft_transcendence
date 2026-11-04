@@ -21,6 +21,7 @@ interface AuthContextValue {
   signup: (input: SignupInput) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (changes: ProfileChanges) => Promise<void>;
+  updateAvatar: (file: File | null) => Promise<void>;
 }
 
 // O updateProfile não terminou porque a sessão acabou ou trocou de conta: não é erro para mostrar
@@ -45,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // com o token da próxima conta nem troca o user dela com uma resposta atrasada
   const profileQueue = useRef<Promise<unknown>>(Promise.resolve());
   const profileAbort = useRef<AbortController>(null);
-  const profileSaves = useRef(0); // quantos PATCHes já gravaram: a renovação compara antes e depois
+  const profileSaves = useRef(0); // quantos pedidos da fila já gravaram: a renovação compara antes e depois
   const endProfileQueue = useCallback(() => {
     profileAbort.current?.abort();
     profileAbort.current = null; // o próximo updateProfile já é da sessão nova
@@ -152,17 +153,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [endProfileQueue]);
 
-  // PATCH /api/users/me (i18n.md §2.7): o PrivateUser da resposta passa a ser o da sessão.
-  // Um PATCH por vez, na ordem dos cliques: em paralelo, o que chega por último no servidor
-  // vence, e o perfil pode guardar uma escolha diferente da que está na tela
-  const updateProfile = useCallback((changes: ProfileChanges) => {
+  // Toda mudança no perfil passa por esta fila (i18n.md §2.7), e o PrivateUser da resposta passa a
+  // ser o da sessão. Um pedido por vez, na ordem dos cliques: em paralelo, o que chega por último no
+  // servidor vence, e a resposta de um pode trazer o idioma ou o avatar de antes do outro
+  const enqueueProfile = useCallback((path: string, init: RequestInit) => {
     const { signal } = (profileAbort.current ??= new AbortController());
     const update = profileQueue.current.then(async () => {
-      const user = await apiFetch<PrivateUser>("/api/users/me", {
-        method: "PATCH",
-        body: JSON.stringify(changes),
-        signal,
-      }).catch((error: unknown) => {
+      const user = await apiFetch<PrivateUser>(path, { ...init, signal }).catch((error: unknown) => {
         throw signal.aborted ? new ProfileUpdateCancelled() : error;
       });
       if (signal.aborted) // a resposta chegou inteira, mas a sessão trocou antes de chegar aqui
@@ -170,9 +167,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profileSaves.current += 1;
       setSession((current) => (current ? { ...current, user } : current));
     });
-    profileQueue.current = update.catch(() => undefined); // um PATCH que falhou não trava os próximos
+    profileQueue.current = update.catch(() => undefined); // um pedido que falhou não trava os próximos
     return update;
   }, []);
+
+  // PATCH /api/users/me: username e idioma
+  const updateProfile = useCallback(
+    (changes: ProfileChanges) =>
+      enqueueProfile("/api/users/me", { method: "PATCH", body: JSON.stringify(changes) }),
+    [enqueueProfile],
+  );
+
+  // PUT /api/users/me/avatar com o arquivo no campo `file`, ou DELETE com null (volta ao padrão).
+  // Com FormData, o apiFetch não fixa o Content-Type: o navegador põe o multipart com o boundary
+  const updateAvatar = useCallback((file: File | null) => {
+    if (file === null)
+      return enqueueProfile("/api/users/me/avatar", { method: "DELETE" });
+    const body = new FormData();
+    body.append("file", file);
+    return enqueueProfile("/api/users/me/avatar", { method: "PUT", body });
+  }, [enqueueProfile]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -182,8 +196,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signup,
       logout,
       updateProfile,
+      updateAvatar,
     }),
-    [session, login, signup, logout, updateProfile],
+    [session, login, signup, logout, updateProfile, updateAvatar],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>

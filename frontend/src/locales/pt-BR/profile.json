@@ -10,7 +10,16 @@
     "title": "Configurações",
     "username": "Nome de usuário",
     "save": "Salvar",
-    "saved": "Alterações salvas."
+    "saved": "Alterações salvas.",
+    "avatar": {
+      "choose": "Escolher imagem",
+      "preview": "Prévia do novo avatar",
+      "upload": "Enviar avatar",
+      "cancel": "Cancelar",
+      "remove": "Remover avatar",
+      "hint": "PNG, JPEG ou WebP, até 2 MB.",
+      "saved": "Avatar atualizado."
+    }
   },
   "friends": {
     "title": "Amigos",
