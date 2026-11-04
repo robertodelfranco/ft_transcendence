@@ -7,7 +7,12 @@ import { galleryCamera, galleryView, type GalleryKind } from "./fixtures/billboa
 import { applyGridDelta, buildViewState } from "./src/net/viewstate";
 import type { Snapshot, WelcomeMessage } from "./src/types";
 import example from "./fixtures/snapshot.example.json";
+import { animateStressView, createStressView, stressGrid } from "./fixtures/stress";
 import { createPlayerFeedback } from "./src/render/playerFeedback";
+
+const stressMode = new URLSearchParams(window.location.search).get("stress") === "1";
+let resetStressSample = false;
+function resetStressMeasurement(): void { resetStressSample = true; }
 
 // Demo local F3.3/F3.4: usa o Snapshot da Simulation e uma galeria visual, sem socket.
 const canvas = document.querySelector<HTMLCanvasElement>("#game");
@@ -32,7 +37,9 @@ const initialView = buildViewState(
 );
 if (!initialView) throw new Error("local_player_missing");
 const baseView = initialView;
-let view: ViewState = { ...baseView, camera: { ...baseView.camera } };
+let view: ViewState = stressMode
+  ? createStressView(baseView.localPlayer)
+  : { ...baseView, camera: { ...baseView.camera } };
 let galleryKind: GalleryKind | undefined;
 let galleryElapsed = 0;
 const player = view.localPlayer;
@@ -70,6 +77,7 @@ function showPointerLockError(): void {
 // A casca recebe os mesmos códigos para apresentar o estado de erro.
 const messages = {
   "pt-BR": {
+    stress_label: "Carga: 5 Players (1 local), 20 Enemies, 10 Projectiles", fps_wait: "FPS: medindo…", fps_label: "FPS médio (1 s):",
     effects_description: "Efeitos locais de demonstração (PvP):", effect_hit: "Receber dano", effect_die: "Morrer", effect_respawn: "Renascer", effect_alive: "Estado da demo: vivo", effect_dead: "Estado da demo: morto",
     theme_label: "Tema", dungeon: "Masmorra", sewer: "Esgoto",
     audio_step: "Ouvir passo", audio_fire: "Ouvir tiro", audio_hit: "Ouvir acerto", audio_music: "Alternar música", audio_unavailable: "Áudio indisponível. Tente novamente após interagir com a página.",
@@ -88,6 +96,7 @@ const messages = {
     pointer_lock_failed: "Não foi possível capturar o mouse. Clique na cena para tentar novamente.",
   },
   en: {
+    stress_label: "Load: 5 Players (1 local), 20 Enemies, 10 Projectiles", fps_wait: "FPS: measuring…", fps_label: "Average FPS (1 s):",
     effects_description: "Local demonstration effects (PvP):", effect_hit: "Take damage", effect_die: "Die", effect_respawn: "Respawn", effect_alive: "Demo state: alive", effect_dead: "Demo state: dead",
     theme_label: "Theme", dungeon: "Dungeon", sewer: "Sewer",
     audio_step: "Play footstep", audio_fire: "Play shot", audio_hit: "Play hit", audio_music: "Toggle music", audio_unavailable: "Audio unavailable. Try again after interacting with the page.",
@@ -106,6 +115,7 @@ const messages = {
     pointer_lock_failed: "The mouse could not be captured. Click the scene to try again.",
   },
   es: {
+    stress_label: "Carga: 5 Players (1 local), 20 Enemies, 10 Projectiles", fps_wait: "FPS: midiendo…", fps_label: "FPS promedio (1 s):",
     effects_description: "Efectos locales de demostración (PvP):", effect_hit: "Recibir daño", effect_die: "Morir", effect_respawn: "Reaparecer", effect_alive: "Estado de la demo: vivo", effect_dead: "Estado de la demo: muerto",
     theme_label: "Tema", dungeon: "Mazmorra", sewer: "Alcantarillado",
     audio_step: "Escuchar paso", audio_fire: "Escuchar disparo", audio_hit: "Escuchar impacto", audio_music: "Alternar música", audio_unavailable: "Audio no disponible. Vuelve a intentarlo tras interactuar con la página.",
@@ -146,7 +156,7 @@ const controls = document.createElement("div");
 controls.lang = language;
 controls.style.cssText = "position:fixed;bottom:16px;left:16px;max-width:65vw;padding:12px;background:#161e00dd;color:white;font:14px sans-serif";
 const description = document.createElement("p");
-description.textContent = messages[language].demo_description;
+description.textContent = stressMode ? messages[language].stress_label : messages[language].demo_description;
 controls.append(description);
 const closedButton = document.createElement("button");
 closedButton.textContent = messages[language].closed_door;
@@ -253,6 +263,12 @@ for (const key of Object.keys(effects) as Array<keyof typeof effects>) {
 }
 effectControls.append(effectStatus);
 controls.append(effectControls);
+const fpsPanel = document.createElement("p");
+fpsPanel.textContent = messages[language].fps_wait;
+if (stressMode) {
+  controls.append(fpsPanel);
+  closedButton.hidden = snapshotButton.hidden = galleryLabel.hidden = true;
+}
 document.body.append(controls);
 
 function selectGallery(): void {
@@ -280,7 +296,7 @@ async function initRenderer(): Promise<void> {
   renderer?.dispose();
   renderer = undefined;
   renderer = new ThreeRenderer(canvas!);
-  await renderer.init(welcome.map, assets);
+  await renderer.init(stressMode ? { grid: stressGrid } : welcome.map, assets);
   if (!disposed) resize();
 }
 
@@ -373,6 +389,7 @@ function dispose(): void {
   document.removeEventListener("pointerlockchange", updatePointerLock);
   window.removeEventListener("resize", resize);
   window.removeEventListener("pagehide", dispose);
+  document.removeEventListener("visibilitychange", resetStressMeasurement);
   if (document.pointerLockElement === canvas) document.exitPointerLock();
   closedButton.removeEventListener("click", showClosedDoor);
   snapshotButton.removeEventListener("click", applySnapshot);
@@ -401,11 +418,30 @@ async function start(): Promise<void> {
     closedButton.disabled = snapshotButton.disabled = gallerySelect.disabled = false;
     effectButtons.forEach(button => { button.disabled = false; });
     let previous = performance.now();
+    let stressElapsed = 0;
+    let sampleSeconds = 0;
+    let sampleFrames = 0;
     function draw(now: number): void {
       if (disposed) return;
       const dt = (now - previous) / 1000;
       let renderedView = view;
-      if (galleryKind) {
+      if (stressMode) {
+        if (document.hidden || resetStressSample) {
+          sampleSeconds = sampleFrames = 0;
+          resetStressSample = false;
+          fpsPanel.textContent = messages[language].fps_wait;
+        } else {
+          // Travas com aba visível entram na medida; retorno de aba oculta reinicia a amostra.
+          stressElapsed += Math.min(dt, 0.1);
+          sampleSeconds += dt;
+          sampleFrames++;
+          if (sampleSeconds >= 1) {
+            fpsPanel.textContent = `${messages[language].fps_label} ${(sampleFrames / sampleSeconds).toFixed(1)}`;
+            sampleSeconds = sampleFrames = 0;
+          }
+        }
+        animateStressView(view, stressElapsed);
+      } else if (galleryKind) {
         galleryElapsed += dt;
         // Somente a demo fabrica os estados; o Renderer recebe um ViewState completo.
         const gallery = galleryView(baseView, galleryKind, galleryElapsed);
@@ -434,5 +470,6 @@ document.addEventListener("pointerlockerror", showPointerLockError);
 document.addEventListener("pointerlockchange", updatePointerLock);
 window.addEventListener("resize", resize);
 window.addEventListener("pagehide", dispose);
+if (stressMode) document.addEventListener("visibilitychange", resetStressMeasurement);
 void start();
 if (import.meta.hot) import.meta.hot.dispose(dispose);
