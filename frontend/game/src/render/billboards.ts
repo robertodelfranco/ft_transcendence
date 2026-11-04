@@ -47,6 +47,7 @@ interface Entry {
 export class Billboards {
   readonly object = new THREE.Group();
   private readonly entries = new Map<string, Entry>();
+  private spriteGeometry: THREE.BufferGeometry | null = null;
 
   constructor(private readonly assets: BillboardAssets) {}
 
@@ -66,6 +67,7 @@ export class Billboards {
           depthWrite: false,
         });
         const sprite = new THREE.Sprite(material);
+        this.spriteGeometry ??= sprite.geometry;
         entry = { sprite, material, state, elapsed: 0 };
         this.entries.set(id, entry);
         this.object.add(sprite);
@@ -128,6 +130,10 @@ export class Billboards {
     for (const entry of this.entries.values()) entry.material.dispose();
     this.entries.clear();
     this.object.clear();
-    // Texturas e geometria compartilhada de THREE.Sprite não pertencem aqui.
+    // THREE.Sprite usa uma geometria do módulo: sem dispose, cada WebGLRenderer
+    // guarda os buffers dela num WeakMap e fica preso com o canvas.
+    this.spriteGeometry?.dispose();
+    this.spriteGeometry = null;
+    // Texturas pertencem ao AssetLoader.
   }
 }
