@@ -76,7 +76,9 @@ export const lobbyHandlers = [
       match_id: nextMatchId++, mode: body.mode, map: body.map,
       max_players: body.max_players ?? map.max_players,
       min_players: body.mode === "pvp" ? 2 : 1,
-      status: "lobby", created_by: me.id, options: defaultOptions(body.mode),
+      status: "lobby", created_by: me.id,
+      // como o servidor: os defaults do Mode, com o que o formulário mandou por cima
+      options: { ...defaultOptions(body.mode), ...body.options },
       created_at: new Date().toISOString(), players: [asPlayer()],
     };
     rooms.push(room);

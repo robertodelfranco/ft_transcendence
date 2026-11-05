@@ -9,6 +9,7 @@ import type { RoomInfo } from "../api/types";
 import { setAccessToken } from "../auth/token";
 import i18n from "../i18n";
 import { publish } from "../mocks/appSocketHandlers";
+import maps from "../mocks/fixtures/maps.json";
 import roomsFixture from "../mocks/fixtures/rooms.json";
 import { MOCK_PASSWORD } from "../mocks/handlers";
 import { server } from "../mocks/server";
@@ -260,8 +261,56 @@ describe("criar Room", () => {
     expect(reset).toBeDisabled();
   });
 
-  it("pvp sem Map: avisa e não deixa criar", async () => {
+  it("pvp cria com o primeiro Map, 2 vagas, abates e tempo", async () => {
     const user = userEvent.setup();
+    let body: unknown = null;
+    server.use(
+      http.post("/api/matches", async ({ request }) => {
+        body = await request.clone().json();
+      }),
+    );
+    const router = await renderWithSession();
+    const button = await screen.findByRole("button", { name: "Criar sala" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.selectOptions(screen.getByLabelText("Modo"), "pvp");
+    expect(screen.getByLabelText("Mapa")).toHaveValue("pvp_crossroads");
+    expect(screen.getByLabelText("Jogadores")).toHaveValue("2");
+    await user.clear(screen.getByLabelText("Limite de abates"));
+    await user.type(screen.getByLabelText("Limite de abates"), "7");
+
+    await user.click(button);
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/lobby/100"));
+    expect(body).toEqual({
+      mode: "pvp", map: "pvp_crossroads", max_players: 2,
+      options: {
+        theme: "dungeon", start_hp: 10, pickups: { potion: true, mana: true, armor: true },
+        frag_limit: 7, time_limit_s: 180,
+      },
+    });
+  });
+
+  it("a opção escolhida aparece na sala de espera", async () => {
+    const user = userEvent.setup();
+    await renderWithSession();
+    const button = await screen.findByRole("button", { name: "Criar sala" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.clear(screen.getByLabelText("HP inicial"));
+    await user.type(screen.getByLabelText("HP inicial"), "15");
+    await user.click(screen.getByRole("checkbox", { name: "Armadura" }));
+
+    await user.click(button);
+
+    // a sala de espera lê a Room do mock, que aplicou as opções como o servidor
+    await screen.findByRole("button", { name: "Iniciar partida" });
+    expect(screen.getByText("HP inicial").nextElementSibling).toHaveTextContent("15");
+    expect(screen.getByText("Armadura").nextElementSibling).toHaveTextContent("desligado");
+  });
+
+  it("Mode sem Map: avisa e não deixa criar", async () => {
+    const user = userEvent.setup();
+    // o catálogo de antes do #198, quando o pvp ainda não tinha Map
+    server.use(http.get("/api/maps", () => HttpResponse.json({ ...maps, pvp: [] })));
     await renderWithSession();
     const button = await screen.findByRole("button", { name: "Criar sala" });
     await waitFor(() => expect(button).toBeEnabled());

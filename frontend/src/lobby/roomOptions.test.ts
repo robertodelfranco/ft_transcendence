@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { FieldErrorCode } from "../i18n/errorCodes";
 import {
-  DEFAULT_OPTIONS, draftToOptions, hasErrors, serverOptionErrors, toDraft, validateDraft, type NumberOption, type OptionsDraft,
+  DEFAULT_OPTIONS, draftToOptions, hasErrors, serverOptionErrors, toDraft,
+  validateDraft, type NumberOption, type OptionsDraft,
 } from "./roomOptions";
 
 type Case = [option: NumberOption, input: string, expected: FieldErrorCode | null];
