@@ -4,5 +4,8 @@
 		{"name": "enemy", "max_players": 5},
 		{"name": "enemy_sewer", "max_players": 5}
 	],
-	"pvp": []
+	"pvp": [
+		{"name": "pvp_crossroads", "max_players": 2},
+		{"name": "pvp_ring", "max_players": 2}
+	]
 }
