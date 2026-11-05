@@ -1,16 +1,18 @@
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
-import { apiFetch } from "../api/client";
+import { ApiError, apiFetch } from "../api/client";
 import type { CreateMatchInput, MapCatalog, Mode, RoomInfo } from "../api/types";
 import ErrorNotice, { toFailure, type Failure } from "../components/ErrorNotice";
-import { buttonPrimary, fieldClass } from "../components/styles";
-import { DEFAULT_OPTIONS, MIN_PLAYERS, MODES, mapName } from "./roomOptions";
-import RoomOptionsSummary from "./RoomOptionsSummary";
+import { buttonPrimary, buttonSecondary, fieldClass } from "../components/styles";
+import {
+  DEFAULT_OPTIONS, MIN_PLAYERS, MODES, draftToOptions, hasErrors, mapName, serverOptionErrors, toDraft, validateDraft, type OptionErrors, type OptionsDraft,
+} from "./roomOptions";
+import RoomOptionsFields from "./RoomOptionsFields";
 
 interface Choice {
   mode: Mode;
-  map: string; // "" quando o Mode não tem Map (o pvp, por enquanto)
+  map: string; // "" quando o Mode não tem Map
   maxPlayers: number;
 }
 
@@ -20,8 +22,8 @@ function defaultChoice(catalog: MapCatalog, mode: Mode): Choice {
   return { mode, map: first?.name ?? "", maxPlayers: first?.max_players ?? 0 };
 }
 
-// Parte 1 da F7.7: Mode, Map e vagas; as opções aparecem com os defaults, só para leitura.
-// Criar sem mexer em nada usa os defaults (plano §5, "pronto quando" da F7.7)
+// Mode, Map, vagas e as RoomOptions, que começam nos defaults do Mode. Criar sem mexer em nada
+// usa os defaults (plano §5, "pronto quando" da F7.7)
 export default function CreateRoomForm() {
   const { t } = useTranslation("lobby");
   const navigate = useNavigate();
@@ -29,6 +31,9 @@ export default function CreateRoomForm() {
   const [catalog, setCatalog] = useState<MapCatalog | null>(null);
   const [choice, setChoice] = useState<Choice>({ mode: "coop", map: "", maxPlayers: 0 });
   const { mode, map, maxPlayers } = choice;
+  const [draft, setDraft] = useState<OptionsDraft>(() => toDraft(DEFAULT_OPTIONS.coop));
+  const [edited, setEdited] = useState(false); // alguém mexeu nas opções desde o último default
+  const [optionErrors, setOptionErrors] = useState<OptionErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
 
@@ -50,6 +55,20 @@ export default function CreateRoomForm() {
     };
   }, []);
 
+  function resetOptions(forMode: Mode) {
+    setDraft(toDraft(DEFAULT_OPTIONS[forMode]));
+    setEdited(false);
+    setOptionErrors({});
+  }
+
+  // Trocar de Mode volta tudo ao default dele: Map, vagas e opções
+  function selectMode(next: Mode) {
+    if (!catalog)
+      return;
+    setChoice(defaultChoice(catalog, next));
+    resetOptions(next);
+  }
+
   // Trocar de Map volta ao máximo de vagas dele
   function selectMap(name: string) {
     const info = catalog?.[mode].find((candidate) => candidate.name === name);
@@ -57,14 +76,28 @@ export default function CreateRoomForm() {
       setChoice({ mode, map: name, maxPlayers: info.max_players });
   }
 
+  // Depois de um envio com erro, a validação acompanha a digitação: o aviso some quando o valor passa
+  function editOptions(next: OptionsDraft) {
+    setDraft(next);
+    setEdited(true);
+    if (hasErrors(optionErrors))
+      setOptionErrors(validateDraft(mode, next));
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!map)
       return;
     setFailure(null);
+    const errors = validateDraft(mode, draft);
+    setOptionErrors(errors);
+    if (hasErrors(errors))
+      return;
     setSubmitting(true);
-    // só o que o formulário escolhe: sem options, o servidor aplica os defaults
+    // Sem mexer nas opções, o corpo vai sem `options` e quem aplica os defaults é o servidor
     const body: CreateMatchInput = { mode, map, max_players: maxPlayers };
+    if (edited)
+      body.options = draftToOptions(mode, draft);
     try {
       const room = await apiFetch<RoomInfo>("/api/matches", {
         method: "POST",
@@ -73,7 +106,14 @@ export default function CreateRoomForm() {
       navigate(`/lobby/${room.match_id}`);
     } catch (error) {
       setSubmitting(false);
-      setFailure(toFailure(error));
+      // um 422 com campo do formulário aparece no campo; o resto, no aviso geral
+      const fromServer = error instanceof ApiError && error.fields
+        ? serverOptionErrors(mode, error.fields)
+        : {};
+      if (hasErrors(fromServer))
+        setOptionErrors(fromServer);
+      else
+        setFailure(toFailure(error));
     }
   }
 
@@ -95,7 +135,7 @@ export default function CreateRoomForm() {
           <select
             value={mode}
             disabled={!catalog}
-            onChange={(e) => catalog && setChoice(defaultChoice(catalog, e.target.value as Mode))}
+            onChange={(e) => selectMode(e.target.value as Mode)}
             className={fieldClass}
           >
             {MODES.map((option) => (
@@ -137,9 +177,17 @@ export default function CreateRoomForm() {
           </div>
         )}
 
-        <fieldset className="flex flex-col gap-2 rounded border border-crypt-700 p-3">
-          <legend className="px-1 text-sm">{t("create.defaults")}</legend>
-          <RoomOptionsSummary options={DEFAULT_OPTIONS[mode]} />
+        <fieldset className="flex flex-col gap-4 rounded border border-crypt-700 p-3">
+          <legend className="px-1 text-sm">{t("create.options")}</legend>
+          <RoomOptionsFields mode={mode} draft={draft} errors={optionErrors} onChange={editOptions} />
+          <button
+            type="button"
+            disabled={!edited}
+            onClick={() => resetOptions(mode)}
+            className={`${buttonSecondary} self-start text-sm`}
+          >
+            {t("create.reset")}
+          </button>
         </fieldset>
 
         <button type="submit" disabled={!map || submitting} className={buttonPrimary}>
