@@ -1,4 +1,5 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -8,7 +9,9 @@ import { legalText, type LegalPage } from "../i18n/legal";
 import { routes } from "../routes";
 
 function renderAt(path: string) {
-  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  render(<RouterProvider router={router} />);
+  return router;
 }
 
 // o primeiro ## do arquivo: prova que o Markdown virou h2 sem amarrar o teste ao texto
@@ -40,5 +43,15 @@ describe("páginas legais", () => {
     await act(() => i18n.changeLanguage("es"));
     expect(screen.getByRole("heading", { level: 1, name: "Política de Privacidad" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: firstSection("privacy", "es") })).toBeInTheDocument();
+  });
+
+  it("o link para a Privacy Policy dentro dos Terms troca de página pelo router", async () => {
+    const user = userEvent.setup();
+    const router = renderAt("/terms");
+    const article = await screen.findByRole("article");
+
+    await user.click(within(article).getByRole("link", { name: "Privacy Policy" }));
+    expect(router.state.location.pathname).toBe("/privacy");
+    expect(await screen.findByRole("heading", { level: 1, name: "Privacy Policy" })).toBeInTheDocument();
   });
 });

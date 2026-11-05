@@ -1,5 +1,6 @@
 import Markdown, { type Components } from "react-markdown";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { linkClass } from "../components/styles";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { legalText, type LegalPage } from "../i18n/legal";
@@ -13,7 +14,11 @@ const components: Components = {
   ul: ({ children }) => <ul className="mb-3 list-disc space-y-1 pl-6">{children}</ul>,
   ol: ({ children }) => <ol className="mb-3 list-decimal space-y-1 pl-6">{children}</ol>,
   code: ({ children }) => <code className="rounded bg-crypt-900 px-1 text-sm">{children}</code>,
-  a: ({ href, children }) => <a href={href} className={linkClass}>{children}</a>,
+  // link do próprio site ("/privacy") passa pelo router, sem recarregar a página; o resto é <a>
+  a: ({ href = "", children }) =>
+    href.startsWith("/")
+      ? <Link to={href} className={linkClass}>{children}</Link>
+      : <a href={href} className={linkClass}>{children}</a>,
 };
 
 // /privacy e /terms: o título vem do common (o mesmo do rodapé), o corpo vem do Markdown do idioma
