@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 import type { Mode, Pickups, RoomOptions, Theme } from "../api/types";
 import type { FieldErrorCode } from "../i18n/errorCodes";
+import { toFieldErrorCode } from "../i18n/errorMessage";
 
 export const MODES: readonly Mode[] = ["coop", "pvp"];
 export const THEMES: readonly Theme[] = ["dungeon", "sewer"];
@@ -74,6 +75,20 @@ export function validateDraft(mode: Mode, draft: OptionsDraft): OptionErrors {
     const code = checkNumber(draft[option], option);
     if (code)
       errors[option] = code;
+  }
+  return errors;
+}
+
+export function hasErrors(errors: OptionErrors): boolean {
+  return Object.keys(errors).length > 0;
+}
+
+// Do `fields` de um 422, só os números do Mode têm campo no formulário; o resto vira o aviso geral
+export function serverOptionErrors(mode: Mode, fields: Record<string, string>): OptionErrors {
+  const errors: OptionErrors = {};
+  for (const option of NUMBER_OPTIONS[mode]) {
+    if (fields[option])
+      errors[option] = toFieldErrorCode(fields[option]);
   }
   return errors;
 }

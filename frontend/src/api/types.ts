@@ -86,9 +86,10 @@ export interface MapInfo {
 
 export type MapCatalog = Record<Mode, MapInfo[]>;
 
-// POST /api/matches; sem max_players, o servidor usa o teto do Map
+// POST /api/matches; sem max_players, o servidor usa o teto do Map, e sem options, os defaults
 export interface CreateMatchInput {
   mode: Mode;
   map: string;
   max_players?: number;
+  options?: RoomOptions; // só as do Mode: o coop vai sem frag_limit e time_limit_s
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FieldErrorCode } from "../i18n/errorCodes";
 import {
-  DEFAULT_OPTIONS, draftToOptions, toDraft, validateDraft, type NumberOption, type OptionsDraft,
+  DEFAULT_OPTIONS, draftToOptions, hasErrors, serverOptionErrors, toDraft, validateDraft, type NumberOption, type OptionsDraft,
 } from "./roomOptions";
 
 type Case = [option: NumberOption, input: string, expected: FieldErrorCode | null];
@@ -73,5 +73,32 @@ describe("draftToOptions", () => {
     const options = draftToOptions("pvp", draft);
     draft.pickups.armor = false;
     expect(options.pickups.armor).toBe(true);
+  });
+});
+
+describe("hasErrors", () => {
+  it("vazio é sem erro", () => {
+    expect(hasErrors({})).toBe(false);
+    expect(hasErrors({ start_hp: "required" })).toBe(true);
+  });
+});
+
+describe("serverOptionErrors", () => {
+  // o que o 422 invalid_options traz em `fields` (app/core/errors.py)
+  const fields = {
+    start_hp: "invalid_value", frag_limit: "invalid_value", theme: "invalid_value", max_players: "invalid_value",
+  };
+
+  it("pega só os números do Mode", () => {
+    expect(serverOptionErrors("coop", fields)).toEqual({ start_hp: "invalid_value" });
+    expect(serverOptionErrors("pvp", fields)).toEqual({ start_hp: "invalid_value", frag_limit: "invalid_value" });
+  });
+
+  it("code fora da lista vira invalid_value", () => {
+    expect(serverOptionErrors("coop", { start_hp: "greater_than_equal" })).toEqual({ start_hp: "invalid_value" });
+  });
+
+  it("sem número do Mode, nada vai para os campos", () => {
+    expect(serverOptionErrors("coop", { max_players: "invalid_value" })).toEqual({});
   });
 });

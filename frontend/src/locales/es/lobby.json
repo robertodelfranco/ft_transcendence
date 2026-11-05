@@ -20,7 +20,8 @@
     "map": "Mapa",
     "noMaps": "Todavía no hay mapa para este modo.",
     "maxPlayers": "Jugadores",
-    "defaults": "Opciones (por defecto; la edición llega pronto)",
+    "options": "Opciones",
+    "reset": "Volver a los valores por defecto",
     "submit": "Crear sala",
     "submitting": "Creando…"
   },

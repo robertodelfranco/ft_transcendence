@@ -20,7 +20,8 @@
     "map": "Map",
     "noMaps": "No map available for this mode yet.",
     "maxPlayers": "Players",
-    "defaults": "Options (defaults; editing comes soon)",
+    "options": "Options",
+    "reset": "Back to defaults",
     "submit": "Create room",
     "submitting": "Creating…"
   },
