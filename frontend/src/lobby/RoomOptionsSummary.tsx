@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
-import type { Pickups, RoomOptions } from "../api/types";
-
-const PICKUPS: readonly (keyof Pickups)[] = ["potion", "mana", "armor"];
+import type { RoomOptions } from "../api/types";
+import { PICKUPS } from "./roomOptions";
 
 // Lista só de leitura das opções: os defaults no formulário, ou as opções de uma Room criada.
 // O pvp mostra frag_limit e time_limit_s; o coop chega sem eles
