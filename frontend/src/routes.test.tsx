@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
@@ -44,8 +44,10 @@ describe("casca", () => {
     (path) => {
       renderAt(path);
       expect(screen.getByLabelText("Language")).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Privacy Policy" })).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Terms of Service" })).toBeInTheDocument();
+      // só no rodapé: o corpo dos Terms também tem um link para a Privacy Policy
+      const footer = screen.getByRole("contentinfo");
+      expect(within(footer).getByRole("link", { name: "Privacy Policy" })).toBeInTheDocument();
+      expect(within(footer).getByRole("link", { name: "Terms of Service" })).toBeInTheDocument();
     },
   );
 

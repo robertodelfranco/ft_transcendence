@@ -13,7 +13,7 @@ import { AuthProvider, ProfileUpdateCancelled, useAuth } from "./AuthContext";
 import { getAccessToken, setAccessToken } from "./token";
 
 function Probe() {
-  const { status, user, login, logout, updateProfile } = useAuth();
+  const { status, user, login, logout, updateProfile, updateAvatar } = useAuth();
   const [outcome, setOutcome] = useState("-"); // como terminou o último updateProfile
   return (
     <div>
@@ -21,6 +21,7 @@ function Probe() {
       <p data-testid="user">{user?.username ??"-"}</p>
       <p data-testid="language">{user?.preferred_language ?? "-"}</p>
       <p data-testid="outcome">{outcome}</p>
+      <p data-testid="avatar">{user?.avatar_url ?? "-"}</p>
       <button
         onClick={() =>
           updateProfile({ preferred_language: "es" }).then(
@@ -31,6 +32,9 @@ function Probe() {
         }
       >
         perfil
+      </button>
+      <button onClick={() => updateAvatar(new File(["x"], "foto.png", { type: "image/png" }))}>
+        avatar
       </button>
       <button onClick={() => login("a@b.c", MOCK_PASSWORD)}>entrar</button>
       <button onClick={() => login("a@b.c", "errada123").catch(() => {})}>errar</button>
@@ -484,5 +488,36 @@ describe("updateProfile e a renovação do token", () => {
       await vi.advanceTimersByTimeAsync(81_000);
     });
     await vi.waitFor(() => expect(screen.getByTestId("user")).toHaveTextContent("augusto_novo"));
+  });
+});
+
+describe("updateAvatar", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("entra na mesma fila do PATCH: o PUT só sai depois que o PATCH volta", async () => {
+    const { sent, release } = holdPatches();
+    // o PUT é respondido antes do MSW: o fetch do Node não manda o File do jsdom (Settings.test.tsx)
+    const puts: string[] = [];
+    const mswFetch = globalThis.fetch;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (init?.method !== "PUT")
+        return mswFetch(input, init);
+      puts.push(((init.body as FormData).get("file") as File).name);
+      return Promise.resolve(Response.json({ ...authResponse.user, avatar_url: "/media/avatars/7-novo.png" }));
+    });
+    const user = userEvent.setup();
+    await reloadWithSession();
+    renderProbe();
+    await waitFor(() => expect(status()).toBe("authenticated"));
+
+    await user.click(screen.getByText("perfil")); // PATCH em voo
+    await user.click(screen.getByText("avatar")); // espera na fila
+    await waitFor(() => expect(sent).toHaveLength(1));
+    await settle();
+    expect(puts).toEqual([]);
+
+    release[0]();
+    await waitFor(() => expect(puts).toEqual(["foto.png"]));
+    await waitFor(() => expect(screen.getByTestId("avatar")).toHaveTextContent("/media/avatars/7-novo.png"));
   });
 });

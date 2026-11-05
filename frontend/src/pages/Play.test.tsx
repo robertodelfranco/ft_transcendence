@@ -35,6 +35,17 @@ beforeEach(async () => {
   await i18n.changeLanguage("en");
 });
 
+describe("rodapé", () => {
+  // i18n.md §2.4: os links legais aparecem em toda página, inclusive a do jogo
+  it("a página do jogo também mostra Privacy e Terms", async () => {
+    await renderAt("/play/13");
+    await mounted();
+    const footer = screen.getByRole("contentinfo");
+    expect(within(footer).getByRole("link", { name: "Política de Privacidade" })).toHaveAttribute("href", "/privacy");
+    expect(within(footer).getByRole("link", { name: "Termos de Serviço" })).toHaveAttribute("href", "/terms");
+  });
+});
+
 describe("montagem do jogo", () => {
   it("monta uma vez no canvas, com o matchId da URL", async () => {
     await renderAt("/play/13");

@@ -32,6 +32,9 @@
     "loading": "Carregando…"
   },
   "nav": {
+    "label": "Sua conta",
+    "friends": "Amigos",
+    "settings": "Configurações",
     "logout": "Sair"
   }
 }

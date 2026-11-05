@@ -6,11 +6,13 @@ import { toFieldErrorCode, type FieldError } from "../i18n/errorMessage";
 type Validator = (value: string) => FieldErrorCode | null;
 
 // Valores, erro por campo e foco no primeiro inválido. `F` é a união dos nomes dos campos, e a
-// ordem das chaves em `validators` é a ordem em que aparecem na tela
-export function useAuthForm<F extends string>(validators: Record<F, Validator>) {
+// ordem das chaves em `validators` é a ordem em que aparecem na tela. `initial` preenche quem edita
+// um valor que já existe, como o username em /settings
+export function useAuthForm<F extends string>(validators: Record<F, Validator>,
+  initial: Partial<Record<F, string>> = {}) {
   const fields = Object.keys(validators) as F[];
   const [values, setValues] = useState(
-    () => Object.fromEntries(fields.map((fields) => [fields, ""])) as Record<F, string>,
+    () => Object.fromEntries(fields.map((field) => [field, initial[field] ?? ""])) as Record<F, string>,
   );
   const [errors, setErrors] = useState<Partial<Record<F, FieldError | null >>>({});
   const inputs = useRef<Partial<Record<F, HTMLInputElement | null >>>({});

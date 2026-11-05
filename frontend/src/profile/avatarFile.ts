@@ -2,6 +2,9 @@
 // voltaria recusado. Quem decide de verdade é o servidor, pelo conteúdo, com o Pillow
 export const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
+// Sem avatar enviado, o banco guarda NULL e o serializador devolve esta URL (auth.md §2.3)
+export const DEFAULT_AVATAR_URL = "/media/avatars/default.png";
+
 // O File.type vem da extensão, não do conteúdo. SVG fica de fora: é texto e pode levar script
 const AVATAR_TYPES = ["image/png", "image/jpeg", "image/webp"];
 

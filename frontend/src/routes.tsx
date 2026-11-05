@@ -2,8 +2,8 @@ import type { RouteObject  } from "react-router";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
-import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
+import Legal from "./pages/Legal";
+import { LEGAL_PAGES } from "./i18n/legal";
 import AuthRoot from "./auth/AuthRoot";
 import Lobby from "./pages/Lobby";
 import PublicOnly from "./components/PublicOnly";
@@ -12,6 +12,9 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Play from "./pages/Play";
 import WaitingRoom from "./pages/WaitingRoom";
+import UserProfile from "./pages/UserProfile";
+import Settings from "./pages/Settings";
+import Friends from "./pages/Friends";
 
 // Layout sem path: cabeçalho e rodapé em toda página, inclusive a 404
 export const routes: RouteObject [] = [
@@ -28,14 +31,17 @@ export const routes: RouteObject [] = [
               { path: "signup", element: <Signup /> },
             ], 
           },
-          { path: "privacy", element: <Privacy />},
-          { path: "terms", element: <Terms /> },
+          // /privacy e /terms, abertas sem login: uma rota por página de LEGAL_PAGES
+          ...LEGAL_PAGES.map((page) => ({ path: page, element: <Legal page={page} /> })),
           {
             element: <RequireAuth />,
             children: [
               { path: "lobby", element: <Lobby /> },
               { path: "lobby/:matchId", element: <WaitingRoom /> },
               { path: "play/:matchId", element: <Play /> },
+              { path: "users/:userId", element: <UserProfile /> },
+              { path: "settings", element: <Settings />},
+              { path: "friends", element: <Friends /> },
             ],
           },
           { path: "*", element: <NotFound />},
