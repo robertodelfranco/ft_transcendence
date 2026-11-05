@@ -59,7 +59,7 @@ Script Playwright (Chrome 155 headless, WebGL por software) com **um navegador p
 
 - **Conferência visual da Interpolation e da Reconciliation:** os vídeos desta rodada **não servem** para isso. Conferidos em 04/11 (um quadro a cada 8 s do B): o Player automático passa a maior parte do tempo encostado numa parede, e o A só aparece ao longe, em poucos quadros. Falta uma rodada curta com duas pessoas jogando (2–3 min, netem ligado, uma olhando a outra andar e virar), para ver se o outro Player desliza sem saltos e se o próprio movimento tem correções visíveis.
 - **HP e chaves numa reconexão com o estado mudado:** repetir com o B pegando uma chave ou tomando dano antes de fechar a aba. Os testes automatizados da F2.10 já cobrem isso no servidor. Este item é só a prova pelo navegador.
-- **Dois PCs:** este teste rodou num PC só. O teste de 01/11 na 42 ([resultados](resultados-teste-pc-42-2026-10-17.md#pendente-2º-pc), D8) já provou co-op e reconexão entre PCs sem degradação. Repetir este teste entre dois PCs só seria necessário se a avaliação pedir.
+- **Dois PCs com degradação:** este teste rodou num PC só, e o critério do Remote players (plano §7) pede duas máquinas, throttling de 100 ms, nenhum teleporte visível e uma aba fechada e reaberta no meio. O teste de 01/11 na 42 ([resultados](resultados-teste-pc-42-2026-10-17.md#pendente-2º-pc), D8) cobriu os dois PCs e a reconexão, mas sem degradação. Falta uma rodada de 5 min no cluster que junte as duas coisas, com o netem do "Método" ligado no proxy do PC que serve a stack. Esse netem degrada os dois clientes, mais do que o critério pede. A mesma rodada serve para a conferência visual do primeiro item.
 
 ## Se algo falhar ao repetir
 
