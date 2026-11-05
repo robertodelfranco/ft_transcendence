@@ -2,8 +2,8 @@ import type { RouteObject  } from "react-router";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
-import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
+import Legal from "./pages/Legal";
+import { LEGAL_PAGES } from "./i18n/legal";
 import AuthRoot from "./auth/AuthRoot";
 import Lobby from "./pages/Lobby";
 import PublicOnly from "./components/PublicOnly";
@@ -28,8 +28,8 @@ export const routes: RouteObject [] = [
               { path: "signup", element: <Signup /> },
             ], 
           },
-          { path: "privacy", element: <Privacy />},
-          { path: "terms", element: <Terms /> },
+          // /privacy e /terms, abertas sem login: uma rota por página de LEGAL_PAGES
+          ...LEGAL_PAGES.map((page) => ({ path: page, element: <Legal page={page} /> })),
           {
             element: <RequireAuth />,
             children: [

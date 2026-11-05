@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ERROR_CODES, FIELD_ERROR_CODES } from "../i18n/errorCodes";
 import { LANGUAGES } from "../i18n/languages";
+import { LEGAL_PAGES } from "../i18n/legal";
 
 type Json = { [key: string]: string | Json };
 
@@ -58,5 +59,27 @@ describe("errors", () => {
     for (const code of ERROR_CODES) expect(errors[code], code).toBeTruthy();
     for (const code of FIELD_ERROR_CODES) expect(errors[`fields.${code}`], code).toBeTruthy();
     expect(errors.unknownWithRef).toContain("{{requestId}}");
+  });
+});
+
+// i18n.md §2.4: lidos direto do disco, porque o fallback para o en esconderia um arquivo faltando
+const legal = import.meta.glob<string>("./legal/*/*.md", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+});
+
+describe("textos legais", () => {
+  it("tem privacy.md e terms.md em cada idioma, e nada além", () => {
+    const expected = LANGUAGES.flatMap((language) =>
+      LEGAL_PAGES.map((page) => `./legal/${language}/${page}.md`),
+    );
+    expect(Object.keys(legal).sort()).toEqual(expected.sort());
+  });
+
+  it.each(Object.entries(legal))("%s tem texto e começa nos títulos ##", (_path, text) => {
+    expect(text.trim()).not.toBe("");
+    // o h1 é o título da página (common:footer.*); um # no Markdown viraria um segundo h1
+    expect(text).not.toMatch(/^# /m);
   });
 });
