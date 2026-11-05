@@ -1,0 +1,44 @@
+{
+  "user": {
+    "title": "Profile",
+    "since": "Member since {{date}}",
+    "edit": "Edit profile",
+    "addFriend": "Add friend",
+    "removeFriend": "Remove friend"
+  },
+  "settings": {
+    "title": "Settings",
+    "username": "Username",
+    "save": "Save",
+    "saved": "Changes saved.",
+    "avatar": {
+      "choose": "Choose image",
+      "preview": "Preview of the new avatar",
+      "upload": "Upload avatar",
+      "cancel": "Cancel",
+      "remove": "Remove avatar",
+      "hint": "PNG, JPEG or WebP, up to 2 MB.",
+      "saved": "Avatar updated."
+    }
+  },
+  "friends": {
+    "title": "Friends",
+    "online": "Online",
+    "offline": "Offline",
+    "unknown": "Connecting…",
+    "count_one": "{{count}} friend",
+    "count_other": "{{count}} friends",
+    "empty": "You haven't added anyone yet. Use the search below.",
+    "remove": "Remove {{username}} from friends",
+    "removeShort": "Remove",
+    "search": {
+      "heading": "Add friends",
+      "label": "Search by username",
+      "hint": "At least 2 letters, numbers or _.",
+      "empty": "No one found.",
+      "add": "Add",
+      "addNamed": "Add {{username}} as a friend",
+      "isFriend": "Already a friend"
+    }
+  }
+}

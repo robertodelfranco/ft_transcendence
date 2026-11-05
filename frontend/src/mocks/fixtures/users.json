@@ -1,0 +1,8 @@
+{
+  "items": [
+    { "id": 2, "username": "caio", "avatar_url": "/media/avatars/default.png", "created_at": "2026-10-02T12:00:00Z" },
+    { "id": 3, "username": "roberto", "avatar_url": "/media/avatars/3-1a2b3c4d.png", "created_at": "2026-10-01T12:00:00Z" },
+    { "id": 4, "username": "rafael", "avatar_url": "/media/avatars/default.png", "created_at": "2026-10-03T12:00:00Z" },
+    { "id": 5, "username": "akita", "avatar_url": "/media/avatars/default.png", "created_at": "2026-10-04T12:00:00Z" }
+  ]
+}

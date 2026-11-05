@@ -32,6 +32,9 @@
     "loading": "Loading…"
   },
   "nav": {
+    "label": "Your account",
+    "friends": "Friends",
+    "settings": "Settings",
     "logout": "Log out"
   }
 }

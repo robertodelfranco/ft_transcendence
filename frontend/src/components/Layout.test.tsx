@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
@@ -45,6 +45,21 @@ describe("cabeçalho", () => {
     expect(screen.getAllByText("augusto").length).toBeGreaterThan(0);
   });
 
+  it("com sessão: o nome leva ao próprio perfil, e os links abrem amigos e configurações", async () => {
+    const user = userEvent.setup();
+    await reloadWithSession();
+    renderAt("/lobby");
+    const nav = await screen.findByRole("navigation", { name: "Sua conta" });
+    expect(within(nav).getByRole("link", { name: "augusto" })).toHaveAttribute("href", "/users/7");
+
+    await user.click(within(nav).getByRole("link", { name: "Amigos" }));
+    expect(await screen.findByRole("heading", { name: "Amigos" })).toBeInTheDocument();
+    expect(document.title).toBe("Amigos · Catacombs 42");
+
+    await user.click(within(nav).getByRole("link", { name: "Configurações" }));
+    expect(await screen.findByRole("heading", { name: "Configurações" })).toBeInTheDocument();
+  });
+
   it("Sair: limpa a sessão, esconde o botão e volta para /", async () => {
     const user = userEvent.setup();
     await reloadWithSession();
@@ -61,3 +76,11 @@ describe("cabeçalho", () => {
     expect(getAccessToken()).toBeNull();
   });
 })
+
+describe("telas da conta", () => {
+  it.each(["/users/7", "/settings", "/friends"])("%s sem sessão manda para o login", async (path) => {
+    const router = renderAt(path);
+    await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
+    expect(router.state.location.search).toBe(`?next=${encodeURIComponent(path)}`);
+  });
+});
