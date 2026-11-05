@@ -1,0 +1,17 @@
+{"match_id": 14, "mode": "coop", "map": "dungeon_map", "status": "finished", "created_by": 7,
+ "options": {"theme": "dungeon", "start_hp": 10,
+             "pickups": {"potion": true, "mana": true, "armor": true}},
+ "started_at": "2026-10-04T18:30:00Z", "ended_at": "2026-10-04T18:35:00Z",
+ "duration_s": 300, "result": "win", "reason": "boss_defeated",
+ "players": [
+   {"user_id": 7, "username": "akita", "avatar_url": "/media/avatars/7.png",
+    "won": true, "survived": true, "disconnected_at_end": false,
+    "kills": 5, "frags": 0, "deaths": 0, "damage_dealt": 14, "damage_taken": 6,
+    "armor_absorbed": 2, "keys_collected": 1, "potions_used": 1,
+    "xp_gained": 145, "elo_before": null, "elo_after": null},
+   {"user_id": 9, "username": "rdel_fra", "avatar_url": "/media/avatars/default.png",
+    "won": true, "survived": true, "disconnected_at_end": false,
+    "kills": 2, "frags": 0, "deaths": 1, "damage_dealt": 8, "damage_taken": 12,
+    "armor_absorbed": 0, "keys_collected": 0, "potions_used": 2,
+    "xp_gained": 130, "elo_before": null, "elo_after": null}
+ ]}

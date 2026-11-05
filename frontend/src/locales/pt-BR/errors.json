@@ -33,6 +33,8 @@
   "already_started": "Esta partida já começou.",
   "invalid_options": "As opções da partida são inválidas.",
   "map_not_found": "Mapa não encontrado.",
+  "match_not_finished": "O resultado desta partida ainda não está disponível.",
+  "match_aborted": "Esta partida foi interrompida e não tem resultado.",
   "invalid_message": "A conexão enviou uma mensagem inválida. Recarregue a página.",
   "unauthenticated": "Sua sessão não é válida. Entre de novo.",
   "replaced": "Você abriu o jogo em outra aba ou dispositivo.",

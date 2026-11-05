@@ -33,6 +33,8 @@
   "already_started": "This match has already started.",
   "invalid_options": "The match options are invalid.",
   "map_not_found": "Map not found.",
+  "match_not_finished": "The result of this match is not available yet.",
+  "match_aborted": "This match was interrupted and has no result.",
   "invalid_message": "The connection sent an invalid message. Reload the page.",
   "unauthenticated": "Your session is not valid. Sign in again.",
   "replaced": "You opened the game in another tab or device.",
