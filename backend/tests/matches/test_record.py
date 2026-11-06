@@ -5,7 +5,7 @@ import asyncio
 import uuid
 from contextlib import asynccontextmanager
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import delete, func, select
@@ -497,4 +497,146 @@ async def test_stats_id_beyond_bigint_is_422_not_500(client, app, db_session):
 
 async def test_stats_need_a_session(client):
 	response = await client.get("/api/users/1/stats")
+	assert response.status_code == 401
+
+
+# ---------- GET /api/users/{id}/matches ----------
+
+def pvp_draw(ids: list[int]) -> MatchOutcome:
+	"""Fim por time_limit com Frags iguais: ninguém tem won."""
+	a, b = ids
+	return MatchOutcome(result="draw", reason="time_limit", winner_ids=(), duration_ticks=9000,
+		players=(player(a, frags=2, deaths=2), player(b, frags=2, deaths=2)))
+
+
+async def history(client, app, user_id: int, viewer: int, **query) -> dict:
+	response = await client.get(f"/api/users/{user_id}/matches", params=query, headers=bearer(app, viewer))
+	assert response.status_code == 200
+	return response.json()
+
+
+async def test_history_of_a_pvp_match_from_each_side(client, app, db_session, sessions):
+	*ids, viewer = await new_users(db_session, "akita", "roberto", "augusto")
+	match_id = await new_match(db_session, ids[0], mode="pvp")
+	await record_match_result(match_id, pvp(ids), ENDED, sessions=sessions)
+
+	# quem pede não jogou: o histórico de terceiros usa a mesma rota (decisão 7)
+	winner = await history(client, app, ids[0], viewer)
+	loser = await history(client, app, ids[1], viewer)
+
+	# o exemplo da §3: 155 s, 130 XP e +16 de Elo
+	assert winner == {"items": [
+		{"match_id": match_id, "mode": "pvp", "map": "arena", "ended_at": "2026-10-04T18:09:47Z",
+			"duration_s": 155, "result": "win", "reason": "frag_limit",
+			"me": {"kills": 0, "frags": 5, "deaths": 3, "damage_dealt": 10, "damage_taken": 6,
+				"xp_gained": 130, "elo_before": 1000, "elo_after": 1016},
+			"others": [{"user_id": ids[1], "username": "roberto", "avatar_url": DEFAULT_AVATAR_URL,
+				"won": False}]},
+	], "page": 1, "per_page": 20, "total": 1}
+	# a mesma partida é loss do outro lado: vem de match_players.won, não de matches.result (decisão 4)
+	(item,) = loser["items"]
+	assert (item["result"], item["me"]["xp_gained"], item["me"]["elo_after"]) == ("loss", 50, 984)
+	assert item["others"] == [
+		{"user_id": ids[0], "username": "akita", "avatar_url": DEFAULT_AVATAR_URL, "won": True}]
+
+
+async def test_coop_history_lists_teammates_in_user_id_order(client, app, db_session, sessions):
+	ids = await new_users(db_session, "akita", "caio", "rafael")
+	await record_match_result(await new_match(db_session, ids[0]), coop(ids), ENDED, sessions=sessions)
+
+	(item,) = (await history(client, app, ids[1], ids[1]))["items"]
+
+	assert item["result"] == "win"
+	assert (item["me"]["elo_before"], item["me"]["elo_after"]) == (None, None)
+	assert [(other["user_id"], other["username"]) for other in item["others"]] == [
+		(ids[0], "akita"), (ids[2], "rafael")]
+
+
+async def test_pvp_draw_is_draw_for_both(client, app, db_session, sessions):
+	ids = await new_users(db_session, "akita", "roberto")
+	await record_match_result(await new_match(db_session, ids[0], mode="pvp"), pvp_draw(ids), ENDED,
+		sessions=sessions)
+
+	# won é false para os dois; o empate vem de matches.result
+	for user_id in ids:
+		(item,) = (await history(client, app, user_id, user_id))["items"]
+		assert item["result"] == "draw"
+
+
+async def test_history_is_newest_first_with_match_id_as_tiebreak(client, app, db_session, sessions):
+	ids = await new_users(db_session, "akita", "roberto")
+	first, second, third = [await new_match(db_session, ids[0], mode="pvp") for _ in range(3)]
+	# o primeiro criado termina por último; os outros dois terminam juntos
+	for match_id, ended_at in ((first, ENDED + timedelta(hours=1)), (second, ENDED), (third, ENDED)):
+		await record_match_result(match_id, pvp(ids), ended_at, sessions=sessions)
+
+	body = await history(client, app, ids[0], ids[0])
+
+	assert [item["match_id"] for item in body["items"]] == [first, third, second]
+
+
+async def test_history_paginates(client, app, db_session, sessions):
+	ids = await new_users(db_session, "akita", "roberto")
+	match_ids = [await new_match(db_session, ids[0], mode="pvp") for _ in range(3)]
+	for minutes, match_id in enumerate(match_ids):
+		await record_match_result(match_id, pvp(ids), ENDED + timedelta(minutes=minutes), sessions=sessions)
+
+	pages = [await history(client, app, ids[0], ids[0], page=page, per_page=2) for page in (1, 2, 3)]
+
+	# página além do total: 200 vazio, com o total real
+	assert [[item["match_id"] for item in body["items"]] for body in pages] == [
+		match_ids[:0:-1], match_ids[:1], []]
+	assert [(body["page"], body["per_page"], body["total"]) for body in pages] == [
+		(1, 2, 3), (2, 2, 3), (3, 2, 3)]
+
+
+async def test_history_filters_by_mode(client, app, db_session, sessions):
+	ids = await new_users(db_session, "akita", "caio", "rafael")
+	await record_match_result(await new_match(db_session, ids[0]), coop(ids), ENDED, sessions=sessions)
+	pvp_id = await new_match(db_session, ids[0], mode="pvp")
+	await record_match_result(pvp_id, pvp(ids[:2]), ENDED, sessions=sessions)
+
+	body = await history(client, app, ids[0], ids[0], mode="pvp")
+
+	assert ([item["match_id"] for item in body["items"]], body["total"]) == ([pvp_id], 1)
+
+
+async def test_history_skips_unfinished_and_other_users_matches(client, app, db_session, sessions):
+	user, *others = await new_users(db_session, "akita", "caio", "rafael", "augusto")
+	for status in ("lobby", "running", "aborted"):
+		await new_match(db_session, user, status=status)
+	await record_match_result(await new_match(db_session, others[0]), coop(others), ENDED, sessions=sessions)
+
+	assert await history(client, app, user, user) == {"items": [], "page": 1, "per_page": 20, "total": 0}
+
+
+@pytest.mark.parametrize("query", [
+	{"page": 0},
+	{"page": 10_001}, # sem teto, um OFFSET além do BIGINT daria 500
+	{"per_page": 0},
+	{"per_page": 51},
+	{"mode": "duel"},
+])
+async def test_invalid_history_query_is_422(client, app, db_session, query):
+	(user,) = await new_users(db_session, "akita")
+	response = await client.get(f"/api/users/{user}/matches", params=query, headers=bearer(app, user))
+	assert response.status_code == 422
+
+
+async def test_history_of_an_unknown_user_is_404(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+	response = await client.get(f"/api/users/{2**63 - 1}/matches", headers=bearer(app, user))
+
+	assert response.status_code == 404
+	assert response.json()["error"]["code"] == "user_not_found"
+
+
+async def test_history_id_beyond_bigint_is_422_not_500(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+	response = await client.get(f"/api/users/{2**63}/matches", headers=bearer(app, user))
+	assert response.status_code == 422
+
+
+async def test_history_needs_a_session(client):
+	response = await client.get("/api/users/1/matches")
 	assert response.status_code == 401
