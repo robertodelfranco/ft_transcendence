@@ -1,6 +1,6 @@
 # Contrato: API REST de lobby e estatísticas (`matches-api.md`)
 
-**Estado:** S5, 03/11: lobby (F5.2) e resultado (`GET /api/matches/{id}/result`, #155) implementados; resultado, histórico, estatísticas e conquistas fechados para a F7.8 e assinados pelo Caio em 27/10 (#165). **Escreve:** Akita. **Assina:** Caio (monta lobby, tela de resultado, histórico, estatísticas, conquistas e leaderboard só com este arquivo).
+**Estado:** S5, 06/11: lobby (F5.2), resultado (`GET /api/matches/{id}/result`, #155) e estatísticas (`GET /api/users/{id}/stats`, com XP, level e Elo gravados no `record_match_result`, #156 e #157) implementados; resultado, histórico, estatísticas e conquistas fechados para a F7.8 e assinados pelo Caio em 27/10 (#165). **Escreve:** Akita. **Assina:** Caio (monta lobby, tela de resultado, histórico, estatísticas, conquistas e leaderboard só com este arquivo).
 
 ## 1. Para que serve
 
@@ -69,7 +69,10 @@ O histórico lista só Matches `finished`, do mais recente para o mais antigo. M
 |---|---|
 | `matches_played`, `wins`, `losses`, `draws`, `kills`, `frags`, `deaths`, `playtime_s`, `xp`, `level`, `elo` | int |
 | `win_rate` | número 0–1, calculado na resposta (a tela não divide) |
-| `xp_to_next_level` | int, para a barra de progresso |
+| `xp_to_next_level` | int, para a barra de progresso: o XP que falta para o próximo level |
+| `xp_level_start` | int, o XP total em que o level atual começou (`threshold(level)` do [progression.md](progression.md) §6). A barra vai de `xp - xp_level_start` até `xp + xp_to_next_level - xp_level_start` |
+
+Um Mode em que o User nunca jogou (User novo ou conta anonimizada) vem zerado, com `level` 1, `elo` 1000, `xp_to_next_level` 100 e `xp_level_start` 0.
 
 | `LeaderboardRow` | Tipo |
 |---|---|
@@ -84,7 +87,7 @@ O histórico lista só Matches `finished`, do mais recente para o mais antigo. M
 | `unlocked` | lista | `[{code, unlocked_at, match_id}]` do User da rota, do mais recente para o mais antigo. `match_id` é o Match do primeiro desbloqueio, para a tela de resultado filtrar o que saiu nela; fica `null` se esse Match não existir mais |
 | `catalog` | lista | `[{code, mode}]`, todos os Achievements que existem, na ordem do [progression.md](progression.md) §3. `mode` é `"coop"`, `"pvp"` ou `null` (vale nos dois). Vem do código do backend; o front só traduz nome e descrição pelo `code` |
 
-XP, level e Elo seguem as fórmulas do [progression.md](progression.md) §5–7, calculadas no `record_match_result`. A API devolve `level` e `xp_to_next_level` prontos (§4, decisão 5).
+XP, level e Elo seguem as fórmulas do [progression.md](progression.md) §5–7, calculadas no `record_match_result`. A API devolve `level`, `xp_to_next_level` e `xp_level_start` prontos (§4, decisão 5).
 
 ### 2.4 `MatchDetail` — a tela de resultado
 
@@ -161,7 +164,7 @@ Uma página de histórico:
 
 ```json
 {"items": [
-  {"match_id": 13, "mode": "pvp", "map": "arena_small",
+  {"match_id": 13, "mode": "pvp", "map": "pvp_ring",
    "ended_at": "2026-10-04T18:22:35Z", "duration_s": 155,
    "result": "win", "reason": "frag_limit",
    "me": {"kills": 0, "frags": 5, "deaths": 3, "damage_dealt": 10,
@@ -175,13 +178,13 @@ Estatísticas e leaderboard:
 ```json
 {"coop": {"matches_played": 12, "wins": 8, "losses": 4, "draws": 0, "kills": 96,
           "frags": 0, "deaths": 5, "playtime_s": 4820, "xp": 1840, "level": 5,
-          "elo": 1000, "win_rate": 0.667, "xp_to_next_level": 660},
+          "elo": 1000, "win_rate": 0.667, "xp_to_next_level": 660, "xp_level_start": 1600},
  "pvp":  {"matches_played": 5, "wins": 3, "losses": 2, "draws": 0, "kills": 0,
           "frags": 19, "deaths": 14, "playtime_s": 760, "xp": 410, "level": 3,
-          "elo": 1032, "win_rate": 0.6, "xp_to_next_level": 490}}
+          "elo": 1032, "win_rate": 0.6, "xp_to_next_level": 490, "xp_level_start": 400}}
 ```
 
-Pela fórmula do [progression.md](progression.md) §6: 1840 XP dá `1 + floor(sqrt(18,4)) = 5`, e o level 6 começa em `100 × 5² = 2500`, faltando 660. 410 XP dá level 3, e o 4 começa em 900, faltando 490. O histórico acima segue a §5: vitória PvP com 5 Frags rende `20 + 10 × 5 + 60 = 130` XP.
+Pela fórmula do [progression.md](progression.md) §6: 1840 XP dá `1 + floor(sqrt(18,4)) = 5`, que começou em `100 × 4² = 1600`, e o level 6 começa em `100 × 5² = 2500`, faltando 660. 410 XP dá level 3, que começou em 400, e o 4 começa em 900, faltando 490. O histórico acima segue a §5: vitória PvP com 5 Frags rende `20 + 10 × 5 + 60 = 130` XP.
 
 Resultado de uma partida `coop` (`GET /api/matches/14/result`):
 
@@ -245,7 +248,7 @@ Conquistas do User 7 depois dessa partida (`GET /api/users/7/achievements`):
 2. **`ready` é rota própria, não `PATCH` do Match.** Um `PATCH /api/matches/{id}` abriria a porta para alterar `options`, que são imutáveis depois do `create`. Rota dedicada deixa a imutabilidade visível no contrato em vez de depender de validação.
 3. **`lobby_update` manda o `RoomInfo` inteiro.** Delta economizaria bytes de um payload de ~400 bytes a cada clique de "pronto" e, em troca, exigiria que a tela reconciliasse estado — justamente o que dá bug quando uma mensagem é perdida. Estado inteiro é idempotente.
 4. **`result` do histórico é do ponto de vista de quem pediu.** Vem de `match_players.won`: no `pvp` a mesma partida é `win` numa tela e `loss` na outra ([rooms.md](rooms.md) §4, decisão 1). A alternativa (devolver `matches.result` e a tela decidir) espalharia essa regra por três telas.
-5. **`duration_s`, `win_rate` e `xp_to_next_level` vão calculados na resposta.** A tela não deve conhecer `TICK_RATE` nem a fórmula de level; é o mesmo princípio do canvas não ter texto.
+5. **`duration_s`, `win_rate`, `xp_to_next_level` e `xp_level_start` vão calculados na resposta.** A tela não deve conhecer `TICK_RATE` nem a fórmula de level; é o mesmo princípio do canvas não ter texto.
 6. **Rate limit em `POST /api/matches`** (proposta: 10/min por User, dependência `RateLimit` do Augusto): criar Lobby é a única rota que aloca memória no servidor por requisição.
 7. **Perfil, histórico e leaderboard são `GET` por `user_id`, não por `me`.** A mesma rota serve o próprio perfil e o de terceiros, que é o que o módulo *Standard user management* pede. `/api/users/me/...` não existe aqui — a casca já sabe o próprio `user_id` pelo `/api/auth/me`.
 8. **Resultado em rota própria, `/result`, lido só do banco** (proposta de 25/10; assinada pelo Caio em 27/10, #165). A alternativa era uma rota só, devolvendo `RoomInfo` ou `MatchDetail` conforme o estado. Com duas, cada rota tem um formato só: o FastAPI valida a resposta e o tipo da tela é fixo. A separação entre memória (Room) e banco (Match) fica na URL, como na decisão 1. A rota da sala de espera não muda. E o "ainda não gravado" vira um 409 que a tela trata, em vez de um `RoomInfo` inesperado. O custo é uma rota e dois `code` a mais.
