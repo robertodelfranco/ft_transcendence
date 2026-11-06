@@ -113,6 +113,21 @@ No calendário replanejado ([replanejamento-e-board.md](../pm/replanejamento-e-b
 
 **Atualizado em 21/10, quando o teste com 2 PCs passou para 31/10:** a S4 começa pelo que só se valida na rede da 42 (F6.8, F8.9 e F8.11). Assim, o teste do dia 31 já cobre essas tarefas, e o que estourar da semana é a F5.4–F5.8, que não depende da 42 e pode entrar na primeira semana da S5. Se nem isso couber, a primeira a sair é a F5.8 (leaderboard, 0,5 d, última peça do módulo de estatísticas). Fora a F8.6, nada da Slice 5 espera o resultado do dia 31.
 
+### 5.1 Pendências das revisões da F7.8 (#215 e #218, 06/11)
+
+As telas de estatísticas do Caio já estão prontas contra o MSW. Enquanto as rotas abaixo não entram, o perfil e o `/leaderboard` mostram o aviso de erro e o Chrome registra 404 (critério de rejeição na avaliação). Ao planejar cada tarefa, levar junto:
+
+| Tarefa | Pendência | Por quê |
+|---|---|---|
+| #116, #156, #157, #158, #159 | Entregar as 4 rotas do [matches-api.md](../contracts/matches-api.md) §2.3: `/users/{id}/matches`, `/stats`, `/achievements` e `/leaderboard`. ✅ `/stats` feita (#156 e #157, 06/11) | Até lá, a `main` fica com 404 no console nas telas da F7.8 |
+| **F5.5** (#157) | Acrescentar ao `PlayerStats` o XP em que o nível atual começa (`threshold(level)` do [progression.md](../contracts/progression.md) §6), por exemplo `xp_level_start`, no contrato e na resposta. ✅ feito em 06/11. Avisar o Caio para trocar a barra para `value = xp - xp_level_start` e `max = xp + xp_to_next_level - xp_level_start` | Hoje a barra vai de 0 XP até o próximo nível: no level 6 recém-alcançado já aparece em ~69 %, e quanto maior o level, mais parada fica. A fórmula continua só no backend (decisão 5) |
+| **F5.5** (#157) | Na correção dos exemplos de API, trocar o `arena_small` do exemplo de histórico da §3 por um Map PvP que existe (`pvp_ring` ou `pvp_crossroads`). ✅ trocado por `pvp_ring` em 06/11; avisar o Caio para atualizar `frontend/src/mocks/fixtures/matchHistory.json` | O Map não existe mais; a tela mostra o code cru pelo fallback do `mapName` |
+| **F5.5** (#157) | `grep -rn "TODO F5.5" backend/tests`: dois testes em `tests/matches/test_record.py` fixam `xp_gained: 0` e `elo_*: null` e quebram de propósito. ✅ trocados pelo XP e Elo do `progression.md` em 06/11 | Já previsto no #200 |
+| **F5.7** (#158) | Gravar o desbloqueio na **mesma transação** do `record_match_result` que marca o Match `finished` ([rooms.md](../contracts/rooms.md) §2.5, passo 4). Não mover para depois do commit | A seção "conquistas desta partida" da tela de resultado lê `/achievements` assim que o `/result` responde, sem nova tentativa; fora da transação, ela pode aparecer vazia |
+| **F5.4** (#156) | `GET /users/{id}/stats` devolve zeros (`level` 1, `elo` 1000) para quem não tem linha em `player_stats`. ✅ feito em 06/11 | User novo e conta anonimizada (#221, `rooms.md` §4, decisão 11) não têm linha; a anonimização apaga `player_stats` e `user_achievements` |
+| **F5.8** (#159) | O ranking lê de `player_stats`, não de `match_players` | Assim a conta anonimizada some do ranking sozinha; filtrar por `match_players` traria o `deleted_<id>` de volta |
+| **F5.8** (#159), opcional | Decidir se `metric` aceita `frags`. Hoje aceita `elo`, `xp`, `wins` e `kills`, e a tela esconde `kills` no PvP (sempre 0) | Sem `frags`, o ranking PvP não ordena por Frags |
+
 ## 6. O que eu explico na defesa
 
 Por módulo que passa pela minha Slice (plano §7):
