@@ -95,6 +95,16 @@ describe("/matches/:matchId", () => {
     expect(rival.getAllByRole("cell").at(-1)).toHaveTextContent("1016 (+16)");
   });
 
+  // até a F5.5 (#157), o backend grava o pvp sem Elo e com XP 0: é o que a tela recebe hoje
+  it("pvp sem Elo gravado mostra traço no lugar do número", async () => {
+    serve({ ...pvp, players: pvp.players.map((player) =>
+      ({ ...player, xp_gained: 0, elo_before: null, elo_after: null })) });
+    await renderAt("/matches/14");
+    await screen.findByText("Derrota");
+    const cells = within(rowOf("akita")).getAllByRole("cell");
+    expect(cells.slice(-2).map((cell) => cell.textContent)).toEqual(["0", "—"]);
+  });
+
   it("empate", async () => {
     serve({ ...pvp, result: "draw", reason: "time_limit",
       players: pvp.players.map((player) => ({ ...player, won: false })) });
