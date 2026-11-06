@@ -18,6 +18,7 @@ MAX_EMAIL_LENGTH = 254
 MIN_PASSWORD_LENGTH = 8
 MAX_PASSWORD_LENGTH = 128 # o Argon2 é caro de propósito: sem teto, senha de 1 MB vira DoS (decisão 17)
 DEFAULT_AVATAR_URL = "/media/avatars/default.png" # o banco guarda NULL (decisão 18)
+RESERVED_USERNAME_PREFIX = "deleted_" # das contas anonimizadas (rooms.md §4, decisão 11)
 
 
 # ---------- regras por campo (§2.4) ----------
@@ -44,6 +45,13 @@ def _strong_password(value: str) -> str:
 	return value
 
 
+def _not_reserved(value: str) -> str:
+	# deleted_<id> é o nome das contas anonimizadas (app/scripts/anonymize.py); o code já existe no i18n
+	if value.startswith(RESERVED_USERNAME_PREFIX):
+		raise PydanticCustomError("invalid_format", "username prefix is reserved")
+	return value
+
+
 def _not_empty(value: str) -> str:
 	if not value:
 		raise PydanticCustomError("required", "password is required")
@@ -54,7 +62,7 @@ def _not_empty(value: str) -> str:
 Email = Annotated[str, BeforeValidator(_normalize), StringConstraints(max_length=MAX_EMAIL_LENGTH),
 	AfterValidator(_email_format)]
 Username = Annotated[str, BeforeValidator(_normalize),
-	StringConstraints(min_length=3, max_length=20, pattern=USERNAME_PATTERN)]
+	StringConstraints(min_length=3, max_length=20, pattern=USERNAME_PATTERN), AfterValidator(_not_reserved)]
 # senha sem normalização nenhuma: espaço conta
 NewPassword = Annotated[str, StringConstraints(min_length=MIN_PASSWORD_LENGTH,
 	max_length=MAX_PASSWORD_LENGTH), AfterValidator(_strong_password)]

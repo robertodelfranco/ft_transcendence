@@ -36,6 +36,7 @@ def test_preferred_language_defaults_to_english():
 	({"username": "ab"}, {"username": "too_short"}),
 	({"username": "a" * 21}, {"username": "too_long"}),
 	({"username": "com-hifen"}, {"username": "invalid_format"}),
+	({"username": "Deleted_7"}, {"username": "invalid_format"}), # prefixo das contas anonimizadas
 	({"password": "curta1"}, {"password": "too_short"}),
 	({"password": "a1" * 65}, {"password": "too_long"}),
 	({"password": "somenteletras"}, {"password": "weak_password"}),
