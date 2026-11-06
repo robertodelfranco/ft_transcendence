@@ -62,13 +62,20 @@ describe("histórico no perfil", () => {
     const row = within(await section.findByRole("listitem"));
     expect(row.getByText("Vitória")).toBeInTheDocument();
     expect(row.getByText("PvP 1x1")).toBeInTheDocument();
-    expect(row.getByText("arena_small")).toBeInTheDocument(); // Map sem tradução: o nome do arquivo
+    expect(row.getByText("Anel")).toBeInTheDocument();
     expect(row.getByText(/^4 de out\. de 2026/)).toHaveAttribute("dateTime", "2026-10-04T18:22:35Z");
     expect(row.getByText("02:35")).toBeInTheDocument();
     expect(row.getByText("Contra rdel_fra")).toBeInTheDocument();
     expect(row.getByRole("link", { name: "Ver partida #13" })).toHaveAttribute("href", "/matches/13");
     // 37 partidas, 20 por página na resposta do exemplo: as páginas vêm do per_page devolvido
     expect(section.getByText("Página 1 de 2")).toBeInTheDocument();
+  });
+
+  it("Map sem tradução mostra o nome do arquivo", async () => {
+    serveHistory(1, () => [{ ...pvpWin, map: "mapa_novo" }]);
+    await renderProfile(3);
+    const row = within(await within(await history()).findByRole("listitem"));
+    expect(row.getByText("mapa_novo")).toBeInTheDocument();
   });
 
   it("pede o histórico do User do perfil, não o de quem está logado", async () => {
