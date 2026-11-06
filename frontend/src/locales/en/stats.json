@@ -41,5 +41,25 @@
     "page": "Page {{page}} of {{pages}}",
     "previous": "Previous",
     "next": "Next"
+  },
+  "player": {
+    "title": "Statistics",
+    "level": "Level {{level}}",
+    "progress": "Progress to the next level",
+    "xp": "{{xp}} XP",
+    "toNext": "{{xp}} XP to level {{level}}",
+    "matches": "Matches",
+    "wins": "Wins",
+    "losses": "Losses",
+    "draws": "Draws",
+    "winRate": "Win rate",
+    "kills": "Kills",
+    "frags": "Frags",
+    "deaths": "Deaths",
+    "elo": "Elo",
+    "playtime": "Play time",
+    "hoursMinutes": "{{hours}} h {{minutes}} min",
+    "minutes": "{{minutes}} min",
+    "none": "—"
   }
 }

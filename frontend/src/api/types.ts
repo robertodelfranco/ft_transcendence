@@ -166,3 +166,22 @@ export interface MatchHistoryItem {
     | "xp_gained" | "elo_before" | "elo_after">;
   others: Array<Pick<MatchPlayerRow, "user_id" | "username" | "avatar_url" | "won">>; // companheiros ou oponente
 }
+
+// GET /api/users/{id}/stats: o agregado por User e por Mode, calculado no servidor (matches-api.md §2.3)
+export interface PlayerStats {
+  matches_played: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  kills: number; // o coop conta Kills; o pvp conta Frags
+  frags: number;
+  deaths: number;
+  playtime_s: number;
+  xp: number;
+  level: number;
+  elo: number; // só muda no pvp; o coop fica em 1000
+  win_rate: number; // 0 a 1, já dividido: a tela não calcula
+  xp_to_next_level: number; // XP que falta, não a parcela já preenchida
+}
+
+export type UserStats = Record<Mode, PlayerStats>;

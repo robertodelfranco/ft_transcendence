@@ -41,5 +41,25 @@
     "page": "Página {{page}} de {{pages}}",
     "previous": "Anterior",
     "next": "Siguiente"
+  },
+  "player": {
+    "title": "Estadísticas",
+    "level": "Nivel {{level}}",
+    "progress": "Progreso hasta el siguiente nivel",
+    "xp": "{{xp}} XP",
+    "toNext": "Faltan {{xp}} XP para el nivel {{level}}",
+    "matches": "Partidas",
+    "wins": "Victorias",
+    "losses": "Derrotas",
+    "draws": "Empates",
+    "winRate": "Porcentaje de victorias",
+    "kills": "Kills",
+    "frags": "Frags",
+    "deaths": "Muertes",
+    "elo": "Elo",
+    "playtime": "Tiempo de juego",
+    "hoursMinutes": "{{hours}} h {{minutes}} min",
+    "minutes": "{{minutes}} min",
+    "none": "—"
   }
 }
