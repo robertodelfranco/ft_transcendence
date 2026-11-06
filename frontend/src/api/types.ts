@@ -143,3 +143,75 @@ export interface MatchDetail {
   reason: string; // code traduzível (game:reasons)
   players: MatchPlayerRow[]; // em ordem de user_id
 }
+
+// Histórico, estatísticas e leaderboard (matches-api.md §2.3)
+
+export interface Page<T> {
+  items: T[];
+  page: number;
+  per_page: number;
+  total: number;
+}
+
+// Uma linha do histórico, do ponto de vista do User da rota
+export interface MatchHistoryItem {
+  match_id: number;
+  mode: Mode;
+  map: string;
+  ended_at: string;
+  duration_s: number;
+  result: "win" | "loss" | "draw"; // de players[].won deste User, não o da Room
+  reason: string;
+  me: Pick<MatchPlayerRow, "kills" | "frags" | "deaths" | "damage_dealt" | "damage_taken"
+    | "xp_gained" | "elo_before" | "elo_after">;
+  others: Array<Pick<MatchPlayerRow, "user_id" | "username" | "avatar_url" | "won">>; // companheiros ou oponente
+}
+
+// GET /api/users/{id}/stats: o agregado por User e por Mode, calculado no servidor (matches-api.md §2.3)
+export interface PlayerStats {
+  matches_played: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  kills: number; // o coop conta Kills; o pvp conta Frags
+  frags: number;
+  deaths: number;
+  playtime_s: number;
+  xp: number;
+  level: number;
+  elo: number; // só muda no pvp; o coop fica em 1000
+  win_rate: number; // 0 a 1, já dividido: a tela não calcula
+  xp_to_next_level: number; // XP que falta, não a parcela já preenchida
+}
+
+export type UserStats = Record<Mode, PlayerStats>;
+
+// GET /api/users/{id}/achievements (matches-api.md §2.3): o catálogo vem do backend, na ordem do
+// progression.md §3, e o front só traduz pelo code
+export interface AchievementUnlock {
+  code: string;
+  unlocked_at: string;
+  match_id: number | null; // o Match do primeiro desbloqueio; null se ele não existe mais
+}
+
+export interface AchievementInfo {
+  code: string;
+  mode: Mode | null; // null vale nos dois Modes
+}
+
+export interface AchievementsResponse {
+  unlocked: AchievementUnlock[]; // do mais recente para o mais antigo
+  catalog: AchievementInfo[];
+}
+
+// GET /api/leaderboard (matches-api.md §2.3): value é o da metric pedida, só de quem já terminou
+// um Match naquele Mode
+export type LeaderboardMetric = "elo" | "xp" | "wins" | "kills";
+
+export interface LeaderboardRow {
+  rank: number; // sequencial a partir de 1: o servidor já desempatou
+  user_id: number;
+  username: string;
+  avatar_url: string;
+  value: number;
+}

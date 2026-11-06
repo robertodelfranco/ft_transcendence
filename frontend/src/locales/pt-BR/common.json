@@ -33,6 +33,7 @@
   },
   "nav": {
     "label": "Sua conta",
+    "leaderboard": "Ranking",
     "friends": "Amigos",
     "settings": "Configurações",
     "logout": "Sair"

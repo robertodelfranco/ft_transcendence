@@ -45,12 +45,16 @@ describe("cabeçalho", () => {
     expect(screen.getAllByText("augusto").length).toBeGreaterThan(0);
   });
 
-  it("com sessão: o nome leva ao próprio perfil, e os links abrem amigos e configurações", async () => {
+  it("com sessão: o nome leva ao próprio perfil, e os links abrem ranking, amigos e configurações", async () => {
     const user = userEvent.setup();
     await reloadWithSession();
     renderAt("/lobby");
     const nav = await screen.findByRole("navigation", { name: "Sua conta" });
     expect(within(nav).getByRole("link", { name: "augusto" })).toHaveAttribute("href", "/users/7");
+
+    await user.click(within(nav).getByRole("link", { name: "Ranking" }));
+    expect(await screen.findByRole("heading", { name: "Ranking" })).toBeInTheDocument();
+    expect(document.title).toBe("Ranking · Catacombs 42");
 
     await user.click(within(nav).getByRole("link", { name: "Amigos" }));
     expect(await screen.findByRole("heading", { name: "Amigos" })).toBeInTheDocument();
@@ -78,7 +82,7 @@ describe("cabeçalho", () => {
 })
 
 describe("telas da conta", () => {
-  it.each(["/users/7", "/settings", "/friends"])("%s sem sessão manda para o login", async (path) => {
+  it.each(["/users/7", "/settings", "/friends", "/leaderboard"])("%s sem sessão manda para o login", async (path) => {
     const router = renderAt(path);
     await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
     expect(router.state.location.search).toBe(`?next=${encodeURIComponent(path)}`);

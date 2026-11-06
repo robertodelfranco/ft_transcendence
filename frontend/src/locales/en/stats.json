@@ -24,5 +24,67 @@
     },
     "elo": "{{after}} ({{delta}})",
     "none": "—"
+  },
+  "history": {
+    "title": "Match history",
+    "empty": "No finished matches yet.",
+    "results": {
+      "win": "Victory",
+      "loss": "Defeat",
+      "draw": "Draw"
+    },
+    "against": "Against {{names}}",
+    "with": "With {{names}}",
+    "alone": "Solo",
+    "details": "View match #{{matchId}}",
+    "pages": "History pages",
+    "page": "Page {{page}} of {{pages}}",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "player": {
+    "title": "Statistics",
+    "level": "Level {{level}}",
+    "progress": "Progress to the next level",
+    "xp": "{{xp}} XP",
+    "toNext": "{{xp}} XP to level {{level}}",
+    "matches": "Matches",
+    "wins": "Wins",
+    "losses": "Losses",
+    "draws": "Draws",
+    "winRate": "Win rate",
+    "kills": "Kills",
+    "frags": "Frags",
+    "deaths": "Deaths",
+    "elo": "Elo",
+    "playtime": "Play time",
+    "hoursMinutes": "{{hours}} h {{minutes}} min",
+    "minutes": "{{minutes}} min",
+    "none": "—"
+  },
+  "achievements": {
+    "title": "Achievements",
+    "summary": "{{unlocked}} of {{total}} unlocked",
+    "unlockedAt": "Unlocked on {{date}}",
+    "locked": "Locked",
+    "earned": "Achievements unlocked in this match"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "mode": "Mode",
+    "metric": "Sort by",
+    "metrics": {
+      "elo": "Elo",
+      "xp": "XP",
+      "wins": "Wins",
+      "kills": "Kills"
+    },
+    "caption": "{{mode}}, by {{metric}}",
+    "columns": {
+      "rank": "Rank",
+      "player": "Player"
+    },
+    "you": "(you)",
+    "empty": "Nobody is ranked yet: it lists players who finished a match in this mode."
   }
 }

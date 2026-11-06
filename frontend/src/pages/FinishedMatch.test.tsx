@@ -2,11 +2,12 @@ import { render, screen, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "../api/client";
-import type { MatchDetail } from "../api/types";
+import type { AchievementsResponse, MatchDetail } from "../api/types";
 import { setAccessToken } from "../auth/token";
 import i18n from "../i18n";
+import achievements from "../mocks/fixtures/achievements.json";
 import matchResult from "../mocks/fixtures/matchResult.json";
 import { MOCK_PASSWORD } from "../mocks/handlers";
 import { server } from "../mocks/server";
@@ -160,4 +161,66 @@ describe("/matches/:matchId", () => {
       expect(requested).toBe(false);
     },
   );
+});
+
+describe("conquistas da partida", () => {
+  const example = achievements as AchievementsResponse;
+  const OTHER_MATCH = { unlocked_at: "2026-10-01T10:00:00Z", match_id: 12 };
+
+  // guarda de quem foi cada pedido de conquistas
+  function serveAchievements(unlocked: AchievementsResponse["unlocked"]) {
+    const asked: string[] = [];
+    server.use(http.get("/api/users/:userId/achievements", ({ params }) => {
+      asked.push(String(params.userId));
+      return HttpResponse.json({ ...example, unlocked });
+    }));
+    return asked;
+  }
+
+  // tempo para a resposta de conquistas chegar e a tela se redesenhar
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
+
+  it("mostra só as desbloqueadas nesta partida, de quem está logado", async () => {
+    const asked = serveAchievements([
+      ...example.unlocked,
+      { code: "pvp_first_win", ...OTHER_MATCH }, // de outra partida
+      { code: "pvp_five_frags", unlocked_at: "2026-10-01T10:00:00Z", match_id: null }, // o Match não existe mais
+    ]);
+    await renderAt("/matches/14");
+    const section = await screen.findByRole("region", { name: "Conquistas desbloqueadas nesta partida" });
+    const names = within(section).getAllByRole("listitem").map((item) => item.querySelector("p")?.textContent);
+    expect(names).toEqual(["Eu venci!", "Exterminador", "Ensaboado", "Bem-vindo ao Catacombs 42"]);
+    expect(within(section).getByText("Vença uma partida cooperativa sem morrer.")).toBeInTheDocument();
+    expect(asked).toEqual(["7"]);
+  });
+
+  it("sem conquista nesta partida, a seção não aparece", async () => {
+    const asked = serveAchievements([{ code: "pvp_first_win", ...OTHER_MATCH }]);
+    await renderAt("/matches/14");
+    await screen.findByText("Vitória!");
+    await vi.waitFor(() => expect(asked).toHaveLength(1));
+    await settle();
+    expect(screen.queryByText("Conquistas desbloqueadas nesta partida")).not.toBeInTheDocument();
+  });
+
+  it("partida de outra pessoa não pede conquistas", async () => {
+    const asked = serveAchievements(example.unlocked);
+    serve({ ...coop, players: [coop.players[1]] });
+    await renderAt("/matches/14");
+    await screen.findByRole("link", { name: "rdel_fra" });
+    await settle();
+    expect(asked).toEqual([]);
+    expect(screen.queryByText("Conquistas desbloqueadas nesta partida")).not.toBeInTheDocument();
+  });
+
+  it("erro nas conquistas não esconde o resultado", async () => {
+    server.use(http.get("/api/users/:userId/achievements", () => HttpResponse.json(
+      { error: { code: "internal_error", message: "x", request_id: "test0001", fields: null } },
+      { status: 500 },
+    )));
+    await renderAt("/matches/14");
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("Vitória!")).toBeInTheDocument();
+    expect(within(rowOf("akita")).getByText("(você)")).toBeInTheDocument();
+  });
 });

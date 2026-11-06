@@ -8,12 +8,15 @@ import Avatar from "../profile/Avatar";
 import FriendButton from "../profile/FriendButton";
 import FriendStatus from "../profile/FriendStatus";
 import { useProfile } from "../profile/useProfile";
+import MatchHistory from "../stats/MatchHistory";
+import UserAchievements from "../stats/UserAchievements";
+import UserStats from "../stats/UserStats";
 
 // Um id que nem é número dá o mesmo aviso de um User que não existe
 const NOT_FOUND: Failure = { code: "user_not_found", requestId: null };
 
-// /users/:userId (i18n.md §3): perfil próprio ou de terceiros. A F7.8 acrescenta estatísticas,
-// conquistas e histórico aqui
+// /users/:userId (i18n.md §3): perfil próprio ou de terceiros, com as estatísticas por Mode, as
+// conquistas e o histórico de partidas (F7.8)
 export default function UserProfile() {
   const { userId } = useParams();
   const id = Number(userId);
@@ -43,18 +46,23 @@ function ProfileView({ userId }: { userId: number }) {
     .format(new Date(profile.created_at));
 
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-      <Avatar user={profile} large />
-      <div className="flex flex-col items-center gap-2 sm:items-start">
-        <h1 className="text-2xl font-bold text-torch">{profile.username}</h1>
-        <p className="text-sm text-bone/70">{t("user.since", { date: since })}</p>
-        {/* presença só de amigo: o servidor não anuncia a dos outros (i18n.md §2.7) */}
-        {profile.is_friend && <FriendStatus userId={profile.id} />}
-        {profile.is_me
-          ? <Link to="/settings" className={linkClass}>{t("user.edit")}</Link>
-          : <FriendButton profile={profile}
-              onChange={(isFriend) => setProfile({ ...profile, is_friend: isFriend })} />}
+    <>
+      <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+        <Avatar user={profile} large />
+        <div className="flex flex-col items-center gap-2 sm:items-start">
+          <h1 className="text-2xl font-bold text-torch">{profile.username}</h1>
+          <p className="text-sm text-bone/70">{t("user.since", { date: since })}</p>
+          {/* presença só de amigo: o servidor não anuncia a dos outros (i18n.md §2.7) */}
+          {profile.is_friend && <FriendStatus userId={profile.id} />}
+          {profile.is_me
+            ? <Link to="/settings" className={linkClass}>{t("user.edit")}</Link>
+            : <FriendButton profile={profile}
+                onChange={(isFriend) => setProfile({ ...profile, is_friend: isFriend })} />}
+        </div>
       </div>
-    </div>
+      <UserStats userId={profile.id} />
+      <UserAchievements userId={profile.id} />
+      <MatchHistory userId={profile.id} />
+    </>
   );
 }

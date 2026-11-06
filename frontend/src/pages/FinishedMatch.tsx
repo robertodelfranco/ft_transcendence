@@ -8,6 +8,7 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import { mapName } from "../lobby/roomOptions";
 import { knownReason, matchOutcome } from "../play/outcome";
 import { formatClock } from "../play/scoreboardUtils";
+import MatchAchievements from "../stats/MatchAchievements";
 import MatchPlayers from "../stats/MatchPlayers";
 import { useMatchResult } from "../stats/useMatchResult";
 
@@ -73,6 +74,8 @@ function MatchView({ matchId }: { matchId: number }) {
         ))}
       </dl>
       <MatchPlayers detail={detail} userId={user?.id ?? null} />
+      {/* quem não jogou não ganha conquista nesta partida: nem pede */}
+      {user && outcome && <MatchAchievements userId={user.id} matchId={matchId} />}
     </>
   );
 }

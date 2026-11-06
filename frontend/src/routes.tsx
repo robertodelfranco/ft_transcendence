@@ -15,6 +15,7 @@ import WaitingRoom from "./pages/WaitingRoom";
 import UserProfile from "./pages/UserProfile";
 import Settings from "./pages/Settings";
 import Friends from "./pages/Friends";
+import Leaderboard from "./pages/Leaderboard";
 import FinishedMatch from "./pages/FinishedMatch";
 
 // Layout sem path: cabeçalho e rodapé em toda página, inclusive a 404
@@ -25,12 +26,12 @@ export const routes: RouteObject [] = [
       {
         element: <Layout />,
         children: [
-          { element: <PublicOnly />, 
+          { element: <PublicOnly />,
             children: [
               { index: true, element: <Home /> },
               { path: "login", element: <Login /> },
               { path: "signup", element: <Signup /> },
-            ], 
+            ],
           },
           // /privacy e /terms, abertas sem login: uma rota por página de LEGAL_PAGES
           ...LEGAL_PAGES.map((page) => ({ path: page, element: <Legal page={page} /> })),
@@ -44,6 +45,7 @@ export const routes: RouteObject [] = [
               { path: "users/:userId", element: <UserProfile /> },
               { path: "settings", element: <Settings />},
               { path: "friends", element: <Friends /> },
+              { path: "leaderboard", element: <Leaderboard /> },
             ],
           },
           { path: "*", element: <NotFound />},

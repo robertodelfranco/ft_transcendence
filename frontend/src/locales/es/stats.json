@@ -24,5 +24,67 @@
     },
     "elo": "{{after}} ({{delta}})",
     "none": "—"
+  },
+  "history": {
+    "title": "Historial de partidas",
+    "empty": "Todavía no hay partidas terminadas.",
+    "results": {
+      "win": "Victoria",
+      "loss": "Derrota",
+      "draw": "Empate"
+    },
+    "against": "Contra {{names}}",
+    "with": "Con {{names}}",
+    "alone": "En solitario",
+    "details": "Ver partida #{{matchId}}",
+    "pages": "Páginas del historial",
+    "page": "Página {{page}} de {{pages}}",
+    "previous": "Anterior",
+    "next": "Siguiente"
+  },
+  "player": {
+    "title": "Estadísticas",
+    "level": "Nivel {{level}}",
+    "progress": "Progreso hasta el siguiente nivel",
+    "xp": "{{xp}} XP",
+    "toNext": "Faltan {{xp}} XP para el nivel {{level}}",
+    "matches": "Partidas",
+    "wins": "Victorias",
+    "losses": "Derrotas",
+    "draws": "Empates",
+    "winRate": "Porcentaje de victorias",
+    "kills": "Kills",
+    "frags": "Frags",
+    "deaths": "Muertes",
+    "elo": "Elo",
+    "playtime": "Tiempo de juego",
+    "hoursMinutes": "{{hours}} h {{minutes}} min",
+    "minutes": "{{minutes}} min",
+    "none": "—"
+  },
+  "achievements": {
+    "title": "Logros",
+    "summary": "{{unlocked}} de {{total}} desbloqueados",
+    "unlockedAt": "Desbloqueado el {{date}}",
+    "locked": "Bloqueado",
+    "earned": "Logros desbloqueados en esta partida"
+  },
+  "leaderboard": {
+    "title": "Clasificación",
+    "mode": "Modo",
+    "metric": "Ordenar por",
+    "metrics": {
+      "elo": "Elo",
+      "xp": "XP",
+      "wins": "Victorias",
+      "kills": "Kills"
+    },
+    "caption": "{{mode}}, por {{metric}}",
+    "columns": {
+      "rank": "Posición",
+      "player": "Jugador"
+    },
+    "you": "(tú)",
+    "empty": "Todavía no hay nadie en la clasificación: solo aparecen quienes terminaron una partida en este modo."
   }
 }

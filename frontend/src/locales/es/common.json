@@ -33,6 +33,7 @@
   },
   "nav": {
     "label": "Tu cuenta",
+    "leaderboard": "Clasificación",
     "friends": "Amigos",
     "settings": "Configuración",
     "logout": "Cerrar sesión"
