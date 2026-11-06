@@ -313,6 +313,25 @@ async def test_the_room_is_removed_after_its_ttl(manager, monkeypatch):
 	assert manager.game_room(12) is None
 
 
+async def test_removing_the_room_closes_its_game_sockets_with_1000(manager, connections, fake_ws,
+		monkeypatch):
+	monkeypatch.setattr(rooms, "ROOM_TTL_S", 0)
+	lobby(manager, players=(7, 9))
+	ws = fake_ws()
+	other = fake_ws() # o socket de outra partida não pode cair junto
+	await connections.connect(7, "game", ws, match_id=12)
+	await connections.connect(9, "game", other, match_id=13)
+	manager.start(12)
+	(task,) = room_tasks()
+	end_game(manager)
+	await until(task.done)
+
+	assert ws.close_code == 1000
+	assert all(m.get("type") != "error" for m in ws.messages) # fim normal não manda error
+	assert other.close_code is None
+	assert connections.counts()["game"] == 1 # só o da outra partida
+
+
 async def test_unlocked_achievements_go_to_the_players(manager, connections, fake_ws, results):
 	results.unlocks = [AchievementUnlock(user_id=7, code="first_win")]
 	lobby(manager, players=(7, 9))
