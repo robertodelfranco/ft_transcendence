@@ -124,6 +124,22 @@ def test_pvp_frag_limit_ends_on_the_kill_tick_and_prevents_respawn():
 	assert not target.alive
 
 
+def test_pvp_mutual_frag_at_the_limit_is_a_draw():
+	room = new_pvp_room()
+	a, b = room.players[7], room.players[9]
+	for shooter, target, side in ((a, b, -1.0), (b, a, 1.0)):
+		shooter.frags = room.options.frag_limit - 1
+		target.hp = 1
+		room.projectiles.append(Projectile(id=f"mutual_{shooter.user_id}",
+			kind=ProjectileKind.FIREBALL, owner_id=shooter.user_id,
+			x=target.x + side, y=target.y, dx=-side, dy=0.0))
+	events = run(room, 3)
+	deaths = named(events, "player_died")
+	[over] = named(events, "game_over")
+	assert len(deaths) == 2 and deaths[0].tick == deaths[1].tick == over.tick
+	assert over.data == {"result": "draw", "winner_ids": [], "reason": "frag_limit"}
+
+
 def test_pvp_time_limit_uses_higher_frag_count_at_exact_tick():
 	room = new_pvp_room()
 	room.options = RoomOptions(time_limit_s=2)

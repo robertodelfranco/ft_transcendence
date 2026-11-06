@@ -43,9 +43,13 @@ class PvpRuleset:
 
 	def check_end(self, room: Room) -> dict | None:
 		# Frag do Tick atual prevalece sobre o relógio e a saída simultânea.
-		for player in room.players.values():
-			if player.frags >= room.options.frag_limit:
-				return {"result": "win", "winner_ids": [player.user_id], "reason": "frag_limit"}
+		reached = [player.user_id for player in room.players.values()
+			if player.frags >= room.options.frag_limit]
+		if reached:
+			# Frag mútuo no limite: empate, como no time_limit
+			winner_ids = reached if len(reached) == 1 else []
+			return {"result": "win" if winner_ids else "draw",
+				"winner_ids": winner_ids, "reason": "frag_limit"}
 		if any(player.left for player in room.players.values()):
 			remaining = [player.user_id for player in room.players.values() if not player.left]
 			return {"result": "win" if remaining else "draw",
