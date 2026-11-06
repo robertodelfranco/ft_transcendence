@@ -1,0 +1,8 @@
+{"items": [
+  {"match_id": 13, "mode": "pvp", "map": "arena_small",
+   "ended_at": "2026-10-04T18:22:35Z", "duration_s": 155,
+   "result": "win", "reason": "frag_limit",
+   "me": {"kills": 0, "frags": 5, "deaths": 3, "damage_dealt": 10,
+          "damage_taken": 6, "xp_gained": 130, "elo_before": 1000, "elo_after": 1016},
+   "others": [{"user_id": 9, "username": "rdel_fra", "avatar_url": "/media/avatars/default.png", "won": false}]}
+], "page": 1, "per_page": 20, "total": 37}

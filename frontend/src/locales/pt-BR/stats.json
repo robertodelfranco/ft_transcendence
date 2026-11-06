@@ -24,5 +24,22 @@
     },
     "elo": "{{after}} ({{delta}})",
     "none": "—"
+  },
+  "history": {
+    "title": "Histórico de partidas",
+    "empty": "Nenhuma partida terminada ainda.",
+    "results": {
+      "win": "Vitória",
+      "loss": "Derrota",
+      "draw": "Empate"
+    },
+    "against": "Contra {{names}}",
+    "with": "Com {{names}}",
+    "alone": "Sozinho",
+    "details": "Ver partida #{{matchId}}",
+    "pages": "Páginas do histórico",
+    "page": "Página {{page}} de {{pages}}",
+    "previous": "Anterior",
+    "next": "Próxima"
   }
 }

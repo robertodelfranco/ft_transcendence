@@ -143,3 +143,26 @@ export interface MatchDetail {
   reason: string; // code traduzível (game:reasons)
   players: MatchPlayerRow[]; // em ordem de user_id
 }
+
+// Histórico, estatísticas e leaderboard (matches-api.md §2.3)
+
+export interface Page<T> {
+  items: T[];
+  page: number;
+  per_page: number;
+  total: number;
+}
+
+// Uma linha do histórico, do ponto de vista do User da rota
+export interface MatchHistoryItem {
+  match_id: number;
+  mode: Mode;
+  map: string;
+  ended_at: string;
+  duration_s: number;
+  result: "win" | "loss" | "draw"; // de players[].won deste User, não o da Room
+  reason: string;
+  me: Pick<MatchPlayerRow, "kills" | "frags" | "deaths" | "damage_dealt" | "damage_taken"
+    | "xp_gained" | "elo_before" | "elo_after">;
+  others: Array<Pick<MatchPlayerRow, "user_id" | "username" | "avatar_url" | "won">>; // companheiros ou oponente
+}
