@@ -18,8 +18,9 @@ from app.game import TICK_RATE, Mode, load_map
 from app.game.protocol import options_payload
 from app.game.rooms import MAX_PLAYERS, MIN_PLAYERS, RoomInfo, RoomManager, now
 from app.game.world import MAPS_DIR
-from app.matches.models import Match, MatchPlayer
-from app.matches.schemas import CreateMatchIn, MatchDetail, MatchPlayerRow, parse_options
+from app.matches.models import Match, MatchPlayer, PlayerStats
+from app.matches.schemas import (CreateMatchIn, MatchDetail, MatchPlayerRow, PlayerStatsOut, UserStats,
+	parse_options)
 from app.ws.app_events import publish_lobby_removed, publish_lobby_update, publish_match_started
 from app.ws.manager import ConnectionManager
 
@@ -161,3 +162,16 @@ async def match_result(session: AsyncSession, match_id: int) -> MatchDetail:
 		map=match.map, status=match.status, options=match.options, started_at=match.started_at,
 		ended_at=match.ended_at, duration_s=match.duration_ticks // TICK_RATE, result=match.result,
 		reason=match.reason, players=players)
+
+
+# ---------- estatísticas ----------
+
+async def user_stats(session: AsyncSession, user_id: int) -> UserStats:
+	"""O agregado de player_stats por Mode (matches-api.md §2.3)."""
+	if await session.get(User, user_id) is None:
+		raise ApiError(404, "user_not_found", "user not found")
+	rows = {row.mode: row for row in await session.scalars(
+		select(PlayerStats).where(PlayerStats.user_id == user_id))}
+	# sem linha no Mode (User novo ou conta anonimizada): os defaults de quem nunca jogou
+	return UserStats(**{mode.value: PlayerStatsOut.model_validate(rows[mode]) if mode in rows
+		else PlayerStatsOut() for mode in Mode})

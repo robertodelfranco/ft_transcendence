@@ -1,4 +1,4 @@
-"""Rotas de lobby (matches-api.md §2.2)."""
+"""Rotas de lobby (matches-api.md §2.2), estatísticas (§2.3) e resultado (§2.4)."""
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, status
@@ -9,8 +9,9 @@ from app.db.session import DbSession
 from app.game import Mode
 from app.game.rooms import RoomManager, get_room_manager
 from app.matches import service
-from app.matches.schemas import CreateMatchIn, MatchDetail, MatchId, ReadyIn
+from app.matches.schemas import CreateMatchIn, MatchDetail, MatchId, ReadyIn, UserStats
 from app.matches.service import Catalog, get_catalog
+from app.users.schemas import UserId
 from app.ws.app_events import publish_lobby_update
 from app.ws.manager import ConnectionManager, get_connection_manager
 
@@ -80,3 +81,9 @@ async def start_match(match_id: int, user: CurrentUser, session: DbSession, room
 @router.get("/maps")
 async def list_maps(_: CurrentUser, catalog: Maps) -> dict[Mode, list[service.MapInfo]]:
 	return catalog
+
+
+@router.get("/users/{user_id}/stats")
+async def get_user_stats(user_id: UserId, _: CurrentUser, session: DbSession) -> UserStats:
+	# qualquer User logado: o perfil de terceiros usa a mesma rota (decisão 7)
+	return await service.user_stats(session, user_id)

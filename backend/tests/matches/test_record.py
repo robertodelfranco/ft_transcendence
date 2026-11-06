@@ -102,6 +102,17 @@ async def count(db_session, model) -> int:
 	return await db_session.scalar(select(func.count()).select_from(model))
 
 
+STATS = ("matches_played", "wins", "losses", "draws", "kills", "frags", "deaths", "playtime_s", "xp",
+	"level", "elo")
+
+
+async def stats(db_session, mode: str) -> dict[int, dict]:
+	"""As linhas de player_stats de um Mode, por user_id, lidas do banco."""
+	rows = await db_session.execute(select(PlayerStats.user_id, *(getattr(PlayerStats, name) for name in STATS))
+		.where(PlayerStats.mode == mode))
+	return {user_id: dict(zip(STATS, values)) for user_id, *values in rows}
+
+
 # ---------- record_match_result ----------
 
 async def test_coop_result_finishes_the_match_and_writes_every_player(db_session, sessions):
@@ -118,16 +129,19 @@ async def test_coop_result_finishes_the_match_and_writes_every_player(db_session
 	assert [counters(row) for row in rows] == [asdict(p) for p in outcome.players]
 
 
-async def test_pvp_result_keeps_won_per_player_and_leaves_elo_and_xp_for_f5_5(db_session, sessions):
+async def test_pvp_result_records_xp_and_elo_for_each_player(db_session, sessions):
 	ids = await new_users(db_session, "akita", "roberto")
 	match_id = await new_match(db_session, ids[0], mode="pvp")
 
 	await record_match_result(match_id, pvp(ids), ENDED, sessions=sessions)
 
+	# vitória com 5 Frags: 20 + 50 + 60; derrota com 3: 20 + 30. Elo 1000 × 1000: ±16
 	rows = await match_players(db_session, match_id)
-	assert [row.won for row in rows] == [True, False]
-	# TODO F5.5 (#157): troque pelo Elo e XP do progression.md §5–7 quando a F5.5 gravar os dois
-	assert {(row.elo_before, row.elo_after, row.xp_gained) for row in rows} == {(None, None, 0)}
+	assert [(row.won, row.xp_gained, row.elo_before, row.elo_after) for row in rows] == [
+		(True, 130, 1000, 1016), (False, 50, 1000, 984)]
+	assert {user_id: (row["elo"], row["wins"], row["losses"])
+		for user_id, row in (await stats(db_session, "pvp")).items()} == {
+		ids[0]: (1016, 1, 0), ids[1]: (984, 0, 1)}
 
 
 async def test_second_call_writes_nothing(db_session, sessions):
@@ -135,6 +149,7 @@ async def test_second_call_writes_nothing(db_session, sessions):
 	match_id = await new_match(db_session, ids[0])
 	await record_match_result(match_id, coop(ids), ENDED, sessions=sessions)
 	first = [counters(row) for row in await match_players(db_session, match_id)]
+	first_stats = await stats(db_session, "coop")
 
 	# outro resultado na repetida: se ela gravasse, o reason e os contadores mudariam
 	other = MatchOutcome(result="loss", reason="forfeit", winner_ids=(), duration_ticks=1,
@@ -144,6 +159,7 @@ async def test_second_call_writes_nothing(db_session, sessions):
 	match = await db_session.get(Match, match_id, populate_existing=True) # relido do banco
 	assert (match.status, match.reason, match.duration_ticks) == ("finished", "boss_defeated", 13680)
 	assert [counters(row) for row in await match_players(db_session, match_id)] == first
+	assert await stats(db_session, "coop") == first_stats
 
 
 @pytest.mark.parametrize("status", ["lobby", "aborted", "finished"])
@@ -158,15 +174,91 @@ async def test_a_match_that_is_not_running_is_ignored(db_session, sessions, stat
 	assert await match_players(db_session, match_id) == []
 
 
-async def test_stats_and_achievements_are_not_written_yet(db_session, sessions):
-	# a fronteira da F5.3: player_stats é a F5.4, conquistas a F5.7, na mesma transação
+async def test_coop_result_aggregates_player_stats(db_session, sessions):
 	ids = await new_users(db_session, "akita", "caio", "rafael")
+	a, b, c = ids
+	match_id = await new_match(db_session, a)
+
+	await record_match_result(match_id, coop(ids), ENDED, sessions=sessions)
+
+	# 13680 Ticks a 30 Hz = 456 s; o Elo não muda no coop
+	base = {"matches_played": 1, "wins": 1, "losses": 0, "draws": 0, "frags": 0, "playtime_s": 456,
+		"elo": 1000}
+	assert await stats(db_session, "coop") == {
+		a: {**base, "kills": 9, "deaths": 0, "xp": 165, "level": 2},
+		b: {**base, "kills": 7, "deaths": 0, "xp": 155, "level": 2},
+		# morreu e saiu antes do fim: a partida conta, o XP não
+		c: {**base, "kills": 4, "deaths": 1, "xp": 0, "level": 1},
+	}
+	assert await stats(db_session, "pvp") == {}
+	# conquistas são a F5.7, na mesma transação
+	assert await count(db_session, UserAchievement) == 0
+
+
+async def test_a_second_match_adds_to_the_existing_row(db_session, sessions):
+	ids = await new_users(db_session, "akita", "caio", "rafael")
+	db_session.add(PlayerStats(user_id=ids[1], mode="coop", matches_played=1, losses=1, kills=4,
+		playtime_s=100, xp=90))
 	match_id = await new_match(db_session, ids[0])
 
 	await record_match_result(match_id, coop(ids), ENDED, sessions=sessions)
 
-	assert await count(db_session, PlayerStats) == 0
-	assert await count(db_session, UserAchievement) == 0
+	# 90 + 155 = 245: o level é recalculado sobre o total, não sobre o ganho
+	assert (await stats(db_session, "coop"))[ids[1]] == {"matches_played": 2, "wins": 1, "losses": 1,
+		"draws": 0, "kills": 11, "frags": 0, "deaths": 0, "playtime_s": 556, "xp": 245, "level": 2,
+		"elo": 1000}
+
+
+@pytest.mark.parametrize("result, winner, elos", [
+	("win", 0, (1024, 1176)),  # o de rating menor vence
+	("win", 1, (992, 1208)),   # o de rating maior vence: o B não é sempre quem ganha
+	("draw", None, (1008, 1192)), # o empate transfere para o de rating menor
+])
+async def test_pvp_elo_starts_from_the_stored_ratings(db_session, sessions, result, winner, elos):
+	ids = await new_users(db_session, "akita", "roberto")
+	db_session.add_all([PlayerStats(user_id=ids[0], mode="pvp", elo=1000),
+		PlayerStats(user_id=ids[1], mode="pvp", elo=1200)])
+	match_id = await new_match(db_session, ids[0], mode="pvp")
+	outcome = MatchOutcome(result=result, reason="time_limit",
+		winner_ids=() if winner is None else (ids[winner],), duration_ticks=9000,
+		players=tuple(player(user_id, won=index == winner) for index, user_id in enumerate(ids)))
+
+	await record_match_result(match_id, outcome, ENDED, sessions=sessions)
+
+	rows = await match_players(db_session, match_id)
+	assert [(row.elo_before, row.elo_after) for row in rows] == [(1000, elos[0]), (1200, elos[1])]
+	pvp_stats = await stats(db_session, "pvp")
+	assert (pvp_stats[ids[0]]["elo"], pvp_stats[ids[1]]["elo"]) == elos
+	assert pvp_stats[ids[0]]["draws"] == (result == "draw")
+
+
+async def test_pvp_forfeit_still_costs_the_disconnected_loser_elo(db_session, sessions):
+	ids = await new_users(db_session, "akita", "roberto")
+	match_id = await new_match(db_session, ids[0], mode="pvp")
+	outcome = MatchOutcome(result="win", reason="forfeit", winner_ids=(ids[0],), duration_ticks=900,
+		players=(player(ids[0], won=True, frags=1), player(ids[1], disconnected_at_end=True)))
+
+	await record_match_result(match_id, outcome, ENDED, sessions=sessions)
+
+	# sair não preserva o rating (progression.md §2); o XP de quem saiu é 0
+	rows = await match_players(db_session, match_id)
+	assert [(row.xp_gained, row.elo_after) for row in rows] == [(90, 1016), (0, 984)]
+	assert (await stats(db_session, "pvp"))[ids[1]]["losses"] == 1
+
+
+async def test_pvp_without_two_players_records_the_match_and_keeps_elo(db_session, sessions):
+	# não deveria acontecer; se acontecer, o Match é gravado mesmo assim, sem Elo
+	(only,) = await new_users(db_session, "akita")
+	match_id = await new_match(db_session, only, mode="pvp")
+	outcome = MatchOutcome(result="win", reason="forfeit", winner_ids=(only,), duration_ticks=900,
+		players=(player(only, won=True),))
+
+	await record_match_result(match_id, outcome, ENDED, sessions=sessions)
+
+	assert (await status_of(db_session, match_id))[0] == "finished"
+	(row,) = await match_players(db_session, match_id)
+	assert (row.elo_before, row.elo_after) == (None, None)
+	assert (await stats(db_session, "pvp"))[only]["elo"] == 1000
 
 
 # ---------- a corrida, com commit de verdade ----------
@@ -213,6 +305,8 @@ async def test_two_calls_at_once_write_once(committing, committed_match):
 		assert await session.scalar(select(func.count()).select_from(MatchPlayer)
 			.where(MatchPlayer.match_id == match_id)) == 3
 		assert await session.scalar(select(Match.status).where(Match.id == match_id)) == "finished"
+		assert list(await session.scalars(select(PlayerStats.matches_played)
+			.where(PlayerStats.user_id.in_(ids)))) == [1, 1, 1]
 
 
 # ---------- abort_unfinished ----------
@@ -284,13 +378,11 @@ async def test_result_of_a_finished_coop_match_is_open_to_any_logged_user(client
 		"status": "finished", "options": {}, "started_at": "2026-10-04T18:02:11Z",
 		"ended_at": "2026-10-04T18:09:47Z", "duration_s": 456, # 13680 Ticks a 30 Hz
 		"result": "win", "reason": "boss_defeated"}
-	# em ordem de user_id; elo é sempre null no coop
-	# TODO F5.5 (#157): xp_gained ainda é o default 0. Quando o record_match_result gravar o XP,
-	# este teste quebra de propósito: troque o 0 pelo XP do progression.md §5 para cada Player
+	# em ordem de user_id; elo é sempre null no coop; o terceiro saiu antes do fim e não ganha XP
 	assert body["players"] == [
-		{**asdict(p), "username": name, "avatar_url": DEFAULT_AVATAR_URL, "xp_gained": 0,
+		{**asdict(p), "username": name, "avatar_url": DEFAULT_AVATAR_URL, "xp_gained": xp,
 			"elo_before": None, "elo_after": None}
-		for p, name in zip(outcome.players, ("akita", "caio", "rafael"))]
+		for p, name, xp in zip(outcome.players, ("akita", "caio", "rafael"), (165, 155, 0))]
 
 
 async def test_pvp_loser_sees_won_false_even_with_result_win(client, app, db_session, sessions):
@@ -338,4 +430,71 @@ async def test_an_id_beyond_bigint_is_422_not_500(client, app, db_session):
 
 async def test_result_needs_a_session(client):
 	response = await client.get("/api/matches/1/result")
+	assert response.status_code == 401
+
+
+# ---------- GET /api/users/{id}/stats ----------
+
+# User sem partida no Mode: tudo zerado, level 1 e o Elo inicial (decisão da F5.4, caminho-5 §5.1)
+FRESH = {**dict.fromkeys(STATS, 0), "level": 1, "elo": 1000, "win_rate": 0, "xp_to_next_level": 100,
+	"xp_level_start": 0}
+
+
+async def test_stats_of_a_user_without_matches_are_zeros(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+
+	response = await client.get(f"/api/users/{user}/stats", headers=bearer(app, user))
+
+	assert response.status_code == 200
+	assert response.json() == {"coop": FRESH, "pvp": FRESH}
+
+
+async def test_stats_after_a_coop_and_a_pvp_match(client, app, db_session, sessions):
+	*ids, viewer = await new_users(db_session, "akita", "caio", "rafael", "augusto")
+	await record_match_result(await new_match(db_session, ids[0]), coop(ids), ENDED, sessions=sessions)
+	await record_match_result(await new_match(db_session, ids[0], mode="pvp"), pvp(ids[:2]), ENDED,
+		sessions=sessions)
+
+	# quem pede não jogou: o perfil de terceiros usa a mesma rota (decisão 7)
+	response = await client.get(f"/api/users/{ids[0]}/stats", headers=bearer(app, viewer))
+
+	# 165 XP: level 2, que começou em 100; o 3 começa em 400. 130 XP: faltam 270
+	assert response.json() == {
+		"coop": {"matches_played": 1, "wins": 1, "losses": 0, "draws": 0, "kills": 9, "frags": 0,
+			"deaths": 0, "playtime_s": 456, "xp": 165, "level": 2, "elo": 1000, "win_rate": 1.0,
+			"xp_to_next_level": 235, "xp_level_start": 100},
+		"pvp": {"matches_played": 1, "wins": 1, "losses": 0, "draws": 0, "kills": 0, "frags": 5,
+			"deaths": 3, "playtime_s": 155, "xp": 130, "level": 2, "elo": 1016, "win_rate": 1.0,
+			"xp_to_next_level": 270, "xp_level_start": 100},
+	}
+
+
+async def test_win_rate_is_rounded_to_three_places(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+	db_session.add(PlayerStats(user_id=user, mode="pvp", matches_played=3, wins=2, losses=1))
+	await db_session.flush()
+
+	body = (await client.get(f"/api/users/{user}/stats", headers=bearer(app, user))).json()
+
+	# o empate entraria no denominador; a tela não divide (decisão 5)
+	assert body["pvp"]["win_rate"] == 0.667
+	assert body["coop"] == FRESH
+
+
+async def test_stats_of_an_unknown_user_is_404(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+	response = await client.get(f"/api/users/{2**63 - 1}/stats", headers=bearer(app, user))
+
+	assert response.status_code == 404
+	assert response.json()["error"]["code"] == "user_not_found"
+
+
+async def test_stats_id_beyond_bigint_is_422_not_500(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+	response = await client.get(f"/api/users/{2**63}/stats", headers=bearer(app, user))
+	assert response.status_code == 422
+
+
+async def test_stats_need_a_session(client):
+	response = await client.get("/api/users/1/stats")
 	assert response.status_code == 401

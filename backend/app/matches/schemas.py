@@ -1,13 +1,14 @@
-"""Corpo do POST /api/matches (matches-api.md §2.2, room-options.md §2.1) e o MatchDetail (§2.4)."""
+"""Corpo do POST /api/matches (matches-api.md §2.2, room-options.md §2.1), PlayerStats (§2.3) e MatchDetail (§2.4)."""
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import Path
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, computed_field
 
 from app.core.errors import ApiError, validation_fields
 from app.game.state import Mode, PickupOptions, RoomOptions
 from app.matches.models import Reason, Result
+from app.matches.progression import ELO_START, threshold
 
 
 # os defaults saem da Simulation (fonte única); aqui só entram os limites
@@ -102,3 +103,44 @@ class MatchDetail(BaseModel):
 	result: Result # desfecho da Room; quem ganhou é players[].won (decisão 4)
 	reason: Reason
 	players: list[MatchPlayerRow] # em ordem de user_id
+
+
+# ---------- estatísticas (matches-api.md §2.3) ----------
+
+class PlayerStatsOut(BaseModel):
+	"""Uma linha de player_stats; os defaults são os de quem nunca jogou o Mode (sem linha)."""
+	model_config = ConfigDict(from_attributes=True)
+
+	matches_played: int = 0
+	wins: int = 0
+	losses: int = 0
+	draws: int = 0
+	kills: int = 0
+	frags: int = 0
+	deaths: int = 0
+	playtime_s: int = 0
+	xp: int = 0
+	level: int = 1
+	elo: int = ELO_START
+
+	# calculados na resposta: a tela não divide nem conhece a fórmula de level (decisão 5)
+	@computed_field
+	@property
+	def win_rate(self) -> float:
+		return round(self.wins / self.matches_played, 3) if self.matches_played else 0
+
+	@computed_field
+	@property
+	def xp_to_next_level(self) -> int:
+		return threshold(self.level + 1) - self.xp
+
+	@computed_field
+	@property
+	def xp_level_start(self) -> int:
+		# onde a barra do level atual começa (progression.md §6)
+		return threshold(self.level)
+
+
+class UserStats(BaseModel):
+	coop: PlayerStatsOut
+	pvp: PlayerStatsOut
