@@ -71,16 +71,29 @@ describe("estatísticas no perfil", () => {
     ]);
   });
 
-  it("a barra vai do XP até o início do próximo nível", async () => {
+  it("a barra cobre só o level atual, do XP em que ele começou até o do próximo", async () => {
     await renderProfile(3);
     const coop = await card("Cooperativo");
     const bar = coop.getByRole("progressbar", { name: "Progresso até o próximo nível" });
-    expect(bar).toHaveAttribute("value", "1840");
-    expect(bar).toHaveAttribute("max", "2500"); // 1840 + os 660 que faltam, sem fórmula no front
+    expect(bar).toHaveAttribute("value", "240"); // 1840 - 1600, onde o level 5 começou
+    expect(bar).toHaveAttribute("max", "900"); // de 1600 a 2500, sem fórmula no front
     const pvp = await card("PvP 1x1");
     const pvpBar = pvp.getByRole("progressbar", { name: "Progresso até o próximo nível" });
-    expect(pvpBar).toHaveAttribute("value", "410");
-    expect(pvpBar).toHaveAttribute("max", "900");
+    expect(pvpBar).toHaveAttribute("value", "10"); // 410 - 400
+    expect(pvpBar).toHaveAttribute("max", "500"); // de 400 a 900
+  });
+
+  it.each([
+    // xp, level, falta, início do level, value e max esperados
+    [2499, 5, 1, 1600, "899", "900"], // a última unidade do level 5: quase cheia
+    [2500, 6, 1100, 2500, "0", "1100"], // a primeira do level 6: vazia, não volta a 70 %
+    [0, 1, 100, 0, "0", "100"], // quem nunca jogou
+  ])("barra com %i XP no level %i", async (xp, level, toNext, start, value, max) => {
+    serveStats({ xp, level, xp_to_next_level: toNext, xp_level_start: start });
+    await renderProfile(3);
+    const bar = (await card("Cooperativo")).getByRole("progressbar");
+    expect(bar).toHaveAttribute("value", value);
+    expect(bar).toHaveAttribute("max", max);
   });
 
   it("pede as estatísticas do User do perfil, não as de quem está logado", async () => {

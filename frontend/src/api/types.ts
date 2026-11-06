@@ -182,6 +182,7 @@ export interface PlayerStats {
   elo: number; // só muda no pvp; o coop fica em 1000
   win_rate: number; // 0 a 1, já dividido: a tela não calcula
   xp_to_next_level: number; // XP que falta, não a parcela já preenchida
+  xp_level_start: number; // o XP total em que o level atual começou: de onde a barra parte
 }
 
 export type UserStats = Record<Mode, PlayerStats>;
