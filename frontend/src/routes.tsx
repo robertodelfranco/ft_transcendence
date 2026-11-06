@@ -15,6 +15,7 @@ import WaitingRoom from "./pages/WaitingRoom";
 import UserProfile from "./pages/UserProfile";
 import Settings from "./pages/Settings";
 import Friends from "./pages/Friends";
+import FinishedMatch from "./pages/FinishedMatch";
 
 // Layout sem path: cabeçalho e rodapé em toda página, inclusive a 404
 export const routes: RouteObject [] = [
@@ -39,6 +40,7 @@ export const routes: RouteObject [] = [
               { path: "lobby", element: <Lobby /> },
               { path: "lobby/:matchId", element: <WaitingRoom /> },
               { path: "play/:matchId", element: <Play /> },
+              { path: "matches/:matchId", element: <FinishedMatch /> },
               { path: "users/:userId", element: <UserProfile /> },
               { path: "settings", element: <Settings />},
               { path: "friends", element: <Friends /> },

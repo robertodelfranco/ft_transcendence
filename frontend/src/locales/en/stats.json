@@ -1,0 +1,28 @@
+{
+  "result": {
+    "title": "Match result",
+    "heading": "Match #{{matchId}}",
+    "details": {
+      "mode": "Mode",
+      "map": "Map",
+      "duration": "Duration",
+      "endedAt": "Ended"
+    },
+    "players": "Players",
+    "you": "(you)",
+    "winner": "won",
+    "disconnected": "disconnected at the end",
+    "columns": {
+      "player": "Player",
+      "kills": "Kills",
+      "frags": "Frags",
+      "deaths": "Deaths",
+      "damageDealt": "Damage dealt",
+      "damageTaken": "Damage taken",
+      "xp": "XP",
+      "elo": "Elo"
+    },
+    "elo": "{{after}} ({{delta}})",
+    "none": "—"
+  }
+}

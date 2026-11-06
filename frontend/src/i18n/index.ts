@@ -29,19 +29,22 @@ import lobbyEs from "../locales/es/lobby.json";
 import profilePtBR from "../locales/pt-BR/profile.json";
 import profileEn from "../locales/en/profile.json";
 import profileEs from "../locales/es/profile.json";
+import statsPtBR from "../locales/pt-BR/stats.json";
+import statsEn from "../locales/en/stats.json";
+import statsEs from "../locales/es/stats.json";
 
 const resources = {
   "pt-BR": {
     auth: authPtBR, common: commonPtBR, errors: errorsPtBR,
-    game: gamePtBR, hud: hudPtBR, lobby: lobbyPtBR, profile: profilePtBR,
+    game: gamePtBR, hud: hudPtBR, lobby: lobbyPtBR, profile: profilePtBR, stats: statsPtBR,
   },
   en: {
     auth: authEn, common: commonEn, errors: errorsEn,
-    game: gameEn, hud: hudEn, lobby: lobbyEn, profile: profileEn,
+    game: gameEn, hud: hudEn, lobby: lobbyEn, profile: profileEn, stats: statsEn,
   },
   es: {
     auth: authEs, common: commonEs, errors: errorsEs,
-    game: gameEs, hud: hudEs, lobby: lobbyEs, profile: profileEs,
+    game: gameEs, hud: hudEs, lobby: lobbyEs, profile: profileEs, stats: statsEs,
   },
 };
 
