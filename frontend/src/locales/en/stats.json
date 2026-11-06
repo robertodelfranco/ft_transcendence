@@ -68,5 +68,23 @@
     "unlockedAt": "Unlocked on {{date}}",
     "locked": "Locked",
     "earned": "Achievements unlocked in this match"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "mode": "Mode",
+    "metric": "Sort by",
+    "metrics": {
+      "elo": "Elo",
+      "xp": "XP",
+      "wins": "Wins",
+      "kills": "Kills"
+    },
+    "caption": "{{mode}}, by {{metric}}",
+    "columns": {
+      "rank": "Rank",
+      "player": "Player"
+    },
+    "you": "(you)",
+    "empty": "Nobody is ranked yet: it lists players who finished a match in this mode."
   }
 }

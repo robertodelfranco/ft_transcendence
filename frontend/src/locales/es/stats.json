@@ -68,5 +68,23 @@
     "unlockedAt": "Desbloqueado el {{date}}",
     "locked": "Bloqueado",
     "earned": "Logros desbloqueados en esta partida"
+  },
+  "leaderboard": {
+    "title": "Clasificación",
+    "mode": "Modo",
+    "metric": "Ordenar por",
+    "metrics": {
+      "elo": "Elo",
+      "xp": "XP",
+      "wins": "Victorias",
+      "kills": "Kills"
+    },
+    "caption": "{{mode}}, por {{metric}}",
+    "columns": {
+      "rank": "Posición",
+      "player": "Jugador"
+    },
+    "you": "(tú)",
+    "empty": "Todavía no hay nadie en la clasificación: solo aparecen quienes terminaron una partida en este modo."
   }
 }

@@ -36,6 +36,7 @@ export default function Layout() {
               {/* o nome leva ao próprio perfil: mostra quem entrou e é o caminho para ele */}
               <nav aria-label={t("nav.label")} className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                 <Link to={`/users/${user.id}`} className={linkClass}>{user.username}</Link>
+                <Link to="/leaderboard" className={linkClass}>{t("nav.leaderboard")}</Link>
                 <Link to="/friends" className={linkClass}>{t("nav.friends")}</Link>
                 <Link to="/settings" className={linkClass}>{t("nav.settings")}</Link>
               </nav>

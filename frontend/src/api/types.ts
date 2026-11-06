@@ -203,3 +203,15 @@ export interface AchievementsResponse {
   unlocked: AchievementUnlock[]; // do mais recente para o mais antigo
   catalog: AchievementInfo[];
 }
+
+// GET /api/leaderboard (matches-api.md §2.3): value é o da metric pedida, só de quem já terminou
+// um Match naquele Mode
+export type LeaderboardMetric = "elo" | "xp" | "wins" | "kills";
+
+export interface LeaderboardRow {
+  rank: number; // sequencial a partir de 1: o servidor já desempatou
+  user_id: number;
+  username: string;
+  avatar_url: string;
+  value: number;
+}

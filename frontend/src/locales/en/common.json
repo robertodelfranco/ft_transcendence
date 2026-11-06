@@ -33,6 +33,7 @@
   },
   "nav": {
     "label": "Your account",
+    "leaderboard": "Leaderboard",
     "friends": "Friends",
     "settings": "Settings",
     "logout": "Log out"
