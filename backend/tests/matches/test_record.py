@@ -431,3 +431,70 @@ async def test_an_id_beyond_bigint_is_422_not_500(client, app, db_session):
 async def test_result_needs_a_session(client):
 	response = await client.get("/api/matches/1/result")
 	assert response.status_code == 401
+
+
+# ---------- GET /api/users/{id}/stats ----------
+
+# User sem partida no Mode: tudo zerado, level 1 e o Elo inicial (decisão da F5.4, caminho-5 §5.1)
+FRESH = {**dict.fromkeys(STATS, 0), "level": 1, "elo": 1000, "win_rate": 0, "xp_to_next_level": 100,
+	"xp_level_start": 0}
+
+
+async def test_stats_of_a_user_without_matches_are_zeros(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+
+	response = await client.get(f"/api/users/{user}/stats", headers=bearer(app, user))
+
+	assert response.status_code == 200
+	assert response.json() == {"coop": FRESH, "pvp": FRESH}
+
+
+async def test_stats_after_a_coop_and_a_pvp_match(client, app, db_session, sessions):
+	*ids, viewer = await new_users(db_session, "akita", "caio", "rafael", "augusto")
+	await record_match_result(await new_match(db_session, ids[0]), coop(ids), ENDED, sessions=sessions)
+	await record_match_result(await new_match(db_session, ids[0], mode="pvp"), pvp(ids[:2]), ENDED,
+		sessions=sessions)
+
+	# quem pede não jogou: o perfil de terceiros usa a mesma rota (decisão 7)
+	response = await client.get(f"/api/users/{ids[0]}/stats", headers=bearer(app, viewer))
+
+	# 165 XP: level 2, que começou em 100; o 3 começa em 400. 130 XP: faltam 270
+	assert response.json() == {
+		"coop": {"matches_played": 1, "wins": 1, "losses": 0, "draws": 0, "kills": 9, "frags": 0,
+			"deaths": 0, "playtime_s": 456, "xp": 165, "level": 2, "elo": 1000, "win_rate": 1.0,
+			"xp_to_next_level": 235, "xp_level_start": 100},
+		"pvp": {"matches_played": 1, "wins": 1, "losses": 0, "draws": 0, "kills": 0, "frags": 5,
+			"deaths": 3, "playtime_s": 155, "xp": 130, "level": 2, "elo": 1016, "win_rate": 1.0,
+			"xp_to_next_level": 270, "xp_level_start": 100},
+	}
+
+
+async def test_win_rate_is_rounded_to_three_places(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+	db_session.add(PlayerStats(user_id=user, mode="pvp", matches_played=3, wins=2, losses=1))
+	await db_session.flush()
+
+	body = (await client.get(f"/api/users/{user}/stats", headers=bearer(app, user))).json()
+
+	# o empate entraria no denominador; a tela não divide (decisão 5)
+	assert body["pvp"]["win_rate"] == 0.667
+	assert body["coop"] == FRESH
+
+
+async def test_stats_of_an_unknown_user_is_404(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+	response = await client.get(f"/api/users/{2**63 - 1}/stats", headers=bearer(app, user))
+
+	assert response.status_code == 404
+	assert response.json()["error"]["code"] == "user_not_found"
+
+
+async def test_stats_id_beyond_bigint_is_422_not_500(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+	response = await client.get(f"/api/users/{2**63}/stats", headers=bearer(app, user))
+	assert response.status_code == 422
+
+
+async def test_stats_need_a_session(client):
+	response = await client.get("/api/users/1/stats")
+	assert response.status_code == 401
