@@ -1,0 +1,16 @@
+{"unlocked": [
+   {"code": "coop_first_win",     "unlocked_at": "2026-10-04T18:35:00Z", "match_id": 14},
+   {"code": "coop_exterminator",  "unlocked_at": "2026-10-04T18:35:00Z", "match_id": 14},
+   {"code": "coop_no_deaths_win", "unlocked_at": "2026-10-04T18:35:00Z", "match_id": 14},
+   {"code": "first_five_seconds", "unlocked_at": "2026-10-04T18:35:00Z", "match_id": 14}
+ ],
+ "catalog": [
+   {"code": "coop_first_win", "mode": "coop"},
+   {"code": "coop_exterminator", "mode": "coop"},
+   {"code": "coop_no_deaths_win", "mode": "coop"},
+   {"code": "pvp_first_win", "mode": "pvp"},
+   {"code": "pvp_five_frags", "mode": "pvp"},
+   {"code": "first_five_seconds", "mode": null},
+   {"code": "pvp_time_limit_win", "mode": "pvp"}
+ ]
+}

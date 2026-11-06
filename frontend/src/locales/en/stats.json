@@ -61,5 +61,12 @@
     "hoursMinutes": "{{hours}} h {{minutes}} min",
     "minutes": "{{minutes}} min",
     "none": "—"
+  },
+  "achievements": {
+    "title": "Achievements",
+    "summary": "{{unlocked}} of {{total}} unlocked",
+    "unlockedAt": "Unlocked on {{date}}",
+    "locked": "Locked",
+    "earned": "Achievements unlocked in this match"
   }
 }

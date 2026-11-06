@@ -185,3 +185,21 @@ export interface PlayerStats {
 }
 
 export type UserStats = Record<Mode, PlayerStats>;
+
+// GET /api/users/{id}/achievements (matches-api.md §2.3): o catálogo vem do backend, na ordem do
+// progression.md §3, e o front só traduz pelo code
+export interface AchievementUnlock {
+  code: string;
+  unlocked_at: string;
+  match_id: number | null; // o Match do primeiro desbloqueio; null se ele não existe mais
+}
+
+export interface AchievementInfo {
+  code: string;
+  mode: Mode | null; // null vale nos dois Modes
+}
+
+export interface AchievementsResponse {
+  unlocked: AchievementUnlock[]; // do mais recente para o mais antigo
+  catalog: AchievementInfo[];
+}

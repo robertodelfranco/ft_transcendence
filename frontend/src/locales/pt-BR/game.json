@@ -22,5 +22,35 @@
     "time_limit": "O tempo acabou.",
     "forfeit": "A partida terminou por abandono.",
     "server_shutdown": "O servidor foi reiniciado."
+  },
+  "achievements": {
+    "coop_first_win": {
+      "title": "Eu venci!",
+      "description": "Vença uma partida cooperativa."
+    },
+    "coop_exterminator": {
+      "title": "Exterminador",
+      "description": "Faça 5 ou mais Kills em uma única partida cooperativa."
+    },
+    "coop_no_deaths_win": {
+      "title": "Ensaboado",
+      "description": "Vença uma partida cooperativa sem morrer."
+    },
+    "pvp_first_win": {
+      "title": "Veni, vidi, vici",
+      "description": "Vença uma partida PvP."
+    },
+    "pvp_five_frags": {
+      "title": "Não grita!",
+      "description": "Faça 5 ou mais Frags em uma única partida PvP."
+    },
+    "first_five_seconds": {
+      "title": "Bem-vindo ao Catacombs 42",
+      "description": "Jogue até o fim de uma partida que dure pelo menos 5 segundos."
+    },
+    "pvp_time_limit_win": {
+      "title": "Salvo pelo gongo",
+      "description": "Vença uma partida PvP quando o tempo acabar."
+    }
   }
 }

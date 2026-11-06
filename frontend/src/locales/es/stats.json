@@ -61,5 +61,12 @@
     "hoursMinutes": "{{hours}} h {{minutes}} min",
     "minutes": "{{minutes}} min",
     "none": "—"
+  },
+  "achievements": {
+    "title": "Logros",
+    "summary": "{{unlocked}} de {{total}} desbloqueados",
+    "unlockedAt": "Desbloqueado el {{date}}",
+    "locked": "Bloqueado",
+    "earned": "Logros desbloqueados en esta partida"
   }
 }

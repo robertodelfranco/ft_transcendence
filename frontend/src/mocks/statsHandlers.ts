@@ -1,5 +1,6 @@
 import { http, HttpResponse } from "msw";
-import type { MatchDetail, MatchHistoryItem, Page, UserStats } from "../api/types";
+import type { AchievementsResponse, MatchDetail, MatchHistoryItem, Page, UserStats } from "../api/types";
+import achievements from "./fixtures/achievements.json";
 import authResponse from "./fixtures/authResponse.json";
 import matchHistory from "./fixtures/matchHistory.json";
 import matchResult from "./fixtures/matchResult.json";
@@ -10,6 +11,7 @@ import users from "./fixtures/users.json";
 const result = matchResult as MatchDetail;
 const history = matchHistory as Page<MatchHistoryItem>;
 const stats = userStats as UserStats;
+const unlocked = achievements as AchievementsResponse;
 
 // os Users que existem no mock: quem loga e os da busca
 function knownUser(userId: unknown): boolean {
@@ -41,5 +43,10 @@ export const statsHandlers = [
   // as mesmas estatísticas do exemplo para qualquer User do mock
   http.get("/api/users/:userId/stats", ({ params }) =>
     knownUser(params.userId) ? HttpResponse.json(stats) : apiError(404, "user_not_found"),
+  ),
+
+  // as mesmas conquistas do exemplo (as do User 7 depois da partida 14) para qualquer User do mock
+  http.get("/api/users/:userId/achievements", ({ params }) =>
+    knownUser(params.userId) ? HttpResponse.json(unlocked) : apiError(404, "user_not_found"),
   ),
 ];

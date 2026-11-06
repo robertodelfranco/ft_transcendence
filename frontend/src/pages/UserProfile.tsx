@@ -9,13 +9,14 @@ import FriendButton from "../profile/FriendButton";
 import FriendStatus from "../profile/FriendStatus";
 import { useProfile } from "../profile/useProfile";
 import MatchHistory from "../stats/MatchHistory";
+import UserAchievements from "../stats/UserAchievements";
 import UserStats from "../stats/UserStats";
 
 // Um id que nem é número dá o mesmo aviso de um User que não existe
 const NOT_FOUND: Failure = { code: "user_not_found", requestId: null };
 
-// /users/:userId (i18n.md §3): perfil próprio ou de terceiros, com as estatísticas por Mode e o
-// histórico de partidas (F7.8). As conquistas entram aqui também
+// /users/:userId (i18n.md §3): perfil próprio ou de terceiros, com as estatísticas por Mode, as
+// conquistas e o histórico de partidas (F7.8)
 export default function UserProfile() {
   const { userId } = useParams();
   const id = Number(userId);
@@ -60,6 +61,7 @@ function ProfileView({ userId }: { userId: number }) {
         </div>
       </div>
       <UserStats userId={profile.id} />
+      <UserAchievements userId={profile.id} />
       <MatchHistory userId={profile.id} />
     </>
   );
