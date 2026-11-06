@@ -1,8 +1,8 @@
-"""Corpo do POST /api/matches (matches-api.md §2.2, room-options.md §2.1), PlayerStats (§2.3) e MatchDetail (§2.4)."""
+"""Corpo do POST /api/matches (matches-api.md §2.2, room-options.md §2.1), PlayerStats e histórico (§2.3) e MatchDetail (§2.4)."""
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from fastapi import Path
+from fastapi import Path, Query
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, computed_field
 
 from app.core.errors import ApiError, validation_fields
@@ -144,3 +144,50 @@ class PlayerStatsOut(BaseModel):
 class UserStats(BaseModel):
 	coop: PlayerStatsOut
 	pvp: PlayerStatsOut
+
+
+# ---------- histórico (matches-api.md §2.3) ----------
+
+# sem teto, um page enorme vira um OFFSET além do BIGINT: o asyncpg recusa e a rota daria 500
+Page = Annotated[int, Query(ge=1, le=10_000)]
+PerPage = Annotated[int, Query(ge=1, le=50)]
+
+
+class HistoryMe(BaseModel):
+	"""A linha de match_players do User da rota, só com o que a tela mostra."""
+	model_config = ConfigDict(from_attributes=True)
+
+	kills: int
+	frags: int
+	deaths: int
+	damage_dealt: int
+	damage_taken: int
+	xp_gained: int
+	elo_before: int | None # só no pvp
+	elo_after: int | None
+
+
+class HistoryOther(BaseModel):
+	user_id: int
+	username: str
+	avatar_url: str
+	won: bool
+
+
+class MatchHistoryItem(BaseModel):
+	match_id: int
+	mode: Mode
+	map: str
+	ended_at: datetime
+	duration_s: int
+	result: Result # do ponto de vista do user_id da rota (decisão 4)
+	reason: Reason
+	me: HistoryMe
+	others: list[HistoryOther] # em ordem de user_id
+
+
+class MatchHistoryPage(BaseModel):
+	items: list[MatchHistoryItem]
+	page: int
+	per_page: int
+	total: int

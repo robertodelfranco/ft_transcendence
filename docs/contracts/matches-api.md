@@ -1,6 +1,6 @@
 # Contrato: API REST de lobby e estatísticas (`matches-api.md`)
 
-**Estado:** S5, 06/11: lobby (F5.2), resultado (`GET /api/matches/{id}/result`, #155) e estatísticas (`GET /api/users/{id}/stats`, com XP, level e Elo gravados no `record_match_result`, #156 e #157) implementados; resultado, histórico, estatísticas e conquistas fechados para a F7.8 e assinados pelo Caio em 27/10 (#165). **Escreve:** Akita. **Assina:** Caio (monta lobby, tela de resultado, histórico, estatísticas, conquistas e leaderboard só com este arquivo).
+**Estado:** S5, 06/11: lobby (F5.2), resultado (`GET /api/matches/{id}/result`, #155), estatísticas (`GET /api/users/{id}/stats`, com XP, level e Elo gravados no `record_match_result`, #156 e #157) e histórico (`GET /api/users/{id}/matches`, #116) implementados; resultado, histórico, estatísticas e conquistas fechados para a F7.8 e assinados pelo Caio em 27/10 (#165). **Escreve:** Akita. **Assina:** Caio (monta lobby, tela de resultado, histórico, estatísticas, conquistas e leaderboard só com este arquivo).
 
 ## 1. Para que serve
 
@@ -16,7 +16,7 @@ O que **não** está aqui: a partida em si, que é WebSocket ([ws-messages.md](w
 - **Autenticação.** Toda rota exige `Authorization: Bearer <access>` e usa `CurrentUser` ([auth.md](auth.md)), sem exceção: perfil, estatística e leaderboard também ([i18n.md](i18n.md) §4, decisão 6).
 - **Erro.** Sempre o envelope do [auth.md](auth.md): `{"error": {"code", "message", "request_id", "fields"}}`. A casca traduz pelo `code`; `message` nunca aparece na tela.
 - **Tempo.** Todo carimbo é ISO-8601 em UTC com `Z` (`"2026-10-04T18:09:47Z"`).
-- **Paginação.** `?page=` (1 em diante) e `?per_page=` (default 20, teto 50). A resposta é `{"items": [...], "page": 1, "per_page": 20, "total": 137}`.
+- **Paginação.** `?page=` (default 1, de 1 a 10 000) e `?per_page=` (default 20, teto 50); fora desses limites, 422. A resposta é `{"items": [...], "page": 1, "per_page": 20, "total": 137}`. Uma página além do total responde 200 com `items: []` e o `total` real. O teto de `page` existe porque, sem ele, um `page` enorme vira um OFFSET além do BIGINT e a rota daria 500.
 - **Ids.** `match_id` e `user_id` são inteiros, sempre ([rooms.md](rooms.md) §2.1).
 
 ### 2.2 Lobby
@@ -52,7 +52,7 @@ O que **não** está aqui: a partida em si, que é WebSocket ([ws-messages.md](w
 
 Todas respondem 404 `user_not_found` para um `user_id` que não existe.
 
-O histórico lista só Matches `finished`, do mais recente para o mais antigo. Match `aborted` não tem linhas em `match_players`, então não aparece, e não há filtro para incluí-lo.
+O histórico lista só Matches `finished`, do mais recente para o mais antigo: `ended_at` decrescente e, no empate, `match_id` decrescente. Match `aborted` não tem linhas em `match_players`, então não aparece, e não há filtro para incluí-lo. `mode` fora de `coop`/`pvp` dá 422.
 
 | `MatchHistoryItem` | Tipo | Conteúdo |
 |---|---|---|
@@ -60,10 +60,10 @@ O histórico lista só Matches `finished`, do mais recente para o mais antigo. M
 | `mode`, `map` | string | |
 | `ended_at` | ISO-8601 | a data que a tela mostra |
 | `duration_s` | int | `duration_ticks / TICK_RATE`, já convertido |
-| `result` | `"win" \| "loss" \| "draw"` | **do ponto de vista do `user_id` da rota**: vem de `match_players.won`, não de `matches.result` |
+| `result` | `"win" \| "loss" \| "draw"` | **do ponto de vista do `user_id` da rota**: vem de `match_players.won`, não de `matches.result`. A exceção é o empate: `won` não o expressa (os dois ficam `false`), então `result` é `"draw"` quando `matches.result` é `"draw"` |
 | `reason` | string | `code` traduzível |
 | `me` | objeto | a linha de `match_players` deste User: kills, frags, deaths, dano, xp ganho, elo antes/depois |
-| `others` | lista | `[{user_id, username, avatar_url, won}]` — companheiros no `coop`, oponente no `pvp` |
+| `others` | lista | `[{user_id, username, avatar_url, won}]` em ordem de `user_id` — companheiros no `coop`, oponente no `pvp` |
 
 | `PlayerStats` | Tipo |
 |---|---|

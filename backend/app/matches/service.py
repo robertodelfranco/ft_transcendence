@@ -1,14 +1,15 @@
-"""Catálogo de Maps, criação de Match e o resultado gravado (matches-api.md §2.2 e §2.4, rooms.md §2.2).
+"""Catálogo de Maps, criação de Match, resultado, estatísticas e histórico (matches-api.md §2.2–§2.4, rooms.md §2.2).
 
 Cada mudança no lobby vai para todo /ws/app pelas funções `publish_*`, sempre **depois** do
 commit: quem recebe o aviso e busca por HTTP já acha o banco atualizado (ws-manager.md §2.5).
 """
+from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import Request
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
@@ -19,8 +20,8 @@ from app.game.protocol import options_payload
 from app.game.rooms import MAX_PLAYERS, MIN_PLAYERS, RoomInfo, RoomManager, now
 from app.game.world import MAPS_DIR
 from app.matches.models import Match, MatchPlayer, PlayerStats
-from app.matches.schemas import (CreateMatchIn, MatchDetail, MatchPlayerRow, PlayerStatsOut, UserStats,
-	parse_options)
+from app.matches.schemas import (CreateMatchIn, HistoryMe, HistoryOther, MatchDetail, MatchHistoryItem,
+	MatchHistoryPage, MatchPlayerRow, PlayerStatsOut, UserStats, parse_options)
 from app.ws.app_events import publish_lobby_removed, publish_lobby_update, publish_match_started
 from app.ws.manager import ConnectionManager
 
@@ -164,14 +165,54 @@ async def match_result(session: AsyncSession, match_id: int) -> MatchDetail:
 		reason=match.reason, players=players)
 
 
-# ---------- estatísticas ----------
+# ---------- estatísticas e histórico ----------
+
+async def _ensure_user(session: AsyncSession, user_id: int) -> None:
+	if await session.get(User, user_id) is None:
+		raise ApiError(404, "user_not_found", "user not found")
+
 
 async def user_stats(session: AsyncSession, user_id: int) -> UserStats:
 	"""O agregado de player_stats por Mode (matches-api.md §2.3)."""
-	if await session.get(User, user_id) is None:
-		raise ApiError(404, "user_not_found", "user not found")
+	await _ensure_user(session, user_id)
 	rows = {row.mode: row for row in await session.scalars(
 		select(PlayerStats).where(PlayerStats.user_id == user_id))}
 	# sem linha no Mode (User novo ou conta anonimizada): os defaults de quem nunca jogou
 	return UserStats(**{mode.value: PlayerStatsOut.model_validate(rows[mode]) if mode in rows
 		else PlayerStatsOut() for mode in Mode})
+
+
+async def match_history(session: AsyncSession, user_id: int, page: int, per_page: int,
+		mode: Mode | None) -> MatchHistoryPage:
+	"""Os Matches terminados do User, do mais recente para o mais antigo (matches-api.md §2.3)."""
+	await _ensure_user(session, user_id)
+	where = [MatchPlayer.user_id == user_id, Match.status == "finished"]
+	if mode is not None:
+		where.append(Match.mode == mode)
+	total = await session.scalar(select(func.count())
+		.select_from(MatchPlayer).join(Match, Match.id == MatchPlayer.match_id).where(*where))
+	rows = (await session.execute(select(Match, MatchPlayer)
+		.join(MatchPlayer, MatchPlayer.match_id == Match.id).where(*where)
+		.order_by(Match.ended_at.desc(), Match.id.desc())
+		.limit(per_page).offset((page - 1) * per_page))).all()
+
+	# os outros Players da página inteira numa consulta só, e não uma por Match
+	others: dict[int, list[HistoryOther]] = defaultdict(list)
+	if rows:
+		for match_id, other_id, won, username, avatar_url in await session.execute(
+				select(MatchPlayer.match_id, MatchPlayer.user_id, MatchPlayer.won, User.username,
+					User.avatar_url)
+				.join(User, User.id == MatchPlayer.user_id)
+				.where(MatchPlayer.match_id.in_([match.id for match, _ in rows]),
+					MatchPlayer.user_id != user_id)
+				.order_by(MatchPlayer.user_id)):
+			others[match_id].append(HistoryOther(user_id=other_id, username=username,
+				avatar_url=avatar_url or DEFAULT_AVATAR_URL, won=won))
+
+	items = [MatchHistoryItem(match_id=match.id, mode=match.mode, map=match.map,
+		ended_at=match.ended_at, duration_s=match.duration_ticks // TICK_RATE,
+		# won não expressa empate: no draw do pvp, os dois têm won = false (decisão 4)
+		result="draw" if match.result == "draw" else "win" if me.won else "loss",
+		reason=match.reason, me=HistoryMe.model_validate(me), others=others[match.id])
+		for match, me in rows]
+	return MatchHistoryPage(items=items, page=page, per_page=per_page, total=total)
