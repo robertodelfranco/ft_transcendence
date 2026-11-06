@@ -1,0 +1,28 @@
+{
+  "result": {
+    "title": "Resultado de la partida",
+    "heading": "Partida #{{matchId}}",
+    "details": {
+      "mode": "Modo",
+      "map": "Mapa",
+      "duration": "Duración",
+      "endedAt": "Terminó el"
+    },
+    "players": "Jugadores",
+    "you": "(tú)",
+    "winner": "ganó",
+    "disconnected": "desconectado al final",
+    "columns": {
+      "player": "Jugador",
+      "kills": "Kills",
+      "frags": "Frags",
+      "deaths": "Muertes",
+      "damageDealt": "Daño causado",
+      "damageTaken": "Daño recibido",
+      "xp": "XP",
+      "elo": "Elo"
+    },
+    "elo": "{{after}} ({{delta}})",
+    "none": "—"
+  }
+}

@@ -105,3 +105,41 @@ export interface CreateMatchInput {
   max_players?: number;
   options?: RoomOptions; // só as do Mode: o coop vai sem frag_limit e time_limit_s
 }
+
+// Resultado da partida (matches-api.md §2.4), lido do banco
+
+export interface MatchPlayerRow {
+  user_id: number;
+  username: string;
+  avatar_url: string;
+  won: boolean; // quem ganhou é isto, não o result da Room
+  survived: boolean;
+  disconnected_at_end: boolean;
+  kills: number;
+  frags: number;
+  deaths: number;
+  damage_dealt: number;
+  damage_taken: number;
+  armor_absorbed: number;
+  keys_collected: number;
+  potions_used: number;
+  xp_gained: number;
+  elo_before: number | null; // null no coop
+  elo_after: number | null;
+}
+
+// GET /api/matches/{id}/result: só existe com o Match finished; lobby, running e aborted são 409
+export interface MatchDetail {
+  match_id: number;
+  created_by: number;
+  mode: Mode;
+  map: string;
+  status: "finished";
+  options: RoomOptions;
+  started_at: string;
+  ended_at: string;
+  duration_s: number; // já em segundos: a tela não conhece o TICK_RATE
+  result: "win" | "loss" | "draw"; // da Room: no pvp, quem perdeu também recebe "win"
+  reason: string; // code traduzível (game:reasons)
+  players: MatchPlayerRow[]; // em ordem de user_id
+}

@@ -3,6 +3,7 @@
   "connecting": "Conectando a la partida #{{matchId}}…",
   "reconnecting": "Conexión perdida. Reconectando…",
   "finished": "La partida terminó.",
+  "viewResult": "Ver resultado",
   "view": "Vista del juego",
   "retry": "Reintentar",
   "stats": {

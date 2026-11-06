@@ -140,6 +140,7 @@ describe("status da partida", () => {
       "Você abriu o jogo em outra aba ou dispositivo.",
     );
     expect(screen.getByRole("link", { name: "Voltar ao lobby" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Ver resultado" })).not.toBeInTheDocument();
   });
 
   it("code desconhecido não aparece cru", async () => {
@@ -154,6 +155,7 @@ describe("status da partida", () => {
     await mounted();
     act(() => emitHud({ status: "finished" }));
     expect(await screen.findByText("A partida terminou.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver resultado" })).toHaveAttribute("href", "/matches/13");
   });
 
   it("Tentar de novo remonta o jogo", async () => {
@@ -184,6 +186,7 @@ describe("fim da partida", () => {
     expect(await screen.findByText("Vitória!")).toBeInTheDocument();
     expect(screen.getByText("O Boss foi derrotado.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Voltar ao lobby" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver resultado" })).toHaveAttribute("href", "/matches/13");
     expect(screen.queryByText("A partida terminou.")).not.toBeInTheDocument();
   });
 
@@ -203,5 +206,18 @@ describe("fim da partida", () => {
     await ended({ result: "loss", winnerIds: [], reason: "meteoro" });
     expect(await screen.findByText("Derrota")).toBeInTheDocument();
     expect(screen.queryByText(/reasons/)).not.toBeInTheDocument();
+  });
+
+  it("Ver resultado abre o Match gravado e desmonta o jogo", async () => {
+    const user = userEvent.setup();
+    await renderAt("/play/14");
+    const game = await mounted();
+    act(() => {
+      emitHud({ status: "finished" });
+      emitEnd({ result: "win", winnerIds: [7, 9], reason: "boss_defeated" });
+    });
+    await user.click(await screen.findByRole("link", { name: "Ver resultado" }));
+    expect(await screen.findByRole("heading", { name: "Partida #14" })).toBeInTheDocument();
+    expect(game.unmounted).toBe(true);
   });
 });

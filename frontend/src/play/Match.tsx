@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import type { EndResult, HudState, MountedGame } from "../../game/src/index";
 import { useAuth } from "../auth/AuthContext";
 import ErrorNotice from "../components/ErrorNotice";
-import { buttonSecondary, linkClass } from "../components/styles";
+import { buttonPrimary, buttonSecondary, linkClass } from "../components/styles";
 import { socketToken } from "../auth/socketToken";
 import Hud from "./Hud";
 import { knownReason, outcomeFor } from "./outcome";
@@ -92,6 +92,10 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
                 <p className="text-xl font-bold">{t(`game:outcomes.${outcome}`)}</p>
                 {reason && <p>{t(`game:reasons.${reason}`)}</p>}
               </div>
+            )}
+            {/* o detalhe vem do banco, numa tela própria que o histórico também abre */}
+            {status === "finished" && (
+              <Link to={`/matches/${matchId}`} className={buttonPrimary}>{t("viewResult")}</Link>
             )}
             {over && <Link to="/lobby" className={linkClass}>{t("lobby:room.back")}</Link>}
           </div>

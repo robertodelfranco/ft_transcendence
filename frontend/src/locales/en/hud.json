@@ -3,6 +3,7 @@
   "connecting": "Connecting to match #{{matchId}}…",
   "reconnecting": "Connection lost. Reconnecting…",
   "finished": "The match is over.",
+  "viewResult": "View result",
   "view": "Game view",
   "retry": "Try again",
   "stats": {
