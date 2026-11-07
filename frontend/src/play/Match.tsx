@@ -61,16 +61,21 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
     // largura limitada pela altura da janela: o canvas 16:9 inteiro cabe na tela, e os recursos no
     // rodapé aparecem sem rolar (hud.md §2)
     <div className="relative mx-auto w-full max-w-[calc((100dvh-14rem)*16/9)]">
-      <canvas
-        ref={canvasRef}
-        aria-label={t("view")}
-        className="aspect-video w-full rounded border border-crypt-700 bg-black"
-      />
-      <canvas
-        ref={minimapRef}
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-3 right-3 h-32 w-32 rounded border border-crypt-700 bg-crypt-950/90 sm:h-40 sm:w-40"
-      />
+      {/* o minimapa se ancora ao canvas, não ao bloco inteiro: abaixo do md o HUD vem depois do
+          canvas e alonga o bloco, e o canto inferior direito dele passava a ser o do HUD */}
+      <div className="relative">
+        <canvas
+          ref={canvasRef}
+          role="img"
+          aria-label={t("view")}
+          className="aspect-video w-full rounded border border-crypt-700 bg-black"
+        />
+        <canvas
+          ref={minimapRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-3 left-3 aspect-square w-1/4 rounded border border-crypt-700 bg-crypt-950/90 sm:w-40 md:left-auto md:right-3"
+        />
+      </div>
       {hud && live && <Hud hud={hud} userId={user?.id ?? null} />}
       {/* fora da partida em andamento, o centro do canvas fala: conexão, erro ou fim */}
       {!live && (
