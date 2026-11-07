@@ -32,6 +32,8 @@ describe("casca", () => {
   it("o título do documento acompanha a página e o idioma", async () => {
     const user = userEvent.setup();
     renderAt("/privacy");
+    // a página vem com React.lazy: o título muda quando o chunk dela chega
+    await screen.findByRole("heading", { name: "Privacy Policy" });
     expect(document.title).toBe("Privacy Policy · Catacombs 42");
 
     await user.selectOptions(screen.getByLabelText("Language"), "pt-BR");

@@ -60,7 +60,8 @@ describe("montagem do jogo", () => {
     const router = await renderAt("/play/13");
     const game = await mounted();
     await act(() => router.navigate("/privacy"));
-    expect(game.unmounted).toBe(true);
+    // a navegação é uma transição: o /play fica na tela até o chunk da página legal chegar
+    await waitFor(() => expect(game.unmounted).toBe(true));
   });
 
   it("trocar de partida desmonta a velha e monta a nova", async () => {
