@@ -5,7 +5,8 @@ import { RouterProvider } from "react-router/dom";
 import { beforeEach, describe, expect, it } from "vitest";
 import { setAccessToken } from "../auth/token";
 import i18n from "../i18n";
-import { legalText, type LegalPage } from "../i18n/legal";
+import { legalText } from "../i18n/legal";
+import type { LegalPage } from "../i18n/legalPages";
 import { routes } from "../routes";
 
 function renderAt(path: string) {

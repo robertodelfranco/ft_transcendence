@@ -3,7 +3,7 @@ import type { RouteObject  } from "react-router";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
-import { LEGAL_PAGES } from "./i18n/legal";
+import { LEGAL_PAGES } from "./i18n/legalPages";
 import AuthRoot from "./auth/AuthRoot";
 import Lobby from "./pages/Lobby";
 import PublicOnly from "./components/PublicOnly";
