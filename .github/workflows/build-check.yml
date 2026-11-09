@@ -85,6 +85,16 @@ jobs:
           done
           ! curl -s --cacert ci-cert.pem https://localhost:8443/metrics | grep -q http_requests_total
 
+      # #210: o log de acesso do proxy grava o caminho sem a query (auth.md §2.10).
+      # <<< e não echo | grep -q: com pipefail, o grep -q fecha o pipe e o echo falha
+      - name: Proxy access log without query string
+        run: |
+          curl -s -o /dev/null "http://localhost:8080/api/health?code=ci-leak&state=ci-leak"
+          curl -s --cacert ci-cert.pem -o /dev/null "https://localhost:8443/api/auth/oauth/42/callback?code=ci-leak&state=ci-leak"
+          logs=$(docker compose logs proxy)
+          grep -q '"GET /api/auth/oauth/42/callback HTTP/' <<< "$logs"
+          if grep -q ci-leak <<< "$logs"; then echo "query string in proxy log"; exit 1; fi
+
       - name: No container exited
         run: test -z "$(docker compose ps -a -q --status exited)"
       
