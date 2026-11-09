@@ -148,7 +148,13 @@ Forfeit usa o vencedor decidido pelo servidor. Nunca pular atualização do perd
 | 1200 / 1000 | Vitória | +8 / −8 | 1208 / 992 |
 | 1000 / 1200 | Empate | +8 / −8 | 1008 / 1192 |
 
-Ranking usa o endpoint e as métricas de `matches-api.md`: default `elo` no PvP, `xp` no coop; também aceita `wins` e `kills`. Proposta de desempate: valor da métrica decrescente e `user_id` crescente, com posições únicas sequenciais a partir de 1. Filtro proposto: apenas Users com pelo menos um Match terminado naquele Mode, para não ranquear linhas ainda sem participação. Akita deve confirmar ambos na implementação da F5.8.
+Ranking usa o endpoint e as métricas de `matches-api.md`: default `elo` no PvP, `xp` no coop; também aceita `wins` e `kills`. Desempate confirmado pelo Akita na F5.8 (#159, 09/11):
+- valor da métrica decrescente;
+- no empate, mais `wins` naquele Mode;
+- por fim, `user_id` crescente;
+- posições únicas e sequenciais a partir de 1.
+
+Com `metric=wins`, o empate cai direto no `user_id`. Filtro confirmado: apenas Users com pelo menos um Match terminado naquele Mode, para não ranquear linhas ainda sem participação.
 Valores de XP/level nos JSON ilustrativos atuais de `matches-api.md` não validam estas fórmulas (por exemplo, 1840 XP daria level 5 e faltariam 660, em vez de level 7). Recalcular exemplos e implementação no mesmo trabalho de integração após o aceite; não tratar o exemplo antigo como segunda regra.
 
 ## 8. Roteiro de aceite para implementação
@@ -182,7 +188,7 @@ As fronteiras e exemplos numéricos de level e Elo foram calculados em script te
 |---|---|
 | Akita | Aprovado na revisão da PR #144 compartilhada por Rafael: dados e fórmulas, elegibilidade, forfeit, duração da Room para boas-vindas, separação por Mode e desempate/filtro do leaderboard |
 | Roberto | Aceite da duração da Room para boas-vindas e da propagação dos dados até a persistência ainda pendente |
-| Akita | A transação e o retorno de desbloqueios já estão na F5.3 (#141). Fórmulas e correção dos exemplos de API entregues na F5.5 (#157, 06/11). Catálogo e desbloqueios entregues na F5.7 (#158, 09/11): `ACHIEVEMENTS` em `app/matches/progression.py`, com o roteiro do §8 nos testes |
+| Akita | A transação e o retorno de desbloqueios já estão na F5.3 (#141). Fórmulas e correção dos exemplos de API entregues na F5.5 (#157, 06/11). Catálogo e desbloqueios entregues na F5.7 (#158, 09/11): `ACHIEVEMENTS` em `app/matches/progression.py`, com o roteiro do §8 nos testes. Leaderboard entregue na F5.8 (#159, 09/11), com o desempate por `wins` antes do `user_id` (§7) |
 | Caio | Revisar traduções e exibição de descrição, desbloqueio e XP restante; deixar claro que o desbloqueio acontece ao fim |
 
 O documento entrega a proposta de conteúdo da #119; os sete Achievements não estão declarados funcionais. Não há novos contadores nesta versão. O aceite de Akita foi registrado com base no comentário da PR #144 compartilhado por Rafael; não há aprovação presumida de Roberto ou Caio. Só marcar o contrato como totalmente aceito e datar esse aceite após as revisões restantes.
