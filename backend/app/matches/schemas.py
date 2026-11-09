@@ -1,4 +1,4 @@
-"""Corpo do POST /api/matches (matches-api.md §2.2, room-options.md §2.1), PlayerStats e histórico (§2.3) e MatchDetail (§2.4)."""
+"""Corpo do POST /api/matches (matches-api.md §2.2, room-options.md §2.1), PlayerStats, conquistas, histórico e leaderboard (§2.3) e MatchDetail (§2.4)."""
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
@@ -211,3 +211,21 @@ class MatchHistoryPage(BaseModel):
 	page: int
 	per_page: int
 	total: int
+
+
+# ---------- leaderboard (matches-api.md §2.3) ----------
+
+LeaderboardMetric = Literal["elo", "xp", "wins", "kills"]
+Limit = Annotated[int, Query(ge=1, le=100)]
+
+
+class LeaderboardRow(BaseModel):
+	rank: int # sequencial a partir de 1: o servidor já desempatou
+	user_id: int
+	username: str
+	avatar_url: str
+	value: int # o valor da metric pedida
+
+
+class Leaderboard(BaseModel):
+	items: list[LeaderboardRow]
