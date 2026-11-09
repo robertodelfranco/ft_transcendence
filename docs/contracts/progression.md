@@ -182,7 +182,7 @@ As fronteiras e exemplos numéricos de level e Elo foram calculados em script te
 |---|---|
 | Akita | Aprovado na revisão da PR #144 compartilhada por Rafael: dados e fórmulas, elegibilidade, forfeit, duração da Room para boas-vindas, separação por Mode e desempate/filtro do leaderboard |
 | Roberto | Aceite da duração da Room para boas-vindas e da propagação dos dados até a persistência ainda pendente |
-| Akita | A transação e o retorno de desbloqueios já estão na F5.3 (#141). Fórmulas e correção dos exemplos de API ficam na F5.5; catálogo e desbloqueios na F5.7 |
+| Akita | A transação e o retorno de desbloqueios já estão na F5.3 (#141). Fórmulas e correção dos exemplos de API entregues na F5.5 (#157, 06/11). Catálogo e desbloqueios entregues na F5.7 (#158, 09/11): `ACHIEVEMENTS` em `app/matches/progression.py`, com o roteiro do §8 nos testes |
 | Caio | Revisar traduções e exibição de descrição, desbloqueio e XP restante; deixar claro que o desbloqueio acontece ao fim |
 
 O documento entrega a proposta de conteúdo da #119; os sete Achievements não estão declarados funcionais. Não há novos contadores nesta versão. O aceite de Akita foi registrado com base no comentário da PR #144 compartilhado por Rafael; não há aprovação presumida de Roberto ou Caio. Só marcar o contrato como totalmente aceito e datar esse aceite após as revisões restantes.
