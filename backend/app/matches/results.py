@@ -14,8 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import SessionLocal
 from app.game import TICK_RATE, MatchOutcome, Mode
-from app.matches.models import Match, MatchPlayer, PlayerStats
-from app.matches.progression import elo_delta, level_for, xp_gained
+from app.matches.models import Match, MatchPlayer, PlayerStats, UserAchievement
+from app.matches.progression import achievements_earned, elo_delta, level_for, xp_gained
 
 
 log = logging.getLogger(__name__)
@@ -33,6 +33,8 @@ async def record_match_result(match_id: int, outcome: MatchOutcome, ended_at: da
 
 	A chave de idempotência é a linha em 'running', travada até o commit (rooms.md decisão 5):
 	a segunda chamada, ou a que chega depois de um abort, não acha a linha e devolve [].
+	Devolve só as conquistas desbloqueadas nesta chamada, e só depois do commit: se ele falhar,
+	a exceção sobe e nada é anunciado (progression.md §2).
 	"""
 	async with sessions() as session:
 		match = await session.scalar(select(Match)
@@ -62,14 +64,14 @@ async def record_match_result(match_id: int, outcome: MatchOutcome, ended_at: da
 			row.level = level_for(row.xp)
 			row.elo = elo_after.get(player.user_id, row.elo)
 			row.updated_at = func.now()
-		# conquistas (F5.7) entram aqui, na mesma transação
+		unlocks = await _unlock_achievements(session, match_id, mode, outcome, ended_at)
 		match.status = "finished"
 		match.result = outcome.result
 		match.reason = outcome.reason
 		match.ended_at = ended_at
 		match.duration_ticks = outcome.duration_ticks
 		await session.commit()
-	return []
+	return unlocks
 
 
 async def _locked_stats(session: AsyncSession, mode: Mode, user_ids: list[int]) -> dict[int, PlayerStats]:
@@ -81,6 +83,19 @@ async def _locked_stats(session: AsyncSession, mode: Mode, user_ids: list[int]) 
 		.where(PlayerStats.mode == mode, PlayerStats.user_id.in_(user_ids))
 		.with_for_update().execution_options(populate_existing=True))
 	return {row.user_id: row for row in rows}
+
+
+async def _unlock_achievements(session: AsyncSession, match_id: int, mode: Mode, outcome: MatchOutcome,
+		ended_at: datetime) -> list[AchievementUnlock]:
+	"""Grava as conquistas do Match na transação de quem chamou (rooms.md §2.5, passo 4)."""
+	earned = [{"user_id": player.user_id, "code": code, "match_id": match_id, "unlocked_at": ended_at}
+		for player in outcome.players for code in achievements_earned(mode, player, outcome)]
+	if not earned: # INSERT sem VALUES é erro de SQL
+		return []
+	# a PK (user_id, code) descarta o que o User já tinha; o RETURNING traz só o que entrou agora
+	inserted = await session.execute(insert(UserAchievement).values(earned)
+		.on_conflict_do_nothing().returning(UserAchievement.user_id, UserAchievement.code))
+	return [AchievementUnlock(user_id, code) for user_id, code in inserted]
 
 
 def _new_elos(match_id: int, mode: Mode, outcome: MatchOutcome,

@@ -19,9 +19,11 @@ from app.game import TICK_RATE, Mode, load_map
 from app.game.protocol import options_payload
 from app.game.rooms import MAX_PLAYERS, MIN_PLAYERS, RoomInfo, RoomManager, now
 from app.game.world import MAPS_DIR
-from app.matches.models import Match, MatchPlayer, PlayerStats
-from app.matches.schemas import (CreateMatchIn, HistoryMe, HistoryOther, MatchDetail, MatchHistoryItem,
-	MatchHistoryPage, MatchPlayerRow, PlayerStatsOut, UserStats, parse_options)
+from app.matches.models import Match, MatchPlayer, PlayerStats, UserAchievement
+from app.matches.progression import ACHIEVEMENTS
+from app.matches.schemas import (AchievementInfo, AchievementUnlocked, CreateMatchIn, HistoryMe,
+	HistoryOther, MatchDetail, MatchHistoryItem, MatchHistoryPage, MatchPlayerRow, PlayerStatsOut,
+	UserAchievements, UserStats, parse_options)
 from app.ws.app_events import publish_lobby_removed, publish_lobby_update, publish_match_started
 from app.ws.manager import ConnectionManager
 
@@ -180,6 +182,23 @@ async def user_stats(session: AsyncSession, user_id: int) -> UserStats:
 	# sem linha no Mode (User novo ou conta anonimizada): os defaults de quem nunca jogou
 	return UserStats(**{mode.value: PlayerStatsOut.model_validate(rows[mode]) if mode in rows
 		else PlayerStatsOut() for mode in Mode})
+
+
+# o catálogo é fixo no código: montado uma vez, e a posição de cada code desempata o unlocked
+CATALOG = [AchievementInfo(code=a.code, mode=a.mode) for a in ACHIEVEMENTS]
+_CATALOG_ORDER = {a.code: position for position, a in enumerate(ACHIEVEMENTS)}
+
+
+async def user_achievements(session: AsyncSession, user_id: int) -> UserAchievements:
+	"""As conquistas do User e o catálogo inteiro (matches-api.md §2.3)."""
+	await _ensure_user(session, user_id)
+	rows = await session.scalars(select(UserAchievement).where(UserAchievement.user_id == user_id))
+	# mais recente primeiro; as do mesmo Match têm o mesmo unlocked_at e seguem a ordem do catálogo.
+	# São no máximo 7 linhas: ordenar aqui é mais simples que levar a ordem do catálogo para o SQL
+	unlocked = sorted(rows, key=lambda row: (-row.unlocked_at.timestamp(),
+		_CATALOG_ORDER.get(row.code, len(_CATALOG_ORDER))))
+	return UserAchievements(unlocked=[AchievementUnlocked.model_validate(row) for row in unlocked],
+		catalog=CATALOG)
 
 
 async def match_history(session: AsyncSession, user_id: int, page: int, per_page: int,

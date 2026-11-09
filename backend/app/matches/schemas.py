@@ -146,6 +146,26 @@ class UserStats(BaseModel):
 	pvp: PlayerStatsOut
 
 
+# ---------- conquistas (matches-api.md §2.3) ----------
+
+class AchievementUnlocked(BaseModel):
+	model_config = ConfigDict(from_attributes=True)
+
+	code: str
+	unlocked_at: datetime
+	match_id: int | None # o Match do primeiro desbloqueio; null se ele não existir mais
+
+
+class AchievementInfo(BaseModel):
+	code: str
+	mode: Mode | None # null: vale nos dois Modes
+
+
+class UserAchievements(BaseModel):
+	unlocked: list[AchievementUnlocked] # do mais recente para o mais antigo
+	catalog: list[AchievementInfo] # na ordem do progression.md §3
+
+
 # ---------- histórico (matches-api.md §2.3) ----------
 
 # sem teto, um page enorme vira um OFFSET além do BIGINT: o asyncpg recusa e a rota daria 500
