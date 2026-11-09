@@ -10,7 +10,7 @@ from app.game import Mode
 from app.game.rooms import RoomManager, get_room_manager
 from app.matches import service
 from app.matches.schemas import (CreateMatchIn, MatchDetail, MatchHistoryPage, MatchId, Page, PerPage,
-	ReadyIn, UserStats)
+	ReadyIn, UserAchievements, UserStats)
 from app.matches.service import Catalog, get_catalog
 from app.users.schemas import UserId
 from app.ws.app_events import publish_lobby_update
@@ -88,6 +88,12 @@ async def list_maps(_: CurrentUser, catalog: Maps) -> dict[Mode, list[service.Ma
 async def get_user_stats(user_id: UserId, _: CurrentUser, session: DbSession) -> UserStats:
 	# qualquer User logado: o perfil de terceiros usa a mesma rota (decisão 7)
 	return await service.user_stats(session, user_id)
+
+
+@router.get("/users/{user_id}/achievements")
+async def get_user_achievements(user_id: UserId, _: CurrentUser, session: DbSession) -> UserAchievements:
+	# qualquer User logado: o perfil de terceiros usa a mesma rota (decisão 7)
+	return await service.user_achievements(session, user_id)
 
 
 @router.get("/users/{user_id}/matches")

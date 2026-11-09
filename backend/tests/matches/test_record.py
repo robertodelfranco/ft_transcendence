@@ -17,7 +17,7 @@ from app.auth.schemas import DEFAULT_AVATAR_URL
 from app.auth.security import create_access_token
 from app.game import MatchOutcome, PlayerOutcome
 from app.matches.models import Match, MatchPlayer, PlayerStats, UserAchievement
-from app.matches.results import abort_unfinished, record_match_result
+from app.matches.results import AchievementUnlock, abort_unfinished, record_match_result
 
 
 pytestmark = pytest.mark.anyio
@@ -98,6 +98,17 @@ async def status_of(db_session, match_id: int) -> tuple[str, str | None]:
 	return tuple(row.one())
 
 
+async def achievements(db_session, user_ids: list[int]) -> set[tuple]:
+	"""As linhas de user_achievements dos Users, lidas do banco: (user_id, code, match_id, unlocked_at)."""
+	rows = await db_session.execute(select(UserAchievement.user_id, UserAchievement.code,
+		UserAchievement.match_id, UserAchievement.unlocked_at).where(UserAchievement.user_id.in_(user_ids)))
+	return {tuple(row) for row in rows}
+
+
+# as que a fixture coop() dá a quem venceu sem morrer e com 5+ Kills, num Match de 13680 Ticks
+COOP_CODES = ("coop_first_win", "coop_exterminator", "coop_no_deaths_win", "first_five_seconds")
+
+
 async def count(db_session, model) -> int:
 	return await db_session.scalar(select(func.count()).select_from(model))
 
@@ -120,7 +131,7 @@ async def test_coop_result_finishes_the_match_and_writes_every_player(db_session
 	match_id = await new_match(db_session, ids[0])
 	outcome = coop(ids)
 
-	assert await record_match_result(match_id, outcome, ENDED, sessions=sessions) == []
+	await record_match_result(match_id, outcome, ENDED, sessions=sessions)
 
 	match = await db_session.get(Match, match_id, populate_existing=True) # relido do banco
 	assert (match.status, match.result, match.reason) == ("finished", "win", "boss_defeated")
@@ -144,6 +155,44 @@ async def test_pvp_result_records_xp_and_elo_for_each_player(db_session, session
 		ids[0]: (1016, 1, 0), ids[1]: (984, 0, 1)}
 
 
+async def test_coop_result_unlocks_achievements_in_the_same_transaction(db_session, sessions):
+	ids = await new_users(db_session, "akita", "caio", "rafael")
+	match_id = await new_match(db_session, ids[0])
+
+	unlocks = await record_match_result(match_id, coop(ids), ENDED, sessions=sessions)
+
+	# o terceiro venceu também, mas terminou desconectado: sem conquista (progression.md §2)
+	assert set(unlocks) == {AchievementUnlock(user_id, code) for user_id in ids[:2] for code in COOP_CODES}
+	assert len(unlocks) == 8
+	assert await achievements(db_session, ids) == {
+		(user_id, code, match_id, ENDED) for user_id in ids[:2] for code in COOP_CODES}
+
+
+async def test_pvp_result_unlocks_by_frags_and_not_by_time_limit(db_session, sessions):
+	ids = await new_users(db_session, "akita", "roberto")
+	match_id = await new_match(db_session, ids[0], mode="pvp")
+
+	unlocks = await record_match_result(match_id, pvp(ids), ENDED, sessions=sessions)
+
+	# vitória por frag_limit com 5 Frags; o perdedor tem 3 Frags e só a de duração (4650 Ticks)
+	assert set(unlocks) == {AchievementUnlock(ids[0], "pvp_first_win"),
+		AchievementUnlock(ids[0], "pvp_five_frags"), AchievementUnlock(ids[0], "first_five_seconds"),
+		AchievementUnlock(ids[1], "first_five_seconds")}
+
+
+async def test_a_condition_met_again_unlocks_nothing_new(db_session, sessions):
+	ids = await new_users(db_session, "akita", "caio", "rafael")
+	first = await new_match(db_session, ids[0])
+	await record_match_result(first, coop(ids), ENDED, sessions=sessions)
+	second = await new_match(db_session, ids[0])
+
+	assert await record_match_result(second, coop(ids), ENDED + timedelta(hours=1), sessions=sessions) == []
+
+	# fica o Match e a hora do primeiro desbloqueio
+	assert await achievements(db_session, ids) == {
+		(user_id, code, first, ENDED) for user_id in ids[:2] for code in COOP_CODES}
+
+
 async def test_second_call_writes_nothing(db_session, sessions):
 	ids = await new_users(db_session, "akita", "caio", "rafael")
 	match_id = await new_match(db_session, ids[0])
@@ -160,6 +209,7 @@ async def test_second_call_writes_nothing(db_session, sessions):
 	assert (match.status, match.reason, match.duration_ticks) == ("finished", "boss_defeated", 13680)
 	assert [counters(row) for row in await match_players(db_session, match_id)] == first
 	assert await stats(db_session, "coop") == first_stats
+	assert len(await achievements(db_session, ids)) == 8
 
 
 @pytest.mark.parametrize("status", ["lobby", "aborted", "finished"])
@@ -172,6 +222,7 @@ async def test_a_match_that_is_not_running_is_ignored(db_session, sessions, stat
 
 	assert (await status_of(db_session, match_id))[0] == status
 	assert await match_players(db_session, match_id) == []
+	assert await achievements(db_session, ids) == set()
 
 
 async def test_coop_result_aggregates_player_stats(db_session, sessions):
@@ -191,8 +242,6 @@ async def test_coop_result_aggregates_player_stats(db_session, sessions):
 		c: {**base, "kills": 4, "deaths": 1, "xp": 0, "level": 1},
 	}
 	assert await stats(db_session, "pvp") == {}
-	# conquistas são a F5.7, na mesma transação
-	assert await count(db_session, UserAchievement) == 0
 
 
 async def test_a_second_match_adds_to_the_existing_row(db_session, sessions):
@@ -296,10 +345,12 @@ async def test_two_calls_at_once_write_once(committing, committed_match):
 	match_id, ids = committed_match
 	outcome = coop(ids)
 
-	assert await asyncio.gather(
+	results = await asyncio.gather(
 		record_match_result(match_id, outcome, ENDED, sessions=committing),
 		record_match_result(match_id, outcome, ENDED, sessions=committing),
-	) == [[], []]
+	)
+	# só a que pegou a linha anuncia; a outra acha o Match já finished
+	assert sorted(len(unlocks) for unlocks in results) == [0, 8]
 
 	async with committing() as session:
 		assert await session.scalar(select(func.count()).select_from(MatchPlayer)
@@ -307,6 +358,7 @@ async def test_two_calls_at_once_write_once(committing, committed_match):
 		assert await session.scalar(select(Match.status).where(Match.id == match_id)) == "finished"
 		assert list(await session.scalars(select(PlayerStats.matches_played)
 			.where(PlayerStats.user_id.in_(ids)))) == [1, 1, 1]
+		assert len(await achievements(session, ids)) == 8
 
 
 # ---------- abort_unfinished ----------
@@ -639,4 +691,66 @@ async def test_history_id_beyond_bigint_is_422_not_500(client, app, db_session):
 
 async def test_history_needs_a_session(client):
 	response = await client.get("/api/users/1/matches")
+	assert response.status_code == 401
+
+
+# ---------- GET /api/users/{id}/achievements ----------
+
+# progression.md §3, na ordem; o front traduz pelo code
+CATALOG = [{"code": "coop_first_win", "mode": "coop"}, {"code": "coop_exterminator", "mode": "coop"},
+	{"code": "coop_no_deaths_win", "mode": "coop"}, {"code": "pvp_first_win", "mode": "pvp"},
+	{"code": "pvp_five_frags", "mode": "pvp"}, {"code": "first_five_seconds", "mode": None},
+	{"code": "pvp_time_limit_win", "mode": "pvp"}]
+
+
+async def test_achievements_of_a_user_without_any(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+
+	response = await client.get(f"/api/users/{user}/achievements", headers=bearer(app, user))
+
+	assert response.status_code == 200
+	assert response.json() == {"unlocked": [], "catalog": CATALOG}
+
+
+async def test_achievements_are_newest_first_with_catalog_order_as_tiebreak(client, app, db_session,
+		sessions):
+	ids = await new_users(db_session, "akita", "roberto", "caio")
+	akita, roberto, caio = ids
+	coop_id = await new_match(db_session, akita)
+	await record_match_result(coop_id, coop(ids), ENDED, sessions=sessions)
+	pvp_id = await new_match(db_session, akita, mode="pvp")
+	later = ENDED + timedelta(hours=1)
+	await record_match_result(pvp_id, pvp([akita, roberto]), later, sessions=sessions)
+
+	response = await client.get(f"/api/users/{akita}/achievements", headers=bearer(app, caio))
+
+	assert response.status_code == 200
+	# o first_five_seconds ficou com o primeiro Match; as do mesmo Match seguem o catálogo
+	assert response.json()["unlocked"] == [
+		{"code": "pvp_first_win", "unlocked_at": "2026-10-04T19:09:47Z", "match_id": pvp_id},
+		{"code": "pvp_five_frags", "unlocked_at": "2026-10-04T19:09:47Z", "match_id": pvp_id},
+		{"code": "coop_first_win", "unlocked_at": "2026-10-04T18:09:47Z", "match_id": coop_id},
+		{"code": "coop_exterminator", "unlocked_at": "2026-10-04T18:09:47Z", "match_id": coop_id},
+		{"code": "coop_no_deaths_win", "unlocked_at": "2026-10-04T18:09:47Z", "match_id": coop_id},
+		{"code": "first_five_seconds", "unlocked_at": "2026-10-04T18:09:47Z", "match_id": coop_id},
+	]
+	assert response.json()["catalog"] == CATALOG
+
+
+async def test_achievements_of_an_unknown_user_is_404(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+	response = await client.get(f"/api/users/{2**63 - 1}/achievements", headers=bearer(app, user))
+
+	assert response.status_code == 404
+	assert response.json()["error"]["code"] == "user_not_found"
+
+
+async def test_achievements_id_beyond_bigint_is_422_not_500(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+	response = await client.get(f"/api/users/{2**63}/achievements", headers=bearer(app, user))
+	assert response.status_code == 422
+
+
+async def test_achievements_need_a_session(client):
+	response = await client.get("/api/users/1/achievements")
 	assert response.status_code == 401

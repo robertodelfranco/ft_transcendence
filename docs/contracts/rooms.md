@@ -175,7 +175,7 @@ Tudo numa transação, nesta ordem:
 4. `INSERT` em `user_achievements` com `ON CONFLICT (user_id, code) DO NOTHING`; as desbloqueadas voltam para quem chamou, que emite `achievement_unlocked`.
 5. `UPDATE matches SET status = 'finished', result, reason, ended_at, duration_ticks`.
 
-A F5.3 entrega os passos 1, 2 e 5; os outros entram **dentro da mesma transação**, entre o 2 e o 5, sem mudar a assinatura: o 3 na F5.4 (contadores e `playtime_s`) e na F5.5 (`xp`, `level`, `elo`, e `xp_gained`/`elo_*` em `match_players`), o 4 na F5.7. Até lá, `xp_gained` fica `0`, `elo_before`/`elo_after` ficam nulos e o retorno é sempre `[]`.
+A F5.3 entregou os passos 1, 2 e 5; os outros entraram **dentro da mesma transação**, entre o 2 e o 5, sem mudar a assinatura: o 3 na F5.4 (contadores e `playtime_s`) e na F5.5 (`xp`, `level`, `elo`, e `xp_gained`/`elo_*` em `match_players`, 06/11), o 4 na F5.7 (09/11, #158). No passo 4, as condições são as do [progression.md](progression.md) §3 (`ACHIEVEMENTS` em `app/matches/progression.py`), quem terminou desconectado não ganha nenhuma, `unlocked_at` é o `ended_at` e o `RETURNING` do `INSERT` devolve só as linhas que entraram agora.
 
 Se a chamada levantar (banco fora), a Room registra o erro e segue: sem retry, o Match fica `running` e o próximo startup o aborta (§2.6). Se o `close()` do desligamento cancelar a task no meio, a transação inteira cai junto, sem gravação pela metade, e vale o mesmo caminho.
 
