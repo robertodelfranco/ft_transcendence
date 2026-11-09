@@ -754,3 +754,116 @@ async def test_achievements_id_beyond_bigint_is_422_not_500(client, app, db_sess
 async def test_achievements_need_a_session(client):
 	response = await client.get("/api/users/1/achievements")
 	assert response.status_code == 401
+
+
+# ---------- GET /api/leaderboard ----------
+
+async def ranked(db_session, mode: str, by_user: dict[int, dict]) -> None:
+	"""Grava player_stats direto, um dict de colunas por user_id: os empates ficam sob controle."""
+	db_session.add_all(PlayerStats(user_id=user_id, mode=mode, matches_played=1, **columns)
+		for user_id, columns in by_user.items())
+	await db_session.flush()
+
+
+async def leaderboard(client, app, viewer: int, **query) -> dict:
+	response = await client.get("/api/leaderboard", params=query, headers=bearer(app, viewer))
+	assert response.status_code == 200, response.text
+	return response.json()
+
+
+def ranking(body: dict) -> list[tuple]:
+	return [(row["rank"], row["user_id"], row["value"]) for row in body["items"]]
+
+
+async def test_leaderboard_orders_by_value_then_wins_then_user_id(client, app, db_session):
+	a, b, c, d = await new_users(db_session, "akita", "roberto", "caio", "rafael")
+	# b, c e d empatam no Elo: b tem mais vitórias; c e d empatam também nelas, e o user_id decide
+	await ranked(db_session, "pvp", {a: {"elo": 1040, "wins": 0}, b: {"elo": 1016, "wins": 3},
+		c: {"elo": 1016, "wins": 1}, d: {"elo": 1016, "wins": 1}})
+
+	body = await leaderboard(client, app, a, mode="pvp", metric="elo")
+
+	assert ranking(body) == [(1, a, 1040), (2, b, 1016), (3, c, 1016), (4, d, 1016)]
+
+
+async def test_leaderboard_default_metric_follows_the_mode(client, app, db_session):
+	(user,) = await new_users(db_session, "akita")
+	await ranked(db_session, "pvp", {user: {"elo": 1016, "xp": 130}})
+	await ranked(db_session, "coop", {user: {"elo": 1000, "xp": 165}})
+
+	# matches-api.md §2.3: elo no pvp, xp no coop
+	assert ranking(await leaderboard(client, app, user, mode="pvp")) == [(1, user, 1016)]
+	assert ranking(await leaderboard(client, app, user, mode="coop")) == [(1, user, 165)]
+
+
+@pytest.mark.parametrize("mode", ["coop", "pvp"])
+@pytest.mark.parametrize("metric", ["elo", "xp", "wins", "kills"])
+async def test_leaderboard_accepts_every_metric_in_both_modes(client, app, db_session, mode, metric):
+	(user,) = await new_users(db_session, "akita")
+	columns = {"elo": 1100, "xp": 200, "wins": 3, "kills": 4}
+	await ranked(db_session, mode, {user: columns})
+
+	body = await leaderboard(client, app, user, mode=mode, metric=metric)
+
+	assert ranking(body) == [(1, user, columns[metric])]
+
+
+async def test_leaderboard_lists_only_who_played_the_mode(client, app, db_session):
+	coop_only, never = await new_users(db_session, "akita", "caio")
+	await ranked(db_session, "coop", {coop_only: {"xp": 165}})
+
+	# sem linha em player_stats não há Match terminado no Mode: não entra (progression.md §7)
+	assert ranking(await leaderboard(client, app, never, mode="coop")) == [(1, coop_only, 165)]
+	assert await leaderboard(client, app, never, mode="pvp") == {"items": []}
+
+
+async def test_leaderboard_limit_cuts_after_ordering(client, app, db_session):
+	ids = await new_users(db_session, "akita", "roberto", "caio")
+	await ranked(db_session, "coop", {user_id: {"xp": xp} for user_id, xp in zip(ids, (10, 30, 20))})
+
+	body = await leaderboard(client, app, ids[0], mode="coop", limit=2)
+
+	assert ranking(body) == [(1, ids[1], 30), (2, ids[2], 20)]
+
+
+async def test_leaderboard_row_shape(client, app, db_session):
+	a, b = await new_users(db_session, "akita", "caio")
+	(await db_session.get(User, a)).avatar_url = "/media/avatars/a.png"
+	await ranked(db_session, "coop", {a: {"xp": 20}, b: {"xp": 10}})
+
+	body = await leaderboard(client, app, a, mode="coop")
+
+	# sem avatar próprio, o padrão, como no resto da API
+	assert body == {"items": [
+		{"rank": 1, "user_id": a, "username": "akita", "avatar_url": "/media/avatars/a.png", "value": 20},
+		{"rank": 2, "user_id": b, "username": "caio", "avatar_url": DEFAULT_AVATAR_URL, "value": 10},
+	]}
+
+
+async def test_leaderboard_after_a_real_pvp_match(client, app, db_session, sessions):
+	ids = await new_users(db_session, "akita", "roberto")
+	await record_match_result(await new_match(db_session, ids[0], mode="pvp"), pvp(ids), ENDED,
+		sessions=sessions)
+
+	body = await leaderboard(client, app, ids[1], mode="pvp")
+
+	# progression.md §7: 1000 / 1000 com vitória de A dá 1016 / 984
+	assert ranking(body) == [(1, ids[0], 1016), (2, ids[1], 984)]
+
+
+@pytest.mark.parametrize("query", [
+	{}, # mode é obrigatório: a métrica padrão depende dele
+	{"mode": "x"},
+	{"mode": "pvp", "metric": "frags"},
+	{"mode": "pvp", "limit": 0},
+	{"mode": "pvp", "limit": 101},
+])
+async def test_invalid_leaderboard_query_is_422(client, app, db_session, query):
+	(user,) = await new_users(db_session, "akita")
+	response = await client.get("/api/leaderboard", params=query, headers=bearer(app, user))
+	assert response.status_code == 422
+
+
+async def test_leaderboard_needs_a_session(client):
+	response = await client.get("/api/leaderboard", params={"mode": "pvp"})
+	assert response.status_code == 401
