@@ -133,7 +133,7 @@ Os estados `HITED` (Enemy), `DAMAGE` e `DEAD` do C duravam um quadro ou marcavam
 
 `winner_ids` tem todos os Players da partida no `coop` com `win`, e fica vazio com `loss`. No `pvp`, tem o vencedor, ou fica vazio no `draw`. Cada cliente descobre o próprio desfecho conferindo se o seu id está em `winner_ids`.
 
-Depois do `game_over`, o `step` só avança os tempos de animação (`dying`, `hit`): não aplica Input, Action, movimento nem dano. Os Snapshots continuam até a Room ser removida, e é por eles que o cliente vê o Boss terminar de morrer. Desligamento do backend não gera `game_over`: o socket fecha com `4503`.
+Depois do `game_over`, o `step` só avança os tempos de animação (`dying`, `hit`): não aplica Input, Action, movimento nem dano. Os Snapshots continuam só pela animação do Boss (`BOSS_DYING_S`, 1,2 s depois do `game_over`), e é por eles que o cliente vê o Boss terminar de morrer. Depois disso a Room para de dar Tick e fica mais 60 s na memória, sem Snapshot, para quem reconecta ver o estado final. Desligamento do backend não gera `game_over`: o socket fecha com `4503`.
 
 ### 2.7 Fechamento e erros
 

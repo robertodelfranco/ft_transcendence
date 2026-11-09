@@ -21,7 +21,7 @@ from app.game import (BOSS_DYING_S, TICK_RATE, Event, Map, MatchOutcome, Mode, R
 	create_room, last_input_seq, leave, load_map, match_outcome, set_connected, step, to_snapshot)
 from app.game.protocol import CloseCode, encode_event, options_payload, snapshot_encoder
 from app.matches.results import AchievementUnlock, abort_unfinished, record_match_result
-from app.ws.manager import ConnectionManager
+from app.ws.manager import NORMAL_CLOSURE, ConnectionManager
 
 
 log = logging.getLogger(__name__)
@@ -323,6 +323,8 @@ class RoomManager:
 			await asyncio.sleep(max(0.0, next_tick - time.monotonic()))
 		await asyncio.sleep(ROOM_TTL_S) # até lá, quem reconecta ainda vê o estado final
 		del self._entries[entry.match_id]
+		# fim normal (ws-messages.md §2.7): sem isso, a aba parada na tela de fim fica conectada para sempre
+		await self._connections.close_match(entry.match_id, NORMAL_CLOSURE)
 
 	async def _finish(self, entry: Entry) -> None:
 		"""game_over: libera os Players e grava o Match uma vez só (rooms.md §2.5)."""
