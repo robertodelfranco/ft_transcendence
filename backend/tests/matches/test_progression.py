@@ -2,14 +2,21 @@
 # Fórmulas do progression.md §5–7: XP por Match, level por XP e Elo do PvP. Sem banco.
 import pytest
 
-from app.game import Mode, PlayerOutcome
-from app.matches.progression import elo_delta, level_for, threshold, xp_gained
+from app.game import TICK_RATE, MatchOutcome, Mode, PlayerOutcome
+from app.matches.progression import (ACHIEVEMENTS, achievements_earned, elo_delta, level_for,
+	threshold, xp_gained)
 
 
-def player(won: bool = False, kills: int = 0, frags: int = 0, disconnected: bool = False) -> PlayerOutcome:
-	return PlayerOutcome(user_id=1, won=won, survived=True, kills=kills, frags=frags, deaths=0,
+def player(won: bool = False, kills: int = 0, frags: int = 0, deaths: int = 0, survived: bool = True,
+		disconnected: bool = False) -> PlayerOutcome:
+	return PlayerOutcome(user_id=1, won=won, survived=survived, kills=kills, frags=frags, deaths=deaths,
 		damage_dealt=0, damage_taken=0, armor_absorbed=0, keys_collected=0, potions_used=0,
 		disconnected_at_end=disconnected)
+
+
+def match(reason: str, ticks: int) -> MatchOutcome:
+	# as condições só leem reason e duration_ticks do Match; o resto fica vazio
+	return MatchOutcome(result="win", reason=reason, winner_ids=(), duration_ticks=ticks, players=())
 
 
 # ---------- XP (§5) ----------
@@ -68,3 +75,47 @@ def test_half_rounds_away_from_zero():
 	# o caso 0,5 exato não sai dos ratings inteiros; o que importa é o sinal não mudar o arredondamento
 	assert elo_delta(1400, 1000, 1) == 3
 	assert elo_delta(1000, 1400, 0) == -3
+
+
+# ---------- conquistas (§2–3, roteiro do §8) ----------
+
+def earned(mode: Mode, outcome: PlayerOutcome, reason: str, ticks: int = 5 * TICK_RATE) -> list[str]:
+	return achievements_earned(mode, outcome, match(reason, ticks))
+
+
+def test_catalog_follows_the_contract_order():
+	# é a ordem do catalog da API e do desempate do unlocked
+	assert [(a.code, a.mode) for a in ACHIEVEMENTS] == [
+		("coop_first_win", Mode.COOP), ("coop_exterminator", Mode.COOP),
+		("coop_no_deaths_win", Mode.COOP), ("pvp_first_win", Mode.PVP), ("pvp_five_frags", Mode.PVP),
+		("first_five_seconds", None), ("pvp_time_limit_win", Mode.PVP)]
+
+
+# lista exata: prova também o que não desbloqueia (vitória de um Mode não vale no outro)
+@pytest.mark.parametrize("mode, outcome, reason, codes", [
+	(Mode.COOP, player(kills=4), "all_dead", ["first_five_seconds"]),
+	(Mode.COOP, player(kills=5), "all_dead", ["coop_exterminator", "first_five_seconds"]), # sem vitória
+	(Mode.COOP, player(won=True), "boss_defeated",
+		["coop_first_win", "coop_no_deaths_win", "first_five_seconds"]),
+	(Mode.COOP, player(won=True, deaths=1), "boss_defeated", ["coop_first_win", "first_five_seconds"]),
+	(Mode.PVP, player(won=True, frags=5), "frag_limit",
+		["pvp_first_win", "pvp_five_frags", "first_five_seconds"]),
+	(Mode.PVP, player(frags=5), "time_limit", ["pvp_five_frags", "first_five_seconds"]), # derrota
+	(Mode.PVP, player(frags=4), "frag_limit", ["first_five_seconds"]),
+	(Mode.PVP, player(won=True), "time_limit", ["pvp_first_win", "first_five_seconds", "pvp_time_limit_win"]),
+	(Mode.PVP, player(), "time_limit", ["first_five_seconds"]), # empate: won é false para os dois
+	(Mode.PVP, player(won=True), "forfeit", ["pvp_first_win", "first_five_seconds"]),
+])
+def test_achievements_earned(mode, outcome, reason, codes):
+	assert earned(mode, outcome, reason) == codes
+
+
+@pytest.mark.parametrize("ticks, codes", [(5 * TICK_RATE - 1, []), (5 * TICK_RATE, ["first_five_seconds"])])
+def test_five_seconds_counts_room_ticks_and_not_survival(ticks, codes):
+	# morto e conectado vale: a condição é a duração da Room, sem arredondar (§4)
+	assert earned(Mode.COOP, player(deaths=1, survived=False), "all_dead", ticks) == codes
+
+
+@pytest.mark.parametrize("mode", list(Mode))
+def test_disconnected_at_the_end_earns_nothing(mode):
+	assert earned(mode, player(won=True, kills=9, frags=9, disconnected=True), "time_limit") == []
