@@ -1,4 +1,4 @@
-"""Catálogo de Maps, criação de Match, resultado, estatísticas e histórico (matches-api.md §2.2–§2.4, rooms.md §2.2).
+"""Catálogo de Maps, criação de Match, resultado, estatísticas, histórico e leaderboard (matches-api.md §2.2–§2.4, rooms.md §2.2).
 
 Cada mudança no lobby vai para todo /ws/app pelas funções `publish_*`, sempre **depois** do
 commit: quem recebe o aviso e busca por HTTP já acha o banco atualizado (ws-manager.md §2.5).
@@ -22,8 +22,8 @@ from app.game.world import MAPS_DIR
 from app.matches.models import Match, MatchPlayer, PlayerStats, UserAchievement
 from app.matches.progression import ACHIEVEMENTS
 from app.matches.schemas import (AchievementInfo, AchievementUnlocked, CreateMatchIn, HistoryMe,
-	HistoryOther, MatchDetail, MatchHistoryItem, MatchHistoryPage, MatchPlayerRow, PlayerStatsOut,
-	UserAchievements, UserStats, parse_options)
+	HistoryOther, Leaderboard, LeaderboardMetric, LeaderboardRow, MatchDetail, MatchHistoryItem,
+	MatchHistoryPage, MatchPlayerRow, PlayerStatsOut, UserAchievements, UserStats, parse_options)
 from app.ws.app_events import publish_lobby_removed, publish_lobby_update, publish_match_started
 from app.ws.manager import ConnectionManager
 
@@ -235,3 +235,22 @@ async def match_history(session: AsyncSession, user_id: int, page: int, per_page
 		reason=match.reason, me=HistoryMe.model_validate(me), others=others[match.id])
 		for match, me in rows]
 	return MatchHistoryPage(items=items, page=page, per_page=per_page, total=total)
+
+
+# ---------- leaderboard ----------
+
+DEFAULT_METRIC = {Mode.COOP: "xp", Mode.PVP: "elo"}
+
+
+async def leaderboard(session: AsyncSession, mode: Mode, metric: LeaderboardMetric | None,
+		limit: int) -> Leaderboard:
+	"""O ranking de um Mode (matches-api.md §2.3, progression.md §7)."""
+	column = getattr(PlayerStats, metric or DEFAULT_METRIC[mode])
+	# só quem tem linha em player_stats, isto é, terminou ao menos um Match neste Mode;
+	# no empate, mais vitórias e depois a conta mais antiga: a posição nunca se repete
+	rows = await session.execute(select(PlayerStats.user_id, User.username, User.avatar_url, column)
+		.join(User, User.id == PlayerStats.user_id).where(PlayerStats.mode == mode)
+		.order_by(column.desc(), PlayerStats.wins.desc(), PlayerStats.user_id).limit(limit))
+	return Leaderboard(items=[LeaderboardRow(rank=rank, user_id=user_id, username=username,
+		avatar_url=avatar_url or DEFAULT_AVATAR_URL, value=value)
+		for rank, (user_id, username, avatar_url, value) in enumerate(rows, start=1)])
