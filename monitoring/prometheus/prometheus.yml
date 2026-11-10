@@ -1,8 +1,11 @@
 # Targets pelo nome de serviço na rede transcendence (infra.md §2.6); nenhum sai para o host.
-# rule_files entra com o alerts.yml da F8.10.
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+
+# pelo nome, sem glob: o alerts.test.yml da mesma pasta é do promtool, não regra (F8.10)
+rule_files:
+  - alerts.yml
 
 scrape_configs:
   - job_name: backend # /metrics fora do /api, que o Nginx não roteia (F8.7)

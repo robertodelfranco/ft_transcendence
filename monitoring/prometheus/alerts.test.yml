@@ -1,0 +1,91 @@
+# promtool test rules alerts.test.yml: séries sintéticas, uma amostra a cada 15 s (o scrape real).
+# Não entra no rule_files: o prometheus.yml lista o alerts.yml pelo nome.
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 15s
+
+tests:
+  # o backend cai em t=30s: pending em 45s, firing a partir de 1m (for: 30s)
+  - interval: 15s
+    input_series:
+      - series: 'up{job="backend", instance="backend:8000"}'
+        values: "1 1 0x10"
+      - series: 'up{job="node", instance="node-exporter:9100"}'
+        values: "1x12"
+    alert_rule_test:
+      - eval_time: 45s
+        alertname: TargetDown
+        exp_alerts: []
+      - eval_time: 1m
+        alertname: TargetDown
+        exp_alerts:
+          - exp_labels: { severity: critical, job: backend, instance: "backend:8000" }
+            exp_annotations: { summary: "backend is down" }
+
+  # 30 Ticks por segundo, todos entre 33 e 50 ms
+  - interval: 15s
+    input_series:
+      - series: 'game_tick_seconds_bucket{le="0.01"}'
+        values: "0x20"
+      - series: 'game_tick_seconds_bucket{le="0.033"}'
+        values: "0x20"
+      - series: 'game_tick_seconds_bucket{le="0.05"}'
+        values: "0+450x20"
+      - series: 'game_tick_seconds_bucket{le="+Inf"}'
+        values: "0+450x20"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: TickP99High
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations: { summary: "p99 of the game tick is above the 33 ms budget" }
+
+  # os mesmos Ticks abaixo de 10 ms: nada dispara
+  - interval: 15s
+    input_series:
+      - series: 'game_tick_seconds_bucket{le="0.01"}'
+        values: "0+450x20"
+      - series: 'game_tick_seconds_bucket{le="0.033"}'
+        values: "0+450x20"
+      - series: 'game_tick_seconds_bucket{le="0.05"}'
+        values: "0+450x20"
+      - series: 'game_tick_seconds_bucket{le="+Inf"}'
+        values: "0+450x20"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: TickP99High
+        exp_alerts: []
+
+  # 10% de 500; o /metrics não entra na conta
+  - interval: 15s
+    input_series:
+      - series: 'http_requests_total{route="/api/health", status="200"}'
+        values: "0+90x20"
+      - series: 'http_requests_total{route="/api/matches/{match_id}", status="500"}'
+        values: "0+10x20"
+      - series: 'http_requests_total{route="/metrics", status="200"}'
+        values: "0+1x20"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: High5xxRate
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations: { summary: "More than 5% of HTTP responses are 5xx" }
+
+  # uma senha errada a cada 15 s (20 em 5 min); os logins certos não contam
+  - interval: 15s
+    input_series:
+      - series: 'auth_login_total{result="invalid_credentials"}'
+        values: "0+1x40"
+      - series: 'auth_login_total{result="success"}'
+        values: "0+5x40"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: LoginFailureSpike
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: LoginFailureSpike
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations: { summary: "More than 10 failed logins in 5 minutes" }
