@@ -20,7 +20,7 @@
 
 | Entrega | Estado |
 |---|---|
-| [auth.md](../contracts/auth.md): rotas, objeto User, envelope de erro, tokens, OAuth (Google e 42), tabelas | ✅ desde 07/10; revisado em 12/10 com a leitura do Akita |
+| [auth.md](../contracts/auth.md): rotas, objeto User, envelope de erro, tokens, OAuth (42), tabelas | ✅ desde 07/10; revisado em 12/10 com a leitura do Akita |
 | [ws-manager.md](../contracts/ws-manager.md): `ConnectionManager`, `/ws/app`, publicação do lobby, códigos de fechamento, reconexão | ✅ desde 07/10; revisado em 12/10 (W1, W3, §2.9, D-B) |
 | [ADR 0002](../adr/002-tokens.md): tokens | ✅, status "proposto" |
 
@@ -77,7 +77,7 @@ Cada linha existe porque, mal entendida, faz duas pessoas escreverem a mesma coi
 | `Base` do SQLAlchemy (`app/db/base.py`) | **Sim** | É compartilhada: as tabelas de partidas (F5) do Akita herdam dela |
 | Sessão de banco (`DbSession`) e Alembic | **Não** | Akita (F5.1) |
 | `record_match_result` | **Não** | Akita (F5.3, `app/matches/results.py`). Eu **chamo** a função uma vez no `game_over` (F2.9), e a Room emite os `achievement_unlocked` que ela devolve; no `_abort`, chamo `abort_unfinished(match_id)` ([rooms.md](../contracts/rooms.md) §2.5) |
-| Emissão de tokens no login por OAuth (Google e 42) | **Sim**, reusada | O fluxo OAuth (F6.8) é do Akita; ele chama a mesma `issue_tokens` que eu escrevo em F6.2. O contrato das rotas, do vínculo de contas e do idioma está no meu `auth.md` §2.8 |
+| Emissão de tokens no login por OAuth (42) | **Sim**, reusada | O fluxo OAuth (F6.8) é do Akita; ele chama a mesma `issue_tokens` que eu escrevo em F6.2. O contrato das rotas, do vínculo de contas e do idioma está no meu `auth.md` §2.8 |
 | Interface do `RoomManager` que implemento | Segue **`rooms.md`** (Akita) | Com `set_ready`, `list_open`, `room_of` e `avatar_url` no `join` (decisão D-A do Akita, 10/10) |
 | Funções de publicação do lobby | **Sim**, a função; quem chama é o Akita | `publish_lobby_update(manager, info)` e as outras duas recebem o manager como primeiro argumento ([ws-manager.md](../contracts/ws-manager.md) §2.5) |
 | `RateLimit` usado em `POST /api/matches` | **Sim**, a dependência; o uso é do Akita | 10/min por User ([matches-api.md](../contracts/matches-api.md) §4, decisão 6) |

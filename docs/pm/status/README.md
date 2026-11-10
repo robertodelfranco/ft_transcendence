@@ -26,7 +26,7 @@ Precisa do `gh` autenticado e de Python 3.10+. Nada além da biblioteca padrão.
 2. **Conferir o que a coleta não sabe** e corrigir no `ajustes.json`, depois coletar de novo:
    - tarefa do plano entregue **sem issue**, ou com a issue esquecida aberta → `status_manual`, com a data e o PR como evidência;
    - issue nova **fora das tarefas do plano** (bug, parte 2, "se der tempo") → `escopo_adicionado`, com o dono e a estimativa `d` (ou `null`, que aparece como "sem estimativa");
-   - issue de teste ou que não é trabalho → `ignorar_issues`;
+   - issue de teste, que não é trabalho ou que saiu do escopo (fechada como *not planned*) → `ignorar_issues`, com o motivo em `_ignorar_porque`;
    - data do plano que mudou (freeze, defesa) → `datas`.
 
    Para achar os casos, procure no snapshot as tarefas com `"sem_issue": true` e confira no código ou nos PRs mergeados. Uma issue cujo título não tem um ID `Fx.y` entra sozinha como escopo adicionado.
