@@ -22,11 +22,11 @@
 | F5.7 | Conquistas (≥ 5) em `user_achievements`, desbloqueadas no `record_match_result` | 1,5 | F5.3, F4.6 | S4 | desbloquear uma conquista numa partida real |
 | F5.8 | Leaderboard | 0,5 | F5.5 | S4 | `GET /api/leaderboard` |
 
-### F6.8 — OAuth com a 42 e o Google (2,5–3 d)
+### F6.8 — OAuth com a 42 (2,5–3 d; o Google saiu do escopo em 09/11 (#164, *not planned*))
 
 | ID | Tarefa | d | Depende de | Sem. | Pronto quando |
 |---|---|---|---|---|---|
-| F6.8 | OAuth 2.0 com a 42 e o Google (Authorization Code + `state`, PKCE onde o provedor aceitar), um módulo genérico com um adaptador por provedor, emitindo os mesmos tokens ([auth.md](../contracts/auth.md) §2.8); **cadastrar os dois apps antes do código** | 2,5–3 | F6.3 | S4 (Google pode ir para a S5) | login pela 42 e pelo Google cria ou vincula conta |
+| F6.8 | OAuth 2.0 com a 42 (Authorization Code + `state`), um módulo genérico com um adaptador por provedor, emitindo os mesmos tokens ([auth.md](../contracts/auth.md) §2.8); **cadastrar o app antes do código** | 2,5–3 | F6.3 | S4 | login pela 42 cria ou vincula conta. ✅ #34, 26/10 |
 
 ### F8 — infra e monitoring (9,5 d, sem F8.7)
 
@@ -61,7 +61,7 @@ Nada aqui espera ninguém. É por onde eu começo quando algum bloqueio aparecer
 | **F8.9 / F8.11** Grafana provisionado e atrás do Nginx | os dashboards de host e de Postgres não dependem de ninguém |
 | **F8.10** alertas | `up == 0` do Postgres e dos exporters já dá para disparar ao vivo antes de o backend ter métrica |
 | **F8.6** demo | depende só de F8.1 |
-| **F6.8** OAuth 42 e Google | isolado do resto; o cadastro dos dois apps (intra e Google Cloud Console) é o primeiro passo e dá para fazer de casa com `https://localhost` |
+| **F6.8** OAuth 42 | isolado do resto; o cadastro do app na intra é o primeiro passo e dá para fazer de casa com `https://localhost` |
 | **F0.6** issues e board | depende só de a reunião fechar os "Em aberto" |
 
 ## 3. De quem eu dependo
@@ -106,7 +106,7 @@ No calendário replanejado ([replanejamento-e-board.md](../pm/replanejamento-e-b
 | **S2** · 11–17/10 | **F5.2** lobby · **F8.3** compose final com migração no `entrypoint` · **F8.4** build de produção |
 | **S3** · 18–24/10 | Nesta ordem: **F5.3** `record_match_result` (bloqueia o #91 e o "Match gravado" do C3) → ✅ **F8.8** Prometheus e exporters, 22/10 (#118; destrava F8.9 e F8.11) → **F8.5** README esqueleto → **F5.6** histórico (se não couber, vai para a S4) |
 | **S4** · 25–31/10 | Primeiro o que o teste da 42 valida em 31/10: **F6.8** só com a 42 · **F8.9** dashboards · **F8.11** acesso seguro · trocar o `FT_CLIENT_SECRET` pelo secret novo que a intra gera sozinha em 30/10 (o atual vence em 06/11). Depois, o que não precisa da 42: **F5.4** stats → **F5.5** Elo e level → **F5.8** leaderboard, e **F5.7** conquistas quando a F4.6 do Rafael chegar. ✅ **Dom 01/11:** teste com 3 PCs na 42, D1–D8 e N1–N3 OK ([resultados](../infra/resultados-teste-pc-42-2026-10-17.md#pendente-2º-pc)); o D6 usou o secret antigo; lembrete: trocar o `FT_CLIENT_SECRET` pelo novo no `.env` de quem serve, antes da entrega ou na próxima ida à 42 |
-| **S5** · 01–14/11 | O que da F5.4–F5.8 escorregar da S4, até 07/11 · **F8.6** demo (o teste de 01/11 passou; falta a resposta do goinfre e o "Em aberto" 6 do [infra.md](../contracts/infra.md)) · **F8.10** alertas · **F9.1** minha parte do README · Google do F6.8 · folga para bug e revisão |
+| **S5** · 01–14/11 | O que da F5.4–F5.8 escorregar da S4, até 07/11 · **F8.6** demo (o teste de 01/11 passou; falta a resposta do goinfre e o "Em aberto" 6 do [infra.md](../contracts/infra.md)) · **F8.10** alertas · **F9.1** minha parte do README · ~~Google do F6.8~~ (fora do escopo desde 09/11, #164) · folga para bug e revisão |
 | **S6** · 15–21/11 | bug, README fechado, ensaio |
 
 **O gargalo é a S4:** F5.4–F5.8 + F6.8 + F8.9 + F8.11 somavam 9 d numa semana de 5, e o segundo provedor do F6.8 soma mais 0,5–1 d. Mitigação já aplicada acima: F5.6 (1 d) foi puxado para a S3, porque só depende de F5.3 — a S4 da tabela fica em **8,5–9 d**, ainda acima da capacidade. Em 19/10 o Google saiu da S4 (a 42 sozinha já fecha o módulo, [auth.md](../contracts/auth.md) §5.13). Com a F5.6 podendo escorregar da S3, a S4 volta a ficar perto de 9–10 d.
@@ -137,7 +137,7 @@ Por módulo que passa pela minha Slice (plano §7):
 | **ORM** (Minor) | os modelos SQLAlchemy, as migrações Alembic e por que a cadeia é linear; o schema com as relações, no diagrama que eu desenhei |
 | **Game statistics & match history** (Minor) | os seis itens que o subject cobra (vitórias/derrotas, ranking, level, histórico com data/resultado/oponentes, conquistas e progressão, leaderboard), cada um apontando para a rota e a tabela; por que `player_stats` é agregada; por que estatística lê `match_players.won` |
 | **Monitoring** (Major) | as cinco coisas que o subject cobra: Prometheus coletando, dois exporters, dashboards nossos provisionados por arquivo, um alerta indo para *firing* ao vivo, Grafana só por HTTPS com login; por que o tick é histograma e o login é counter; por que o Prometheus não responde de fora |
-| **OAuth 2.0** (Minor) | o fluxo Authorization Code com a 42 e o Google, para que servem o `state` e o PKCE, e como a conta é criada ou vinculada (e por que só com e-mail confiável) |
+| **OAuth 2.0** (Minor) | o fluxo Authorization Code com a 42, para que serve o `state` (e por que a 42 fica sem PKCE: a intra ignora), e como a conta é criada ou vinculada (e por que só com e-mail confiável) |
 | **Real-time** (Major, parte minha) | o lobby mudando sem recarregar, por `/ws/app`, e por que a lista de Rooms abertas vem da memória |
 | **Obrigatórios** | `docker compose up` num comando; HTTPS em todo o backend e `wss://`; `.env` fora do git; schema claro com relações; README com as seções do cap. VI |
 

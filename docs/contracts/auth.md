@@ -1,10 +1,10 @@
 # Contrato: autenticação, envelope de erro e schema de usuários (`auth.md`)
 
-**Estado:** rascunho de 07/10/2026, revisado em 12/10 com a leitura do Akita (A2–A6, idioma no OAuth e e-mail da 42). **Escreve:** Augusto. **Assina:** Caio (monta login, cadastro e o cliente HTTP só com este arquivo) e Akita (escreve a migração `0001_initial` e o diagrama do schema a partir da §2.9, e implementa o login pelo Google e pela 42 em F6.8 com a §2.8).
+**Estado:** rascunho de 07/10/2026, revisado em 12/10 com a leitura do Akita (A2–A6, idioma no OAuth e e-mail da 42). **Escreve:** Augusto. **Assina:** Caio (monta login, cadastro e o cliente HTTP só com este arquivo) e Akita (escreve a migração `0001_initial` e o diagrama do schema a partir da §2.9, e implementa o login pela 42 em F6.8 com a §2.8). Em 09/11, o Google saiu do escopo em 09/11 (#164, *not planned*): só a 42, que sozinha fecha o módulo (§4, decisão 1).
 
 ## 1. Para que serve
 
-O backend diz quem é o User a cada requisição e a cada socket. Este arquivo define como alguém vira User (e-mail e senha, Google ou 42), como a sessão sobrevive a recarregar a página (access em memória, refresh em cookie), o formato de todo erro que o backend devolve e as tabelas de usuários.
+O backend diz quem é o User a cada requisição e a cada socket. Este arquivo define como alguém vira User (e-mail e senha ou 42), como a sessão sobrevive a recarregar a página (access em memória, refresh em cookie), o formato de todo erro que o backend devolve e as tabelas de usuários.
 
 As outras Slices não reimplementam nada disto: usam `CurrentUser`, `RateLimit`, `authenticate_ws_token` e `issue_tokens` (§2.7), e todo erro delas sai no envelope da §2.5.
 
@@ -17,7 +17,7 @@ As outras Slices não reimplementam nada disto: usam `CurrentUser`, `RateLimit`,
 - **Tempo.** ISO-8601 em UTC com `Z`. No banco, `TIMESTAMPTZ`; no Python, `datetime.now(timezone.utc)`.
 - **Ids.** `user_id` é inteiro, sempre ([README](README.md#o-que-já-está-decidido)).
 - **Access token.** Vai em `Authorization: Bearer <access>`. Nunca em query string, nunca em cookie.
-- **Três métodos de login:** e-mail pessoal com senha, Google ou 42. Os dois últimos são OAuth 2.0 e passam pelas mesmas rotas, com `{provider}` ∈ `google`, `42` (§4, decisão 1).
+- **Dois métodos de login:** e-mail pessoal com senha ou 42. A 42 é OAuth 2.0, pelas rotas `/api/auth/oauth/{provider}/...` com `{provider}` = `42` (§4, decisão 1).
 
 ### 2.2 Rotas
 
@@ -72,7 +72,7 @@ Duas formas. Ninguém além do próprio User vê o e-mail.
 | `email` | string | minúsculo |
 | `preferred_language` | `"pt-BR" \| "en" \| "es"` | os códigos de [i18n.md](i18n.md) |
 | `has_password` | bool | `false` em conta criada só por OAuth; a tela de perfil esconde "trocar senha" |
-| `providers` | `string[]` | provedores vinculados: subconjunto de `["google", "42"]`, em ordem alfabética |
+| `providers` | `string[]` | provedores vinculados: `["42"]` ou vazio |
 
 Status online **não** está no User: é presença, e vem de `/ws/app` ([ws-manager.md](ws-manager.md)).
 
@@ -213,21 +213,21 @@ async def create_match(user: CurrentUser, session: DbSession): ...
 
 A autenticação do WebSocket vale **só no `join`** (§4, decisão 9). Um socket aberto não cai quando o access vence.
 
-### 2.8 Login por OAuth: Google e 42
+### 2.8 Login por OAuth: 42
 
-OAuth 2.0 Authorization Code, o mesmo fluxo para os dois provedores; só muda a tabela de endereços. Implementado por quem é dono de F6.8 (Akita, plano §9), num módulo genérico (`app/auth/oauth.py`) com um adaptador por provedor.
+OAuth 2.0 Authorization Code. Implementado por quem é dono de F6.8 (Akita, plano §9), num módulo genérico (`app/auth/oauth.py`) com um adaptador por provedor; o único adaptador é o da 42 (o Google saiu do escopo em 09/11 (#164, *not planned*)).
 
-| | Google | 42 |
-|---|---|---|
-| Autorização | `https://accounts.google.com/o/oauth2/v2/auth` | `https://api.intra.42.fr/oauth/authorize` |
-| Token | `https://oauth2.googleapis.com/token` | `https://api.intra.42.fr/oauth/token` |
-| Dados do User | `https://openidconnect.googleapis.com/v1/userinfo` | `https://api.intra.42.fr/v2/me` |
-| Escopo | `openid email profile` | `public` |
-| PKCE | sim (S256) | não: a intra ignora ("Em aberto" 11) |
-| Id do provedor | `sub` (texto) | `id` (inteiro, gravado como texto) |
-| E-mail confiável para vincular | só com `email_verified = true` | o `email` da intra (decisão 20) |
-| `username` sugerido | parte do e-mail antes do `@` | `login` (ex.: `rdel-fra` vira `rdel_fra`) |
-| Credenciais no `.env` | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `FT_CLIENT_ID`, `FT_CLIENT_SECRET` |
+| | 42 |
+|---|---|
+| Autorização | `https://api.intra.42.fr/oauth/authorize` |
+| Token | `https://api.intra.42.fr/oauth/token` |
+| Dados do User | `https://api.intra.42.fr/v2/me` |
+| Escopo | `public` |
+| PKCE | não: a intra ignora ("Em aberto" 11) |
+| Id do provedor | `id` (inteiro, gravado como texto) |
+| E-mail confiável para vincular | o `email` da intra (decisão 20) |
+| `username` sugerido | `login` (ex.: `rdel-fra` vira `rdel_fra`) |
+| Credenciais no `.env` | `FT_CLIENT_ID`, `FT_CLIENT_SECRET` |
 
 1. **`GET /api/auth/oauth/{provider}/login`**: provedor fora da lista → 404 `not_found`. Gera `state` (e `code_verifier`, onde houver PKCE) aleatórios; grava no cookie `oauth_state`, junto com o nome do provedor (assinado com `JWT_SECRET`, `HttpOnly; Secure; SameSite=Lax; Path=/api/auth/oauth; Max-Age=600`), e redireciona para a URL de autorização do provedor com `client_id`, `redirect_uri`, `response_type=code`, `scope`, `state` e, se houver, `code_challenge`. O `?lang` (o idioma da tela, um dos três códigos) vai no mesmo cookie; valor ausente ou fora da lista é ignorado, sem erro.
 2. **`GET /api/auth/oauth/{provider}/callback`**:
@@ -246,13 +246,13 @@ OAuth 2.0 Authorization Code, o mesmo fluxo para os dois provedores; só muda a 
 
 4. Chama `issue_tokens`, apaga o cookie `oauth_state` e redireciona para `/`.
 
-**Implementado em 26/10 (F6.8, #34), só a 42.** Até o adaptador do Google entrar (#164), `google` cai no 404 `not_found` das duas rotas. O `oauth_failed` e o `oauth_success` contam em `auth_login_total` (§2.10); o `oauth_cancelled` não conta. O log da falha leva só o motivo, nunca `code` nem `state`.
+**Implementado em 26/10 (F6.8, #34).** Qualquer provedor que não seja `42`, `google` inclusive, cai no 404 `not_found` das duas rotas. O `oauth_failed` e o `oauth_success` contam em `auth_login_total` (§2.10); o `oauth_cancelled` não conta. O log da falha leva só o motivo, nunca `code` nem `state`.
 
-Como o vínculo é pelo e-mail, quem tem conta por senha e entra pela 42 ou pelo Google com o mesmo e-mail cai na mesma conta, e a mesma conta pode ter os dois provedores (`providers: ["42", "google"]`).
+Como o vínculo é pelo e-mail, quem tem conta por senha e entra pela 42 com o mesmo e-mail cai na mesma conta (`providers: ["42"]`).
 
 A URL de retorno é derivada, não configurada: `https://${PUBLIC_HOST}/api/auth/oauth/{provider}/callback`, pelo mesmo motivo de [infra.md](infra.md) §2.5 (uma fonte para o nome público). Por isso `FT_REDIRECT_URI` sai do `.env`.
 
-Os botões "Entrar com Google" e "Entrar com 42" na casca são links comuns para `/api/auth/oauth/{provider}/login`. **Nenhum script de provedor entra na página** (a biblioteca de botão do Google escreve avisos no console).
+O botão "Entrar com a 42" na casca é um link comum para `/api/auth/oauth/42/login`. **Nenhum script de provedor entra na página**: biblioteca de botão de terceiro costuma escrever avisos no console.
 
 ### 2.9 Tabelas
 
@@ -292,11 +292,11 @@ Tipos do PostgreSQL, alinhados com [rooms.md](rooms.md) §2.7 (`BIGINT` para ids
 |---|---|---|---|
 | `id` | `BIGSERIAL` | não | PK |
 | `user_id` | `BIGINT` | não | FK → `users(id)` `ON DELETE CASCADE` |
-| `provider` | `TEXT` | não | `CHECK IN ('google','42')` |
-| `provider_user_id` | `TEXT` | não | o `sub` do Google, ou o `id` numérico da 42 em texto |
+| `provider` | `TEXT` | não | `CHECK IN ('google','42')`: o `google` ficou da migração `0001`, de antes de o Google sair do escopo; nenhuma linha o usa |
+| `provider_user_id` | `TEXT` | não | o `id` numérico da 42 em texto |
 | `created_at` | `TIMESTAMPTZ` | não | `DEFAULT now()` |
 
-`UNIQUE (provider, provider_user_id)` e `UNIQUE (user_id, provider)`: um User pode ter Google e 42 vinculados ao mesmo tempo, mas uma conta de cada.
+`UNIQUE (provider, provider_user_id)` e `UNIQUE (user_id, provider)`: um User tem no máximo uma conta de cada provedor.
 
 **`friendships`** — dona do schema: F6; as rotas são do Caio (F6.7). Amizade **unilateral**: adicionar é uma linha, remover é apagá-la, sem pedido nem aceite.
 
@@ -365,18 +365,11 @@ Signup inválido:
            "fields": {"username": "invalid_format", "password": "weak_password"}}}
 ```
 
-`GET /api/auth/me` de uma conta criada pelo Google:
-
-```json
-{"id": 12, "username": "rafael_h", "avatar_url": "/media/avatars/default.png", "created_at": "2026-10-08T09:15:00Z",
- "email": "rafael.h@gmail.com", "preferred_language": "en", "has_password": false, "providers": ["google"]}
-```
-
-`GET /api/auth/me` de uma conta criada pela 42 (o `login` `rdel-fra` virou `rdel_fra`) que depois também vinculou o Google pelo mesmo e-mail:
+`GET /api/auth/me` de uma conta criada pela 42 (o `login` `rdel-fra` virou `rdel_fra`):
 
 ```json
 {"id": 9, "username": "rdel_fra", "avatar_url": "/media/avatars/default.png", "created_at": "2026-10-08T10:02:40Z",
- "email": "rdel-fra@student.42sp.org.br", "preferred_language": "pt-BR", "has_password": false, "providers": ["42", "google"]}
+ "email": "rdel-fra@student.42sp.org.br", "preferred_language": "pt-BR", "has_password": false, "providers": ["42"]}
 ```
 
 Payload de um access token decodificado:
@@ -387,25 +380,25 @@ Payload de um access token decodificado:
 
 ## 4. Decisões
 
-1. **Três métodos de login: e-mail com senha, Google e 42.** Decisão do time em 07/10. O módulo *Remote authentication with OAuth 2.0* vale 1 ponto com um provedor ou com dois; ter dois tira o risco do plano §8.2 (intra demorando a liberar o app): se um provedor travar, o outro sozinho já fecha o módulo, e o Plano B de 2FA deixa de ser necessário. As rotas são as mesmas para os dois, com `{provider}` no caminho, então o segundo provedor custa um adaptador, não um fluxo novo.
+1. **Dois métodos de login: e-mail com senha e 42.** Em 07/10 o time decidiu ter também o Google, para tirar o risco do plano §8.2 (intra demorando a liberar o app). A intra liberou, a F6.8 entregou a 42 em 26/10 (#34), e o módulo *Remote authentication with OAuth 2.0* vale 1 ponto com um provedor ou com dois: em 09/11, o Google saiu do escopo em 09/11 (#164, *not planned*), decisão do Akita, dono da F6.8. As rotas continuam com `{provider}` no caminho.
 2. **Login só por e-mail** (pergunta 1 do briefing). Uma porta a menos para validar, limitar e testar; o `username` é para exibição.
 3. **`fields` leva um código por campo** (pergunta 2). Só código é traduzível; o handler converte o erro do Pydantic, então nenhuma Slice escreve tradução de erro à mão.
 4. **`/refresh` sem cookie responde 200 `{"authenticated": false}`** (pergunta 3). O Chrome mostra em vermelho, no console, toda resposta 4xx de `fetch`, e console limpo é critério de rejeição. "Não há sessão" é o estado normal de quem chega, não um erro. Junto vêm: a casca renova o access antes de vencer (nunca recebe 401 por expiração), e o front valida as mesmas regras (raramente recebe 422). Os 4xx que sobram são erro do próprio User (senha errada, e-mail em uso), não do site.
 5. **Janela de graça de 10 s na rotação.** Duas abas que recarregam juntas mandam o mesmo cookie; com rotação estrita a segunda pareceria reuso e a família seria revogada, deslogando o User sem motivo. Como as abas dividem o cookie, a segunda já tem o cookie novo que a primeira recebeu: basta devolver um access novo, sem `Set-Cookie`. Depois de 10 s, reaparecer com o token velho é reuso de verdade (RFC 9700 §4.14.2).
 6. **Cookie de refresh com `Path=/api/auth`**, não `/api/auth/refresh` como na arq. §4 decisão 1. Com o caminho estreito, o navegador não manda o cookie para `/api/auth/logout`, e o logout não consegue revogar o token. Os outros caminhos sob `/api/auth` recebem o cookie e o ignoram.
-7. **Cookie `oauth_state` com `SameSite=Lax`**, e não `Strict`. O callback é uma navegação que vem de `accounts.google.com`, outro site; com `Strict` o navegador não mandaria o cookie e todo `state` seria recusado. `Lax` vai em navegação de topo com `GET`, que é exatamente o callback. O `state` mora em cookie, e não num dicionário do servidor, porque precisa estar preso ao navegador que começou o login: é isso que impede alguém de logar a vítima na conta do atacante.
+7. **Cookie `oauth_state` com `SameSite=Lax`**, e não `Strict`. O callback é uma navegação que vem de `api.intra.42.fr`, outro site; com `Strict` o navegador não mandaria o cookie e todo `state` seria recusado. `Lax` vai em navegação de topo com `GET`, que é exatamente o callback. O `state` mora em cookie, e não num dicionário do servidor, porque precisa estar preso ao navegador que começou o login: é isso que impede alguém de logar a vítima na conta do atacante.
 8. **Refresh opaco com tabela, access JWT sem tabela.** O access é conferido a cada requisição e precisa ser barato; o refresh precisa poder ser revogado, e JWT sem tabela não revoga. Detalhes no [ADR 0002](../adr/002-tokens.md).
 9. **O WebSocket é autenticado só no `join`** (pergunta 6). O access dura 15 min e uma partida pode durar mais; derrubar o socket no meio da partida por expiração seria pior que o risco, que é pequeno (o User já provou quem é ao abrir).
-10. **Conta só de OAuth que tenta login por senha recebe `invalid_credentials`** (pergunta 8), a mesma resposta de senha errada. Uma mensagem própria ("esta conta usa Google" ou "usa a 42") revelaria que o e-mail está cadastrado. O hash é calculado mesmo sem User ou sem senha, para o tempo de resposta não denunciar nada.
+10. **Conta só de OAuth que tenta login por senha recebe `invalid_credentials`** (pergunta 8), a mesma resposta de senha errada. Uma mensagem própria ("esta conta usa a 42") revelaria que o e-mail está cadastrado. O hash é calculado mesmo sem User ou sem senha, para o tempo de resposta não denunciar nada.
 11. **Logout revoga só o token atual** (pergunta 9). Sair de um navegador não deve deslogar os outros; a família inteira só cai por reuso.
-12. **`username` de conta criada por OAuth vem do provedor, normalizado.** Na 42, o `login`; no Google, que não tem login, a parte do e-mail antes do `@`. Nos dois casos: minúsculas, o que não for `[a-z0-9_]` vira `_` (o `login` da 42 pode ter hífen, como `rdel-fra`), corta em 20 e completa até 3 com `_`; se já existe, ganha sufixo numérico (`rafael_h`, `rafael_h2`). Pedir um username no meio do fluxo seria mais uma tela.
-13. **Vincular a um User existente só com e-mail confiável.** No Google, `email_verified = true`; sem isso, quem cadastrasse no Google o e-mail de outra pessoa entraria na conta dela. Na 42, o e-mail é administrado pela escola ("Em aberto" 12).
-14. **Dados do User lidos na API do provedor** (`userinfo` no Google, `/v2/me` na 42), não do `id_token` do Google. É o mesmo caminho para os dois provedores e dispensa conferir assinatura com as chaves públicas do Google: a resposta vem por TLS direto do provedor.
-15. **PKCE onde o provedor aceita, mesmo com `client_secret`.** A RFC 9700 §2.1.1 recomenda para todo cliente: protege o `code` se ele vazar no redirecionamento. O `state` continua obrigatório nos dois.
+12. **`username` de conta criada por OAuth vem do provedor, normalizado.** Na 42, o `login`, normalizado: minúsculas, o que não for `[a-z0-9_]` vira `_` (o `login` da 42 pode ter hífen, como `rdel-fra`), corta em 20 e completa até 3 com `_`; se já existe, ganha sufixo numérico (`rafael_h`, `rafael_h2`). Pedir um username no meio do fluxo seria mais uma tela.
+13. **Vincular a um User existente só com e-mail confiável.** Sem isso, quem cadastrasse no provedor o e-mail de outra pessoa entraria na conta dela. Na 42, o e-mail é administrado pela escola ("Em aberto" 12, decisão 20).
+14. **Dados do User lidos na API do provedor** (`/v2/me` na 42): a resposta vem por TLS direto do provedor.
+15. **PKCE onde o provedor aceita, mesmo com `client_secret`.** A RFC 9700 §2.1.1 recomenda para todo cliente: protege o `code` se ele vazar no redirecionamento. A intra ignora o PKCE ("Em aberto" 11), então a 42 fica só com o `state`, que é obrigatório.
 16. **Signup já faz login.** Devolve o mesmo corpo do login e o cookie (a arq. §9.1 devolvia só `{user}`). Economiza uma requisição e um caminho de erro na tela de cadastro.
 17. **Senha com teto de 128 caracteres.** O Argon2id é caro de propósito; sem teto, uma senha de 1 MB vira ataque de negação de serviço no login.
 18. **`avatar_url` é sempre uma URL na API.** O banco guarda `NULL` para "padrão", e só o serializador sabe qual é a URL padrão; trocar o avatar padrão não exige migração.
-19. **OAuth com e-mail não confiável não cria conta.** Se ninguém tem o e-mail e o provedor não garante que ele é do User, o callback devolve `oauth_failed`. Criar a conta deixaria um e-mail sem dono confirmado preso no banco, e o dono real levaria `email_taken` ao se cadastrar. No Google isso quase nunca acontece (conta Gmail é sempre verificada); a regra fecha a porta.
+19. **OAuth com e-mail não confiável não cria conta.** Se ninguém tem o e-mail e o provedor não garante que ele é do User, o callback devolve `oauth_failed`. Criar a conta deixaria um e-mail sem dono confirmado preso no banco, e o dono real levaria `email_taken` ao se cadastrar. A regra fecha a porta.
 20. **O e-mail da 42 é confiável para vincular**, porque é administrado pela escola. Combinado com o Akita em 12/10, com uma condição: no cadastro do app, confirmar que a intra não deixa o aluno trocar o e-mail sem verificação. Se deixar, a decisão volta à mesa e a 42 passa a só criar conta nova.
 21. **O idioma da conta criada por OAuth vem da tela.** A casca manda `?lang` no link de login e ele volta no cookie `oauth_state`, porque o provedor não sabe o idioma do nosso site. Sem `lang`, vale o idioma de reserva, `en`.
 
@@ -413,10 +406,10 @@ Payload de um access token decodificado:
 
 | # | Questão | Quem decide | Quando |
 |---|---|---|---|
-| 1 | **URL de retorno na demo, nos dois provedores.** O Google exige HTTPS e um domínio público na URL de retorno, com exceção só para `localhost`; `catacombs.local` e IP puro (o plano de [infra.md](infra.md) §5.1) devem ser recusados. As regras da intra da 42 são a pergunta 8 do Akita ([infra.md](infra.md) §5.4). Opções: demonstrar o OAuth só na máquina que serve, por `https://localhost`; ou usar um nome do tipo `192.168.0.42.nip.io` no certificado e no `PUBLIC_HOST`. **Testar no Google Cloud Console e na intra antes de qualquer outra coisa da F6.8.** | Akita (dono de F6.8 e da infra) | S1 |
-| 2 | Tela de consentimento do Google em modo "Testing" só aceita os e-mails cadastrados como testadores. Publicar o app (escopos básicos não exigem verificação, a conferir) ou cadastrar os e-mails da avaliação? | Akita | S2 |
-| 3 | **Documentos que ainda dizem só 42**, para cada dono atualizar citando a decisão 1: plano §1 (linha 8), §5 (F6.8), §7 e §8.2 (o Plano B de 2FA vira "o outro provedor"); arq. §4 decisão 6, §9.1 (rotas com `{provider}`), §10.3 e §14 (`oauth42.py` vira `oauth.py`); [infra.md](infra.md) §2.5 (entram `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`; sai `FT_REDIRECT_URI`); [rooms.md](rooms.md) §2.8 (rótulo "contas 42" vira "contas OAuth", e `rotated_at` em `refresh_tokens`); `caminho-5-akita.md` (F6.8 com dois provedores). | Roberto (plano e arq.), Akita (infra, rooms, slice) | junto com a revisão deste contrato |
-| 4 | A foto do provedor (Google ou 42) vira avatar? Proposta: não na primeira versão; o avatar continua sendo o padrão até o User enviar um. Baixar a imagem exige o mesmo caminho de validação do upload (F6.6). | Caio | S3 |
+| 1 | Fora do escopo desde 09/11 na parte do Google (#164); a URL de retorno da 42 foi resolvida no [infra.md](infra.md) "Em aberto" 4. Registro: **URL de retorno na demo, nos dois provedores.** O Google exige HTTPS e um domínio público na URL de retorno, com exceção só para `localhost`; `catacombs.local` e IP puro (o plano de [infra.md](infra.md) §5.1) devem ser recusados. As regras da intra da 42 são a pergunta 8 do Akita ([infra.md](infra.md) §5.4). Opções: demonstrar o OAuth só na máquina que serve, por `https://localhost`; ou usar um nome do tipo `192.168.0.42.nip.io` no certificado e no `PUBLIC_HOST`. **Testar no Google Cloud Console e na intra antes de qualquer outra coisa da F6.8.** | Akita (dono de F6.8 e da infra) | S1 |
+| 2 | Fora do escopo desde 09/11 (#164). Registro: tela de consentimento do Google em modo "Testing" só aceita os e-mails cadastrados como testadores. Publicar o app (escopos básicos não exigem verificação, a conferir) ou cadastrar os e-mails da avaliação? | Akita | fora do escopo |
+| 3 | Fora do escopo desde 09/11 (#164): com só a 42, o que dizia só 42 está certo. Registro: **Documentos que ainda dizem só 42**, para cada dono atualizar citando a decisão 1: plano §1 (linha 8), §5 (F6.8), §7 e §8.2 (o Plano B de 2FA vira "o outro provedor"); arq. §4 decisão 6, §9.1 (rotas com `{provider}`), §10.3 e §14 (`oauth42.py` vira `oauth.py`); [infra.md](infra.md) §2.5 (entram `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`; sai `FT_REDIRECT_URI`); [rooms.md](rooms.md) §2.8 (rótulo "contas 42" vira "contas OAuth", e `rotated_at` em `refresh_tokens`); `caminho-5-akita.md` (F6.8 com dois provedores). | Roberto (plano e arq.), Akita (infra, rooms, slice) | junto com a revisão deste contrato |
+| 4 | A foto da 42 vira avatar? Proposta: não na primeira versão; o avatar continua sendo o padrão até o User enviar um. Baixar a imagem exige o mesmo caminho de validação do upload (F6.6). | Caio | S3 |
 | 5 | URL do avatar padrão e onde os avatares ficam guardados ([infra.md](infra.md) §5.2). Este contrato só precisa da URL. | Caio e Akita | com [i18n.md](i18n.md) |
 | 6 | Resolvido em 12/10: `DEFAULT 'en'`, o idioma de reserva de [i18n.md](i18n.md). A casca manda o idioma atual no signup e no `?lang` do OAuth (decisão 21). | Caio | feito |
 | 7 | Resolvido em 20/10, na F6.3: sem prazo absoluto. Cada rotação renova os 7 dias, então quem usa o site toda semana nunca é deslogado; aceito para a demo, e vai para o README (F9.1). | Augusto | feito |
@@ -425,7 +418,7 @@ Payload de um access token decodificado:
 | 10 | Amizade unilateral foi proposta por mim para a tabela; as rotas e a tela são do Caio. Confirmar ao assinar. | Caio | revisão deste contrato |
 | 11 | ~~A intra da 42 aceita PKCE (`code_challenge`)?~~ **Resolvido (19/10/2026): não.** A intra aceita o `code_challenge` no authorize sem reclamar e emite o token mesmo com um `code_verifier` errado: ignora o PKCE. A 42 fica só com `state`, que basta para o fluxo com `client_secret`. Mandar o `code_challenge` não quebra nada, mas não protege nada; o adaptador da 42 não manda. Teste em [infra.md](infra.md) "Em aberto" 4. | Akita | feito |
 | 12 | Resolvido em 12/10: o e-mail da 42 é confiável para vincular (decisão 20), com a condição de conferir a troca de e-mail na intra. | Augusto e Akita | feito |
-| 13 | Resolvido em 12/10: a 42 primeiro, na S4; o Google em seguida e, se a S4 estourar, na S5 ([caminho-5-akita.md](../slices/caminho-5-akita.md) §5). Com dois provedores, o 2FA deixa de ser o Plano B. | Akita e Augusto | feito |
+| 13 | Resolvido em 12/10: a 42 primeiro, na S4; o Google em seguida e, se a S4 estourar, na S5 ([caminho-5-akita.md](../slices/caminho-5-akita.md) §5). Com dois provedores, o 2FA deixa de ser o Plano B. Em 09/11, o Google saiu do escopo em 09/11 (#164, *not planned*): a 42, entregue em 26/10, fecha o módulo sozinha. | Akita e Augusto | feito |
 
 ---
 

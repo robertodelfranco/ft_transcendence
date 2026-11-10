@@ -451,7 +451,7 @@ Preencha a tabela "Pendente 2º PC" em [resultados-teste-pc-42-2026-10-17.md](re
 | D1 sem resposta em todos os nomes, mas o 1.7 passou no PC A | **firewall entre os PCs** | Teste `nc -zv <HOST> 8443` do PC B; tente um PC B do mesmo cluster e um de outro; anote quais pares falham. **Não tem plano B pronto**: avise o Roberto (Tech Lead) no mesmo dia, porque isso muda a demo da avaliação |
 | D1 passa no mesmo cluster e falha em outro | regra de rede entre clusters | Anote os pares. A demo precisa ficar num cluster só, e o N5 diz qual |
 | D1 responde pelo IP, mas não pelo hostname | DNS interno | Anote. Dá para usar `PUBLIC_HOST=<IP>:8443` (o IP já está no certificado) |
-| `nip.io` não resolve só no PC B | DNS público bloqueado nesse PC | Anote: afeta só o login pelo Google fora do `localhost` |
+| `nip.io` não resolve só no PC B | DNS público bloqueado nesse PC | Anote: o `nip.io` não é usado na demo (era para o Google, fora do escopo desde 09/11) |
 | D3 com `000` ou erro de certificado | `rootCA.pem` errado (de outro servidor) ou certificado gerado em outro PC | No PC A, confira o SAN (1.5) e mande o `rootCA.pem` do login que rodou o `mkcert` |
 | D3 com `502` | a stack caiu | No PC A: `docker compose ps -a` e `docker compose logs backend proxy \| tail -50` |
 | D4 com `429` | o 1.4 não foi aplicado, ou o PC A travou o login pelo `localhost` em vez do `$HOST` | No PC A: `ps -eo args \| grep -o -- '--port-driver=[a-z0-9]*'` deve dizer `slirp4netns`; no log do 1.9, o IP do PC B deve aparecer |
