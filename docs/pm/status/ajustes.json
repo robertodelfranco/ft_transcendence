@@ -35,12 +35,12 @@
     "F4.3": {"status": "concluida", "data": "2026-10-23", "evidencia": "PR #143: docs/contracts/hud.md (a issue #142 ficou aberta)"},
     "F4.5": {"status": "concluida", "data": "2026-10-05", "evidencia": "PR #16: tabela de opções em docs/contracts/room-options.md"}
   },
-  "ignorar_issues": [4, 6, 8, 9],
+  "_ignorar_porque": "4, 6, 8, 9: teste ou não é trabalho. 164: login pelo Google fora do escopo em 09/11 (a 42 sozinha fecha o módulo OAuth, auth.md §5, item 13); fechada como not planned.",
+  "ignorar_issues": [4, 6, 8, 9, 164],
   "escopo_adicionado": {
     "_porque": "Issues fora das tarefas do plano. d = estimativa em dias; null = sem estimativa ainda.",
     "120": {"dono": "akita", "d": null},
     "147": {"dono": "augusto", "d": null},
-    "155": {"dono": "akita", "d": 0.5},
-    "164": {"dono": "akita", "d": 1}
+    "155": {"dono": "akita", "d": 0.5}
   }
 }
