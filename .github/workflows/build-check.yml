@@ -71,6 +71,16 @@ jobs:
           done
           docker compose exec -T grafana wget -qO- "$api/datasources/uid/prometheus/health" | grep -q '"status":"OK"'
 
+      # F8.10: as regras passam nos testes do promtool e o Prometheus carregou as 4
+      # (um alerts.yml inválido nem deixa o Prometheus subir: o --wait já reprova)
+      - name: Alerting rules loaded
+        run: |
+          docker compose exec -T -w /etc/prometheus prometheus promtool test rules alerts.test.yml
+          rules=$(docker compose exec -T prometheus wget -qO- http://localhost:9090/api/v1/rules)
+          for alert in TargetDown TickP99High High5xxRate LoginFailureSpike; do
+            grep -q "\"name\":\"$alert\"" <<< "$rules" || { echo "missing alert $alert"; exit 1; }
+          done
+
       # F8.11: o Grafana só pelo Nginx, com TLS e login; Prometheus e /metrics sem acesso externo
       - name: Grafana only through the proxy, with login
         run: |
