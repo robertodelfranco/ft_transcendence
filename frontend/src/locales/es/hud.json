@@ -6,6 +6,13 @@
   "viewResult": "Ver resultado",
   "view": "Vista del juego",
   "retry": "Reintentar",
+  "leave": {
+    "button": "Salir de la partida",
+    "confirm": "¿Salir de la partida? No podrás volver a ella.",
+    "yes": "Sí, salir",
+    "no": "Seguir jugando",
+    "leaving": "Saliendo…"
+  },
   "stats": {
     "label": "Tu estado",
     "hp": "Vida",

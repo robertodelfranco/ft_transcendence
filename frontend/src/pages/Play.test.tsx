@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -8,6 +9,7 @@ import { setAccessToken } from "../auth/token";
 import i18n from "../i18n";
 import { activeMount, emitEnd, emitHud, failNextMount, mounts } from "../mocks/game";
 import { MOCK_PASSWORD } from "../mocks/handlers";
+import { server } from "../mocks/server";
 import { routes } from "../routes";
 import { socketToken } from "../auth/socketToken";
 
@@ -219,5 +221,103 @@ describe("fim da partida", () => {
     await user.click(await screen.findByRole("link", { name: "Ver resultado" }));
     expect(await screen.findByRole("heading", { name: "Partida #14" })).toBeInTheDocument();
     expect(game.unmounted).toBe(true);
+  });
+});
+
+
+describe("Sair da partida (#240)", () => {
+  // a Room 13 do mock está em lobby e sem o User 7: cada teste diz o que o servidor responde
+  function answerLeave(response: () => Response) {
+    const calls: string[] = [];
+    server.use(http.post("/api/matches/:matchId/leave", ({ params }) => {
+      calls.push(String(params.matchId));
+      return response();
+    }));
+    return calls;
+  }
+
+  const failure = (status: number, code: string) => () => HttpResponse.json(
+    { error: { code, message: code, request_id: "mock0001", fields: null } }, { status });
+
+  it("confirma, avisa o servidor, desmonta o jogo e volta ao lobby", async () => {
+    const user = userEvent.setup();
+    const calls = answerLeave(() => new HttpResponse(null, { status: 204 }));
+    const router = await renderAt("/play/13");
+    const game = await mounted();
+    act(() => emitHud());
+    await user.click(await screen.findByRole("button", { name: "Sair da partida" }));
+    expect(calls).toEqual([]); // o primeiro clique só pergunta
+    expect(screen.getByText("Sair da partida? Você não poderá voltar a ela.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Sim, sair" }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/lobby"));
+    expect(calls).toEqual(["13"]);
+    // o router muda antes de o React desmontar a página: o unmount do jogo chega logo depois
+    await waitFor(() => expect(game.unmounted).toBe(true));
+  });
+
+  it("Continuar jogando desiste sem chamar o servidor", async () => {
+    const user = userEvent.setup();
+    const calls = answerLeave(() => new HttpResponse(null, { status: 204 }));
+    await renderAt("/play/13");
+    await mounted();
+    act(() => emitHud());
+    await user.click(await screen.findByRole("button", { name: "Sair da partida" }));
+    await user.click(screen.getByRole("button", { name: "Continuar jogando" }));
+    expect(screen.getByRole("button", { name: "Sair da partida" })).toBeInTheDocument();
+    expect(calls).toEqual([]);
+  });
+
+  it("falha na saída aparece traduzida e o jogo continua", async () => {
+    const user = userEvent.setup();
+    answerLeave(failure(409, "not_in_match"));
+    const router = await renderAt("/play/13");
+    const game = await mounted();
+    act(() => emitHud());
+    await user.click(await screen.findByRole("button", { name: "Sair da partida" }));
+    await user.click(screen.getByRole("button", { name: "Sim, sair" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Você não está nesta partida.");
+    expect(router.state.location.pathname).toBe("/play/13");
+    expect(game.unmounted).toBe(false);
+    expect(screen.getByRole("button", { name: "Sair da partida" })).toBeInTheDocument();
+  });
+
+  it("Room que já sumiu (404) também volta ao lobby", async () => {
+    const user = userEvent.setup();
+    answerLeave(failure(404, "match_not_found"));
+    const router = await renderAt("/play/13");
+    await mounted();
+    act(() => emitHud());
+    await user.click(await screen.findByRole("button", { name: "Sair da partida" }));
+    await user.click(screen.getByRole("button", { name: "Sim, sair" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/lobby"));
+  });
+
+  it("o close 1000 que chega durante a saída não mostra a tela de fim", async () => {
+    const user = userEvent.setup();
+    let release: () => void = () => {};
+    server.use(http.post("/api/matches/:matchId/leave", () =>
+      new Promise<Response>((resolve) => {
+        release = () => resolve(new HttpResponse(null, { status: 204 }));
+      })));
+    const router = await renderAt("/play/13");
+    await mounted();
+    act(() => emitHud());
+    await user.click(await screen.findByRole("button", { name: "Sair da partida" }));
+    await user.click(screen.getByRole("button", { name: "Sim, sair" }));
+    expect(await screen.findByRole("button", { name: "Saindo…" })).toBeDisabled();
+    act(() => emitHud({ status: "finished" }));
+    expect(screen.queryByText("A partida terminou.")).not.toBeInTheDocument();
+    act(() => release());
+    await waitFor(() => expect(router.state.location.pathname).toBe("/lobby"));
+  });
+
+  it.each(["connecting", "finished", "error"] as const)("não aparece com status %s", async (status) => {
+    await renderAt("/play/13");
+    await mounted();
+    if (status !== "connecting")
+      act(() => emitHud(status === "error" ? { status, error: "replaced" } : { status }));
+    expect(screen.queryByRole("button", { name: "Sair da partida" })).not.toBeInTheDocument();
   });
 });
