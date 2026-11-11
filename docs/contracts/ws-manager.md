@@ -269,7 +269,7 @@ async def join_match(match_id: int, user: CurrentUser, session: DbSession,
 | 2 | Resolvido em 10/11: o erro de abrir o socket com o backend fora do ar é aceito, e nenhum cliente reconecta com a aba escondida (decisão 15). | Caio e Augusto | feito |
 | 3 | A arq. §7.4 precisa mudar para o público do `lobby_update` (decisão 4), para a mensagem `lobby_removed` (decisão 5) e para o formato `{room: RoomInfo}` (ela mostra campos soltos). | Roberto (dono da arquitetura) | junto com a revisão deste contrato |
 | 4 | Resolvido: [ws-messages.md](ws-messages.md) §2.7 tem `4408` e `4429`, e registra que o `4503` também fecha uma Room cujo `step` falhou 30 Ticks seguidos. | Roberto | feito |
-| 5 | Resolvido em 10/11: `SEND_QUEUE_MAX` = 256 e `PRESENCE_OFFLINE_DELAY_S` = 5 mantidos, com as medições na decisão 16. | Augusto | feito |
+| 5 | `SEND_QUEUE_MAX` = 256 e `PRESENCE_OFFLINE_DELAY_S` = 5 são palpites. Medir no teste de carga (F2.13) e no ensaio. | Augusto | S5 |
 | 6 | A HUD mostra o aviso de `4408` ("a partida foi aberta em outra aba") e de `4429`? Os dois precisam de chave de tradução. | Caio | com [i18n.md](i18n.md) |
 
 ---
