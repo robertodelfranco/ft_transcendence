@@ -1,9 +1,9 @@
+import { lazy } from "react";
 import type { RouteObject  } from "react-router";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
-import Legal from "./pages/Legal";
-import { LEGAL_PAGES } from "./i18n/legal";
+import { LEGAL_PAGES } from "./i18n/legalPages";
 import AuthRoot from "./auth/AuthRoot";
 import Lobby from "./pages/Lobby";
 import PublicOnly from "./components/PublicOnly";
@@ -17,6 +17,9 @@ import Settings from "./pages/Settings";
 import Friends from "./pages/Friends";
 import Leaderboard from "./pages/Leaderboard";
 import FinishedMatch from "./pages/FinishedMatch";
+
+// /privacy e /terms em chunk próprio: o react-markdown só baixa quando alguém abre uma delas
+const Legal = lazy(() => import("./pages/Legal"));
 
 // Layout sem path: cabeçalho e rodapé em toda página, inclusive a 404
 export const routes: RouteObject [] = [

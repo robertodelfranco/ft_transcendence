@@ -4,9 +4,11 @@
 >
 > Papel no time: **PO**. Contrato que eu escrevo: [i18n.md](../contracts/i18n.md). Contratos que eu assino: [auth.md](../contracts/auth.md), [ws-manager.md](../contracts/ws-manager.md), [mount-game.md](../contracts/mount-game.md) (`HudState` e `MountOptions`), [matches-api.md](../contracts/matches-api.md) e [room-options.md](../contracts/room-options.md).
 >
-> Base desta versão (07/10): a `main` mais os rascunhos ainda não mergeados de `feat/Auth` (`auth.md`, `ws-manager.md`) e de `contracts-decisions` (decisões de 06–07/10). Onde eles mudarem antes do merge, este arquivo muda junto.
+> Base da primeira versão (07/10): a `main` mais os rascunhos de `feat/Auth` (`auth.md`, `ws-manager.md`) e de `contracts-decisions` (decisões de 06–07/10), todos mergeados desde então.
 >
-> **Atualizado em 20/10**: coluna de Estado nas tarefas (§1) e nas dependências (§5), ordem de execução refeita a partir da S3 (§8) e divergências novas (§9). Na `main`: `i18n.md`, F0.4, F7.2 (estrutura), F7.1 (sem o `/ws/app`) e F7.4. Em andamento: F7.7 parte 1 (lobby, #50), que inclui o `/ws/app` da F7.1; depois, F7.6 parte 1 (`/play`, #49).
+> **Atualizado em 06/11**: Estado das tarefas (§1) e das dependências (§5); divergências resolvidas e conferidas (§9). Na `main`: F0.4, F6.6, F6.7 e a F7 inteira, menos a F7.9. A F7.8 está com as telas prontas e espera as rotas de conquistas e leaderboard do Akita (#158, #159). Em revisão: a barra de level com o `xp_level_start` (#225, PR #226). Em andamento: F7.9 (#212). A F9.1 espera o esqueleto do README (#117).
+>
+> Atualizado em 20/10: coluna de Estado (§1, §5), ordem de execução refeita a partir da S3 (§8) e divergências 8 a 12 (§9).
 
 ## 1. Inventário
 
@@ -26,28 +28,28 @@
 
 | ID | Tarefa | d | Depende de | Sem. | Pronto quando | Estado |
 |---|---|---|---|---|---|---|
-| F7.1 | Roteamento, layout, contexto de auth (access em memória, refresh ao carregar), rotas protegidas, cliente HTTP que entende o envelope de erro; abrir `/ws/app` após o login (quando F2.1 existir) | 2 | F0.4 | S1 | Recarregar a página mantém o login | 🔄 casca, rotas protegidas, contexto de auth e cliente HTTP ✅ #47 (PR #99); falta o `/ws/app`, que entrou no escopo do #50 (S3). O "pronto quando" contra o backend real espera o F6.3 do Augusto (#87) |
-| F7.2 | i18n desde o primeiro componente: `react-i18next`, pt-BR / en / es, seletor na UI, preferência salva no perfil (com fallback local), códigos de erro do backend traduzidos no front; traduções completas na S5 | 3 | F0.4 | S1 + S5 | Nenhuma string solta no JSX (checagem no CI ou revisão) | 🔄 estrutura, seletor e teste de chaves ✅ #46 (PR #67); traduções completas na S5 |
-| F7.3 | Privacy Policy e Terms of Service com conteúdo real, nos 3 idiomas, link no rodapé de toda página | 1 | F7.2 | S1–S2 | Acessíveis sem login | ⏳ as rotas existem, só com o título; S5 |
-| F7.4 | Telas de login e cadastro com a mesma validação do backend; botão "entrar com a 42" | 1 | F7.1 | S1 | C2 | ✅ #48 (PR #112) |
-| F7.5 | Perfil próprio e de terceiros, edição, upload de avatar, lista de amigos com status online | 2 | F6.6, F6.7 | S3 | Critérios do *Standard user management* visíveis | ⏳ S4 |
-| F7.6 | Rota `/play/:matchId` que monta `mountGame`; HUD em React (HP, mana, armadura, chaves, ping, players, placar e kill feed no PvP) via `onHud` | 2 | F2.5, F4.3 | S2–S3 | HUD reage ao Snapshot | ⏳ #49, destravada: `mountGame` na `main` desde 19/10 (#109). Parte 1 na S3, para o C3 |
-| F7.7 | Lobby: criar Room com opções de customização (e defaults visíveis), listar Rooms, entrar, pronto | 2 | F5.2, F4.5 | S2–S4 | Criar partida sem mexer em nada usa os defaults | 🔄 #50: parte 1 (listar, criar com defaults, sala de espera, mais o cliente do `/ws/app`) em andamento; parte 2 (opções editáveis) na S4 |
-| F7.8 | Tela de resultado; histórico; estatísticas, ranking e level com barra de progresso; conquistas; leaderboard | 2,5 | F5.4–F5.8 | S4 | Os seis itens do módulo de estatísticas aparecem | ⏳ S4, contra os exemplos do `matches-api.md` |
-| F7.9 | Responsivo, acessibilidade básica, passada de console limpo em todas as telas | 1 | — | S5 | Console vazio navegando o site inteiro | ⏳ S5 |
+| F7.1 | Roteamento, layout, contexto de auth (access em memória, refresh ao carregar), rotas protegidas, cliente HTTP que entende o envelope de erro; abrir `/ws/app` após o login (quando F2.1 existir) | 2 | F0.4 | S1 | Recarregar a página mantém o login | ✅ #47 (PR #99). O `/ws/app` com reconexão entrou com o lobby (#50, PR #134); recarregar mantém o login contra o backend real desde o F6.3 (#87, 21/10) |
+| F7.2 | i18n desde o primeiro componente: `react-i18next`, pt-BR / en / es, seletor na UI, preferência salva no perfil (com fallback local), códigos de erro do backend traduzidos no front; traduções completas na S5 | 3 | F0.4 | S1 + S5 | Nenhuma string solta no JSX (checagem no CI ou revisão) | ✅ #46: estrutura, seletor e teste de chaves no PR #67; as traduções foram completadas tela a tela, até a F7.8 (issue fechada em 06/11) |
+| F7.3 | Privacy Policy e Terms of Service com conteúdo real, nos 3 idiomas, link no rodapé de toda página | 1 | F7.2 | S1–S2 | Acessíveis sem login | ✅ #205 (PR #208, 05/11) |
+| F7.4 | Telas de login e cadastro com a mesma validação do backend; botão "entrar com a 42" | 1 | F7.1 | S1 | C2 | ✅ #48 (PR #112). Home com entrar e cadastrar (#177, PR #179); o botão do Google fica oculto até a #164 (Akita) |
+| F7.5 | Perfil próprio e de terceiros, edição, upload de avatar, lista de amigos com status online | 2 | F6.6, F6.7 | S3 | Critérios do *Standard user management* visíveis | ✅ #201 (PR #204, 05/11) |
+| F7.6 | Rota `/play/:matchId` que monta `mountGame`; HUD em React (HP, mana, armadura, chaves, ping, players, placar e kill feed no PvP) via `onHud` | 2 | F2.5, F4.3 | S2–S3 | HUD reage ao Snapshot | ✅ #49: parte 1 (PR #138, 23/10) e HUD completa (PR #176, 28/10) |
+| F7.7 | Lobby: criar Room com opções de customização (e defaults visíveis), listar Rooms, entrar, pronto | 2 | F5.2, F4.5 | S2–S4 | Criar partida sem mexer em nada usa os defaults | ✅ #50: parte 1 (PR #134, 21/10); #209: parte 2, RoomOptions editáveis (PR #213, 05/11) |
+| F7.8 | Tela de resultado; histórico; estatísticas, ranking e level com barra de progresso; conquistas; leaderboard | 2,5 | F5.4–F5.8 | S4 | Os seis itens do módulo de estatísticas aparecem | 🔄 telas ✅ #214: resultado (PR #215) e histórico, estatísticas, conquistas e ranking (PR #218), 06/11. Barra de level com o `xp_level_start` em revisão (#225, PR #226). Conquistas e leaderboard funcionam contra o MSW até as rotas do Akita entrarem (#158, #159) |
+| F7.9 | Responsivo, acessibilidade básica, passada de console limpo em todas as telas | 1 | — | S5 | Console vazio navegando o site inteiro | 🔄 #212, desde 06/11. A passada de console fica por último, com as rotas #158 e #159 no ar |
 
 ### F6.6–F6.7 — backend de perfil e amigos (3,5 d)
 
 | ID | Tarefa | d | Depende de | Sem. | Pronto quando | Estado |
 |---|---|---|---|---|---|---|
-| F6.6 | Perfil: `GET/PATCH /api/users/me`, perfil público, upload de avatar validado (tipo e tamanho) com avatar padrão, idioma preferido | 1,5 | F6.4 | S3 | Avatar inválido é recusado no front e no back | ⏳ S3–S4 |
-| F6.7 | Amigos (adicionar, remover, listar) e status online via presença do `ConnectionManager` | 2 | F2.1 | S3 | Amigo aparece online ao abrir o site | ⏳ S4 |
+| F6.6 | Perfil: `GET/PATCH /api/users/me`, perfil público, upload de avatar validado (tipo e tamanho) com avatar padrão, idioma preferido | 1,5 | F6.4 | S3 | Avatar inválido é recusado no front e no back | ✅ #178 (PR #180, 29/10) |
+| F6.7 | Amigos (adicionar, remover, listar) e status online via presença do `ConnectionManager` | 2 | F2.1 | S3 | Amigo aparece online ao abrir o site | ✅ #187 (PR #195, 03/11) |
 
 As rotas exatas de F6.6 e F6.7 estão no [i18n.md](../contracts/i18n.md) §2.7. Ler o próprio perfil ficou em `GET /api/auth/me` (do Augusto), então F6.6 não cria `GET /api/users/me`.
 
 ### F9 — de todos
 
-F9.1 (minha parte do README) na S5; F9.2 (ensaio) na S6.
+F9.1 (minha parte do README) na S5; F9.2 (ensaio) na S6. A F9.1 espera o esqueleto do README (F8.5, #117, Akita).
 
 ## 2. Fronteiras: o que é meu e o que não é
 
@@ -104,17 +106,18 @@ Nada aqui espera ninguém. É por onde eu começo quando algo travar.
 | **[auth.md](../contracts/auth.md)** e **[ws-manager.md](../contracts/ws-manager.md)** mergeados | Augusto | telas de login e cadastro, cliente HTTP, `/ws/app` | S1 | ✅ assinados em 12/10 (#57) |
 | **F0.3**: pacote `backend/app/`, envelope de erro, `conftest` com `fake_ws` | Augusto | F6.6 e F6.7 nascem dentro do pacote e testam com a mesma fixture | início da S2 | ✅ #43 (PR #44) |
 | **F6.2 + F6.4**: signup, login, `me`, `CurrentUser` | Augusto | F7.4 integrada (C2) e toda rota de F6.6–F6.7 | fim da S1 | ✅ PRs #81 e #93 |
-| **F6.3**: refresh com rotação | Augusto | o "pronto quando" do F7.1 (recarregar mantém o login). **O slice dele moveu F6.3 para a S3**, com access de 8 h até lá: F7.1 só fecha na S3 (§8) | S3 | ⏳ #87: sem ele, contra o backend real, recarregar perde o login e o `4401` do `/ws/app` não tem como renovar o token |
+| **F6.3**: refresh com rotação | Augusto | o "pronto quando" do F7.1 (recarregar mantém o login). **O slice dele moveu F6.3 para a S3**, com access de 8 h até lá: F7.1 só fecha na S3 (§8) | S3 | ✅ #87 (21/10) |
 | **F6.1**: migração de `friendships` | Augusto (schema) e Akita (migração inicial) | F6.7 | S2 | ✅ PRs #52 e #78 |
 | **F2.1**: `/ws/app` com `lobby_update` (S2) e presença de amigos (S3) | Augusto | lobby vivo (F7.7) e status online (F6.7, F7.5) | S2 / S3 | ✅ `/ws/app`, presença e `publish_*` na `main` (#110); o lobby publica desde 20/10 (#128) |
 | **F8.1**: Nginx com TLS | Akita | o cookie de refresh é `Secure`: sem HTTPS, o login não sobrevive a recarregar | S1 | ✅ #27 (PR #35) |
-| **F8.2 / F8.4**: CI com lint e `vitest`; build de produção | Akita | a regra `no-literal-string` só vale se rodar no CI | S1 / S2 | ✅ CI no PR #53; F8.4 aberto só pelos assets do jogo (#31) |
-| Volume `/media` e `location /media/` no Nginx | Akita | avatar servido (F6.6) | S3 | ⏳ |
-| **F5.2**: lobby no backend; `GET /api/maps` ou equivalente | Akita | F7.7 (C2: "um player cria Room no lobby") | S2 | ✅ rotas e `GET /api/maps` (#84); publicação no `/ws/app` (#128, 20/10). Falta um Map de `pvp` (§9, item 10) |
-| **F5.3–F5.8**: resultado, histórico, stats, Elo, conquistas, leaderboard | Akita | F7.8 integrada | S4 | ⏳ |
-| **F2.5**: `mountGame` real; **F4.3**: especificação da HUD | Augusto (F2.5) e Rafael (F4.3) | F7.6 integrada | S2 | 🔄 `mountGame` ✅ (#109); especificação da HUD (F4.3) ⏳ |
-| **F4.5**: catálogo de RoomOptions; **F4.6**: `code` das conquistas | Rafael | F7.7 (opções no lobby), F7.8 (nomes das conquistas) | S3 | 🔄 F4.5 ✅ ([room-options.md](../contracts/room-options.md)); F4.6 ⏳ |
+| **F8.2 / F8.4**: CI com lint e `vitest`; build de produção | Akita | a regra `no-literal-string` só vale se rodar no CI | S1 / S2 | ✅ CI no PR #53; F8.4 ✅ (#31) |
+| Volume `/media` e `location /media/` no Nginx | Akita | avatar servido (F6.6) | S3 | ✅ #120 (20/10) |
+| **F5.2**: lobby no backend; `GET /api/maps` ou equivalente | Akita | F7.7 (C2: "um player cria Room no lobby") | S2 | ✅ rotas e `GET /api/maps` (#84); publicação no `/ws/app` (#128, 20/10); Maps de `pvp` no PR #198 (03/11) |
+| **F5.3–F5.8**: resultado, histórico, stats, Elo, conquistas, leaderboard | Akita | F7.8 integrada | S4 | 🔄 F5.3 ✅ (#115; `MatchDetail` em `GET /api/matches/{id}/result`, #155); F5.4 e F5.5 ✅ (#156, #157, PR #222) e F5.6 ✅ (#116, PR #223), 06/11; F5.7 conquistas (#158) e F5.8 leaderboard (#159) ⏳ |
+| **F2.5**: `mountGame` real; **F4.3**: especificação da HUD | Augusto (F2.5) e Rafael (F4.3) | F7.6 integrada | S2 | ✅ `mountGame` (#109); especificação da HUD (#142, 03/11) |
+| **F4.5**: catálogo de RoomOptions; **F4.6**: `code` das conquistas | Rafael | F7.7 (opções no lobby), F7.8 (nomes das conquistas) | S3 | ✅ F4.5 ([room-options.md](../contracts/room-options.md)); F4.6 (#119, 23/10) |
 | Estrutura do `frontend/` combinada | Rafael | a branch `front` dele cria `package.json` na raiz (§9, item 1) | **antes de F0.4** | ✅ F0.4 (PR #53) |
+| **F8.5**: esqueleto do README com as seções do cap. VI | Akita | F9.1 (minha parte do README) | S5 | ⏳ #117 |
 
 **Dependência cruzada que eu devo a outros:** o Augusto precisa do meu `i18n.md` para fechar o `auth.md`; o Akita precisa dele para o `infra.md` e da minha lista de campos para o `matches-api.md`; o Rafael e o Akita precisam do F0.4 para o `dev.html` e para o CI. **O `i18n.md` e o F0.4 são o meu caminho crítico para o time.**
 
@@ -198,17 +201,17 @@ No calendário replanejado ([replanejamento-e-board.md](../pm/replanejamento-e-b
 Registro aqui e aviso o dono de cada arquivo, em vez de implementar por um documento e descobrir o conflito depois.
 
 1. **A branch `front` (Rafael) cria `package.json` na raiz e versiona `node_modules/`** (≈ 2 600 arquivos). O F0.4 põe o pacote em `frontend/` (§6, decisão 1). Combinar antes de qualquer um dos dois abrir PR. **Resolvido na F0.4 (#45, PR #53):** o pacote único está em `frontend/` e o `game/package.json` foi removido.
-2. **`Path` do cookie de refresh:** `/api/auth` no [auth.md](../contracts/auth.md) §2.6, `/api/auth/refresh` no [infra.md](../contracts/infra.md) §2.3 e no slice do Akita (§4, decisão 2). O logout precisa do cookie, então vale `/api/auth`. Augusto e Akita.
-3. **F6.3 (refresh) foi para a S3** no slice do Augusto, e o "pronto quando" do meu F7.1 depende dele. Não é bloqueio, é data: F7.1 fecha na S3.
-4. **[matches-api.md](../contracts/matches-api.md) §2.1** declara três rotas públicas; a minha resposta ao "Em aberto" 3 dele as torna autenticadas. Akita atualiza.
-5. **[matches-api.md](../contracts/matches-api.md) §2.4**: `GET /api/matches/{id}` devolve `RoomInfo` enquanto a Room estiver viva, e ela fica viva 60 s depois do fim. A tela de resultado precisa de `MatchDetail` logo após o `onEnd` (§7).
-6. **O plano §5 (F7.4) e §7 falam de "entrar com a 42"**; o [auth.md](../contracts/auth.md) chegou a acrescentar o Google, mas ele saiu do escopo em 09/11 (#164): a tela fica só com o botão da 42; o plano é atualizado pelo Roberto (o "Em aberto" 3 do `auth.md` já lista isso).
+2. **`Path` do cookie de refresh:** `/api/auth` no [auth.md](../contracts/auth.md) §2.6, `/api/auth/refresh` no [infra.md](../contracts/infra.md) §2.3 e no slice do Akita (§4, decisão 2). O logout precisa do cookie, então vale `/api/auth`. Augusto e Akita. **Resolvido em 10/10:** o `infra.md` passou a usar `Path=/api/auth`, e o backend grava o cookie com esse caminho.
+3. **F6.3 (refresh) foi para a S3** no slice do Augusto, e o "pronto quando" do meu F7.1 depende dele. Não é bloqueio, é data: F7.1 fecha na S3. **Resolvido em 21/10:** o #87 entrou, e recarregar mantém o login.
+4. **[matches-api.md](../contracts/matches-api.md) §2.1** declara três rotas públicas; a minha resposta ao "Em aberto" 3 dele as torna autenticadas. Akita atualiza. **Resolvido:** o §2.1 exige `CurrentUser` em toda rota, sem exceção.
+5. **[matches-api.md](../contracts/matches-api.md) §2.4**: `GET /api/matches/{id}` devolve `RoomInfo` enquanto a Room estiver viva, e ela fica viva 60 s depois do fim. A tela de resultado precisa de `MatchDetail` logo após o `onEnd` (§7). **Resolvido em 04/11 (#155):** a tela lê `GET /api/matches/{id}/result`, que devolve `MatchDetail` quando o Match está gravado e 409 `match_not_finished` antes disso; a tela tenta de novo uma vez, depois de ~1 s.
+6. **O plano §5 (F7.4) e §7 falam de "entrar com a 42"**; o [auth.md](../contracts/auth.md) acrescentou o Google. A tela terá os dois botões; o plano é atualizado pelo Roberto (o "Em aberto" 3 do `auth.md` já lista isso). Em 06/11, o plano ainda fala só da 42; o botão do Google existe, mas fica oculto até a #164 entrar (PR #179).
 7. **A regra "agente de IA não commita"** está no `AGENTS.md` só na branch `contracts-decisions`. Vale para mim desde já (§13). **Resolvido:** o `AGENTS.md` da `main` já tem a regra.
 8. **O lobby do backend não chama os `publish_*`** (20/10). `app/ws/app_events.py` tem as três funções, mas `app/matches/router.py` não chama nenhuma ([ws-manager.md](../contracts/ws-manager.md) §2.5). Sem elas, a lista não muda sozinha e o `match_started` nunca chega, então só o host sai da sala de espera (pelo 204 do `start`). Akita (#32). **Resolvido em 20/10 (PR #128):** `create`, `join`, `ready` e `leave` publicam `lobby_update`; o último a sair publica `lobby_removed: aborted`; o `start` manda `match_started` só aos Players e depois `lobby_removed: started` a todos.
-9. **O `start` não exige todos prontos** (20/10). O backend confere só `min_players`; a pauta de 12/10 (item 6) propôs exigir todos prontos. A casca espelha o servidor até a decisão ([rooms.md](../contracts/rooms.md) "Em aberto" 3). Rafael e Akita.
-10. **Nenhum Map de `pvp`** em `backend/maps/pvp/` (20/10): o `GET /api/maps` devolve `pvp: []`, e o formulário mostra o Mode sem Map. Rafael e Roberto.
+9. **O `start` não exige todos prontos** (20/10). O backend confere só `min_players`; a pauta de 12/10 (item 6) propôs exigir todos prontos. A casca espelha o servidor até a decisão ([rooms.md](../contracts/rooms.md) "Em aberto" 3). Rafael e Akita. **Conferido em 06/11:** continua assim; o `start` em `backend/app/game/rooms.py` só compara o número de Players com `MIN_PLAYERS`.
+10. **Nenhum Map de `pvp`** em `backend/maps/pvp/` (20/10): o `GET /api/maps` devolve `pvp: []`, e o formulário mostra o Mode sem Map. Rafael e Roberto. **Resolvido em 03/11 (PR #198, Rafael):** `pvp_crossroads` e `pvp_ring`. A issue #197 (F4.4) continua aberta, e o Rafael é quem fecha.
 11. **Falha de conexão do WebSocket aparece no console do Chrome** quando o backend está fora, como o 401 do login ([i18n.md](../contracts/i18n.md) "Em aberto" 7). A espera crescente limita; a demo é feita com a stack no ar.
-12. **Nomes dos Maps na tela são provisórios** (20/10). O `game.json` traz `dungeon_map`, `enemy` e `enemy_sewer` traduzidos ("Masmorra", "Salões inimigos", "Salões do esgoto") para o lobby não mostrar nome de arquivo. Conteúdo é do Rafael: ele confirma ou troca, nos três idiomas. Map sem chave mostra o nome do arquivo ([i18n.md](../contracts/i18n.md) §2.2).
+12. **Nomes dos Maps na tela são provisórios** (20/10). O `game.json` traz `dungeon_map`, `enemy` e `enemy_sewer` traduzidos ("Masmorra", "Salões inimigos", "Salões do esgoto") para o lobby não mostrar nome de arquivo. Conteúdo é do Rafael: ele confirma ou troca, nos três idiomas. Map sem chave mostra o nome do arquivo ([i18n.md](../contracts/i18n.md) §2.2). Os dois Maps de `pvp` também ganharam nome provisório ("Encruzilhada" e "Anel"), e continua valendo a confirmação do Rafael.
 
 ## 10. O que eu explico na defesa
 
@@ -265,7 +268,3 @@ Feita **antes** da tarefa, não durante. Fontes oficiais primeiro.
 - **Revisão:** PR que mexe em `users` ou `friendships` passa pelo Augusto; PR que mexe no compose ou no Nginx (volume `/media`), pelo Akita.
 - **Todo commit é meu.** Agente de IA não faz commit, push nem abre PR, e nenhuma mensagem leva atribuição a ferramenta. Para código-fonte, a regra do `AGENTS.md` vale: o agente explica o conceito, propõe o trecho e pergunta se aplica ou se eu digito. Na defesa, eu explico cada linha.
 - **Validar é meu:** rodar local antes do PR (`npm run build`, `vitest`, lint, e o console do Chrome aberto na tela que mudou); o CI confere de novo.
-
----
-
-> **Links para arquivos que ainda não estão na `main`:** [auth.md](../contracts/auth.md) e [ws-manager.md](../contracts/ws-manager.md) (branch `feat/Auth`), [caminho-2-augusto.md](caminho-2-augusto.md) (idem).

@@ -60,7 +60,20 @@ describe("montagem do jogo", () => {
     const router = await renderAt("/play/13");
     const game = await mounted();
     await act(() => router.navigate("/privacy"));
-    expect(game.unmounted).toBe(true);
+    // a navegação é uma transição: o /play fica na tela até o chunk da página legal chegar
+    await waitFor(() => expect(game.unmounted).toBe(true));
+  });
+
+  // Regressão: o minimapa é absolute e se ancora ao pai dele. Abaixo do md o HUD vem depois do
+  // canvas, no fluxo; com o HUD no mesmo bloco, o minimapa parava em cima dos recursos. O jsdom não
+  // faz layout, então o teste trava a causa (quem divide o bloco), não a posição na tela
+  it("o minimapa divide o bloco com o canvas, e o HUD fica fora dele", async () => {
+    await renderAt("/play/13");
+    const game = await mounted();
+    act(() => emitHud({ mode: "coop" }));
+    const block = game.options.minimapCanvas!.parentElement!;
+    expect(block).toContainElement(game.canvas);
+    expect(block).not.toContainElement(await screen.findByText("Mana"));
   });
 
   it("trocar de partida desmonta a velha e monta a nova", async () => {
