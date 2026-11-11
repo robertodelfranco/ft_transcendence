@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ERROR_CODES, FIELD_ERROR_CODES } from "../i18n/errorCodes";
 import { LANGUAGES } from "../i18n/languages";
-import { LEGAL_PAGES } from "../i18n/legal";
+import { LEGAL_PAGES } from "../i18n/legalPages";
 
 type Json = { [key: string]: string | Json };
 

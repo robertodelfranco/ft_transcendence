@@ -36,7 +36,7 @@ export default function LanguageSelector() {
           onChange={(e) => {
             if (isLanguage(e.target.value)) select(e.target.value);
           }}
-          className="rounded border border-crypt-700 bg-crypt-900 px-2 py-1 text-bone focus-visible:outline-2 focus-visible:outline-torch"
+          className="rounded border border-bone/40 bg-crypt-900 px-2 py-1 text-bone focus-visible:outline-2 focus-visible:outline-torch"
         >
           {LANGUAGES.map((language) => (
             <option key={language} value={language}>

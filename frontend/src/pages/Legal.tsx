@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { linkClass } from "../components/styles";
 import { usePageTitle } from "../hooks/usePageTitle";
-import { legalText, type LegalPage } from "../i18n/legal";
+import { legalText } from "../i18n/legal";
+import type { LegalPage } from "../i18n/legalPages";
 
 // O Tailwind zera o estilo de títulos e listas, então cada elemento do Markdown recebe as classes
 // aqui. Só `children` passa adiante: o react-markdown também manda `node`, que não é atributo HTML
