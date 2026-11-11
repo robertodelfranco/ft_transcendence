@@ -1,0 +1,46 @@
+# Regras de alerta (F8.10, infra.md decisão 16): sem Alertmanager, o firing aparece no Grafana →
+# Alerting → Alert rules, como regra do datasource. Os for: são curtos de propósito: na defesa, o
+# alerta tem que sair de pending para firing com o avaliador olhando.
+# Testes: alerts.test.yml (promtool test rules), rodados pelo CI.
+groups:
+  - name: catacombs
+    rules:
+      # um alvo só por job: a label job diz quem caiu (backend, node ou postgres)
+      - alert: TargetDown
+        expr: up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} is down"
+
+      # 33 ms é o orçamento de um Tick a 30 Hz, e há um bucket exatamente nele (TICK_BUCKETS em
+      # app/core/metrics.py); sem Room em partida o rate é 0, o quantil é NaN e nada dispara
+      - alert: TickP99High
+        expr: histogram_quantile(0.99, sum by (le) (rate(game_tick_seconds_bucket[5m]))) > 0.033
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p99 of the game tick is above the 33 ms budget"
+
+      # sem o /metrics, o mesmo filtro do dashboard: os scrapes inflariam o denominador
+      - alert: High5xxRate
+        expr: >
+          sum(rate(http_requests_total{route!="/metrics",status=~"5.."}[5m]))
+          / sum(rate(http_requests_total{route!="/metrics"}[5m])) > 0.05
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "More than 5% of HTTP responses are 5xx"
+
+      # o limite por IP é 5 senhas erradas por minuto (auth/router.py): passar de 10 em 5 min é
+      # insistência ou mais de um IP
+      - alert: LoginFailureSpike
+        expr: sum(increase(auth_login_total{result=~"invalid_credentials|rate_limited|oauth_failed"}[5m])) > 10
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "More than 10 failed logins in 5 minutes"

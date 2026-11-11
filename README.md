@@ -569,9 +569,21 @@ Profile, avatar, friends and the screens are Caio's part of this module.
   - It scrapes the backend's `/metrics` and both exporters inside the Compose network.
   - It has no published port, and the proxy does not route `/metrics`, so neither is reachable from outside.
   - Retention is 7 days or 500 MB, whichever comes first.
-- **Alerts:**
+- **Alerts:** Prometheus alerting rules in `monitoring/prometheus/alerts.yml`, unit-tested with `promtool` (`alerts.test.yml`, run by the CI). The project has no Alertmanager: the subject asks for alerting rules, not notifications. The rules appear in Grafana under **Alerting → Alert rules** as data source-managed rules.
 
-  > **TODO F8.10 (@kanashir0):** list the alerting rules and the live demo (stop the backend → alert goes to *firing*).
+  | Alert | Fires when | For |
+  |---|---|---|
+  | `TargetDown` (critical) | a scrape target is down (`up == 0`); the `job` label says which: `backend`, `node` or `postgres` | 30 s |
+  | `TickP99High` | the p99 of the game tick over 5 min is above the 33 ms budget (30 Hz) | 1 min |
+  | `High5xxRate` | more than 5% of HTTP responses over 5 min are 5xx (`/metrics` excluded) | 1 min |
+  | `LoginFailureSpike` | more than 10 failed logins in 5 min | 1 min |
+
+  Live demo:
+  1. Open Grafana → **Alerting → Alert rules**.
+  2. Run `docker compose stop backend`. `TargetDown` with `job="backend"` goes to *pending*, then to *firing* in under a minute: up to 30 s for the next scrape and rule evaluation (both every 15 s), plus the 30 s `for`.
+  3. Run `docker compose start backend` and the alert returns to *normal*. If the site answers 502 afterwards (Nginx resolved the old container address), run `docker compose restart proxy`. Never restart the proxy while the backend is stopped: Nginx resolves `backend` at startup and exits if the name does not exist.
+
+  To demo without taking the site down, stop `postgres-exporter` instead.
 
 ## Individual Contributions
 
