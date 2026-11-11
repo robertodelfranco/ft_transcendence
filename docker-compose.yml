@@ -18,6 +18,10 @@ services:
   backend:
     build: ./backend
     env_file: .env
+    # mesma interpolação do proxy: o env_file não vê o shell, e um override só no shell
+    # deixaria o same_origin esperando outro nome (infra.md, decisão 22)
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:-localhost}
     volumes:
       - media:/media # MEDIA_DIR: avatares enviados (infra.md, decisão 13)
     depends_on:
