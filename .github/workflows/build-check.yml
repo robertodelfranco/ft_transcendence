@@ -71,6 +71,16 @@ jobs:
           done
           docker compose exec -T grafana wget -qO- "$api/datasources/uid/prometheus/health" | grep -q '"status":"OK"'
 
+      # F8.10: as regras passam nos testes do promtool e o Prometheus carregou as 4
+      # (um alerts.yml inválido nem deixa o Prometheus subir: o --wait já reprova)
+      - name: Alerting rules loaded
+        run: |
+          docker compose exec -T -w /etc/prometheus prometheus promtool test rules alerts.test.yml
+          rules=$(docker compose exec -T prometheus wget -qO- http://localhost:9090/api/v1/rules)
+          for alert in TargetDown TickP99High High5xxRate LoginFailureSpike; do
+            grep -q "\"name\":\"$alert\"" <<< "$rules" || { echo "missing alert $alert"; exit 1; }
+          done
+
       # F8.11: o Grafana só pelo Nginx, com TLS e login; Prometheus e /metrics sem acesso externo
       - name: Grafana only through the proxy, with login
         run: |
@@ -84,6 +94,16 @@ jobs:
             ! curl -s --max-time 2 "http://localhost:$port" > /dev/null || { echo "port $port answers"; exit 1; }
           done
           ! curl -s --cacert ci-cert.pem https://localhost:8443/metrics | grep -q http_requests_total
+
+      # #210: o log de acesso do proxy grava o caminho sem a query (auth.md §2.10).
+      # <<< e não echo | grep -q: com pipefail, o grep -q fecha o pipe e o echo falha
+      - name: Proxy access log without query string
+        run: |
+          curl -s -o /dev/null "http://localhost:8080/api/health?code=ci-leak&state=ci-leak"
+          curl -s --cacert ci-cert.pem -o /dev/null "https://localhost:8443/api/auth/oauth/42/callback?code=ci-leak&state=ci-leak"
+          logs=$(docker compose logs proxy)
+          grep -q '"GET /api/auth/oauth/42/callback HTTP/' <<< "$logs"
+          if grep -q ci-leak <<< "$logs"; then echo "query string in proxy log"; exit 1; fi
 
       - name: No container exited
         run: test -z "$(docker compose ps -a -q --status exited)"

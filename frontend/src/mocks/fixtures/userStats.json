@@ -2,11 +2,11 @@
   "coop": {
     "matches_played": 12, "wins": 8, "losses": 4, "draws": 0, "kills": 96,
     "frags": 0, "deaths": 5, "playtime_s": 4820, "xp": 1840, "level": 5,
-    "elo": 1000, "win_rate": 0.667, "xp_to_next_level": 660
+    "elo": 1000, "win_rate": 0.667, "xp_to_next_level": 660, "xp_level_start": 1600
   },
   "pvp": {
     "matches_played": 5, "wins": 3, "losses": 2, "draws": 0, "kills": 0,
     "frags": 19, "deaths": 14, "playtime_s": 760, "xp": 410, "level": 3,
-    "elo": 1032, "win_rate": 0.6, "xp_to_next_level": 490
+    "elo": 1032, "win_rate": 0.6, "xp_to_next_level": 490, "xp_level_start": 400
   }
 }

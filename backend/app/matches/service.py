@@ -1,4 +1,4 @@
-"""Catálogo de Maps, criação de Match, resultado, estatísticas e histórico (matches-api.md §2.2–§2.4, rooms.md §2.2).
+"""Catálogo de Maps, criação de Match, resultado, estatísticas, histórico e leaderboard (matches-api.md §2.2–§2.4, rooms.md §2.2).
 
 Cada mudança no lobby vai para todo /ws/app pelas funções `publish_*`, sempre **depois** do
 commit: quem recebe o aviso e busca por HTTP já acha o banco atualizado (ws-manager.md §2.5).
@@ -19,9 +19,11 @@ from app.game import TICK_RATE, Mode, load_map
 from app.game.protocol import options_payload
 from app.game.rooms import MAX_PLAYERS, MIN_PLAYERS, RoomInfo, RoomManager, now
 from app.game.world import MAPS_DIR
-from app.matches.models import Match, MatchPlayer, PlayerStats
-from app.matches.schemas import (CreateMatchIn, HistoryMe, HistoryOther, MatchDetail, MatchHistoryItem,
-	MatchHistoryPage, MatchPlayerRow, PlayerStatsOut, UserStats, parse_options)
+from app.matches.models import Match, MatchPlayer, PlayerStats, UserAchievement
+from app.matches.progression import ACHIEVEMENTS
+from app.matches.schemas import (AchievementInfo, AchievementUnlocked, CreateMatchIn, HistoryMe,
+	HistoryOther, Leaderboard, LeaderboardMetric, LeaderboardRow, MatchDetail, MatchHistoryItem,
+	MatchHistoryPage, MatchPlayerRow, PlayerStatsOut, UserAchievements, UserStats, parse_options)
 from app.ws.app_events import publish_lobby_removed, publish_lobby_update, publish_match_started
 from app.ws.manager import ConnectionManager
 
@@ -182,6 +184,23 @@ async def user_stats(session: AsyncSession, user_id: int) -> UserStats:
 		else PlayerStatsOut() for mode in Mode})
 
 
+# o catálogo é fixo no código: montado uma vez, e a posição de cada code desempata o unlocked
+CATALOG = [AchievementInfo(code=a.code, mode=a.mode) for a in ACHIEVEMENTS]
+_CATALOG_ORDER = {a.code: position for position, a in enumerate(ACHIEVEMENTS)}
+
+
+async def user_achievements(session: AsyncSession, user_id: int) -> UserAchievements:
+	"""As conquistas do User e o catálogo inteiro (matches-api.md §2.3)."""
+	await _ensure_user(session, user_id)
+	rows = await session.scalars(select(UserAchievement).where(UserAchievement.user_id == user_id))
+	# mais recente primeiro; as do mesmo Match têm o mesmo unlocked_at e seguem a ordem do catálogo.
+	# São no máximo 7 linhas: ordenar aqui é mais simples que levar a ordem do catálogo para o SQL
+	unlocked = sorted(rows, key=lambda row: (-row.unlocked_at.timestamp(),
+		_CATALOG_ORDER.get(row.code, len(_CATALOG_ORDER))))
+	return UserAchievements(unlocked=[AchievementUnlocked.model_validate(row) for row in unlocked],
+		catalog=CATALOG)
+
+
 async def match_history(session: AsyncSession, user_id: int, page: int, per_page: int,
 		mode: Mode | None) -> MatchHistoryPage:
 	"""Os Matches terminados do User, do mais recente para o mais antigo (matches-api.md §2.3)."""
@@ -216,3 +235,22 @@ async def match_history(session: AsyncSession, user_id: int, page: int, per_page
 		reason=match.reason, me=HistoryMe.model_validate(me), others=others[match.id])
 		for match, me in rows]
 	return MatchHistoryPage(items=items, page=page, per_page=per_page, total=total)
+
+
+# ---------- leaderboard ----------
+
+DEFAULT_METRIC = {Mode.COOP: "xp", Mode.PVP: "elo"}
+
+
+async def leaderboard(session: AsyncSession, mode: Mode, metric: LeaderboardMetric | None,
+		limit: int) -> Leaderboard:
+	"""O ranking de um Mode (matches-api.md §2.3, progression.md §7)."""
+	column = getattr(PlayerStats, metric or DEFAULT_METRIC[mode])
+	# só quem tem linha em player_stats, isto é, terminou ao menos um Match neste Mode;
+	# no empate, mais vitórias e depois a conta mais antiga: a posição nunca se repete
+	rows = await session.execute(select(PlayerStats.user_id, User.username, User.avatar_url, column)
+		.join(User, User.id == PlayerStats.user_id).where(PlayerStats.mode == mode)
+		.order_by(column.desc(), PlayerStats.wins.desc(), PlayerStats.user_id).limit(limit))
+	return Leaderboard(items=[LeaderboardRow(rank=rank, user_id=user_id, username=username,
+		avatar_url=avatar_url or DEFAULT_AVATAR_URL, value=value)
+		for rank, (user_id, username, avatar_url, value) in enumerate(rows, start=1)])

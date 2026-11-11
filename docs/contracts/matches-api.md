@@ -1,6 +1,6 @@
 # Contrato: API REST de lobby e estatísticas (`matches-api.md`)
 
-**Estado:** S5, 06/11: lobby (F5.2), resultado (`GET /api/matches/{id}/result`, #155), estatísticas (`GET /api/users/{id}/stats`, com XP, level e Elo gravados no `record_match_result`, #156 e #157) e histórico (`GET /api/users/{id}/matches`, #116) implementados; resultado, histórico, estatísticas e conquistas fechados para a F7.8 e assinados pelo Caio em 27/10 (#165). **Escreve:** Akita. **Assina:** Caio (monta lobby, tela de resultado, histórico, estatísticas, conquistas e leaderboard só com este arquivo).
+**Estado:** S5, 06/11: lobby (F5.2), resultado (`GET /api/matches/{id}/result`, #155), estatísticas (`GET /api/users/{id}/stats`, com XP, level e Elo gravados no `record_match_result`, #156 e #157) histórico (`GET /api/users/{id}/matches`, #116) e conquistas (`GET /api/users/{id}/achievements`, com o desbloqueio no `record_match_result`, #158, 09/11) e leaderboard (`GET /api/leaderboard`, #159, 09/11) implementados; resultado, histórico, estatísticas e conquistas fechados para a F7.8 e assinados pelo Caio em 27/10 (#165). **Escreve:** Akita. **Assina:** Caio (monta lobby, tela de resultado, histórico, estatísticas, conquistas e leaderboard só com este arquivo).
 
 ## 1. Para que serve
 
@@ -50,7 +50,7 @@ O que **não** está aqui: a partida em si, que é WebSocket ([ws-messages.md](w
 | GET | `/api/users/{user_id}/achievements` | — | 200 `{unlocked: [...], catalog: [...]}` |
 | GET | `/api/leaderboard` | `mode`, `metric`, `limit` | 200 `{items: LeaderboardRow[]}` |
 
-Todas respondem 404 `user_not_found` para um `user_id` que não existe.
+As três com `user_id` respondem 404 `user_not_found` para um `user_id` que não existe.
 
 O histórico lista só Matches `finished`, do mais recente para o mais antigo: `ended_at` decrescente e, no empate, `match_id` decrescente. Match `aborted` não tem linhas em `match_players`, então não aparece, e não há filtro para incluí-lo. `mode` fora de `coop`/`pvp` dá 422.
 
@@ -80,11 +80,15 @@ Um Mode em que o User nunca jogou (User novo ou conta anonimizada) vem zerado, c
 | `user_id`, `username`, `avatar_url` | |
 | `value` | int — o valor da `metric` pedida |
 
-`metric` aceita `elo` (default no `pvp`), `xp` (default no `coop`), `wins` e `kills`. `limit` tem default 20 e teto 100. Ordem e filtro seguem o [progression.md](progression.md) §7: valor decrescente e `user_id` crescente no empate, `rank` sequencial a partir de 1, e só Users com pelo menos um Match terminado naquele Mode.
+`mode` é obrigatório: a métrica padrão depende dele. `metric` aceita `elo` (default no `pvp`), `xp` (default no `coop`), `wins` e `kills`, nos dois Modes. `limit` vai de 1 a 100, com default 20. `mode` ausente ou fora de `coop`/`pvp`, `metric` fora da lista e `limit` fora da faixa dão 422. Ordem e filtro seguem o [progression.md](progression.md) §7 (confirmados na F5.8, 09/11):
+- valor decrescente;
+- no empate, mais `wins` naquele Mode e depois `user_id` crescente;
+- `rank` sequencial a partir de 1, sem repetir;
+- só Users com pelo menos um Match terminado naquele Mode, isto é, com linha em `player_stats`.
 
 | `achievements` | Tipo | Conteúdo |
 |---|---|---|
-| `unlocked` | lista | `[{code, unlocked_at, match_id}]` do User da rota, do mais recente para o mais antigo. `match_id` é o Match do primeiro desbloqueio, para a tela de resultado filtrar o que saiu nela; fica `null` se esse Match não existir mais |
+| `unlocked` | lista | `[{code, unlocked_at, match_id}]` do User da rota, do mais recente para o mais antigo. As que saíram no mesmo Match têm o mesmo `unlocked_at` e seguem a ordem do `catalog`. `unlocked_at` é o `ended_at` do Match do desbloqueio, o mesmo horário do histórico. `match_id` é o Match do primeiro desbloqueio, para a tela de resultado filtrar o que saiu nela; fica `null` se esse Match não existir mais |
 | `catalog` | lista | `[{code, mode}]`, todos os Achievements que existem, na ordem do [progression.md](progression.md) §3. `mode` é `"coop"`, `"pvp"` ou `null` (vale nos dois). Vem do código do backend; o front só traduz nome e descrição pelo `code` |
 
 XP, level e Elo seguem as fórmulas do [progression.md](progression.md) §5–7, calculadas no `record_match_result`. A API devolve `level`, `xp_to_next_level` e `xp_level_start` prontos (§4, decisão 5).

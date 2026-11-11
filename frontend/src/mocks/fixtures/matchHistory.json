@@ -1,5 +1,5 @@
 {"items": [
-  {"match_id": 13, "mode": "pvp", "map": "arena_small",
+  {"match_id": 13, "mode": "pvp", "map": "pvp_ring",
    "ended_at": "2026-10-04T18:22:35Z", "duration_s": 155,
    "result": "win", "reason": "frag_limit",
    "me": {"kills": 0, "frags": 5, "deaths": 3, "damage_dealt": 10,

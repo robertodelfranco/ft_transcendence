@@ -1,4 +1,4 @@
-"""Rotas de lobby (matches-api.md §2.2), estatísticas e histórico (§2.3) e resultado (§2.4)."""
+"""Rotas de lobby (matches-api.md §2.2), estatísticas, histórico e leaderboard (§2.3) e resultado (§2.4)."""
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, status
@@ -9,8 +9,8 @@ from app.db.session import DbSession
 from app.game import Mode
 from app.game.rooms import RoomManager, get_room_manager
 from app.matches import service
-from app.matches.schemas import (CreateMatchIn, MatchDetail, MatchHistoryPage, MatchId, Page, PerPage,
-	ReadyIn, UserStats)
+from app.matches.schemas import (CreateMatchIn, Leaderboard, LeaderboardMetric, Limit, MatchDetail,
+	MatchHistoryPage, MatchId, Page, PerPage, ReadyIn, UserAchievements, UserStats)
 from app.matches.service import Catalog, get_catalog
 from app.users.schemas import UserId
 from app.ws.app_events import publish_lobby_update
@@ -90,8 +90,21 @@ async def get_user_stats(user_id: UserId, _: CurrentUser, session: DbSession) ->
 	return await service.user_stats(session, user_id)
 
 
+@router.get("/users/{user_id}/achievements")
+async def get_user_achievements(user_id: UserId, _: CurrentUser, session: DbSession) -> UserAchievements:
+	# qualquer User logado: o perfil de terceiros usa a mesma rota (decisão 7)
+	return await service.user_achievements(session, user_id)
+
+
 @router.get("/users/{user_id}/matches")
 async def get_user_matches(user_id: UserId, _: CurrentUser, session: DbSession, page: Page = 1,
 		per_page: PerPage = 20, mode: Mode | None = None) -> MatchHistoryPage:
 	# qualquer User logado: o histórico de terceiros usa a mesma rota (decisão 7)
 	return await service.match_history(session, user_id, page, per_page, mode)
+
+
+@router.get("/leaderboard")
+async def get_leaderboard(_: CurrentUser, session: DbSession, mode: Mode,
+		metric: LeaderboardMetric | None = None, limit: Limit = 20) -> Leaderboard:
+	# mode obrigatório: a métrica padrão depende dele (xp no coop, elo no pvp)
+	return await service.leaderboard(session, mode, metric, limit)

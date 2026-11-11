@@ -73,10 +73,11 @@ function ModeStats({ mode, stats }: { mode: Mode; stats: PlayerStats }) {
         <h3 id={headingId} className="font-bold">{t(`game:modes.${mode}`)}</h3>
         <p className="font-bold text-torch">{t("player.level", { level: stats.level })}</p>
       </div>
-      {/* o max é o XP em que começa o próximo nível; o servidor entrega só o que falta (progression.md §6) */}
+      {/* a barra do level atual: do XP em que ele começou até o XP em que começa o próximo. O servidor
+          entrega as duas pontas prontas (matches-api.md §2.3), a tela não conhece a fórmula */}
       <progress
-        value={stats.xp}
-        max={stats.xp + stats.xp_to_next_level}
+        value={stats.xp - stats.xp_level_start}
+        max={stats.xp + stats.xp_to_next_level - stats.xp_level_start}
         aria-label={t("player.progress")}
         className="h-3 w-full appearance-none overflow-hidden rounded bg-crypt-700 [&::-moz-progress-bar]:bg-torch [&::-webkit-progress-bar]:bg-crypt-700 [&::-webkit-progress-value]:bg-torch"
       />

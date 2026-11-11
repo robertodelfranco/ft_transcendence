@@ -2,13 +2,13 @@
 
 ## Estado
 
-Implementação aplicada. Rafael confirmou nesta sessão o funcionamento dos
-efeitos na demo e, após o roteiro de comandos, confirmou funcionamento de
-build, lint e testes do projeto game. Integração em partida real ainda aguarda
-confirmação; redução de movimento e descarte não foram confirmados
-individualmente no navegador. A #194 está isolada no worktree
-`/tmp/catacombs42-efeitos-194`, branch `194-efeitos-player`. A #192 permanece
-no diretório original. Base: `022cb09`, sem depender da #190.
+Na `main` desde 03/11 (#196). Em 05/11 passou pela validação em partida real:
+dano, morte e respawn no PvP, kill feed, redução de movimento e morte no co-op
+([Resultado em partida real](#resultado-em-partida-real-05112026)). Absorção por
+Armor, acerto dado em outro Player e reconexão não foram vistos em partida; estão
+cobertos pelos testes do `mount.test.ts`. As dez entradas e saídas de Room sem
+listener acumulado foram medidas na F3.10, com esta entrega já na base
+([performance-f3.10.md](performance-f3.10.md)).
 
 ## O que já existe
 
@@ -42,14 +42,11 @@ no diretório original. Base: `022cb09`, sem depender da #190.
 - Demo: controles traduzidos pt-BR/en/es para dano, morte e respawn sintéticos,
   separados das Actions reais; não alterar a cena de carga da #192.
 
-## Validação pendente
+## Testes automatizados
 
-Foram adicionados testes do estado visual, do overlay e da integração no mount:
-
-acerto remoto não aciona efeito local; dano absorvido tem feedback; Snapshot de
-respawn limpa morte; reconexão não inventa transiente; término e unmount limpam
-recursos. Conferir demo, redução de movimento, visibilidade no coop e kill feed
-em PvP. Nenhum teste ou navegador foi executado nesta etapa.
+Testes do estado visual, do overlay e da integração no mount cobrem: acerto
+remoto não aciona efeito local; dano absorvido tem feedback; Snapshot de respawn
+limpa morte; reconexão não inventa transiente; término e unmount limpam recursos.
 
 
 ## Como validar a demo
@@ -79,8 +76,8 @@ Incluir `frontend/game/dev.ts`, `frontend/game/src/mount.ts`,
 `frontend/game/src/mount.test.ts`, `frontend/game/src/render/renderer.ts`,
 os quatro arquivos `playerFeedback*` em `frontend/game/src/render/`,
 `docs/contracts/mount-game.md` e este documento.
-Um PR separado para #194. Não fechar a issue antes da validação dos efeitos
-no navegador e do kill feed existente em PvP. Sem commit, push ou PR pelo agente.
+Entrou pelo #196, com `Refs #194`. A #194 fecha no PR que traz o resultado de
+05/11, com `Closes #194`.
 
 
 ## Retorno da validação da demo
@@ -92,3 +89,29 @@ permanecem pendentes. Em retorno posterior ao roteiro de comandos, Rafael
 confirmou funcionamento de `npm run build`, `npm run lint` e
 `npm test -- --project game`; não foram fornecidos contadores de testes.
 A suíte shell completa não está incluída nessa confirmação.
+
+## Resultado em partida real (05/11/2026)
+
+Rodado pelo Claude a pedido do Roberto, na `main` em `22b623d`, numa stack
+isolada. O Player local é o cliente real no Chrome 156 headless com GPU, a
+1280×720; o outro é um bot que caça e atira pelo protocolo do `/ws/game`. Cada
+captura sai quando o Event chega ao socket do próprio navegador, de 90 a 170 ms
+depois. A cor é medida em duas faixas laterais (3% da largura, meia altura) e
+comparada com uma captura anterior, com o Player parado no mesmo lugar.
+
+| Critério da #194 | Resultado | O que foi medido |
+|---|---|---|
+| Acerto recebido tem feedback | passou | 10 acertos no PvP: borda vermelha em 8 (o vermelho das faixas sobe de 28 a 38 pontos). Os outros 2 foram o tiro que matou, e mostram a borda de morte. No co-op, 3 acertos de Enemy com a mesma borda |
+| Morte e respawn não deixam efeito preso | passou | a morte escurece as faixas de 19% a 21% e mostra "Você morreu. Aguardando respawn."; 0,9 s depois do respawn, borda e aviso tinham sumido nas 4 vezes |
+| Retorno no PvP | passou | flash verde logo após o respawn, que some em 0,9 s |
+| Coop não apresenta respawn | passou | no Map `enemy`, Theme sewer, o Player morreu para os Enemies: "Você morreu. Aguardando o fim da partida.", nenhum `player_respawned`, e a câmera passou para a visão do companheiro vivo |
+| Kill feed no PvP | passou | uma linha "X fez um Frag em Y" a cada morte, até as 5 do limite |
+| Redução de movimento | passou | ligada com a página aberta, depois da 2ª morte: 15 acertos sem vermelho (variação de −5 a +5 pontos), 3 respawns sem flash e a borda de morte mantida (−20%) |
+| Textos na HUD pelo i18n | passou em pt-BR | os avisos e o feed exibidos são os de `hud.death.*` e `hud.feed.frag` |
+| Console sem warnings ou erros | passou | nenhum nas duas sessões, incluindo a saída da partida pelo link do topo |
+
+**Na morte que decide a partida, não há borda de morte.** Depois do `game_over`,
+o `mount.ts` para de passar o feedback ao Renderer (`showingFeedback`). Até a
+tela de resultado, que espera `BOSS_DYING_S` (1,2 s), a HUD ainda mostra
+"Aguardando respawn.". Vale decidir com o Caio se a HUD troca o aviso já no
+`game_over`.
