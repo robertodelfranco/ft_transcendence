@@ -1,9 +1,7 @@
-import { Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Outlet, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import LanguageSelector from "./LanguageSelector";
-import Loading from "./Loading";
 
 const linkClass = "underline hover:text-torch focus-visible:outline-2 focus-visible:outline-torch";
 
@@ -56,10 +54,7 @@ export default function Layout() {
       </header>
 
       <main className="flex-1 px-4 py-8">
-        {/* página com React.lazy: cabeçalho e rodapé ficam na tela, só o miolo espera o chunk */}
-        <Suspense fallback={<Loading />}>
-          <Outlet />
-        </Suspense>
+        <Outlet />
       </main>
 
       <footer className="border-t border-crypt-700 px-4 py-4">

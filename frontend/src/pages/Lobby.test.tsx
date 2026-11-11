@@ -222,22 +222,6 @@ describe("criar Room", () => {
     expect(hp).toHaveAccessibleDescription("De 5 a 20.");
   });
 
-  it("envio com erro leva o foco ao primeiro campo inválido da tela", async () => {
-    const user = userEvent.setup();
-    await renderWithSession();
-    const button = await screen.findByRole("button", { name: "Criar sala" });
-    await waitFor(() => expect(button).toBeEnabled());
-    await user.selectOptions(screen.getByLabelText("Modo"), "pvp");
-    // o último campo mexido é o do tempo, mas na tela o de abates vem antes
-    await user.clear(screen.getByLabelText("Limite de abates"));
-    await user.clear(screen.getByLabelText("Tempo limite"));
-
-    await user.click(button);
-
-    expect(screen.getByLabelText("Tempo limite")).toHaveAttribute("aria-invalid", "true");
-    expect(screen.getByLabelText("Limite de abates")).toHaveFocus();
-  });
-
   it("o 422 invalid_options do servidor aparece no campo, não no aviso geral", async () => {
     const user = userEvent.setup();
     server.use(
@@ -256,7 +240,6 @@ describe("criar Room", () => {
 
     await waitFor(() => expect(screen.getByLabelText("HP inicial")).toHaveAttribute("aria-invalid", "true"));
     expect(screen.getByLabelText("HP inicial")).toHaveAccessibleDescription("De 5 a 20. Valor inválido.");
-    expect(screen.getByLabelText("HP inicial")).toHaveFocus();
     expect(screen.queryByText("As opções da partida são inválidas.")).not.toBeInTheDocument();
   });
 

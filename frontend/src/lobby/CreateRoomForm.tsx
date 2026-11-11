@@ -1,5 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { flushSync } from "react-dom";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { ApiError, apiFetch } from "../api/client";
@@ -37,7 +36,6 @@ export default function CreateRoomForm() {
   const [optionErrors, setOptionErrors] = useState<OptionErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
-  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,20 +84,13 @@ export default function CreateRoomForm() {
       setOptionErrors(validateDraft(mode, next));
   }
 
-  // Erro no envio leva o foco ao primeiro campo inválido da tela, como no login. flushSync: o
-  // querySelector lê o DOM, e o aria-invalid novo só entra nele depois do render
-  function showOptionErrors(errors: OptionErrors) {
-    flushSync(() => setOptionErrors(errors));
-    formRef.current?.querySelector<HTMLInputElement>("[aria-invalid='true']")?.focus();
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!map)
       return;
     setFailure(null);
     const errors = validateDraft(mode, draft);
-    showOptionErrors(errors);
+    setOptionErrors(errors);
     if (hasErrors(errors))
       return;
     setSubmitting(true);
@@ -120,7 +111,7 @@ export default function CreateRoomForm() {
         ? serverOptionErrors(mode, error.fields)
         : {};
       if (hasErrors(fromServer))
-        showOptionErrors(fromServer);
+        setOptionErrors(fromServer);
       else
         setFailure(toFailure(error));
     }
@@ -138,7 +129,7 @@ export default function CreateRoomForm() {
 
       {failure && <ErrorNotice failure={failure} />}
 
-      <form ref={formRef} noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1 text-sm">
           {t("create.mode")}
           <select

@@ -20,7 +20,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-center gap-2">
       <dt className="w-24 text-bone/70">{label}</dt>
-      <dd className="flex flex-wrap items-center gap-2 font-bold">{children}</dd>
+      <dd className="flex items-center gap-2 font-bold">{children}</dd>
     </div>
   );
 }

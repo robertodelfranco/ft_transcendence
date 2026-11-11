@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
@@ -32,8 +32,7 @@ describe("casca", () => {
   it("o título do documento acompanha a página e o idioma", async () => {
     const user = userEvent.setup();
     renderAt("/privacy");
-    // a página vem com React.lazy e o título é posto num efeito: espera os dois
-    await waitFor(() => expect(document.title).toBe("Privacy Policy · Catacombs 42"));
+    expect(document.title).toBe("Privacy Policy · Catacombs 42");
 
     await user.selectOptions(screen.getByLabelText("Language"), "pt-BR");
 

@@ -1,12 +1,11 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { beforeEach, describe, expect, it } from "vitest";
 import { setAccessToken } from "../auth/token";
 import i18n from "../i18n";
-import { legalText } from "../i18n/legal";
-import type { LegalPage } from "../i18n/legalPages";
+import { legalText, type LegalPage } from "../i18n/legal";
 import { routes } from "../routes";
 
 function renderAt(path: string) {
@@ -34,8 +33,7 @@ describe("páginas legais", () => {
     renderAt(`/${page}`);
     expect(await screen.findByRole("heading", { level: 1, name: title })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: firstSection(page, "en") })).toBeInTheDocument();
-    // o título é posto num efeito, que roda um instante depois de o h1 aparecer
-    await waitFor(() => expect(document.title).toBe(`${title} · Catacombs 42`));
+    expect(document.title).toBe(`${title} · Catacombs 42`);
   });
 
   it("troca o texto junto com o idioma", async () => {

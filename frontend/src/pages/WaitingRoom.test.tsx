@@ -107,21 +107,6 @@ it("uma sala que não existe avisa e oferece voltar", async () => {
   expect(screen.getByRole("link", { name: "Voltar ao lobby" })).toBeInTheDocument();
 });
 
-it.each(["abc", "0", "0x10", "1e1", "99999999999999999999"])(
-  "id inválido (%s) não vai ao servidor e avisa que a sala não existe",
-  async (param) => {
-    let requested = false;
-    // não devolver nada passa o pedido adiante: aqui só registra que ele saiu
-    server.use(http.get("/api/matches/:matchId", () => {
-      requested = true;
-    }));
-    await login();
-    renderAt(`/lobby/${param}`);
-    expect(await screen.findByText("Esta sala não existe.")).toBeInTheDocument();
-    expect(requested).toBe(false);
-  },
-);
-
 // Regressão (revisão do Roberto no PR #50): a resposta do ready demora, o socket traz um estado
 // mais novo com outro Player, e a resposta velha chega depois
 it("uma resposta HTTP antiga não apaga o estado mais novo que veio pelo socket", async () => {

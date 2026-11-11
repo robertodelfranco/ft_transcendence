@@ -64,7 +64,7 @@ export default function UserSearch({ friendIds, onAdded }: {
       {valid && !failure && (users === null
         ? <Loading />
         : users.length === 0
-          ? <p role="status" className="text-sm">{t("friends.search.empty")}</p>
+          ? <p className="text-sm">{t("friends.search.empty")}</p>
           : (
             <ul className="flex flex-col gap-2">
               {users.map((user) => (
