@@ -148,7 +148,8 @@ def test_mana_starts_full_and_stops_at_the_ceiling():
 	assert room.players[7].mana == mana_max
 	step(room, DT)
 	assert room.players[7].mana == mana_max
-	room.players[7].mana = mana_max - 0.1 # menos que a regeneração de um Tick
+	regen_per_tick = RULESET_NUMBERS[Mode.COOP]["MANA_REGEN_PER_S"] * DT
+	room.players[7].mana = mana_max - regen_per_tick / 2 # menos que a regeneração de um Tick
 	step(room, DT)
 	assert room.players[7].mana == mana_max
 
