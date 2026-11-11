@@ -567,7 +567,7 @@ We did not use a custom "Module of choice".
 - **Chrome only.** The project targets the latest stable Google Chrome.
 - **Local network demo.**
   - HTTPS uses a local CA from `mkcert`, which must be trusted on each client machine.
-  - Open the site by the exact `PUBLIC_HOST` name: sessions are bound to that name, and opening it by IP fails the session refresh.
+  - Sessions are bound to the `PUBLIC_HOST` name: opening the site by any other name, such as the server's IP, redirects to `PUBLIC_HOST`.
 - **42 is the only OAuth provider.**
 - **Out of scope:** tournaments, AI opponents, chat and spectator mode.
 
