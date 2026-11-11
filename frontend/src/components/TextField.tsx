@@ -38,7 +38,7 @@ export default function TextField({
         onBlur={onBlur}
         aria-invalid={error !== null}
         aria-describedby={error ? errorId : undefined}
-        className="rounded border border-bone/40 bg-crypt-900 px-3 py-2 text-bone focus-visible:outline-2 focus-visible:outline-torch aria-invalid:border-red-400"
+        className="rounded border border-crypt-700 bg-crypt-900 px-3 py-2 text-bone focus-visible:outline-2 focus-visible:outline-torch aria-invalid:border-red-400"
       />
       {error && (
         <p id={errorId} className="text-sm text-red-400">

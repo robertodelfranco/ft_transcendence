@@ -21,10 +21,8 @@ type Gone = "started" | "aborted" | "missing";
 // lobby (useLobbyRooms): o buffer e o GET depois de cada welcome valem aqui também
 export default function WaitingRoom() {
   const { t } = useTranslation("lobby");
-  const { matchId: param = "" } = useParams();
+  const { matchId: param } = useParams();
   const matchId = Number(param);
-  // o mesmo filtro do /play: id que nem é número não vai ao servidor (o 422 sairia no console)
-  const valid = /^[1-9]\d*$/.test(param) && Number.isSafeInteger(matchId);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { rooms, failure: loadFailure, runAction } = useLobbyRooms();
@@ -47,7 +45,7 @@ export default function WaitingRoom() {
 
   // A lista carregou e a Room não está nela: já começou, ou não existe. Recarregar a página
   // depois do start cai aqui, e quem joga segue para a partida
-  const missing = valid && rooms !== null && room === undefined && gone === null;
+  const missing = rooms !== null && room === undefined && gone === null;
   useEffect(() => {
     if (!missing)
       return;
@@ -95,13 +93,11 @@ export default function WaitingRoom() {
       body: body && JSON.stringify(body),
     });
 
-  // id inválido é uma sala que não existe, sem perguntar ao servidor
-  const over = valid ? gone : "missing";
-  if (over) {
+  if (gone) {
     return (
       <section className="flex flex-col items-start gap-4">
         <h1 className="text-2xl font-bold text-torch">{t("room.title")}</h1>
-        <p role="status">{t(`room.${over}`)}</p>
+        <p role="status">{t(`room.${gone}`)}</p>
         <Link to="/lobby" className={linkClass}>{t("room.back")}</Link>
       </section>
     );
