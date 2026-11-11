@@ -1,8 +1,6 @@
-*This project has been created as part of the 42 curriculum by \<login1\>, \<login2\>, \<login3\>, \<login4\>, \<login5\>.*
+*This project has been created as part of the 42 curriculum by \<login1\>, acesar-m, \<login3\>, \<login4\>, \<login5\>.*
 
 > **TODO F9.1 (@robertodelfranco):** replace one `<loginN>` above with your 42 intra login.
->
-> **TODO F9.1 (@augustocesarmd):** replace one `<loginN>` above with your 42 intra login.
 >
 > **TODO F9.1 (@rflheringer):** replace one `<loginN>` above with your 42 intra login.
 >
@@ -256,8 +254,6 @@ At the end of a match, the result screen shows the outcome and each player's num
 ## Architecture overview
 
 > **TODO F9.1 (@robertodelfranco):** review the simulation, prediction and reconciliation parts.
->
-> **TODO F9.1 (@augustocesarmd):** review the network, authentication and reconnection parts.
 
 ```mermaid
 flowchart LR
@@ -276,10 +272,19 @@ flowchart LR
 
 **Request path.** Only the proxy is reachable from outside. It terminates TLS, redirects HTTP to HTTPS and forwards `/api/` and `/ws/` to the backend, which sees the full path. Avatars are served by Nginx straight from a shared volume, so image traffic never competes with the game loop.
 
+**Sessions.**
+
+- Logging in returns a short-lived **access token** (JWT, 15 min) that the browser keeps only in memory and sends as `Authorization: Bearer` on every API call.
+- The session itself is an opaque **refresh token** in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie restricted to `/api/auth`, so page scripts never see it. Every refresh rotates it, and only its SHA-256 hash is stored.
+- Reusing a refresh token that was already rotated is treated as theft: the whole session family is revoked.
+
 **Two WebSockets.**
 
-- `/ws/app`: one per open tab, for presence (who is online) and the Lobby updates.
-- `/ws/game/{match_id}`: one per player during a match. It is authenticated once, on the first `join` message, with the same access token as the REST API.
+- `/ws/app`: one per open tab, for presence (who is online) and the Lobby updates. A user with several tabs is online while any of them is open, and only goes offline 5 s after the last one closes, so reloading a page does not flicker.
+- `/ws/game/{match_id}`: one per player during a match.
+- Both are authenticated once, on the first `join` message, with the same access token as the REST API. The token never goes in the URL, which would leak it into logs and history. Without a valid `join` within 5 s, the socket closes with a `44xx` code.
+- Every message is validated against a strict Pydantic schema (a union discriminated by `type`, mirrored in `types.ts`); an invalid one closes the socket with `4400`. Each socket can send at most 60 messages per second.
+- Outgoing messages go through a queue per connection. A Snapshot waiting there is replaced by the newer one, but an Event is never dropped; a client too slow to drain its queue is disconnected (`4429`) instead of slowing down the Room.
 
 **Authoritative server.**
 
@@ -302,8 +307,10 @@ flowchart LR
 
 **Reconnection.**
 
-- If a player's socket drops, their seat is kept for a **30 s grace period**, counted in ticks.
-- Reconnecting with a new socket resumes the match from the next Snapshot. After the grace period, the player is considered to have left.
+- If a player's socket drops, their seat is kept for a **30 s grace period**, counted in ticks; the other players see them as disconnected.
+- The client retries on its own (after 1, 2 and 4 s, then every 8 s, with jitter), except for close codes that mean retrying is useless (not a member, Room not found, replaced by another tab, Room full).
+- Reconnecting with a new socket resumes the match: each Snapshot carries the full state, so HP, mana, armor and keys come back as they were.
+- After the grace period, the player has left. In PvP, that ends the match as a loss for them.
 
 ## Database Schema
 
@@ -421,17 +428,17 @@ Win/loss statistics are always read from `match_players.won`, never from `matche
 
 | Feature | Description | Member(s) |
 |---|---|---|
-| Sign up and log in with e-mail and password | **TODO F9.1 (@augustocesarmd)** | Augusto (backend), Caio (screens) |
-| Sessions: access token + rotating refresh cookie | **TODO F9.1 (@augustocesarmd)** | Augusto |
+| Sign up and log in with e-mail and password | Accounts with a unique e-mail and username; passwords hashed with Argon2id; the same error for a wrong e-mail or a wrong password; repeated failed logins are rate-limited (`429`) | Augusto (backend), Caio (screens) |
+| Sessions: access token + rotating refresh cookie | 15-minute access token kept in memory; refresh token in an `HttpOnly` cookie, rotated on every use, with reuse detection that revokes the whole session; logout revokes the current session | Augusto |
 | Log in with 42 (OAuth 2.0) | **TODO F9.1 (@kanashir0)** | Akita (backend), Caio (button) |
 | Profile, avatar upload and settings | **TODO F9.1 (@caioosantos)** | Caio |
 | Friends and online status | **TODO F9.1 (@caioosantos)** | Caio, Augusto (presence over `/ws/app`) |
 | Real-time Lobby: create, join, ready, start | **TODO F9.1 (@kanashir0)** | Akita (backend), Caio (screen), Augusto (connection manager) |
 | Authoritative game simulation (co-op) | **TODO F9.1 (@robertodelfranco)** | Roberto |
 | PvP 1v1 rules | **TODO F9.1 (@robertodelfranco)** | Roberto |
-| Game WebSocket, Room manager and reconnection | **TODO F9.1 (@augustocesarmd)** | Augusto |
+| Game WebSocket, Room manager and reconnection | One `asyncio` task per Room ticking at a fixed 30 Hz with drift compensation; Snapshots at 15 Hz; strict message validation; 30 s grace period and automatic reconnection to the same match; ping/pong with the RTT shown on the HUD | Augusto |
 | Client-side prediction and reconciliation | **TODO F9.1 (@robertodelfranco)** | Roberto |
-| Interpolation of other entities | **TODO F9.1 (@augustocesarmd)** | Augusto |
+| Interpolation of other entities | Other players, enemies, the boss and projectiles are drawn 100 ms in the past, between the two Snapshots around that instant, so they glide instead of jumping 15 times per second; a jump of more than 2 cells (a respawn) snaps instead of sliding through walls | Augusto |
 | 3D rendering, themes and visual effects | **TODO F9.1 (@rflheringer)** | Rafael |
 | Audio | **TODO F9.1 (@rflheringer)** | Rafael |
 | Maps, balance and Room options | **TODO F9.1 (@rflheringer)** | Rafael |
@@ -473,11 +480,28 @@ We did not use a custom "Module of choice".
 
 ### 2. Real-time features — Major (2)
 
-> **TODO F9.1 (@augustocesarmd):** why we chose it and how it was implemented.
+**Why:** a multiplayer game cannot poll. The match itself, the Lobby (who joined, who is ready) and the friends' online status all have to change on screen the moment they change on the server.
+
+**How:**
+
+- Two WebSocket endpoints in FastAPI, behind Nginx with the WebSocket upgrade: `/ws/app` (presence and Lobby, one per tab) and `/ws/game/{match_id}` (the match).
+- A `ConnectionManager` keeps every open socket by user. It sends to one user, broadcasts to everyone, and calls the presence callbacks when a user's first tab opens or their last one closes.
+- The Lobby backend publishes `lobby_update` and `lobby_removed` after each database commit, so nobody sees a Room that does not exist.
+- Every socket writes through its own queue and writer task: one slow client never blocks the game loop or the other players. Snapshots can be skipped, Events cannot.
+- Messages are typed on both sides (`protocol.py` with Pydantic, `types.ts` mirrored) and validated strictly; a malformed message closes the socket with `4400`.
+- Disconnections are handled on both ends: close codes tell the client whether to reconnect, and the server cleans up on every path (normal close, timeout, crash, shutdown with `4503`).
 
 ### 3. Remote players — Major (2)
 
-> **TODO F9.1 (@augustocesarmd):** why we chose it and how it was implemented.
+**Why:** players on two different computers must see the same match and feel no lag on their own movement, even on an imperfect network.
+
+**How:**
+
+- **Authoritative server.** The client sends only Inputs and Actions; the server runs the Simulation at a fixed 30 Hz with its own `dt` (it never trusts a time sent by the client) and sends Snapshots at 15 Hz.
+- **Interpolation** of other players and entities 100 ms in the past (see *Features List*), together with Roberto's prediction and reconciliation for the local player.
+- **Reconnection.** A dropped socket starts a 30 s grace period counted in ticks. The client reconnects on its own with backoff and receives the full state again; HP, keys and position are kept. In PvP, an expired grace period is a forfeit.
+- **Latency on screen.** A `ping`/`pong` exchange measures the round-trip time, shown on the HUD.
+- **Tested on a degraded network.** We used `tc netem` on the proxy (≈ 100 ms and 2 % packet loss round trip; Chrome's throttling does not apply to WebSockets) with two players for 5 minutes: the HUD showed ~110 ms of RTT, a player who closed the tab came back to the same match in 22 s, and the Chrome console stayed with no warnings or errors. The method is in `docs/infra/teste-throttling-f2-12.md`.
 
 ### 4. Multiplayer (more than two players) — Major (2)
 
@@ -493,7 +517,20 @@ We did not use a custom "Module of choice".
 
 ### 7. Standard user management — Major (2)
 
-> **TODO F9.1 (@augustocesarmd):** why we chose it and how it was implemented.
+**Why:** every other feature (Lobby, matches, stats, friends) needs to know who the user is, and the subject requires secure password storage and validated input.
+
+**How (authentication, Augusto):**
+
+- Sign-up, login, `me`, refresh and logout under `/api/auth/`, with Pydantic validation on every field and errors returned in one envelope (`code` and per-field codes, translated by the frontend).
+- Passwords hashed with **Argon2id** (salted, memory-hard), run outside the event loop so a login never freezes the game ticks. Passwords are limited to 8–128 characters: without an upper bound, hashing a huge password would be a cheap denial of service.
+- **Tokens:**
+  - The access token is a JWT (15 min), kept in memory by the frontend.
+  - The refresh token is opaque, because a JWT cannot be revoked without a table anyway. It lives in an `HttpOnly` cookie, is rotated on every refresh, and reusing an old one revokes the whole family (RFC 9700).
+  - The same `issue_tokens` function serves the e-mail login and the 42 OAuth login.
+- `CurrentUser`, a FastAPI dependency, protects every authenticated route; `authenticate_ws_token` does the same for both WebSockets.
+- Rate limits as dependencies: 5 failed logins per minute per IP, plus caps on sign-up and refresh.
+
+Profile, avatar, friends and the screens are Caio's part of this module.
 
 ### 8. OAuth 2.0 — Minor (1)
 
@@ -544,7 +581,24 @@ We did not use a custom "Module of choice".
 
 ### Augusto Cesar — Developer
 
-> **TODO F9.1 (@augustocesarmd):** what you built (features, modules, components), and the challenges you faced and how you overcame them.
+**What I built**
+
+- **Backend foundation:** the `backend/app/` package with `create_app()`, settings from the environment, the single error envelope, `GET /api/health`, and the `pytest` fixtures every backend slice uses.
+- **Middlewares:** JSON logs with a `request_id` per request (never the query string), error handlers, and the `RateLimit` dependency.
+- **Authentication:** the user models, sign-up, login, `me`, refresh with rotation and reuse detection, logout, `CurrentUser` and the WebSocket token check. Contracts: `docs/contracts/auth.md` and ADR 0002 (tokens).
+- **Realtime:** `ConnectionManager` and `/ws/app` (presence, Lobby publishing); the message protocol (`protocol.py` / `types.ts`). Contract: `docs/contracts/ws-manager.md`.
+- **Game server loop:** `RoomManager`, with one `asyncio` task per Room at a fixed 30 Hz; `/ws/game/{match_id}` with `join`, the read loop and the close codes; N players with a per-socket message limit; end of match (records the result once, keeps the Room 60 s); grace period and reconnection; ping/pong.
+- **Game client network layer:** the socket with automatic reconnection, input sending, building the `ViewState` from Snapshots, and the interpolation of other entities.
+- **Metrics:** `GET /metrics` (HTTP requests, logins by result, open WebSockets per channel, active Rooms and the tick duration histogram), reachable only inside the Compose network.
+
+**Challenges**
+
+- **Keeping the tick steady.** A naïve `sleep(1/30)` drifts, because the work of each tick adds to it. The loop schedules each tick from a fixed start time and measures the work in the `game_tick_seconds` histogram.
+- **One slow client must not freeze a Room.** Sending directly from the tick would make the whole match wait for the worst connection. Each socket got its own queue and writer task. A pending Snapshot is replaced by the newer one, and a client that still cannot keep up is disconnected with `4429`.
+- **Recording the result exactly once.** After `game_over` the Room keeps ticking for the boss death animation, so a naïve check would record the match many times. The Room calls `record_match_result` on the transition only, and a test sends ticks after the end to prove it.
+- **A grace period that survives slow ticks.** It is counted in ticks, not wall-clock time, so it advances with the match.
+- **Session vs. socket.** The game socket used to treat any failure while getting a token as "logged out", so a network blip, a 5xx or the refresh rate limit (shared by everyone behind the campus NAT) ended a match whose session was still valid. Now only a confirmed lost session ends it: a transient failure retries with backoff, and a fresh token is requested only after the server rejects the current one (`4401`).
+- **Testing a bad network.** Chrome's throttling does not touch WebSockets, so the first measurements proved nothing. We switched to `tc netem` on the proxy container, without `sudo` on the host.
 
 ### Rafael Heringer — Developer
 
