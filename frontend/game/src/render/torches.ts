@@ -7,6 +7,28 @@ const SHADOW_LIMIT = 2;
 const LIGHT_RANGE = 5;
 const LIGHT_INTENSITY = 2;
 
+type WallMount = { position: THREE.Vector3; normal: THREE.Vector3 };
+
+// Busca uma face de parede pelo corredor, sem atravessar Doors nem sair do Grid.
+function wallMount(grid: readonly string[], x: number, y: number): WallMount | null {
+  let closest: WallMount | null = null;
+  let closestDistance = Infinity;
+  for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+    for (let distance = 1; distance < closestDistance; distance++) {
+      const cell = grid[y + dy * distance]?.[x + dx * distance];
+      if (cell === undefined || cell === " " || cell === "D" || cell === "O") break;
+      if (cell !== "1") continue;
+      const normal = new THREE.Vector3(-dx, 0, -dy);
+      const position = new THREE.Vector3(x + dx * distance + 0.5, 0.78, y + dy * distance + 0.5)
+        .addScaledVector(normal, 0.5 + 0.14);
+      closest = { position, normal };
+      closestDistance = distance;
+      break;
+    }
+  }
+  return closest;
+}
+
 export class Torches {
   readonly object = new THREE.Group();
   private readonly positions: THREE.Vector3[] = [];
@@ -15,39 +37,55 @@ export class Torches {
   private elapsed = 0;
 
   constructor(grid: readonly string[], lightColors: Theme["light"] = dungeonTheme.light) {
+    const mounts: WallMount[] = [];
     grid.forEach((row, y) => {
       [...row].forEach((cell, x) => {
-        if (cell === "T") this.positions.push(new THREE.Vector3(x + 0.5, 0.78, y + 0.5));
+        if (cell !== "T") return;
+        const mount = wallMount(grid, x, y);
+        // Sem parede acessível, não desenha um poste flutuante.
+        if (mount) mounts.push(mount);
       });
     });
+    this.positions.push(...mounts.map(mount => mount.position));
     if (this.positions.length === 0) return;
 
     // Meshes próprios, sem PNG novo; o T continua sendo chão na Simulation.
-    const stemGeometry = new THREE.CylinderGeometry(0.035, 0.045, 0.5, 6);
+    const stemGeometry = new THREE.CylinderGeometry(0.025, 0.035, 0.28, 6);
+    const bracketGeometry = new THREE.BoxGeometry(0.035, 0.035, 0.14);
     const flameGeometry = new THREE.ConeGeometry(0.08, 0.2, 6);
     const stemMaterial = new THREE.MeshLambertMaterial({ color: 0x58381e });
     const flameMaterial = new THREE.MeshBasicMaterial({ color: lightColors.flame });
     // Cor HDR na chama alimenta o bloom, sem aumentar o alcance da PointLight.
-    flameMaterial.color.multiplyScalar(3);
-    this.resources.push(stemGeometry, flameGeometry, stemMaterial, flameMaterial);
+    flameMaterial.color.multiplyScalar(1.5);
+    this.resources.push(stemGeometry, bracketGeometry, flameGeometry, stemMaterial, flameMaterial);
     const stems = new THREE.InstancedMesh(stemGeometry, stemMaterial, this.positions.length);
+    const brackets = new THREE.InstancedMesh(bracketGeometry, stemMaterial, this.positions.length);
     const flames = new THREE.InstancedMesh(flameGeometry, flameMaterial, this.positions.length);
-    this.resources.push(stems, flames);
-    stems.castShadow = true;
+    this.resources.push(stems, brackets, flames);
+    stems.castShadow = false;
     stems.receiveShadow = true;
+    brackets.receiveShadow = true;
     // A chama não projeta sombra sobre a própria fonte luminosa.
     const transform = new THREE.Object3D();
     this.positions.forEach((position, index) => {
-      transform.position.set(position.x, 0.4, position.z);
+      transform.rotation.set(0, 0, 0);
+      transform.position.set(position.x, 0.54, position.z);
       transform.updateMatrix();
       stems.setMatrixAt(index, transform.matrix);
       transform.position.copy(position);
       transform.updateMatrix();
       flames.setMatrixAt(index, transform.matrix);
+      const normal = mounts[index].normal;
+      transform.position.copy(position).addScaledVector(normal, -0.07);
+      transform.position.y = 0.44;
+      transform.rotation.y = normal.x === 0 ? 0 : Math.PI / 2;
+      transform.updateMatrix();
+      brackets.setMatrixAt(index, transform.matrix);
     });
     stems.instanceMatrix.needsUpdate = true;
     flames.instanceMatrix.needsUpdate = true;
-    this.object.add(stems, flames);
+    brackets.instanceMatrix.needsUpdate = true;
+    this.object.add(stems, brackets, flames);
 
     // Pool fixo: mover fontes existentes evita criar luzes e shaders por quadro.
     const lightCount = Math.min(LIGHT_LIMIT, this.positions.length);
@@ -55,7 +93,7 @@ export class Torches {
       const light = new THREE.PointLight(lightColors.torch, LIGHT_INTENSITY, LIGHT_RANGE);
       light.position.copy(this.positions[i]);
       light.castShadow = i < SHADOW_LIMIT;
-      light.shadow.mapSize.set(256, 256);
+      light.shadow.mapSize.set(512, 512);
       light.shadow.camera.near = 0.05;
       light.shadow.camera.far = LIGHT_RANGE;
       light.shadow.bias = -0.001;
