@@ -33,7 +33,7 @@ Como ler as tabelas:
 | `MOUSE_MAX_ROT_SPEED` | rad/s | `18.85` (6π) | sim | Limite de giro por mouse, igual nos dois Modes: o servidor e a Prediction cortam `mouse_dx` em `MOUSE_MAX_ROT_SPEED × dt` por Tick. Sem equivalente: o C girava `0.012` rad por evento de cursor nas faixas laterais de 30% da janela (`player_bonus/controls_bonus.c:63-71`) |
 | `PLAYER_RADIUS` | cél | `0.05` | novo | `R`, testado nos 4 cantos contra `1` e `D` (`include/cub3d_bonus.h:27`, `player_bonus/move_utils_bonus.c:100-111`) |
 | `BODY_BLOCK_DISTANCE` | cél | `0.6` | novo | Player não chega a menos disso (`<`) de Enemy, Boss ou outro Player vivo (`player_bonus/move_utils_bonus.c:26` e `:90`) |
-| `FIREBALL_COOLDOWN_S` | s | `0.4` | novo | `attack_delay > 0.4` (`player_bonus/controls_bonus.c:90`) |
+| `FIREBALL_COOLDOWN_S` | s | `0.8` | novo | No C: `attack_delay > 0.4` (`player_bonus/controls_bonus.c:90`); ajustado na F4.7 (§5.5) |
 | `DOOR_REACH` | cél | `1.0` | novo | Célula a `1.0` à frente do Player (`door_bonus/door_bonus.c:67`) |
 | `POTION_HEAL` | HP | `3` | novo | `hp += 3`, teto `10` (`game_bonus/handle_utils_bonus.c:50-52`) |
 
@@ -82,13 +82,13 @@ O HP inicial e o teto da poção não são constantes: vêm de `options.start_hp
 
 ### 2.6 Valores por Ruleset (conteúdo preenche)
 
-Nada disto existe no C. Cada linha tem um valor para `coop` e outro para `pvp`; a arq. §6.3 pede co-op generoso e PvP apertado. No código, estes valores ficam no `numbers` de cada Ruleset (arq. §6.1), um dicionário com os nomes abaixo; `rules.ts` espelha o mesmo dicionário por Mode. Os valores são os pontos de partida propostos pelo conteúdo (§5.3), aceitos em 06/10; mudam jogando.
+Nada disto existe no C. Cada linha tem um valor para `coop` e outro para `pvp`; a arq. §6.3 pede co-op generoso e PvP apertado. No código, estes valores ficam no `numbers` de cada Ruleset (arq. §6.1), um dicionário com os nomes abaixo; `rules.ts` espelha o mesmo dicionário por Mode. A tabela mostra os valores implementados: os pontos de partida aceitos em 06/10 estão em §5.3, e o ajuste de Mana da F4.7 em §5.5, pendente de reteste e revisão técnica.
 
 | Nome | Unidade | `coop` | `pvp` | O que é |
 |---|---|---|---|---|
 | `MANA_MAX` | Mana | `100` | `100` | Teto de Mana do Player |
-| `FIREBALL_MANA_COST` | Mana | `10` | `20` | Quanto uma fireball gasta |
-| `MANA_REGEN_PER_S` | Mana/s | `10` | `5` | Regeneração contínua |
+| `FIREBALL_MANA_COST` | Mana | `10` | `10` | Quanto uma fireball gasta |
+| `MANA_REGEN_PER_S` | Mana/s | `2` | `2` | Regeneração contínua |
 | `MANA_PICKUP` | Mana | `30` | `20` | Quanto o Pickup de mana devolve |
 | `ARMOR_POINTS` | Armor | `3` | `2` | Quanto o Pickup de armor dá |
 | `RESPAWN_DELAY_S` | s | não se aplica | `3` | Tempo entre morrer e renascer |
@@ -156,7 +156,7 @@ Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um
 
 ### 5.3 Valores iniciais por Mode — proposta de conteúdo
 
-Valores propostos pelo conteúdo e **aceitos em 06/10 como ponto de partida**; já estão em §2.6 e §2.2. Não foram medidos: mudam no playtest. A tabela fica aqui pelo motivo de cada número.
+Valores propostos pelo conteúdo e **aceitos em 06/10 como ponto de partida**. Esta tabela preserva o histórico; para os valores implementados, ver §2.6 e §2.2. Custo e regeneração de Mana foram ajustados na F4.7 (§5.5). Não foram medidos: mudam no playtest. A tabela fica aqui pelo motivo de cada número.
 
 | Nome | Unidade | `coop` proposto | `pvp` proposto | Motivo |
 |---|---|---:|---:|---|
@@ -177,3 +177,23 @@ O limite de mouse é velocidade angular, não sensibilidade em pixels. Com `TICK
 **Conteúdo e Partidas:** o respawn ocorre apenas no `pvp`; os critérios de Spawn livre e a ausência de proteção após renascer estão em §4.
 
 **Validação:** jogar coop e PvP antes de promover os números a decisões. Registrar frequência de disparos, tempo sem Mana, utilidade dos Pickups e duração do duelo; verificar a rotação do mouse no navegador com a mesma limitação do servidor. Esta preparação não executou esses testes.
+
+### 5.5 Ajuste de Mana e cadência — F4.7, 11/11/2026
+
+Rafael relatou regeneração excessiva após jogar e autorizou aplicar
+inicialmente `MANA_REGEN_PER_S = 1.0` e `FIREBALL_MANA_COST = 10` nos dois Modes.
+Depois alterou o backend para `MANA_REGEN_PER_S = 2.0` e
+`FIREBALL_COOLDOWN_S = 0.8`, confirmando esses valores para sincronização
+com TypeScript e fixture. Estes são os valores implementados desta entrega.
+Antes, a regeneração era 10 Mana/s no coop e 5 Mana/s no PvP; o custo era
+10 Mana no coop e 20 Mana no PvP. O intervalo entre disparos era 0,4 s.
+Teto e Pickups permanecem iguais.
+
+Sem atirar nem coletar Pickups, recuperar o custo de um tiro passa a levar
+5 s e recuperar de zero a 100 Mana leva 50 s em ambos os Modes.
+O intervalo de 0,8 s equivale a 24 Ticks a 30 Hz e limita a cadência a
+1,25 tiro/s. Na cadência máxima, o consumo é 12,5 Mana/s, acima da
+regeneração de 2 Mana/s. O Pickup
+de Mana equivale agora a três tiros no coop e dois no PvP, respeitando o teto.
+São contas derivadas, não resultados de reteste. Mudança implementada para
+playtest; revisão técnica do Roberto e validação coop/PvP pendentes.

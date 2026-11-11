@@ -1081,7 +1081,7 @@
     "ENEMY_SEPARATION": 0.6,
     "ENEMY_SPEED": 1.5,
     "FIREBALL_BOSS_DAMAGE": 10,
-    "FIREBALL_COOLDOWN_S": 0.4,
+    "FIREBALL_COOLDOWN_S": 0.8,
     "FIREBALL_PLAYER_DAMAGE": 2,
     "MOUSE_MAX_ROT_SPEED": 18.85,
     "PLAYER_RADIUS": 0.05,
@@ -1100,15 +1100,15 @@
         "FIREBALL_MANA_COST": 10,
         "MANA_MAX": 100,
         "MANA_PICKUP": 30,
-        "MANA_REGEN_PER_S": 10.0,
+        "MANA_REGEN_PER_S": 2.0,
         "RESPAWN_DELAY_S": null
       },
       "pvp": {
         "ARMOR_POINTS": 2,
-        "FIREBALL_MANA_COST": 20,
+        "FIREBALL_MANA_COST": 10,
         "MANA_MAX": 100,
         "MANA_PICKUP": 20,
-        "MANA_REGEN_PER_S": 5.0,
+        "MANA_REGEN_PER_S": 2.0,
         "RESPAWN_DELAY_S": 3.0
       }
     },

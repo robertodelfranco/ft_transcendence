@@ -5,7 +5,7 @@ PLAYER_ROT_SPEED = 1.8 # rad/s
 MOUSE_MAX_ROT_SPEED = 18.85 # rad/s (6π)
 PLAYER_RADIUS = 0.05 # cél
 BODY_BLOCK_DISTANCE = 0.6 # cél
-FIREBALL_COOLDOWN_S = 0.4 # s
+FIREBALL_COOLDOWN_S = 0.8 # s
 DOOR_REACH = 1.0 # cél
 POTION_HEAL = 3 # HP
 
@@ -43,15 +43,15 @@ RULESET_NUMBERS = {
 	"coop": {
 		"MANA_MAX": 100, # Mana
 		"FIREBALL_MANA_COST": 10, # Man
-		"MANA_REGEN_PER_S": 10.0, # Mana/s
+		"MANA_REGEN_PER_S": 2.0, # Mana/s
 		"MANA_PICKUP": 30, # Mana
 		"ARMOR_POINTS": 3, # Armor
 		"RESPAWN_DELAY_S": None, # não existe respawn no coop
 	},
 	"pvp": {
 		"MANA_MAX": 100, # Mana
-		"FIREBALL_MANA_COST": 20, # Mana
-		"MANA_REGEN_PER_S": 5.0, # Mana/s
+		"FIREBALL_MANA_COST": 10, # Mana
+		"MANA_REGEN_PER_S": 2.0, # Mana/s
 		"MANA_PICKUP": 20, # Mana
 		"ARMOR_POINTS": 2, # Armor
 		"RESPAWN_DELAY_S": 3.0, # sec
