@@ -13,7 +13,7 @@ from app.game.world import parse_map
 
 DT = 1 / TICK_RATE
 STEP = ENEMY_SPEED * DT # o que um Enemy anda num Tick
-ATTACK_TICKS = round(ENEMY_ATTACK_INTERVAL_S * TICK_RATE) # 42 Ticks
+ATTACK_TICKS = round(ENEMY_ATTACK_INTERVAL_S * TICK_RATE) # 30 Ticks
 DYING_TICKS = round(ENEMY_DYING_S * TICK_RATE) # 45 Ticks
 ROW_Y = 3.5
 # uma sala aberta: o Player 7 em (1, 3), o Enemy em (6, 3) e o Player 9 em (9, 3), na mesma linha
@@ -235,9 +235,9 @@ def test_the_blow_lands_after_enemy_attack_interval_s():
 	room = new_room()
 	in_attack(room) # Tick 1
 	target = room.players[9]
-	run(room, ATTACK_TICKS - 1) # até o Tick 42
+	run(room, ATTACK_TICKS - 1) # até o Tick 30
 	assert target.hp == 10
-	run(room, 1) # Tick 43: 1,4 s depois de entrar em attack
+	run(room, 1) # Tick 31: ENEMY_ATTACK_INTERVAL_S depois de entrar em attack
 	assert target.hp == 10 - ENEMY_DAMAGE
 
 

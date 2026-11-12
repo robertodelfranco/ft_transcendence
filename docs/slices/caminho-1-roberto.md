@@ -208,7 +208,7 @@ Labels: `F1`, `S2`
 Labels: `F1`, `S2`, `bloqueante`
 
 - **Contexto:** o combate para N Players. É a maior tarefa da Slice; sai em cinco PRs, um por passo.
-- **Pronto quando:** há um teste por regra: perseguição do Player vivo mais próximo, troca de alvo só com 1 célula de vantagem, golpe a cada 1,4 s só em quem está no alcance, morte em 1,5 s, Boss com 6 acertos, bullet tira 2, fireball some na parede, Armor absorve antes do HP, custo e regeneração de Mana.
+- **Pronto quando:** há um teste por regra: perseguição do Player vivo mais próximo, troca de alvo só com 1 célula de vantagem, golpe a cada `ENEMY_ATTACK_INTERVAL_S` (1,0 s desde a F4.7) só em quem está no alcance, morte em 1,5 s, Boss com 6 acertos, bullet tira 2, fireball some na parede, Armor absorve antes do HP, custo e regeneração de Mana.
 - **Contrato:** `docs/contracts/rules.md`; `docs/contracts/ws-messages.md` §2.5 e §2.6
 - **Dependências:** F1.4
 - **Onde olhar:** `enemy_bonus/enemy_move_bonus.c` e `enemy_manage_bonus.c`, `boss_bonus/*`, `attack_bonus/create_*` e `update_*`; arq. §3 (três bugs para não portar) e §5; roadmap R3 (passos R3.3 a R3.7)
