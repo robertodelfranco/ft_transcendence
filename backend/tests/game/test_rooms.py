@@ -238,6 +238,15 @@ async def test_start_creates_the_simulation_room_in_order_of_arrival(manager):
 	assert len(room_tasks()) == 1
 
 
+async def test_start_creates_the_room_frozen_until_the_players_connect(manager):
+	# #255: a Room da partida de verdade nasce esperando os Players e conta 3, 2, 1
+	lobby(manager, players=(7, 9))
+	manager.start(12)
+	room = manager.game_room(12)
+	assert room.countdown_end_tick is None
+	assert room.frozen()
+
+
 async def test_nothing_changes_the_lobby_after_start(manager):
 	lobby(manager, players=(7, 9))
 	manager.start(12)

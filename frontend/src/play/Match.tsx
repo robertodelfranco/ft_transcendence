@@ -7,6 +7,7 @@ import { useAuth } from "../auth/AuthContext";
 import ErrorNotice, { toFailure, type Failure } from "../components/ErrorNotice";
 import { buttonPrimary, buttonSecondary, linkClass } from "../components/styles";
 import { socketToken } from "../auth/socketToken";
+import Countdown from "./Countdown";
 import Hud from "./Hud";
 import { knownReason, outcomeFor } from "./outcome";
 
@@ -129,6 +130,8 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
             aria-hidden="true"
             className="pointer-events-none absolute bottom-3 left-3 aspect-square w-1/4 opacity-85 sm:w-32 md:left-auto md:right-3"
           />
+          {/* #255: cobre só o canvas, também abaixo do md, onde a HUD vem depois dele */}
+          {hud && live && <Countdown countdown={hud.countdown} />}
         </div>
         {hud && live && <Hud hud={hud} userId={user?.id ?? null} />}
         {/* fora da partida em andamento, o centro do canvas fala: conexão, erro ou fim. Saindo, o

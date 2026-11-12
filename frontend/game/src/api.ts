@@ -16,6 +16,8 @@ export interface HudState {
   players: Array<{ id: number; name: string; hp: number; alive: boolean; connected: boolean }>;
   scoreboard: { players: Array<{ id: number; frags: number }>; timeLeftS: number } | null;
   killfeed: Array<{ by: number | null; victim: number; tick: number }>;
+  // #255: "waiting" esperando os Players, 3, 2, 1 na contagem, null com a partida valendo
+  countdown: "waiting" | number | null;
   mode: Mode | null; // null antes do welcome
   status: HudStatus;
   error?: string; // code que a casca traduz; nunca frase

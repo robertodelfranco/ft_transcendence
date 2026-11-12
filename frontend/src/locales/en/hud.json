@@ -14,6 +14,10 @@
     "no": "Keep playing",
     "leaving": "Leaving…"
   },
+  "countdown": {
+    "waiting": "Waiting for players…",
+    "startsIn": "The match starts in {{seconds}}"
+  },
   "stats": {
     "label": "Your status",
     "hp": "Health",

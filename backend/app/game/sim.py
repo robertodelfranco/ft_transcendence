@@ -5,7 +5,8 @@ from random import Random
 
 from app.game.movement import Body, CollisionWorld, apply_input, is_solid
 from app.game.rules import (BOSS_ATTACK_COOLDOWN_S, BOSS_ATTACK_RANGE, BOSS_ATTACK_WINDUP_S,
-	BOSS_HP, BOSS_MIN_RANGE, BOSS_RADIUS, BOSS_SIGHT_RANGE, BOSS_SPEED, BULLET_DAMAGE, DOOR_REACH,
+	BOSS_HP, BOSS_MIN_RANGE, BOSS_RADIUS, BOSS_SIGHT_RANGE, BOSS_SPEED, BULLET_DAMAGE, COUNTDOWN_S,
+	COUNTDOWN_WAIT_S, DOOR_REACH,
 	ENEMY_ATTACK_INTERVAL_S, ENEMY_ATTACK_RANGE, ENEMY_CHASE_RANGE, ENEMY_DAMAGE, ENEMY_DYING_S,
 	ENEMY_RADIUS, ENEMY_RETARGET_MARGIN, ENEMY_SEPARATION, ENEMY_SPEED, FIREBALL_BOSS_DAMAGE,
 	FIREBALL_COOLDOWN_S, FIREBALL_PLAYER_DAMAGE, POTION_HEAL, PROJECTILE_HIT_RADIUS,
@@ -25,13 +26,17 @@ ENEMY_ATTACK_TICKS = round(ENEMY_ATTACK_INTERVAL_S * TICK_RATE)
 ENEMY_DYING_TICKS = round(ENEMY_DYING_S * TICK_RATE)
 BOSS_WINDUP_TICKS = round(BOSS_ATTACK_WINDUP_S * TICK_RATE)
 BOSS_COOLDOWN_TICKS = round(BOSS_ATTACK_COOLDOWN_S * TICK_RATE)
+COUNTDOWN_TICKS = round(COUNTDOWN_S * TICK_RATE)
+COUNTDOWN_WAIT_TICKS = round(COUNTDOWN_WAIT_S * TICK_RATE)
 PICKUP_KINDS = {"K": "key", "P": "potion", "M": "mana", "A": "armor"}
 # 8 vizinhas: primeiro as do lado, depois as diagonais
 NEIGHBORS = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 
 
 def create_room(match_id: int, mode: Mode, game_map: Map, options: RoomOptions,
-		players: list[tuple[int, str]], seed: int) -> Room:
+		players: list[tuple[int, str]], seed: int, countdown: bool = False) -> Room:
+	"""countdown: a Room nasce congelada, espera os Players e conta 3, 2, 1 (#255). Desligada, o
+	Tick 1 já vale: é o que os testes da Simulation e o cli usam; o RoomManager liga."""
 	if len(players) > len(game_map.spawns):
 		raise ValueError(f"{len(players)} Players para {len(game_map.spawns)} Spawns")
 	ruleset = RULESETS[mode]
@@ -59,6 +64,8 @@ def create_room(match_id: int, mode: Mode, game_map: Map, options: RoomOptions,
 		room.boss = Boss(x=boss_x, y=boss_y, hp=BOSS_HP)
 	for x, y in game_map.doors:
 		room.doors.append(Door(x=x, y=y))
+	if not countdown:
+		room.countdown_end_tick = 1
 	ruleset.on_start(room)
 	return room
 
@@ -116,14 +123,21 @@ def step(room: Room, dt: float) -> list[Event]:
 	# o que aconteceu fora do step (conexão, saída) sai aqui, com o Tick atual
 	events = [Event(name, room.tick, data) for name, data in room.pending_events]
 	room.pending_events.clear()
+	_start_countdown(room)
 	# depois do game_over, só as animações andam (ws-messages.md §2.6)
 	if room.result is None:
-		for player in room.players.values():
-			_consume_queue(room, player, dt, events)
-		_update_enemies(room, dt, events)
-		_update_boss(room, dt)
-		_update_projectiles(room, dt, events)
-		_regen_mana(room, dt)
+		if room.frozen():
+			# espera e contagem (#255): nada se move, ataca nem regenera
+			for player in room.players.values():
+				_discard_queue(player)
+		else:
+			for player in room.players.values():
+				_consume_queue(room, player, dt, events)
+			_update_enemies(room, dt, events)
+			_update_boss(room, dt)
+			_update_projectiles(room, dt, events)
+			_regen_mana(room, dt)
+		# fora do congelamento: quem sai na contagem decide a partida na hora (forfeit)
 		_apply_ruleset(room, events)
 	_expire_animations(room)
 	return events
@@ -154,7 +168,7 @@ def _freeze_outcome(room: Room, result: dict) -> MatchOutcome:
 		potions_used=player.potions_used, disconnected_at_end=not player.connected)
 		for player in room.players.values())
 	return MatchOutcome(result=result["result"], reason=result["reason"], winner_ids=winners,
-		duration_ticks=room.tick, players=players)
+		duration_ticks=room.played_ticks(), players=players)
 
 
 def _expire_animations(room: Room) -> None:
@@ -165,6 +179,25 @@ def _expire_animations(room: Room) -> None:
 	room.projectiles = [shot for shot in room.projectiles
 		if shot.state == ProjectileState.MOVING
 		or room.tick - shot.state_tick < PROJECTILE_HIT_TICKS]
+
+
+def _start_countdown(room: Room) -> None:
+	# começa quando todo Player que ficou está conectado, ou depois de COUNTDOWN_WAIT_S: quem nunca
+	# abre o socket não trava os outros, e o Grace period dele segue contando desde o start
+	if room.countdown_end_tick is not None:
+		return
+	waiting = any(not player.left and not player.connected for player in room.players.values())
+	if not waiting or room.tick >= COUNTDOWN_WAIT_TICKS:
+		room.countdown_end_tick = room.tick + COUNTDOWN_TICKS
+
+
+def _discard_queue(player: Player) -> None:
+	# o Input sai da fila sem efeito, mas fica reconhecido no last_input_seq: sem isso, a
+	# Reconciliation do cliente esperaria por ele para sempre. A Action só some
+	for message in player.input_queue:
+		if isinstance(message, Input):
+			player.last_input_seq = message.seq
+	player.input_queue.clear()
 
 
 def _consume_queue(room: Room, player: Player, dt: float, events: list[Event]) -> None:

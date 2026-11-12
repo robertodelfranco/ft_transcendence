@@ -173,6 +173,22 @@ class Room:
 	path_fields:	dict[int, tuple[tuple[int, int], dict[tuple[int, int], int]]] = field(
 		default_factory=dict)
 	free_cells:		frozenset[tuple[int, int]] | None = None # cache: sem parede nem Door fechada
+	# #255: o primeiro Tick que vale; None enquanto espera os Players conectarem
+	countdown_end_tick:	int | None = None
+
+	def frozen(self) -> bool:
+		"""Esperando os Players ou contando 3, 2, 1: ninguém se move e nada ataca (#255)."""
+		return self.countdown_end_tick is None or self.tick < self.countdown_end_tick
+
+	def played_ticks(self) -> int:
+		"""Ticks em que a partida já valeu: a espera e a contagem não contam (#255).
+
+		O Tick em que a contagem acaba é o primeiro que vale e conta 1, como o Tick 1 de uma Room
+		sem contagem. É a base do relógio do PvP e da duração gravada no Match.
+		"""
+		if self.frozen():
+			return 0
+		return self.tick - self.countdown_end_tick + 1
 
 
 @dataclass(frozen=True, slots=True)

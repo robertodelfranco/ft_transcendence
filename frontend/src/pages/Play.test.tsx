@@ -335,6 +335,45 @@ describe("Sair da partida (#240)", () => {
   });
 });
 
+describe("contagem do início (#255)", () => {
+  // o que o leitor de tela ouve: a região de status da contagem, entre as outras da página
+  const announced = (text: string) =>
+    screen.getAllByRole("status").some((region) => region.textContent === text);
+
+  it("esperando os Players, a camada cobre o canvas e avisa", async () => {
+    await renderAt("/play/13");
+    const game = await mounted();
+    act(() => emitHud({ countdown: "waiting" }));
+    const block = game.canvas.parentElement!;
+    // o texto visível, sem contar a região de status, que também fica no bloco
+    const shown = within(block).getAllByText("Aguardando jogadores…")
+      .filter((element) => element.getAttribute("role") !== "status");
+    expect(shown).toHaveLength(1);
+    expect(announced("Aguardando jogadores…")).toBe(true);
+  });
+
+  it("mostra 3, 2, 1 e anuncia cada número", async () => {
+    await renderAt("/play/13");
+    const game = await mounted();
+    const block = game.canvas.parentElement!;
+    for (const seconds of [3, 2, 1]) {
+      act(() => emitHud({ countdown: seconds }));
+      expect(within(block).getByText(String(seconds))).toBeInTheDocument();
+      expect(announced(`A partida começa em ${seconds}`)).toBe(true);
+    }
+  });
+
+  it("com a partida valendo, a camada some", async () => {
+    await renderAt("/play/13");
+    const game = await mounted();
+    act(() => emitHud({ countdown: 1 }));
+    act(() => emitHud({ countdown: null }));
+    const block = game.canvas.parentElement!;
+    expect(within(block).queryByText("1")).not.toBeInTheDocument();
+    expect(announced("A partida começa em 1")).toBe(false);
+  });
+});
+
 describe("modo partida (#254)", () => {
   it("o layout fica compacto e o título sai da tela, mas continua para leitor de tela", async () => {
     await renderAt("/play/13");

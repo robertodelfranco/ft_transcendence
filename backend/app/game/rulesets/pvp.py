@@ -54,7 +54,8 @@ class PvpRuleset:
 			remaining = [player.user_id for player in room.players.values() if not player.left]
 			return {"result": "win" if remaining else "draw",
 				"winner_ids": remaining, "reason": "forfeit"}
-		if room.tick >= room.options.time_limit_s * TICK_RATE:
+		# o relógio conta só o tempo jogado: a espera e a contagem não gastam o time_limit (#255)
+		if room.played_ticks() >= room.options.time_limit_s * TICK_RATE:
 			highest = max(player.frags for player in room.players.values())
 			leaders = [player.user_id for player in room.players.values()
 				if player.frags == highest]

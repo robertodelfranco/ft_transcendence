@@ -8,6 +8,8 @@ BODY_BLOCK_DISTANCE = 0.6 # cél
 FIREBALL_COOLDOWN_S = 0.8 # s
 DOOR_REACH = 1.0 # cél
 POTION_HEAL = 3 # HP
+COUNTDOWN_S = 3.0 # s, contagem 3, 2, 1 antes de a partida valer (#255)
+COUNTDOWN_WAIT_S = 10.0 # s, espera máxima pelos Players antes de começar a contagem
 
 ENEMY_SPEED = 1.5 # cél/s
 ENEMY_RADIUS = 0.2 # cél

@@ -101,6 +101,7 @@ export interface HudState {
   }>;
   scoreboard: { players: Array<{ id: number; frags: number }>; timeLeftS: number } | null;
   killfeed: Array<{ by: number | null; victim: number; tick: number }>;
+  countdown: "waiting" | number | null; // #255: esperando os Players, 3/2/1, ou valendo
   mode: "coop" | "pvp" | null;
   status: "connecting" | "running" | "finished" | "disconnected" | "error";
   error?: string;
@@ -163,7 +164,7 @@ HudState completo e ilustrativo para montar a tela de `coop`; os números de Man
   "players": [
     {"id": 7, "name": "jogador_7", "hp": 10, "alive": true, "connected": true}
   ],
-  "scoreboard": null, "killfeed": [], "mode": "coop", "status": "running"
+  "scoreboard": null, "killfeed": [], "countdown": null, "mode": "coop", "status": "running"
 }
 ```
 

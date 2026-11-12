@@ -12,7 +12,7 @@ const player = (id: number, extra: Partial<PlayerSnapshot> = {}): PlayerSnapshot
   alive: true, connected: true, ...extra });
 
 const snapshot = (players: PlayerSnapshot[], extra: Partial<Snapshot> = {}): Snapshot => ({
-  tick: 2, last_input_seq: 0, players, enemies: [], boss: null, projectiles: [], doors: [],
+  tick: 2, countdown_end_tick: 0, last_input_seq: 0, players, enemies: [], boss: null, projectiles: [], doors: [],
   grid_delta: [], scoreboard: null, ...extra });
 
 test("grid_delta changes only the listed cells and keeps the base", () => {
@@ -98,3 +98,16 @@ test("the HUD carries the Mode once the welcome arrives", () => {
     "running");
   expect(hud.mode).toBe("coop");
 });
+
+test("the HUD shows the countdown: waiting, then 3, 2, 1, then nothing (#255)", () => {
+  const context = { userId: 1, mode: "coop" as const, options: OPTIONS };
+  const at = (tick: number, end: number | null) =>
+    buildHud(snapshot([player(1)], { tick, countdown_end_tick: end }), context, [], "running").countdown;
+  expect(at(5, null)).toBe("waiting");
+  expect(at(10, 100)).toBe(3); // faltam 90 Ticks
+  expect(at(40, 100)).toBe(2); // 60
+  expect(at(99, 100)).toBe(1); // 1
+  expect(at(100, 100)).toBeNull(); // o Tick do fim já vale
+  expect(emptyHud("connecting", null).countdown).toBeNull();
+});
+
