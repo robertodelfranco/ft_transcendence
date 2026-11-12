@@ -112,7 +112,7 @@ export class Billboards {
           sheet = this.assets[`projectile:${character.id}`] ?? sheet;
         }
       }
-      const fireballScale = projectile.kind === "fireball" ? 1.5 : 1;
+      const fireballScale = projectile.kind === "fireball" ? 1.2 : 1;
       draw(`projectile:${projectile.id}`, `${projectile.kind}:${projectile.state}`,
         sheet, clip,
         projectile.x, projectile.y, 0.18 * fireballScale, false);

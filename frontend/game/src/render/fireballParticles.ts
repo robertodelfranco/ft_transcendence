@@ -6,7 +6,7 @@ const TRAIL_INTERVAL = 1 / 30;
 const TRAIL_LIFE = 0.25;
 const IMPACT_LIFE = 0.4;
 const IMPACT_COUNT = 18;
-const MAGIC_GLOW_SCALE = 1.5;
+const MAGIC_GLOW_SCALE = 1.2;
 
 interface Source {
   state: ProjectileSnapshot["state"];
