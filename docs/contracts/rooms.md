@@ -26,6 +26,7 @@ class RoomManager:
     def join(self, match_id: int, user_id: int, username: str,
              avatar_url: str) -> RoomInfo: ...
     def leave(self, match_id: int, user_id: int) -> RoomInfo | None: ...   # None = Room destruída
+    def abandon(self, match_id: int, user_id: int) -> None: ...           # saída em partida (#240)
     def set_ready(self, match_id: int, user_id: int, ready: bool) -> RoomInfo: ...
     def set_character(self, match_id: int, user_id: int, character_id: CharacterId) -> RoomInfo: ...
     def start(self, match_id: int) -> None: ...
@@ -57,6 +58,7 @@ Garantias que o lobby assume:
 - **`avatar_url` chega pronto.** O lobby passa a URL já serializada ([auth.md](auth.md) §4, decisão 18: sem avatar enviado, a URL do padrão); a Room só a repete no `RoomInfo`.
 - **`start` só funciona uma vez.** Segunda chamada levanta `AlreadyStarted`, que é o 409 `already_started` de [matches-api.md](matches-api.md) §2.2. Sem isso, um duplo clique ou um retry de rede criaria duas tasks de tick para a mesma Room — dois ticks por tick, movimento e dano aplicados em dobro.
 - **`leave` do último Player destrói a Room** e devolve `None`. Quem chamou grava `matches.status = "aborted"`.
+- **`abandon` é a saída voluntária em partida** (#240, o botão "Sair da partida"): o mesmo efeito do Grace period vencido, sem esperar os 30 s. A Simulation tira o Player (`player_left` para os outros), o Ruleset decide o `forfeit` ([ws-messages.md](ws-messages.md) §2.6) e o User sai do `room_of` na hora, livre para outra Room. O banco não muda: o Match só é gravado no `game_over`. Depois do `game_over`, o resultado já está congelado e o `abandon` só libera o User. No Lobby, a saída continua sendo o `leave` (o `abandon` ali é `ValueError`); quem escolhe entre os dois é o lobby, pelo `status`. Sair duas vezes, ou sem estar na Room, é `NotInRoom`.
 - **`list_open` é a única fonte de Rooms abertas.** A API nunca lista Lobby a partir do banco (arq. §10.1).
 - **`options` são imutáveis** depois do `create` ([README](README.md#o-que-já-está-decidido)).
 - **Um User, uma Room.** O `RoomManager` guarda o índice `user_id → match_id`, preenchido no `join` e limpo no `leave` e quando a Room termina; `room_of` o expõe. O `POST /api/matches` confere `room_of` **antes** de gravar a linha de `matches`, para não deixar Match órfão.

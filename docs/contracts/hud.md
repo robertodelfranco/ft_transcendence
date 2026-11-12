@@ -126,6 +126,7 @@ Traduzir `reason` (`boss_defeated`, `all_dead`, `forfeit`, `frag_limit`, `time_l
 Ajuda traduzida e acessível por botão: movimento W/A/S/D, giro pelas setas esquerda/direita e mouse capturado, Shift para correr, Espaço para `fire`, F para `door`, clique na cena para Pointer Lock e Esc para liberar o mouse. Manter alinhamento com `net/input.ts` e com o Renderer; não criar atalhos de HUD sobre essas teclas.
 A partida não pausa ao abrir ajuda nem ao perder Pointer Lock. Controles DOM devem permitir navegação por teclado sem disparar Actions do jogo; o `net/input.ts` ignora as teclas cujo alvo é um controle da página desde a #168 (§11.4).
 Sair da rota chama `unmount`; fechar a página não declara vitória/derrota nem significa remoção imediata da Room, por causa do Grace period.
+O botão "Sair da partida" (#240) é a saída explícita: fica abaixo do canvas enquanto o status é `running` ou `disconnected` (com Pointer Lock, o Esc solta o mouse para clicar) e pede confirmação antes, porque no `pvp` a saída entrega a vitória por `forfeit`. Confirmado, a casca chama `POST /api/matches/{id}/leave` ([matches-api.md](matches-api.md) §2.2), que tira o Player na hora, sem Grace period, e volta ao Lobby; o `unmount` fecha o socket e libera o resto. 404 também volta ao Lobby (a Room já foi removida); outro erro aparece traduzido e o jogo continua. Enquanto a saída está em curso, a tela de fim não aparece, mesmo com o close `1000` que o servidor manda.
 
 ## 7. i18n e acessibilidade
 

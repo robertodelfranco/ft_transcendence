@@ -309,7 +309,23 @@ async def test_only_the_host_starts_and_only_once(client, db_session, app, rooms
 	assert row.status == "running" and row.started_at is not None
 	assert rooms.list_open() == []
 	assert error(await client.post(f"/api/matches/{match_id}/start", headers=host)) == (409, "already_started")
-	assert error(await client.post(f"/api/matches/{match_id}/leave", headers=guest)) == (409, "already_started")
+
+
+async def test_leaving_a_running_match_frees_the_user_and_keeps_the_match_running(client,
+		db_session, app, rooms):
+	# o "Sair da partida" (#240): sem Grace period, e o banco só recebe o Match no game_over
+	match_id, host = await open_lobby(client, db_session, app)
+	guest = await new_user(db_session, app, "rdel")
+	await client.post(f"/api/matches/{match_id}/join", headers=guest)
+	await client.post(f"/api/matches/{match_id}/start", headers=host)
+	assert (await client.post(f"/api/matches/{match_id}/leave", headers=guest)).status_code == 204
+
+	info = rooms.info(match_id)
+	(guest_id,) = [p.user_id for p in info.players if p.user_id != info.created_by]
+	assert rooms.room_of(guest_id) is None
+	assert rooms.game_room(match_id).players[guest_id].left
+	assert (await match_row(db_session, match_id)).status == "running"
+	assert error(await client.post(f"/api/matches/{match_id}/leave", headers=guest)) == (409, "not_in_match")
 
 
 async def test_pvp_needs_two_to_start(client, db_session, app, rooms):

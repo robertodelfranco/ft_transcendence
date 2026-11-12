@@ -34,7 +34,7 @@ export default tseslint.config(
             exclude: [
               "className", "style", "type", "key", "id", "width", "height",
               "href", "to", "rel", "target", "htmlFor", "name", "role", "lang",
-              "value", "src", "autoComplete", "inputMode",
+              "value", "src", "autoComplete", "inputMode", "kind", "icon",
             ],
           },
         },

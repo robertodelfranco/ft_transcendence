@@ -32,6 +32,14 @@ server {
     # porta de dentro do container (443) e perderia a 8443 do PC da 42, como na decisão 12
     absolute_redirect off;
 
+    # outro nome (o IP do PC, por exemplo) vai para o PUBLIC_HOST: o same_origin do backend e o cookie
+    # de refresh só valem nele, e por outro nome o /refresh daria 403 no console (decisão 21).
+    # $http_host e não $host: o PUBLIC_HOST leva a porta (decisão 12). 302 e não 301: o navegador não
+    # guarda um redirect para um PUBLIC_HOST que pode mudar no .env
+    if ($http_host != "${PUBLIC_HOST}") {
+        return 302 https://${PUBLIC_HOST}$request_uri;
+    }
+
     client_max_body_size 3m; # acima dos 2 MiB do avatar: o 413 sai do backend, no envelope (infra.md §2.3)
 
     location / {

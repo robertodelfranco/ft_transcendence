@@ -57,6 +57,15 @@ jobs:
           echo "$got"
           test "$got" = "301 https://localhost:8443/api/health"
 
+      # #235: outro nome (o IP, por exemplo) vai para o PUBLIC_HOST, com caminho e query (decisão 21);
+      # o nome certo seguir em 200 já é provado pelos curl dos passos acima
+      - name: Other host redirects to PUBLIC_HOST
+        run: |
+          got=$(curl -s --cacert ci-cert.pem -o /dev/null -w '%{http_code} %{redirect_url}' \
+            -H 'Host: 127.0.0.1:8443' 'https://localhost:8443/api/health?x=1')
+          echo "$got"
+          test "$got" = "302 https://localhost:8443/api/health?x=1"
+
       - name: Check database
         run: docker compose exec -T db pg_isready -U ci -d transcendence
 

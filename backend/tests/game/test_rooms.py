@@ -609,6 +609,80 @@ async def test_a_disconnect_from_a_removed_room_is_not_an_error(manager):
 	manager.player_disconnected(99, 7)
 
 
+# ---------- Sair da partida (#240) ----------
+
+async def test_abandon_takes_the_player_out_without_waiting_the_grace_period(manager, connections,
+		fake_ws):
+	lobby(manager, players=(7, 9))
+	manager.start(12)
+	room = manager.game_room(12)
+	ws9 = fake_ws()
+	await connections.connect(9, "game", ws9, match_id=12)
+	for user_id in (7, 9):
+		manager.player_connected(12, user_id)
+	manager.abandon(12, 7)
+	await until(lambda: "player_left" in events_of(ws9, 7))
+
+	assert room.players[7].left
+	assert manager.room_of(7) is None # livre para entrar em outra Room na hora
+	assert manager.room_of(9) == 12
+	assert room.result is None # no coop, quem ficou continua jogando
+
+
+async def test_abandon_in_pvp_gives_the_win_to_who_stayed(manager, results):
+	lobby(manager, mode=Mode.PVP, max_players=2, players=(7, 9))
+	manager.start(12)
+	for user_id in (7, 9):
+		manager.player_connected(12, user_id)
+	manager.abandon(12, 7)
+	await until(lambda: results.recorded)
+
+	((_, outcome, _),) = results.recorded
+	assert (outcome.result, tuple(outcome.winner_ids), outcome.reason) == ("win", (9,), "forfeit")
+
+
+async def test_the_socket_closing_after_abandon_starts_no_grace_period(manager, short_grace):
+	lobby(manager, players=(7, 9))
+	manager.start(12)
+	room = manager.game_room(12)
+	for user_id in (7, 9):
+		manager.player_connected(12, user_id)
+	manager.abandon(12, 7)
+	manager.player_disconnected(12, 7) # o finally do /ws/game, quando o close_game fecha o socket
+
+	assert 7 not in manager._entries[12].grace
+	assert manager.player_connected(12, 7) is False # Reconnection depois de sair é recusada
+	await until(lambda: room.players[7].left)
+
+
+async def test_abandon_after_game_over_only_frees_the_user(manager, monkeypatch, results):
+	monkeypatch.setattr(rooms, "DYING_TICKS", 10_000)
+	lobby(manager)
+	manager.start(12)
+	room = manager.game_room(12)
+	manager.player_connected(12, 7)
+	end_game(manager)
+	await until(lambda: results.recorded)
+	manager.abandon(12, 7)
+
+	assert not room.players[7].left # o resultado já foi gravado: nada muda nele
+	assert manager.room_of(7) is None
+
+
+async def test_abandon_refusals(manager):
+	lobby(manager, players=(7, 9))
+	with pytest.raises(ValueError):
+		manager.abandon(12, 7) # no Lobby a saída é o leave
+	manager.start(12)
+	with pytest.raises(NotInRoom):
+		manager.abandon(12, 8)
+	with pytest.raises(RoomNotFound):
+		manager.abandon(99, 7)
+	manager.abandon(12, 7)
+	with pytest.raises(NotInRoom):
+		manager.abandon(12, 7) # sair duas vezes
+
+
 # ---------- app ----------
 
 async def test_the_app_hands_its_room_manager_to_the_routes(app):

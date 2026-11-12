@@ -25,7 +25,7 @@ from app.matches.schemas import (AchievementInfo, AchievementUnlocked, CreateMat
 	HistoryOther, Leaderboard, LeaderboardMetric, LeaderboardRow, MatchDetail, MatchHistoryItem,
 	MatchHistoryPage, MatchPlayerRow, PlayerStatsOut, UserAchievements, UserStats, parse_options)
 from app.ws.app_events import publish_lobby_removed, publish_lobby_update, publish_match_started
-from app.ws.manager import ConnectionManager
+from app.ws.manager import NORMAL_CLOSURE, ConnectionManager
 
 
 @dataclass(frozen=True)
@@ -102,7 +102,14 @@ async def leave_match(session: AsyncSession, rooms: RoomManager, connections: Co
 
 	A Room muda antes do banco e sem await: ninguém entra entre a saída e a gravação. A saída por
 	presença (leave_when_offline) também passa por aqui, e por isso publica do mesmo jeito.
+
+	Em partida, é o botão "Sair da partida" (#240): a presença nunca chega aqui com a Room rodando.
 	"""
+	if rooms.info(match_id).status != "lobby":
+		rooms.abandon(match_id, user_id) # o banco só recebe o Match no game_over (arq. §2)
+		# 1000: saída normal, sem Reconnection; um join depois disso dá 4403
+		await connections.close_game(user_id, match_id, NORMAL_CLOSURE, "left the match")
+		return
 	info = rooms.leave(match_id, user_id)
 	values = {"status": "aborted"} if info is None else {"created_by": info.created_by}
 	await session.execute(update(Match).where(Match.id == match_id).values(**values))

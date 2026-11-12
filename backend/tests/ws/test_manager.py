@@ -228,6 +228,19 @@ async def test_close_all_closes_everything_with_4503_and_announces_nothing(manag
 	assert presence == []
 
 
+async def test_close_game_closes_only_that_user_in_that_match(manager, fake_ws):
+	# o "Sair da partida" (#240): o app do User e o jogo dos outros continuam abertos
+	leaving, app_tab, other = fake_ws(), fake_ws(), fake_ws()
+	await manager.connect(7, "game", leaving, match_id=12)
+	await manager.connect(7, "app", app_tab)
+	await manager.connect(9, "game", other, match_id=12)
+
+	await manager.close_game(7, 12, 1000, "left the match")
+	await manager.close_game(7, 13, 1000) # outra partida: nada a fechar
+	assert (leaving.close_code, app_tab.close_code, other.close_code) == (1000, None, None)
+	assert not manager.in_game(7, 12) and manager.in_game(9, 12)
+
+
 # ---------- presença (§2.3) ----------
 
 async def test_first_tab_announces_online_and_the_second_does_not(manager, presence, fake_ws):

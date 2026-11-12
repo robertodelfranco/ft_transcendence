@@ -109,10 +109,13 @@ export const lobbyHandlers = [
     const room = findRoom(params.matchId);
     if (!room)
       return apiError(404, "match_not_found");
-    if (room.status !== "lobby")
-      return apiError(409, "already_started");
     if (!isIn(room))
       return apiError(409, "not_in_match");
+    // em partida é o "Sair da partida" (#240): o Player sai e a Room segue, sem lobby_update
+    if (room.status !== "lobby") {
+      room.players = room.players.filter((player) => player.user_id !== me.id);
+      return new HttpResponse(null, { status: 204 });
+    }
     room.players = room.players.filter((player) => player.user_id !== me.id);
     if (room.players.length === 0) {
       rooms = rooms.filter((other) => other !== room);

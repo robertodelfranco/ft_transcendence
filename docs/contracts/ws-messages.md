@@ -133,10 +133,10 @@ Os estados `HITED` (Enemy), `DAMAGE` e `DEAD` do C duravam um quadro ou marcavam
 |---|---|---|---|
 | `coop` | O Boss entra em `dying` | `win` | `boss_defeated` |
 | `coop` | O último Player vivo morre | `loss` | `all_dead` |
-| `coop` | Todos os Players saíram (Grace period expirado para todos) | `loss` | `forfeit` |
+| `coop` | Todos os Players saíram (Grace period expirado ou "Sair da partida") | `loss` | `forfeit` |
 | `pvp` | Um Player chega a `frag_limit` | `win` | `frag_limit` |
 | `pvp` | `time_limit_s` acaba | `win`, ou `draw` com placar igual | `time_limit` |
-| `pvp` | O Grace period do adversário expira | `win` | `forfeit` |
+| `pvp` | O Grace period do adversário expira, ou ele sai pelo "Sair da partida" | `win` | `forfeit` |
 
 `winner_ids` tem todos os Players da partida no `coop` com `win`, e fica vazio com `loss`. No `pvp`, tem o vencedor, ou fica vazio no `draw`. Cada cliente descobre o próprio desfecho conferindo se o seu id está em `winner_ids`.
 

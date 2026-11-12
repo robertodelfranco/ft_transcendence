@@ -4,7 +4,7 @@
 >
 > Papel no time: **Dev**. Contratos que eu escrevo: [auth.md](../contracts/auth.md) e [ws-manager.md](../contracts/ws-manager.md), mais o [ADR 0002](../adr/002-tokens.md). Contratos que eu assino: [ws-messages.md](../contracts/ws-messages.md), [rooms.md](../contracts/rooms.md), [infra.md](../contracts/infra.md), [mount-game.md](../contracts/mount-game.md), [rules.md](../contracts/rules.md).
 >
-> **Atualizado em 16/10**: F2.2, F2.1 (parte 1), F2.3, F2.4, F6.2, F6.4 e F6.5 na `main`; F2.5 em PR rascunho (#109); F2.1 parte 2 implementada na branch `86-f2-1-ws-app`. A revisão anterior, de 12/10, veio da leitura do Akita.
+> **Atualizado em 10/11**: todas as tarefas da Slice estão na `main`, e o aceite do Caminho 2 (#207, PR #220) foi conferido na stack de pé em 09/11. Falta só a F9 (README e ensaio), de todos. A revisão anterior, de 16/10, ainda listava F2.5 a F2.12, F6.3 e F8.7 em andamento.
 
 ## 1. Inventário
 
@@ -32,23 +32,23 @@
 | F6.1 | Migrações `users`, `refresh_tokens`, `oauth_accounts`, `friendships` (com F5.1) | 0,5 | F5.1 | S1 | Sobem junto com as de F5 | ✅ modelos (#51, PR #52); migração na `0001_initial` do Akita (#29, PR #78) |
 | F6.2 | Signup, login e `me`: Argon2id, JWT de acesso, validação Pydantic, mesma mensagem para e-mail e senha errados | 2 | F6.1 | S1 | C2: signup → login → `me` pelo Nginx com HTTPS | ✅ #69 (PR #81) |
 | F6.4 | `get_current_user` e `authenticate_ws_token` | 0,5 | F6.2 | S1 | Outras frentes usam `CurrentUser` | ✅ #70 (PR #93) |
-| F6.3 | Refresh com rotação e detecção de reuso; logout | 1,5 | F6.2 | S2 | Reuso de refresh antigo revoga a família | 🔄 #87, implementada na branch `87-f6-3-refresh-logout` (com o limite de 30/min no refresh, que a F6.5 não tinha como pôr antes da rota existir) |
+| F6.3 | Refresh com rotação e detecção de reuso; logout | 1,5 | F6.2 | S2 | Reuso de refresh antigo revoga a família | ✅ #87 (21/10), com o limite de 30/min no refresh |
 | F6.5 | Middlewares: logging JSON com `request_id`, handlers de erro no envelope, `RateLimit` como dependência | 2 | F0.3 | S2 | 6 logins errados em 1 min dão 429 | ✅ #88 (PR #96) |
 
 ### F2 — netcode, servidor e cliente (15 d)
 
 | ID | Tarefa | d | Depende de | Sem. | Pronto quando | Estado |
 |---|---|---|---|---|---|---|
-| F2.1 | `ConnectionManager` (`connect`, `disconnect`, `send_to_user`, `broadcast`, `is_online`, `online_users`, callback de presença) com testes por fake de socket, e o endpoint `/ws/app` | 2 | F0.3, F6.4 | S2 | Presença funciona com duas abas do mesmo User | 🔄 parte 1 (classe) ✅ #65 (PR #66); parte 2 (`/ws/app`, presença, `publish_*`) #86 implementada na branch `86-f2-1-ws-app` |
+| F2.1 | `ConnectionManager` (`connect`, `disconnect`, `send_to_user`, `broadcast`, `is_online`, `online_users`, callback de presença) com testes por fake de socket, e o endpoint `/ws/app` | 2 | F0.3, F6.4 | S2 | Presença funciona com duas abas do mesmo User | ✅ parte 1 #65 (PR #66); parte 2 (`/ws/app`, presença, `publish_*`) #86 (17/10) |
 | F2.2 | `protocol.py` (Pydantic, união discriminada por `type`) e `types.ts` espelhado | 1 | F0.2 | S2 | Mensagem inválida fecha com `4400` | ✅ #54 (PR #55) |
 | F2.3 | `RoomManager` + uma `asyncio.Task` por Room, tick fixo 30 Hz com compensação de deriva, Snapshot a cada 2 ticks; `join` atômico | 2 | F1.6 | S2 | Room criada, iniciada e cancelada sem vazar task | ✅ #68 (PR #74) |
 | F2.4 | `WS /ws/game/{match_id}`: `join` com token em ≤ 5 s, `welcome`, laço de leitura, códigos `44xx` | 1,5 | F2.3, F6.4 | S2 | Testes de `join` sem token, válido e malformado | ✅ #71 (PR #95) |
-| F2.5 | Cliente: socket, `mountGame`, `ViewState` montado do último Snapshot (sem prediction ainda), envio de Input e Action | 1,5 | F2.4 | S2 | C2: 1 player anda com movimento decidido pelo servidor | 🔄 #72, PR rascunho #109: socket, input, `ViewState` e `createMountGame`; falta o `index.ts` (espera o Renderer, PR #105) e a prova no navegador |
-| F2.6 | N players; limite de 60 Inputs/s; `dt` do servidor; `Seq` monotônico; fila por conexão com descarte | 1 | F2.5 | S3 | 5 abas numa Room sem travar | 🔄 #89, implementada na branch `89-f2-6-n-players`: limite de 60 mensagens/s com rajada de 120 por socket, testes com 5 sockets e com cliente lento |
-| F2.8 | Interpolation dos outros a `now − 100 ms` | 1 | F2.6 | S3 | Outro player desliza sem saltos | ⏳ #90 |
-| F2.9 | Fim de partida: chamar `record_match_result` uma vez, remover a Room após 60 s, `4503` no desligamento | 1 | F5.3 | S3 | Teste: `game_over` → uma chamada, mesmo com ticks depois | 🔄 #91, implementada na branch `91-f2-9-fim-de-partida`: grava no `game_over`, tick só pela animação do Boss, Room removida em 60 s, `abort_unfinished` no `_abort` |
-| F2.10 | Grace period de 30 s e Reconnection com Snapshot completo; no PvP, grace expirada conta derrota | 2 | F2.7 | S4 | Fechar a aba e voltar em 20 s mantém HP e chaves | ⏳ #107 |
-| F2.12 | `ping/pong` com RTT na HUD; teste de aceite com throttling (100 ms + 2 % de perda, 5 min) anotado no PR | 1 | F2.8 | S5 | Resultado do teste no PR | ⏳ #108 |
+| F2.5 | Cliente: socket, `mountGame`, `ViewState` montado do último Snapshot (sem prediction ainda), envio de Input e Action | 1,5 | F2.4 | S2 | C2: 1 player anda com movimento decidido pelo servidor | ✅ #72 (19/10); a #147 (falha transitória do token não encerra a partida) fechou em 23/10 |
+| F2.6 | N players; limite de 60 Inputs/s; `dt` do servidor; `Seq` monotônico; fila por conexão com descarte | 1 | F2.5 | S3 | 5 abas numa Room sem travar | ✅ #89 (20/10): 60 mensagens/s com rajada de 120 por socket; testes com 5 sockets e com cliente lento |
+| F2.8 | Interpolation dos outros a `now − 100 ms` | 1 | F2.6 | S3 | Outro player desliza sem saltos | ✅ #90 (22/10) |
+| F2.9 | Fim de partida: chamar `record_match_result` uma vez, remover a Room após 60 s, `4503` no desligamento | 1 | F5.3 | S3 | Teste: `game_over` → uma chamada, mesmo com ticks depois | ✅ #91 (23/10) |
+| F2.10 | Grace period de 30 s e Reconnection com Snapshot completo; no PvP, grace expirada conta derrota | 2 | F2.7 | S4 | Fechar a aba e voltar em 20 s mantém HP e chaves | ✅ #107 (28/10) |
+| F2.12 | `ping/pong` com RTT na HUD; teste de aceite com throttling (100 ms + 2 % de perda, 5 min) anotado no PR | 1 | F2.8 | S5 | Resultado do teste no PR | ✅ #108 (03/11); teste com throttling em [teste-throttling-f2-12.md](../infra/teste-throttling-f2-12.md) (PR #206) |
 
 Fora da minha Slice dentro de F2: **F2.7** (Prediction/Reconciliation) e **F2.13** (teste de carga) são do Roberto desde 28/09.
 
@@ -56,7 +56,7 @@ Fora da minha Slice dentro de F2: **F2.7** (Prediction/Reconciliation) e **F2.13
 
 | ID | Tarefa | d | Depende de | Sem. | Pronto quando | Estado |
 |---|---|---|---|---|---|---|
-| F8.7 | `GET /metrics` com `prometheus_client`, só na rede interna; `http_requests_total{route,status}`, `auth_login_total{result}`, `ws_connections{channel}`, `game_rooms_active`, `game_tick_seconds` (histograma) | 1 | F2.3, F6.5 | S3 | `curl backend:8000/metrics` de dentro da rede mostra as cinco séries; de fora, não responde | 🔄 #92, implementada na branch `92-f8-7-metrics` |
+| F8.7 | `GET /metrics` com `prometheus_client`, só na rede interna; `http_requests_total{route,status}`, `auth_login_total{result}`, `ws_connections{channel}`, `game_rooms_active`, `game_tick_seconds` (histograma) | 1 | F2.3, F6.5 | S3 | `curl backend:8000/metrics` de dentro da rede mostra as cinco séries; de fora, não responde | ✅ #92 (21/10) |
 
 ### F9 — de todos
 
@@ -93,9 +93,9 @@ Cada linha existe porque, mal entendida, faz duas pessoas escreverem a mesma coi
 | `protocol.py` / `types.ts` | Roberto (`sim.py`/`applyInput.ts`), Rafael (render), eu (F2.4, F2.5) | única fonte das mensagens do jogo | ✅ F2.2 |
 | `CurrentUser` / `get_current_user`, `authenticate_ws_token` | Caio, Akita, eu (F2.4) | toda rota autenticada e o `join` dos sockets | ✅ F6.4 |
 | `RateLimit` | Akita (`POST /api/matches`), eu (login) | 429 no envelope | ✅ F6.5 |
-| `ConnectionManager` e as três funções de publicação | Akita (F5.2, lobby), Caio (F6.7, presença) | broadcast e presença | 🔄 a classe ✅; `/ws/app`, presença e `publish_*` na branch `86-f2-1-ws-app` |
+| `ConnectionManager` e as três funções de publicação | Akita (F5.2, lobby), Caio (F6.7, presença) | broadcast e presença | ✅ F2.1 |
 | `RoomManager` (interface de `rooms.md`) | Akita (F5.2 chama `create`/`join`/`start`) | ciclo de vida do lobby | ✅ F2.3 |
-| `/metrics` com as 5 séries | Akita (F8.8, dashboards) | Prometheus ter o que coletar do backend | ⏳ F8.7 |
+| `/metrics` com as 5 séries | Akita (F8.8, dashboards) | Prometheus ter o que coletar do backend | ✅ F8.7 |
 
 ## 4. O que eu faço sozinho
 
@@ -114,9 +114,9 @@ Nada aqui espera ninguém. É por onde eu sigo quando algo travar.
 |---|---|---|---|
 | **F5.1**: Alembic, `DbSession` e a migração `0001_initial` | Akita (#29) | a parte com banco da F6.2 e o fecho da F6.1 | ✅ PR #78 |
 | **F1.6**: `CoopRuleset`, `game_over` emitido uma vez | Roberto | o fim de partida (F2.9) e um `step` com entidades no C2 | ✅ PRs #101 e #104 |
-| **F5.3**: `record_match_result` | Akita | a F2.9 chama essa função | S3 |
-| **F2.7**: Prediction e Reconciliation | Roberto | a reconexão (F2.10) | S3 |
-| Par em F2.3 e F2.5 | Roberto | o laço do tick e o `net/` do cliente, onde a Prediction dele entra | S2 |
+| **F5.3**: `record_match_result` | Akita | a F2.9 chama essa função | ✅ |
+| **F2.7**: Prediction e Reconciliation | Roberto | a reconexão (F2.10) | ✅ |
+| Par em F2.3 e F2.5 | Roberto | o laço do tick e o `net/` do cliente, onde a Prediction dele entra | ✅ |
 
 ## 6. Decisões já fechadas
 
@@ -177,10 +177,10 @@ No calendário replanejado ([replanejamento-e-board.md](../pm/replanejamento-e-b
 | Semana | O que eu entrego | d | Estado |
 |---|---|---|---|
 | **S1** · até 10/10 | `auth.md` · `ws-manager.md` · F0.3 · F6.1 (modelos) | — | ✅ (F6.2 e F6.4 passaram para a S2) |
-| **S2** · 11–17/10 | F2.2 · F2.1 parte 1 (`ConnectionManager`) · F2.3 · F6.2 · F6.4 · F2.4 · F2.5 | ≈ 9,5 | tudo na `main`, menos a F2.5 (PR rascunho #109). Adiantados da S3: F6.5 (na `main`) e F2.1 parte 2 (em branch) |
-| **S3** · 18–24/10 | F2.1 parte 2 (`/ws/app` e presença) · F6.3 · F6.5 · F2.6 · F2.8 · F2.9 · F8.7 | ≈ 7 | |
-| **S4** · 25–31/10 | F2.10 | 2 | |
-| **S5** · 01–14/11 *(duas semanas)* | F2.12 · F9.1 · folga para bug e revisão | 1 + folga | |
+| **S2** · 11–17/10 | F2.2 · F2.1 parte 1 (`ConnectionManager`) · F2.3 · F6.2 · F6.4 · F2.4 · F2.5 | ≈ 9,5 | ✅ (a F2.5 fechou em 19/10). Adiantados da S3: F6.5 e F2.1 parte 2 |
+| **S3** · 18–24/10 | F2.1 parte 2 (`/ws/app` e presença) · F6.3 · F6.5 · F2.6 · F2.8 · F2.9 · F8.7 | ≈ 7 | ✅ (F2.9 em 23/10) |
+| **S4** · 25–31/10 | F2.10 | 2 | ✅ 28/10 |
+| **S5** · 01–14/11 *(duas semanas)* | F2.12 · F9.1 · folga para bug e revisão | 1 + folga | F2.12 ✅ 03/11; aceite do Caminho 2 ✅ 09/11; F9.1 em PR |
 | **S6** · 15–21/11 | bug, README fechado, ensaio | — | |
 
 **A S2 é a semana mais apertada:** ≈ 9,5 d numa semana de 5, porque F6.2 e F6.4 vieram da S1. A ordem protege o critério do C2 (login pelo Nginx e 1 Player andando com movimento do servidor):
@@ -200,7 +200,7 @@ No calendário replanejado ([replanejamento-e-board.md](../pm/replanejamento-e-b
 | 3 | Faltava o ADR de tokens | resolvido: [002-tokens.md](../adr/002-tokens.md) |
 | 4 | `matches-api.md` §3 mostrava `enemy_density` | resolvido pelo Akita |
 | 5 | A arq. §7.4 não tem `lobby_removed`, nem o `lobby_update` para todo `/ws/app` | aberto: Roberto ([ws-manager.md](../contracts/ws-manager.md), "Em aberto" 3) |
-| 6 | `ws-messages.md` §2.7: o `4503` só fala em desligamento do backend, mas também vai fechar a Room cujo `step` falhou | aberto: Roberto |
+| 6 | `ws-messages.md` §2.7: o `4503` só fala em desligamento do backend, mas também vai fechar a Room cujo `step` falhou | resolvido: o §2.7 e as Decisões do `ws-messages.md` registram os dois casos |
 | 7 | `frontend/game/dev.ts` na `main` tem marcadores de conflito de merge (`<<<<<<< HEAD`) e não compila | resolvido: conferido em 16/10, sem marcadores |
 
 ## 9. O que eu explico na defesa

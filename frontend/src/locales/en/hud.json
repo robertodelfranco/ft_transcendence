@@ -6,6 +6,13 @@
   "viewResult": "View result",
   "view": "Game view",
   "retry": "Try again",
+  "leave": {
+    "button": "Leave match",
+    "confirm": "Leave the match? You won't be able to come back.",
+    "yes": "Yes, leave",
+    "no": "Keep playing",
+    "leaving": "Leaving…"
+  },
   "stats": {
     "label": "Your status",
     "hp": "Health",
