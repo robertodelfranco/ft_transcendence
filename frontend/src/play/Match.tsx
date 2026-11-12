@@ -86,48 +86,51 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
   return (
     // largura limitada pela altura da janela: o canvas 16:9 inteiro cabe na tela, e os recursos no
     // rodapé aparecem sem rolar (hud.md §2)
-    <div className="relative mx-auto w-full max-w-[calc((100dvh-14rem)*16/9)]">
-      <canvas
-        ref={canvasRef}
-        aria-label={t("view")}
-        className="aspect-video w-full rounded border border-crypt-700 bg-black"
-      />
-      <canvas
-        ref={minimapRef}
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-3 right-3 h-32 w-32 rounded border border-crypt-700 bg-crypt-950/90 sm:h-40 sm:w-40"
-      />
-      {hud && live && <Hud hud={hud} userId={user?.id ?? null} />}
-      {/* fora da partida em andamento, o centro do canvas fala: conexão, erro ou fim. Saindo, o
-          close 1000 do servidor marcaria "finished": a tela de fim não pisca antes do Lobby */}
-      {!live && !leaving && (
-        <div className="mt-2 flex justify-center md:absolute md:inset-0 md:mt-0 md:items-center md:p-3">
-          <div className="flex max-w-md flex-col items-center gap-3 rounded bg-crypt-950/85 px-4 py-3 text-center">
-            {status === "connecting" && <p role="status">{t("connecting", { matchId })}</p>}
-            {status === "error" && (
-              <>
-                <ErrorNotice failure={{ code: errorCode, requestId: null }} />
-                {/* remonta o jogo: reentra enquanto o Grace period segura a vaga */}
-                <button type="button" onClick={onRetry} className={buttonSecondary}>
-                  {t("retry")}
-                </button>
-              </>
-            )}
-            {status === "finished" && !outcome && <p role="status">{t("finished")}</p>}
-            {outcome && (
-              <div role="status" className="flex flex-col gap-1">
-                <p className="text-xl font-bold">{t(`game:outcomes.${outcome}`)}</p>
-                {reason && <p>{t(`game:reasons.${reason}`)}</p>}
-              </div>
-            )}
-            {/* o detalhe vem do banco, numa tela própria que o histórico também abre */}
-            {status === "finished" && (
-              <Link to={`/matches/${matchId}`} className={buttonPrimary}>{t("viewResult")}</Link>
-            )}
-            {over && <Link to="/lobby" className={linkClass}>{t("lobby:room.back")}</Link>}
+    <div className="mx-auto w-full max-w-[calc((100dvh-14rem)*16/9)]">
+      {/* o minimapa e a HUD se ancoram no canvas, não no botão de sair abaixo dele */}
+      <div className="relative">
+        <canvas
+          ref={canvasRef}
+          aria-label={t("view")}
+          className="aspect-video w-full rounded border border-crypt-700 bg-black"
+        />
+        <canvas
+          ref={minimapRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-3 right-3 h-32 w-32 rounded border border-crypt-700 bg-crypt-950/90 sm:h-40 sm:w-40"
+        />
+        {hud && live && <Hud hud={hud} userId={user?.id ?? null} />}
+        {/* fora da partida em andamento, o centro do canvas fala: conexão, erro ou fim. Saindo, o
+            close 1000 do servidor marcaria "finished": a tela de fim não pisca antes do Lobby */}
+        {!live && !leaving && (
+          <div className="mt-2 flex justify-center md:absolute md:inset-0 md:mt-0 md:items-center md:p-3">
+            <div className="flex max-w-md flex-col items-center gap-3 rounded bg-crypt-950/85 px-4 py-3 text-center">
+              {status === "connecting" && <p role="status">{t("connecting", { matchId })}</p>}
+              {status === "error" && (
+                <>
+                  <ErrorNotice failure={{ code: errorCode, requestId: null }} />
+                  {/* remonta o jogo: reentra enquanto o Grace period segura a vaga */}
+                  <button type="button" onClick={onRetry} className={buttonSecondary}>
+                    {t("retry")}
+                  </button>
+                </>
+              )}
+              {status === "finished" && !outcome && <p role="status">{t("finished")}</p>}
+              {outcome && (
+                <div role="status" className="flex flex-col gap-1">
+                  <p className="text-xl font-bold">{t(`game:outcomes.${outcome}`)}</p>
+                  {reason && <p>{t(`game:reasons.${reason}`)}</p>}
+                </div>
+              )}
+              {/* o detalhe vem do banco, numa tela própria que o histórico também abre */}
+              {status === "finished" && (
+                <Link to={`/matches/${matchId}`} className={buttonPrimary}>{t("viewResult")}</Link>
+              )}
+              {over && <Link to="/lobby" className={linkClass}>{t("lobby:room.back")}</Link>}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
       {/* abaixo do canvas: com o Pointer Lock, o Esc solta o mouse e o botão fica clicável */}
       {(live || leaving) && (
         <div className="mt-2 flex flex-col items-end gap-2">
