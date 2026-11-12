@@ -88,3 +88,12 @@ describe("telas da conta", () => {
     expect(router.state.location.search).toBe(`?next=${encodeURIComponent(path)}`);
   });
 });
+
+describe("modo partida (#254)", () => {
+  // só a rota com handle.compact encolhe o Layout: as outras páginas ficam como sempre
+  it("fora da partida, o layout é o padrão e o título da página aparece", async () => {
+    renderAt("/login");
+    expect(await screen.findByRole("heading", { level: 1 })).not.toHaveClass("sr-only");
+    expect(document.querySelector("[data-layout]")).toHaveAttribute("data-layout", "default");
+  });
+});

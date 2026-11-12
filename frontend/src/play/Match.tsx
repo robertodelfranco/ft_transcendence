@@ -15,6 +15,8 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
   const { user } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const minimapRef = useRef<HTMLCanvasElement>(null);
+  // a área que vai para a tela cheia: canvas, minimapa, HUD e aviso central, sem os botões
+  const stageRef = useRef<HTMLDivElement>(null);
   const [hud, setHud] = useState<HudState | null>(null);
   const [end, setEnd] = useState<EndResult | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -83,15 +85,28 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
     navigate("/lobby");
   }
 
+  // Tela cheia (#254): o navegador só aceita a partir de um clique, e sai sozinho com o Esc. O
+  // pedido pode ser recusado (permissão, iframe): sem o catch, a recusa vira erro no console
+  const canFullscreen = document.fullscreenEnabled === true;
+  function enterFullscreen() {
+    stageRef.current?.requestFullscreen().catch(() => {});
+  }
+
   return (
     // largura limitada pela altura da janela: o canvas 16:9 inteiro cabe na tela, e os recursos no
-    // rodapé aparecem sem rolar (hud.md §2)
-    <div className="mx-auto w-full max-w-[calc((100dvh-14rem)*16/9)]">
-      {/* o que fica sobre o canvas no md se ancora aqui, e não no botão de sair abaixo */}
-      <div className="relative">
+    // rodapé aparecem sem rolar (hud.md §2). Os 8.5rem são o que fica fora do canvas no modo partida
+    // (#254): cabeçalho compacto, o py-2 do main, a linha do botão de sair e o rodapé compacto
+    <div className="mx-auto w-full max-w-[calc((100dvh-8.5rem)*16/9)]">
+      {/* o que fica sobre o canvas no md se ancora aqui, e não no botão de sair abaixo. Em tela
+          cheia, este bloco ocupa a tela: fundo preto e o canvas centralizado */}
+      <div
+        ref={stageRef}
+        className="relative [&:fullscreen]:flex [&:fullscreen]:flex-col [&:fullscreen]:justify-center [&:fullscreen]:bg-black"
+      >
         {/* o minimapa se ancora ao canvas, não ao bloco inteiro: abaixo do md o HUD vem depois do
-            canvas e alonga o bloco, e o canto inferior direito dele passava a ser o do HUD */}
-        <div className="relative">
+            canvas e alonga o bloco, e o canto inferior direito dele passava a ser o do HUD. Em tela
+            cheia, a largura vem da altura da tela, para o 16:9 inteiro caber em qualquer monitor */}
+        <div className="relative [:fullscreen>&]:mx-auto [:fullscreen>&]:w-full [:fullscreen>&]:max-w-[calc(100dvh*16/9)]">
           <canvas
             ref={canvasRef}
             role="img"
@@ -151,9 +166,16 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
               </button>
             </div>
           ) : (
-            <button type="button" onClick={() => setConfirming(true)} className={buttonSecondary}>
-              {t("leave.button")}
-            </button>
+            <div className="flex flex-wrap justify-end gap-2">
+              {canFullscreen && (
+                <button type="button" onClick={enterFullscreen} className={buttonSecondary}>
+                  {t("fullscreen")}
+                </button>
+              )}
+              <button type="button" onClick={() => setConfirming(true)} className={buttonSecondary}>
+                {t("leave.button")}
+              </button>
+            </div>
           )}
         </div>
       )}
