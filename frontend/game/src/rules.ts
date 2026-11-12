@@ -30,7 +30,7 @@ export const BOSS_ATTACK_RANGE = 18.0; // cél
 export const BOSS_ATTACK_WINDUP_S = 1.2; // s
 export const BOSS_ATTACK_COOLDOWN_S = 2.2; // s
 export const BOSS_DYING_S = 1.2; // s
-export const BULLET_DAMAGE = 2; // HP
+export const BULLET_DAMAGE = 3; // HP
 export const FIREBALL_BOSS_DAMAGE = 10; // HP
 
 export const PROJECTILE_SPEED = 12.0; // cél/s

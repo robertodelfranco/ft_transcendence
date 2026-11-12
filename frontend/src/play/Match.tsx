@@ -61,15 +61,28 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
     // largura limitada pela altura da janela: o canvas 16:9 inteiro cabe na tela, e os recursos no
     // rodapé aparecem sem rolar (hud.md §2)
     <div className="relative mx-auto w-full max-w-[calc((100dvh-14rem)*16/9)]">
-      <canvas
-        ref={canvasRef}
-        aria-label={t("view")}
-        className="aspect-video w-full rounded border border-crypt-700 bg-black"
-      />
+      <div className="relative">
+        <canvas
+          ref={canvasRef}
+          aria-label={t("view")}
+          className="block aspect-video w-full rounded border border-crypt-700 bg-black"
+        />
+        {status === "running" && hud?.alive && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-[20px] w-[20px] -translate-x-1/2 -translate-y-1/2"
+          >
+            <span className="absolute left-[9px] top-0 h-[6px] w-[2px] bg-white ring-1 ring-black" />
+            <span className="absolute bottom-0 left-[9px] h-[6px] w-[2px] bg-white ring-1 ring-black" />
+            <span className="absolute left-0 top-[9px] h-[2px] w-[6px] bg-white ring-1 ring-black" />
+            <span className="absolute right-0 top-[9px] h-[2px] w-[6px] bg-white ring-1 ring-black" />
+          </span>
+        )}
+      </div>
       <canvas
         ref={minimapRef}
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-3 right-3 h-32 w-32 rounded border border-crypt-700 bg-crypt-950/90 sm:h-40 sm:w-40"
+        className="pointer-events-none absolute bottom-3 right-3 h-32 w-32 rounded-sm border border-torch/35 border-t-torch/60 bg-crypt-950/95 shadow-[0_4px_20px_rgba(0,0,0,0.5)] sm:h-40 sm:w-40"
       />
       {hud && live && <Hud hud={hud} userId={user?.id ?? null} />}
       {/* fora da partida em andamento, o centro do canvas fala: conexão, erro ou fim */}

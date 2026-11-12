@@ -13,7 +13,7 @@ export const billboardUrls = (theme: Theme = dungeonTheme) => ({
   potion: ["/assets/collectables/pot.png"],
   mana: ["/assets/placeholders/mana.svg"],
   armor: ["/assets/placeholders/armor.svg"],
-  player: ["/assets/placeholders/player.svg"],
+  player: ["/assets/player/nemesis.png"],
 });
 
 

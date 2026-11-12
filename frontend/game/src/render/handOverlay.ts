@@ -27,10 +27,9 @@ export class HandOverlay {
   private readonly geometry = new THREE.PlaneGeometry(1, 1);
   private readonly materials: THREE.MeshBasicMaterial[] = [];
   private readonly hand: THREE.Mesh;
-  private readonly fireball: THREE.Mesh;
   private readonly handBottomPadding: number;
 
-  constructor(handTexture: THREE.Texture, fireballTexture: THREE.Texture) {
+  constructor(handTexture: THREE.Texture) {
     const image = handTexture.image as HTMLImageElement;
     this.handBottomPadding = bottomPadding(image);
     this.camera.position.z = 1;
@@ -46,11 +45,8 @@ export class HandOverlay {
       return mesh;
     };
     this.hand = createMesh(handTexture);
-    this.fireball = createMesh(fireballTexture);
     this.hand.scale.set(0.34 * image.naturalWidth / image.naturalHeight, 0.34, 1);
-    const fireImage = fireballTexture.image as { width: number; height: number };
-    this.fireball.scale.set(0.17 * fireImage.width / fireImage.height, 0.17, 1);
-    this.fireball.renderOrder = 1;
+    this.hand.renderOrder = 2;
   }
 
   resize(width: number, height: number): void {
@@ -59,11 +55,10 @@ export class HandOverlay {
     this.camera.right = aspect / 2;
     this.camera.updateProjectionMatrix();
     // Limita o deslocamento em telas estreitas para manter a mão visível.
-    const x = Math.max(0, Math.min(aspect * 0.22, aspect / 2 - this.hand.scale.x / 2));
+    const x = Math.max(0, Math.min(aspect * 0.12, aspect / 2 - this.hand.scale.x / 2));
     // Encosta a base visível na borda, compensando o espaço transparente do PNG.
     const handY = this.camera.bottom + this.hand.scale.y * (0.5 - this.handBottomPadding);
     this.hand.position.set(x, handY, 0);
-    this.fireball.position.set(x - 0.015, handY + 0.16, 0);
   }
 
   render(renderer: THREE.WebGLRenderer): void {
