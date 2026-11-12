@@ -58,6 +58,7 @@ export type ProjectileKind = "fireball" | "bullet";
 export interface PlayerSnapshot {
   id: number; // user_id
   name: string;
+  character_id: string; // ID visual validado no Lobby; desconhecido usa Nemesis no render
   x: number;
   y: number;
   dx: number;

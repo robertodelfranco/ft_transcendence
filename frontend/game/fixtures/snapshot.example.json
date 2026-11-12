@@ -63,11 +63,11 @@
       "countdown_end_tick": null,
       "last_input_seq": 0,
       "players": [
-        {"id": 7, "name": "roberto", "x": 12.5, "y": 1.5, "dx": 1.0, "dy": 0.0, "hp": 10, "mana": 100, "armor": 0, "keys": 0, "alive": true, "connected": true},
-        {"id": 9, "name": "augusto", "x": 14.5, "y": 1.5, "dx": 0.0, "dy": 1.0, "hp": 10, "mana": 100, "armor": 0, "keys": 0, "alive": true, "connected": true},
-        {"id": 12, "name": "rafael", "x": 16.5, "y": 1.5, "dx": 0.0, "dy": -1.0, "hp": 10, "mana": 100, "armor": 0, "keys": 0, "alive": true, "connected": true},
-        {"id": 15, "name": "caio", "x": 18.5, "y": 1.5, "dx": 0.0, "dy": 1.0, "hp": 10, "mana": 100, "armor": 0, "keys": 0, "alive": true, "connected": true},
-        {"id": 21, "name": "akita", "x": 20.5, "y": 1.5, "dx": -1.0, "dy": 0.0, "hp": 10, "mana": 100, "armor": 0, "keys": 0, "alive": true, "connected": true}
+        {"id": 7, "name": "roberto", "character_id": "nemesis", "x": 12.5, "y": 1.5, "dx": 1.0, "dy": 0.0, "hp": 10, "mana": 100, "armor": 0, "keys": 0, "alive": true, "connected": true},
+        {"id": 9, "name": "augusto", "character_id": "nemesis", "x": 14.5, "y": 1.5, "dx": 0.0, "dy": 1.0, "hp": 10, "mana": 100, "armor": 0, "keys": 0, "alive": true, "connected": true},
+        {"id": 12, "name": "rafael", "character_id": "nemesis", "x": 16.5, "y": 1.5, "dx": 0.0, "dy": -1.0, "hp": 10, "mana": 100, "armor": 0, "keys": 0, "alive": true, "connected": true},
+        {"id": 15, "name": "caio", "character_id": "nemesis", "x": 18.5, "y": 1.5, "dx": 0.0, "dy": 1.0, "hp": 10, "mana": 100, "armor": 0, "keys": 0, "alive": true, "connected": true},
+        {"id": 21, "name": "akita", "character_id": "nemesis", "x": 20.5, "y": 1.5, "dx": -1.0, "dy": 0.0, "hp": 10, "mana": 100, "armor": 0, "keys": 0, "alive": true, "connected": true}
       ],
       "enemies": [
         {"id": "e_1", "x": 2.5, "y": 2.5, "state": "alert"},
@@ -116,11 +116,11 @@
     "countdown_end_tick": 96,
     "last_input_seq": 3571,
     "players": [
-      {"id": 7, "name": "roberto", "x": 37.5, "y": 18.6, "dx": 0.0, "dy": 1.0, "hp": 8, "mana": 60, "armor": 0, "keys": 0, "alive": true, "connected": true},
-      {"id": 9, "name": "augusto", "x": 36.4, "y": 21.6, "dx": 0.0, "dy": 1.0, "hp": 10, "mana": 35, "armor": 3, "keys": 1, "alive": true, "connected": true},
-      {"id": 12, "name": "rafael", "x": 20.4, "y": 18.6, "dx": 0.9874, "dy": -0.158, "hp": 3, "mana": 100, "armor": 0, "keys": 0, "alive": true, "connected": true},
-      {"id": 15, "name": "caio", "x": 13.6, "y": 17.3, "dx": -1.0, "dy": 0.0, "hp": 0, "mana": 0, "armor": 0, "keys": 0, "alive": false, "connected": true},
-      {"id": 21, "name": "akita", "x": 10.4, "y": 4.6, "dx": 0.6, "dy": 0.8, "hp": 10, "mana": 100, "armor": 0, "keys": 0, "alive": true, "connected": false}
+      {"id": 7, "name": "roberto", "character_id": "nemesis", "x": 37.5, "y": 18.6, "dx": 0.0, "dy": 1.0, "hp": 8, "mana": 60, "armor": 0, "keys": 0, "alive": true, "connected": true},
+      {"id": 9, "name": "augusto", "character_id": "nemesis", "x": 36.4, "y": 21.6, "dx": 0.0, "dy": 1.0, "hp": 10, "mana": 35, "armor": 3, "keys": 1, "alive": true, "connected": true},
+      {"id": 12, "name": "rafael", "character_id": "nemesis", "x": 20.4, "y": 18.6, "dx": 0.9874, "dy": -0.158, "hp": 3, "mana": 100, "armor": 0, "keys": 0, "alive": true, "connected": true},
+      {"id": 15, "name": "caio", "character_id": "nemesis", "x": 13.6, "y": 17.3, "dx": -1.0, "dy": 0.0, "hp": 0, "mana": 0, "armor": 0, "keys": 0, "alive": false, "connected": true},
+      {"id": 21, "name": "akita", "character_id": "nemesis", "x": 10.4, "y": 4.6, "dx": 0.6, "dy": 0.8, "hp": 10, "mana": 100, "armor": 0, "keys": 0, "alive": true, "connected": false}
     ],
     "enemies": [
       {"id": "e_1", "x": 5.7, "y": 2.4, "state": "alert"},

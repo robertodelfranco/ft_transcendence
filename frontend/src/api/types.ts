@@ -67,6 +67,7 @@ export interface RoomOptions {
 export interface RoomPlayer {
   user_id: number;
   username: string;
+  character_id: string;
   avatar_url: string;
   ready: boolean; // vive na Room, nunca no banco
   connected: boolean; // false durante o Grace period

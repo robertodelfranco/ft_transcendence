@@ -9,7 +9,7 @@ from app.db.session import DbSession
 from app.game import Mode
 from app.game.rooms import RoomManager, get_room_manager
 from app.matches import service
-from app.matches.schemas import (CreateMatchIn, Leaderboard, LeaderboardMetric, Limit, MatchDetail,
+from app.matches.schemas import (CharacterIn, CreateMatchIn, Leaderboard, LeaderboardMetric, Limit, MatchDetail,
 	MatchHistoryPage, MatchId, Page, PerPage, ReadyIn, UserAchievements, UserStats)
 from app.matches.service import Catalog, get_catalog
 from app.users.schemas import UserId
@@ -69,6 +69,14 @@ async def leave_match(match_id: int, user: CurrentUser, session: DbSession, room
 async def set_ready(match_id: int, body: ReadyIn, user: CurrentUser, rooms: Rooms,
 		connections: Connections) -> dict[str, Any]:
 	info = rooms.set_ready(match_id, user.id, body.ready)
+	await publish_lobby_update(connections, info)
+	return info.to_payload()
+
+
+@router.post("/matches/{match_id}/character")
+async def set_character(match_id: int, body: CharacterIn, user: CurrentUser, rooms: Rooms,
+		connections: Connections) -> dict[str, Any]:
+	info = rooms.set_character(match_id, user.id, body.character_id)
 	await publish_lobby_update(connections, info)
 	return info.to_payload()
 

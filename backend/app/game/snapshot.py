@@ -13,6 +13,7 @@ def to_snapshot(room: Room) -> dict:
 		"players": [
 			{
 				"id": player.user_id, "name": player.name,
+				"character_id": player.character_id,
 				"x": player.x, "y": player.y,
 				"dx": math.sin(player.angle), "dy": -math.cos(player.angle),
 				"hp": player.hp, "mana": math.floor(player.mana),

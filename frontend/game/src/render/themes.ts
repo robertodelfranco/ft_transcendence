@@ -4,12 +4,14 @@ export interface Theme {
   floor: number;
   ceiling: number;
   walls: Record<"no" | "so" | "we" | "ea", string>;
+  wallRoughness: number;
   sprites: { enemy: string; boss: string; bullet: string };
   light: { ambient: number; directional: number; torch: number; flame: number };
   fogDensity: number;
 }
 
 export const dungeonTheme: Theme = {
+  wallRoughness: 0.95,
   floor: 0x545454,
   ceiling: 0x161e00,
   walls: {
@@ -28,6 +30,7 @@ export const dungeonTheme: Theme = {
 };
 
 export const sewerTheme: Theme = {
+  wallRoughness: 0.28,
   floor: 0x0000a8,
   ceiling: 0x161e00,
   walls: {

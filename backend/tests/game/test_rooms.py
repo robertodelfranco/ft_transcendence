@@ -9,7 +9,8 @@ from pathlib import Path
 import pytest
 
 import app.game.rooms as rooms
-from app.game import MatchOutcome, Mode, RoomOptions, set_connected
+from app.game import MatchOutcome, Mode, RoomOptions, set_connected, to_snapshot
+from app.game.characters import CharacterId
 from app.game.protocol import CloseCode
 from app.game.rooms import (AlreadyIn, AlreadyInOtherMatch, AlreadyStarted, NotEnoughPlayers,
 	NotInRoom, RoomError, RoomFull, RoomManager, RoomNotFound, get_room_manager)
@@ -188,6 +189,29 @@ async def test_set_ready_lives_in_the_room(manager):
 	lobby(manager, players=(7, 9))
 	info = manager.set_ready(12, 9, True)
 	assert [p.ready for p in info.players] == [False, True]
+
+
+async def test_character_is_individual_and_survives_start_and_reconnection(manager):
+	lobby(manager, players=(7, 9))
+	assert [p.character_id for p in manager.info(12).players] == ["nemesis", "nemesis"]
+	info = manager.set_character(12, 9, CharacterId.SUCUBUS)
+	assert [p.character_id for p in info.players] == ["nemesis", "sucubus"]
+	manager.start(12)
+	room = manager.game_room(12)
+	manager.player_connected(12, 9)
+	manager.player_disconnected(12, 9)
+	manager.player_connected(12, 9)
+	assert [p["character_id"] for p in to_snapshot(room)["players"]] == ["nemesis", "sucubus"]
+	assert [p["character_id"] for p in manager.info(12).to_payload()["players"]] == ["nemesis", "sucubus"]
+	with pytest.raises(AlreadyStarted):
+		manager.set_character(12, 9, CharacterId.NEMESIS)
+
+
+async def test_character_cannot_change_another_players_seat(manager):
+	lobby(manager)
+	with pytest.raises(NotInRoom):
+		manager.set_character(12, 9, CharacterId.SUCUBUS)
+	assert manager.info(12).players[0].character_id == "nemesis"
 
 
 async def test_list_open_shows_only_lobbies(manager):

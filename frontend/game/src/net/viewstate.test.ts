@@ -8,7 +8,7 @@ const OPTIONS: RoomOptions = { theme: "dungeon", start_hp: 10,
   pickups: { potion: true, mana: true, armor: true } };
 
 const player = (id: number, extra: Partial<PlayerSnapshot> = {}): PlayerSnapshot => ({
-  id, name: `p${id}`, x: id + 0.5, y: 1.5, dx: 0, dy: -1, hp: 10, mana: 100, armor: 0, keys: 0,
+  id, name: `p${id}`, character_id: "nemesis", x: id + 0.5, y: 1.5, dx: 0, dy: -1, hp: 10, mana: 100, armor: 0, keys: 0,
   alive: true, connected: true, ...extra });
 
 const snapshot = (players: PlayerSnapshot[], extra: Partial<Snapshot> = {}): Snapshot => ({

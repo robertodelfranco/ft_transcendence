@@ -9,6 +9,8 @@ import Loading from "../components/Loading";
 import { buttonPrimary, buttonSecondary, linkClass } from "../components/styles";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { mapName } from "../lobby/roomOptions";
+import CharacterPicker, { CharacterPortrait } from "../lobby/CharacterPicker";
+import { playerCharacter, type CharacterId } from "../../game/src/playerCharacters";
 import RoomOptionsSummary from "../lobby/RoomOptionsSummary";
 import { useLobbyRooms } from "../lobby/useLobbyRooms";
 import { useAppMessages } from "../ws/AppSocketContext";
@@ -75,7 +77,15 @@ export default function WaitingRoom() {
     };
   }, [missing, matchId, navigate, user?.id]);
 
-  // join e ready passam pelo runAction (a resposta não sobrescreve o socket); leave e start
+  // fora do JSX: o i18next/no-literal-string trata string dentro de atributo como texto visível
+  function selectCharacter(characterId: CharacterId) {
+    if (!me || characterId === me.character_id) return;
+    void act(async () => {
+      await runAction(matchId, () => post("character", { character_id: characterId }));
+    });
+  }
+
+  // join, ready e character passam pelo runAction (a resposta não sobrescreve o socket); leave e start
   // devolvem 204
   async function act(action: () => Promise<void>) {
     setFailure(null);
@@ -140,7 +150,11 @@ export default function WaitingRoom() {
                 key={player.user_id}
                 className="flex flex-wrap items-center gap-2 rounded border border-crypt-700 bg-crypt-900 px-3 py-2"
               >
-                <span className="font-bold">{player.username}</span>
+                <CharacterPortrait characterId={player.character_id} className="h-10 w-10 rounded-sm bg-crypt-950 p-1" />
+                <span className="flex flex-col">
+                  <span className="font-bold">{player.username}</span>
+                  <span className="text-xs text-bone/60">{t(`characters.names.${playerCharacter(player.character_id).id}`)}</span>
+                </span>
                 {player.user_id === user?.id && <span className="text-sm text-bone/70">({t("room.you")})</span>}
                 {player.user_id === room.created_by && (
                   <span className="rounded bg-torch/20 px-2 text-xs text-torch">{t("room.host")}</span>
@@ -159,6 +173,14 @@ export default function WaitingRoom() {
           <RoomOptionsSummary options={room.options} />
         </section>
       </div>
+
+      {me && (
+        <CharacterPicker
+          value={me.character_id}
+          disabled={busy}
+          onSelect={selectCharacter}
+        />
+      )}
 
       {me ? (
         <div className="flex flex-wrap items-center gap-3">

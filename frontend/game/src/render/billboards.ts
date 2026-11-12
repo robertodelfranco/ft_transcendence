@@ -1,10 +1,11 @@
 import * as THREE from "three";
 import type { BossSnapshot, EnemySnapshot, PlayerSnapshot, ProjectileSnapshot } from "../types";
 import type { BillboardAssets, SpriteSheet } from "./billboardAssets";
+import { playerCharacter } from "../playerCharacters";
 
 // Subconjunto estrutural de ViewState: posições já prontas para desenhar.
 export interface BillboardView {
-  localPlayer: { id: number };
+  localPlayer: { id: number; character_id?: string };
   otherPlayers: readonly PlayerSnapshot[];
   enemies: readonly EnemySnapshot[];
   boss: BossSnapshot | null;
@@ -99,14 +100,25 @@ export class Billboards {
       draw("boss", boss.state, this.assets.boss, bossClips[boss.state], boss.x, boss.y, 0.95);
     }
     for (const projectile of view.projectiles) {
-      // Fireball do Player é comum; bullet do Boss segue o Theme.
+      // O visual em voo depende do autor; impacto e bullet do Boss seguem os assets comuns.
+      let sheet = this.assets[projectile.kind];
+      const clip = projectileClips[projectile.state];
+      if (projectile.kind === "fireball" && projectile.state === "moving") {
+        const owner = projectile.owner === view.localPlayer.id
+          ? view.localPlayer : view.otherPlayers.find((player) => player.id === projectile.owner);
+        if (owner) {
+          const character = playerCharacter(owner.character_id);
+          sheet = this.assets[`projectile:${character.id}`] ?? sheet;
+        }
+      }
       draw(`projectile:${projectile.id}`, `${projectile.kind}:${projectile.state}`,
-        this.assets[projectile.kind], projectileClips[projectile.state],
+        sheet, clip,
         projectile.x, projectile.y, 0.18, false);
     }
     for (const player of view.otherPlayers) {
       if (player.id === view.localPlayer.id || !player.alive) continue;
-      draw(`player:${player.id}`, "idle", this.assets.player, still,
+      const character = playerCharacter(player.character_id);
+      draw(`player:${player.id}`, character.id, this.assets[`player:${character.id}`], still,
         player.x, player.y, 0.8, true, player.connected ? 0xffffff : 0x777777);
     }
     view.grid.forEach((row, y) => {

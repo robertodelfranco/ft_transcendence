@@ -14,11 +14,6 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, view: ViewState,
   const offsetX = (width - columns * cellSize) / 2;
   const offsetY = (height - rows * cellSize) / 2;
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "#0b0a0f";
-  ctx.fillRect(0, 0, width, height);
-  ctx.strokeStyle = "#f2a03d18";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(3.5, 3.5, Math.max(0, width - 7), Math.max(0, height - 7));
   ctx.save();
   ctx.translate(offsetX, offsetY);
   ctx.scale(cellSize, cellSize);
