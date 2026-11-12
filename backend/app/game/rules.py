@@ -11,13 +11,13 @@ POTION_HEAL = 3 # HP
 COUNTDOWN_S = 3.0 # s, contagem 3, 2, 1 antes de a partida valer (#255)
 COUNTDOWN_WAIT_S = 10.0 # s, espera máxima pelos Players antes de começar a contagem
 
-ENEMY_SPEED = 1.5 # cél/s
+ENEMY_SPEED = 2.2 # cél/s
 ENEMY_RADIUS = 0.2 # cél
 ENEMY_SEPARATION = 0.6 # cél
 ENEMY_RETARGET_MARGIN = 1.0 # cél
 ENEMY_CHASE_RANGE = 12 # cél
 ENEMY_ATTACK_RANGE = 0.7 # cél
-ENEMY_ATTACK_INTERVAL_S = 1.4 # s
+ENEMY_ATTACK_INTERVAL_S = 1.0 # s
 ENEMY_DAMAGE = 1 # HP
 ENEMY_DYING_S = 1.5 # s
 
@@ -25,6 +25,7 @@ BOSS_HP = 60 # HP
 BOSS_SPEED = 2.0 # cél/s
 BOSS_RADIUS = 0.2 # cél
 BOSS_SIGHT_RANGE = 20.0 # cél
+BOSS_RETARGET_MARGIN = 1.0 # cél
 BOSS_MIN_RANGE = 8.0 # cél
 BOSS_ATTACK_RANGE = 18.0 # cél
 BOSS_ATTACK_WINDUP_S = 1.2 # s

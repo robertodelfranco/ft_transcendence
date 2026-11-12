@@ -139,7 +139,7 @@ Decidida depois do código, cada uma custa retrabalho em mais de uma Slice.
 |---|---|
 | **Web-based game** (Major) | a Simulation: `step`, a ordem fixa dentro de um Tick, por que tudo é velocidade × `dt`; o que veio do C e o que mudou (mundo espelhado, três bugs não portados, projétil e Boss que não faziam o que o código parecia dizer) |
 | **Remote players** (Major, parte minha) | Prediction e Reconciliation com `prediction.ts` aberto; a fila de Inputs; o teste cruzado que prova que Python e TypeScript calculam igual |
-| **Multiplayer 3+** (Major, parte minha) | o que muda com N Players: alvo do Enemy, rodízio do Boss, colisão entre Players, quem saiu no meio |
+| **Multiplayer 3+** (Major, parte minha) | o que muda com N Players: alvo do Enemy, alvo do Boss com linha de visão, colisão entre Players, quem saiu no meio |
 | **Game customization** (Minor, parte minha) | como cada opção chega à Simulation e o teste de cada uma |
 | **Obrigatórios** | o servidor decide acerto, dano, coleta e vitória; nenhum estado de partida em andamento vai para o banco |
 
@@ -208,7 +208,7 @@ Labels: `F1`, `S2`
 Labels: `F1`, `S2`, `bloqueante`
 
 - **Contexto:** o combate para N Players. É a maior tarefa da Slice; sai em cinco PRs, um por passo.
-- **Pronto quando:** há um teste por regra: perseguição do Player vivo mais próximo, troca de alvo só com 1 célula de vantagem, golpe a cada 1,4 s só em quem está no alcance, morte em 1,5 s, Boss com 6 acertos, bullet tira 2, fireball some na parede, Armor absorve antes do HP, custo e regeneração de Mana.
+- **Pronto quando:** há um teste por regra: perseguição do Player vivo mais próximo, troca de alvo só com 1 célula de vantagem, golpe a cada `ENEMY_ATTACK_INTERVAL_S` (1,0 s desde a F4.7) só em quem está no alcance, morte em 1,5 s, Boss com 6 acertos, bullet tira 2, fireball some na parede, Armor absorve antes do HP, custo e regeneração de Mana.
 - **Contrato:** `docs/contracts/rules.md`; `docs/contracts/ws-messages.md` §2.5 e §2.6
 - **Dependências:** F1.4
 - **Onde olhar:** `enemy_bonus/enemy_move_bonus.c` e `enemy_manage_bonus.c`, `boss_bonus/*`, `attack_bonus/create_*` e `update_*`; arq. §3 (três bugs para não portar) e §5; roadmap R3 (passos R3.3 a R3.7)

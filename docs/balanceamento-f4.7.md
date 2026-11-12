@@ -191,7 +191,7 @@ explicitado. Não confundir com garantia de tempo real para vencer uma partida.
 | coop, repor custo de um tiro | 10 / 10 = 1 s de regeneração | Generosidade vs necessidade de Pickups |
 | Repor 100 Mana a partir de zero | coop 10 s; PvP 20 s, sem atirar/Pickups | Tempo de recuperação percebido |
 | Boss | 60 HP / 10 por fireball = 6 acertos no total | Dificuldade com vários Players; HP não escala por quantidade de Players no código atual |
-| Enemy | Uma fireball mata; dano de contato 1 a cada 1,4 s | Pressão de vários Enemies e capacidade de reposicionar |
+| Enemy | Uma fireball mata; dano de contato 1 a cada 1,0 s | Pressão de vários Enemies e capacidade de reposicionar |
 | Poção | Recupera até 3 HP, limitada por `start_hp` | Se sua posição e quantidade ajudam de fato |
 | Armor | Absorve dano antes do HP; Pickup põe no teto do Mode | Utilidade e clareza do feedback no coop |
 | Respawn PvP | Delay nominal 3 s, no próximo Tick elegível com Spawn livre | Ritmo, orientação preservada e risco de morrer novamente ao nascer |
@@ -273,7 +273,7 @@ proposta será preenchida depois das partidas, preservando evidência antes/depo
 | Movimento | 3,6 cél/s; corrida ×2 | Não avaliado | A definir | A definir | Pendente | Pendente |
 | Tiro PvP | 2 HP; custo 20 Mana; regen 5/s | Não avaliado | A definir | A definir | Pendente | Pendente |
 | Tiro coop | custo 10 Mana; regen 10/s | Não avaliado | A definir | A definir | Pendente | Pendente |
-| Enemy | 1 HP/1,4 s; velocidade 1,5 | Não avaliado | A definir | A definir | Pendente | Pendente |
+| Enemy | 1 HP/1,0 s; velocidade 2,2 | Não avaliado | A definir | A definir | Pendente | Pendente |
 | Boss | 60 HP; bullet 2 HP; intervalo 2,2 s | Não avaliado | A definir | A definir | Pendente | Pendente |
 | Recursos coop | poção 3 HP; Armor 3; Mana 30 | Não avaliado | A definir | A definir | Pendente | Pendente |
 | Respawn PvP | 3 s; Spawn livre mais distante | Não avaliado | A definir | A definir | Pendente | Pendente |

@@ -45,13 +45,13 @@ O HP inicial e o teto da poção não são constantes: vêm de `options.start_hp
 
 | Nome | Unidade | Valor | Arq. | No C |
 |---|---|---|---|---|
-| `ENEMY_SPEED` | cél/s | `1.5` | sim | `0.15` por passo (`enemy_bonus/enemy_images_bonus.c:131`), um passo quando `move_delay > 0.1` s (`enemy_bonus/enemy_manage_bonus.c:63`) |
+| `ENEMY_SPEED` | cél/s | `2.2` | sim | Base C: `0.15` por passo (`enemy_bonus/enemy_images_bonus.c:131`), um passo quando `move_delay > 0.1` s (`enemy_bonus/enemy_manage_bonus.c:63`); ajustado na F4.7 (§5.6) |
 | `ENEMY_RADIUS` | cél | `0.2` | novo | 4 cantos a `0.2` do centro (`enemy_bonus/enemy_move_bonus.c:40-50`) |
 | `ENEMY_SEPARATION` | cél | `0.6` | novo | Enemy não chega a menos disso de outro Enemy (`enemy_bonus/enemy_move_bonus.c:30`) |
 | `ENEMY_RETARGET_MARGIN` | cél | `1.0` | sim | Não existe no C, que só tinha um jogador. O Enemy só troca de alvo se o novo estiver esta quantidade de passos de caminho mais perto que o atual (arq. §5) |
 | `ENEMY_CHASE_RANGE` | cél | `12` ² | novo | Não existe no C, que andava em linha reta até o único jogador. Passos de caminho (8 vizinhas) até onde a busca do Enemy alcança; Player mais longe que isso não é alvo |
 | `ENEMY_ATTACK_RANGE` | cél | `0.7` | novo | `distance <= 0.7` vira `ATTACK` (`enemy_bonus/enemy_manage_bonus.c:62-65`) |
-| `ENEMY_ATTACK_INTERVAL_S` | s | `1.4` | novo | 7 quadros de `0.2` s (`enemy_bonus/enemy_manage_bonus.c:17-23` e `:38`); no C o primeiro golpe saía em 0,8 s |
+| `ENEMY_ATTACK_INTERVAL_S` | s | `1.0` | novo | Base C: 7 quadros de `0.2` s (`enemy_bonus/enemy_manage_bonus.c:17-23` e `:38`); no C o primeiro golpe saía em 0,8 s; ajustado na F4.7 (§5.6) |
 | `ENEMY_DAMAGE` | HP | `1` | novo | `hp -= 1` (`enemy_bonus/enemy_manage_bonus.c:21`) |
 | `ENEMY_DYING_S` | s | `1.5` | novo | 3 quadros de `0.5` s até `DEAD` (`enemy_bonus/enemy_manage_bonus.c:40-45`) |
 
@@ -63,6 +63,7 @@ O HP inicial e o teto da poção não são constantes: vêm de `options.start_hp
 | `BOSS_SPEED` | cél/s | `2.0` | sim | `0.2` por passo (`:109`), um passo quando `move_delay > 0.1` s (`:36`) |
 | `BOSS_RADIUS` | cél | `0.2` | novo | 4 cantos a `0.2` (`boss_bonus/move_boss_bonus.c:41-51`) |
 | `BOSS_SIGHT_RANGE` | cél | `20` | novo | `distance <= 20.0` vira `ALERT` (`boss_bonus/init_boss_bonus.c:33`) |
+| `BOSS_RETARGET_MARGIN` | cél | `1.0` | novo | Não existe no C, que só tinha um jogador. O Boss só troca de alvo se o novo estiver esta distância em linha reta mais perto que o atual (§4) |
 | `BOSS_MIN_RANGE` | cél | `8` ² | novo | Só anda se `distance > 8.0` (`:35`) |
 | `BOSS_ATTACK_RANGE` | cél | `18` ² | novo | `distance <= 18.0` vira `ATTACK` (`:31`); o `16.0` da `:38` nunca é alcançado |
 | `BOSS_ATTACK_WINDUP_S` | s | `1.2` | novo | Tempo em `attack` antes de o bullet sair: 4 quadros de `0.3` s (`boss_bonus/init_boss_bonus.c:43-54` e `:69`) |
@@ -128,7 +129,7 @@ Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um
 - **Projectile avança em subpassos de no máximo `0.1` célula.** O C testava parede e alvo só no ponto de chegada de cada salto de 0,5 célula.
 - **Não existe fogo amigo.** `FIREBALL_PLAYER_DAMAGE` só é lido pelo `PvpRuleset`.
 - **O teto da poção é `options.start_hp`**, não o `10` fixo do C.
-- **O Enemy golpeia a cada `ENEMY_ATTACK_INTERVAL_S` e só acerta quem ainda está em `ENEMY_ATTACK_RANGE`.** No C o primeiro golpe saía em 0,8 s e os seguintes em 1,4 s (o contador começava em 3 e voltava para 0), e o dano entrava sem conferir a distância de novo. A arq. §6.3 e o roadmap (R3) já falam em "1 HP a cada 1,4 s de contato"; um intervalo só e o alcance conferido no golpe são essa regra.
+- **O Enemy golpeia a cada `ENEMY_ATTACK_INTERVAL_S` e só acerta quem ainda está em `ENEMY_ATTACK_RANGE`.** No C o primeiro golpe saía em 0,8 s e os seguintes em 1,4 s (o contador começava em 3 e voltava para 0), e o dano entrava sem conferir a distância de novo. A arq. §6.3 e o roadmap (R3) já falam em "1 HP a cada 1,4 s de contato"; um intervalo só e o alcance conferido no golpe são essa regra. O intervalo passou a 1,0 s na F4.7 (§5.6).
 - **Uma fireball mata um Enemy.** O C não tem HP de Enemy (`update_fireball_bonus.c:43-45`). Se o balanceamento pedir Enemy mais resistente, entra um `ENEMY_HP`.
 - **As velocidades da tabela são as nominais.** No C, o passo de Enemy e Boss saía quando o atraso passava de 0,1 s e o excedente era descartado; a 60 fps isso dava um passo a cada 6 ou 7 quadros, até 14% mais lento que o nominal. A diferença era efeito do jeito de contar o tempo, não intenção, e fica para o balanceamento (F4.7).
 - **`BODY_BLOCK_DISTANCE` usa `<` para todos.** O C usava `<=` para Enemy e `<` para Boss. Só bloqueia quem está vivo: Enemy em `dying` não bloqueia (o C já fazia assim).
@@ -146,6 +147,7 @@ Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um
 - **A direção do Player é guardada como ângulo.** `PLAYER_ROT_SPEED` e `mouse_dx` somam no ângulo, e o vetor sai dele: `dx = sin(a)`, `dy = -cos(a)`, com norte em zero e `rot_right` aumentando `a`. O C girava o vetor a cada quadro e acumulava erro de arredondamento. No fio continua indo `(dx, dy)`.
 - **Os tempos da Simulation contam em Ticks inteiros.** Cada constante em segundos vira `round(segundos × TICK_RATE)` Ticks, e a Room guarda o Tick, não os segundos acumulados. Somando `dt` em float, `0.4` s nunca fecha em 12 Ticks (sobra `9.7e-17` na contagem regressiva e falta na progressiva), e a regra duraria 13. Vale para `FIREBALL_COOLDOWN_S` e `PROJECTILE_HIT_S`; os tempos de Enemy e Boss seguem a mesma regra quando entrarem. As constantes continuam em segundos nesta tabela. Decidido pelo Roberto em 13/10.
 - **O Enemy persegue pelo caminho, não em linha reta.** Uma busca em largura (BFS) sai da célula de cada Player vivo e conta os passos até cada célula livre, com 8 vizinhas, sem cortar quina de parede e até `ENEMY_CHASE_RANGE` passos; Door fechada bloqueia. O alvo é o Player com menos passos até a célula do Enemy, e o atual só perde para quem estiver `ENEMY_RETARGET_MARGIN` passos mais perto. Player desconectado no Grace period continua alvo; morto, fora da partida ou além do alcance, não. Sem alvo, o Enemy fica parado. Ele anda para o centro da vizinha com menos passos (no empate, a mais perto do alvo em linha reta) e, na célula do alvo, em linha reta. O C andava sempre em linha reta e ficava preso atrás de parede. A busca de cada Player só é refeita quando ele muda de célula ou uma Door abre. Durante o `attack` o Enemy não anda nem troca de alvo, e se o alvo continua no alcance depois do golpe o `attack` recomeça no mesmo Tick, para dois golpes ficarem a `ENEMY_ATTACK_INTERVAL_S` exatos. Como no C, Player e Boss não bloqueiam o passo do Enemy. Decidido pelo Roberto em 13 e 14/10.
+- **O Boss mira o Player mais perto que ele vê.** Os candidatos são os Players vivos e na partida a até `BOSS_SIGHT_RANGE`. Entre eles, os que estão em linha de visão: um raio pelo Grid (DDA, como o raycaster do C) do Boss até o Player, em que parede e Door fechada bloqueiam. A distância é em linha reta, porque o Boss anda e atira em linha reta e a busca do Enemy só alcança `ENEMY_CHASE_RANGE`. O alvo é o mais perto, e o atual só perde para quem estiver `BOSS_RETARGET_MARGIN` células mais perto. Com ninguém em linha de visão, o Boss persegue o mais perto a `BOSS_SIGHT_RANGE` sem atirar. Com ninguém a `BOSS_SIGHT_RANGE`, segue o alvo que já tinha, como quem o acordou com um tiro. O bullet só sai com o alvo em linha de visão no início do `attack`. Se o alvo se esconder durante a mira, o bullet bate na parede. Substitui o rodízio a cada tiro, que mandava bullets em quem estava atrás de parede (#262). Decidido pelo Roberto em 12/11.
 - **O Projectile já voa no Tick em que nasce**, para o disparo não ter um Tick de atraso. Ele para no último subpasso antes da parede ou do alvo, como no C, e fica ali durante o `hit`. Decidido pelo Roberto em 13/10.
 - **Este contrato fecha nomes e unidades agora.** Os valores finais saem do balanceamento de conteúdo (F4.7, S5).
 
@@ -200,3 +202,14 @@ regeneração de 2 Mana/s. O Pickup
 de Mana equivale agora a três tiros no coop e dois no PvP, respeitando o teto.
 São contas derivadas, não resultados de reteste. Mudança implementada para
 playtest; revisão técnica do Roberto e validação coop/PvP pendentes.
+
+### 5.6 Movimento e cadência dos Enemy — F4.7, 12/11/2026
+
+Rafael autorizou manter `ENEMY_SPEED = 2.2` cél/s e
+`ENEMY_ATTACK_INTERVAL_S = 1.0` s, antes 1,5 cél/s e 1,4 s.
+Python, TypeScript e fixture compartilham os novos valores. A animação de
+ataque divide o intervalo em quatro quadros, de 0,25 s cada.
+O movimento aumenta cerca de 47% e a frequência de golpes aumenta 40%,
+passando a um golpe por segundo. Dano e alcance permanecem iguais.
+Revisão técnica do Roberto e playtest pendentes; nenhum teste foi executado
+nesta alteração.

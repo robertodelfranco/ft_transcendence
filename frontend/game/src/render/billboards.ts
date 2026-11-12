@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { BossSnapshot, EnemySnapshot, PlayerSnapshot, ProjectileSnapshot } from "../types";
 import type { BillboardAssets, SpriteSheet } from "./billboardAssets";
 import { playerCharacter } from "../playerCharacters";
+import { ENEMY_ATTACK_INTERVAL_S } from "../rules";
 
 // Subconjunto estrutural de ViewState: posições já prontas para desenhar.
 export interface BillboardView {
@@ -24,7 +25,7 @@ const idle: Clip = { first: 0, count: 3, frameSeconds: 0.3, loop: true };
 const still: Clip = { first: 0, count: 1, frameSeconds: 1, loop: false };
 const enemyClips: Record<EnemySnapshot["state"], Clip> = {
   alert: idle,
-  attack: { first: 3, count: 4, frameSeconds: 0.35, loop: true },
+  attack: { first: 3, count: 4, frameSeconds: ENEMY_ATTACK_INTERVAL_S / 4, loop: true },
   dying: { first: 7, count: 3, frameSeconds: 0.5, loop: false },
 };
 const bossClips: Record<BossSnapshot["state"], Clip> = {
@@ -111,9 +112,10 @@ export class Billboards {
           sheet = this.assets[`projectile:${character.id}`] ?? sheet;
         }
       }
+      const fireballScale = projectile.kind === "fireball" ? 1.2 : 1;
       draw(`projectile:${projectile.id}`, `${projectile.kind}:${projectile.state}`,
         sheet, clip,
-        projectile.x, projectile.y, 0.18, false);
+        projectile.x, projectile.y, 0.18 * fireballScale, false);
     }
     for (const player of view.otherPlayers) {
       if (player.id === view.localPlayer.id || !player.alive) continue;
