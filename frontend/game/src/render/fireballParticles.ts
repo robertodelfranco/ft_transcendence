@@ -6,6 +6,7 @@ const TRAIL_INTERVAL = 1 / 30;
 const TRAIL_LIFE = 0.25;
 const IMPACT_LIFE = 0.4;
 const IMPACT_COUNT = 18;
+const MAGIC_GLOW_SCALE = 1.5;
 
 interface Source {
   state: ProjectileSnapshot["state"];
@@ -18,7 +19,7 @@ export class FireballParticles {
   private readonly geometry = new THREE.BufferGeometry();
   private readonly material = new THREE.PointsMaterial({
     color: new THREE.Color(3, 3, 3), // Intensidade HDR para os pontos alimentarem o bloom.
-    size: 0.035, sizeAttenuation: true, vertexColors: true,
+    size: 0.035 * MAGIC_GLOW_SCALE, sizeAttenuation: true, vertexColors: true,
     transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
   });
   readonly object = new THREE.Points(this.geometry, this.material);
