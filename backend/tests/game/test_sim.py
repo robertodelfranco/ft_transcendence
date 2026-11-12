@@ -326,20 +326,25 @@ def test_nothing_in_the_way_south():
 	assert walk_south(new_room()) == pytest.approx(1.5 + 3 * STEP)
 
 
-@pytest.mark.parametrize("alive, blocks", [(True, True), (False, False)])
-def test_other_player_blocks_only_while_alive(alive, blocks):
+@pytest.mark.parametrize("alive", [True, False])
+def test_other_player_does_not_block(alive):
 	room = new_room()
 	other = room.players[9]
 	other.x, other.y = SOUTH_OF_7
 	other.alive = alive
-	assert stopped_before(walk_south(room)) == blocks
+	assert walk_south(room) == pytest.approx(1.5 + 3 * STEP)
 
 
-def test_player_who_left_does_not_block():
-	room = new_room()
-	room.players[9].x, room.players[9].y = SOUTH_OF_7
-	leave(room, 9)
-	assert not stopped_before(walk_south(room))
+@pytest.mark.parametrize("mode", [Mode.COOP, Mode.PVP])
+def test_two_players_cross_in_a_one_cell_corridor(mode):
+	# o 7 nasce olhando para leste e o 9 para oeste: os dois andam em frente, um contra o outro
+	game_map = parse_map("1111111\n1E000W1\n1111111\n", "t", mode)
+	room = create_room(12, mode, game_map, RoomOptions(), PLAYERS, seed=1)
+	for seq in range(1, TICK_RATE + 1):
+		enqueue(room, 7, make_input(seq, up=True))
+		enqueue(room, 9, make_input(seq, up=True))
+		step(room, DT)
+	assert room.players[7].x > room.players[9].x
 
 
 @pytest.mark.parametrize("state, blocks", [

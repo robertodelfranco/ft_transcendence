@@ -102,8 +102,8 @@ def test_a_dead_player_is_not_hit_again():
 	assert target.deaths == 1
 
 
-@pytest.mark.parametrize("alive, passes", [(True, False), (False, True)])
-def test_a_dead_player_stops_colliding(alive, passes):
+@pytest.mark.parametrize("alive", [True, False])
+def test_a_player_walks_through_another_dead_or_alive(alive):
 	# o Player 7 nasce em (1.5, 3.5) olhando para o leste; o 9 fica parado logo à frente
 	room = new_room(EMPTY_ARENA)
 	walker, other = room.players[7], room.players[9]
@@ -111,7 +111,7 @@ def test_a_dead_player_stops_colliding(alive, passes):
 	for seq in range(1, 31):
 		enqueue(room, 7, make_input(seq, up=True))
 		step(room, DT)
-	assert (walker.x > other.x) is passes
+	assert walker.x > other.x
 
 
 def test_counters_go_up():

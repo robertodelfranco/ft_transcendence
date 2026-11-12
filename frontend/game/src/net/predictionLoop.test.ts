@@ -212,20 +212,22 @@ test("welcome applies existing grid_delta before the first predicted Input", () 
   expect(loop.localPlayer()?.y).toBeCloseTo(2.1 - STEP / 2);
 });
 
-test.each(["Player", "Enemy", "Boss"])(
+test("another living Player does not block", () => {
+  const snapshot = snapshotAfter(0);
+  snapshot.players.push({ ...WELCOME.snapshot.players[0], id: 9, y: 1.9 });
+
+  loop.onSnapshot(snapshot);
+  loop.frame(1.5 * STEP_S, UP, 0);
+  expect(loop.localPlayer()?.y).toBeCloseTo(2.5 - STEP / 2);
+});
+
+test.each(["Enemy", "Boss"])(
   "%s blocks while alive and stops blocking after death",
   kind => {
     const blocked = snapshotAfter(0);
     const cleared = snapshotAfter(1);
 
-    if (kind === "Player") {
-      const other = {
-        ...WELCOME.snapshot.players[0],
-        id: 9, y: 1.9, connected: false,
-      };
-      blocked.players.push(other);
-      cleared.players.push({ ...other, alive: false, hp: 0 });
-    } else if (kind === "Enemy") {
+    if (kind === "Enemy") {
       blocked.enemies = [{ id: "e_1", x: 2.5, y: 1.9, state: "alert" }];
       cleared.enemies = [{ id: "e_1", x: 2.5, y: 1.9, state: "dying" }];
     } else {
