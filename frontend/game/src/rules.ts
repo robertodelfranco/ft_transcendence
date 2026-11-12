@@ -27,6 +27,7 @@ export const BOSS_HP = 60; // HP
 export const BOSS_SPEED = 2.0; // cél/s
 export const BOSS_RADIUS = 0.2; // cél
 export const BOSS_SIGHT_RANGE = 20.0; // cél
+export const BOSS_RETARGET_MARGIN = 1.0; // cél
 export const BOSS_MIN_RANGE = 8.0; // cél
 export const BOSS_ATTACK_RANGE = 18.0; // cél
 export const BOSS_ATTACK_WINDUP_S = 1.2; // s

@@ -5,7 +5,7 @@ from random import Random
 
 from app.game.movement import Body, CollisionWorld, apply_input, is_solid
 from app.game.rules import (BOSS_ATTACK_COOLDOWN_S, BOSS_ATTACK_RANGE, BOSS_ATTACK_WINDUP_S,
-	BOSS_HP, BOSS_MIN_RANGE, BOSS_RADIUS, BOSS_SIGHT_RANGE, BOSS_SPEED, BULLET_DAMAGE, COUNTDOWN_S,
+	BOSS_HP, BOSS_MIN_RANGE, BOSS_RADIUS, BOSS_RETARGET_MARGIN, BOSS_SIGHT_RANGE, BOSS_SPEED, BULLET_DAMAGE, COUNTDOWN_S,
 	COUNTDOWN_WAIT_S, DOOR_REACH,
 	ENEMY_ATTACK_INTERVAL_S, ENEMY_ATTACK_RANGE, ENEMY_CHASE_RANGE, ENEMY_DAMAGE, ENEMY_DYING_S,
 	ENEMY_RADIUS, ENEMY_RETARGET_MARGIN, ENEMY_SEPARATION, ENEMY_SPEED, FIREBALL_BOSS_DAMAGE,
@@ -492,7 +492,9 @@ def _update_boss(room: Room, dt: float) -> None:
 	boss.state = BossState.ALERT
 	dx, dy = target.x - boss.x, target.y - boss.y
 	distance = math.hypot(dx, dy)
-	if distance <= BOSS_ATTACK_RANGE and room.tick >= boss.attack_ready_tick:
+	# sem linha de visão, persegue sem atirar: o bullet bateria na parede
+	if (distance <= BOSS_ATTACK_RANGE and room.tick >= boss.attack_ready_tick
+			and _clear_line(room.grid, boss.x, boss.y, target.x, target.y)):
 		# o cooldown conta do início do attack: dois bullets ficam a BOSS_ATTACK_COOLDOWN_S
 		boss.state, boss.state_tick = BossState.ATTACK, room.tick
 		boss.attack_ready_tick = room.tick + BOSS_COOLDOWN_TICKS
@@ -502,18 +504,48 @@ def _update_boss(room: Room, dt: float) -> None:
 
 
 def _boss_target(room: Room, boss: Boss) -> Player | None:
-	# quem o Boss já viu segue alvo até morrer ou sair; alvo novo precisa estar a BOSS_SIGHT_RANGE
+	# o mais perto em linha reta entre os que vê; sem nenhum, o mais perto a BOSS_SIGHT_RANGE
+	in_range = _in_sight(room, boss)
+	visible = [player for player in in_range
+		if _clear_line(room.grid, boss.x, boss.y, player.x, player.y)]
+	distances = {player.user_id: math.hypot(player.x - boss.x, player.y - boss.y)
+		for player in visible or in_range}
 	current = room.players.get(boss.target_player_id)
-	if current is not None and current.alive and not current.left:
+	if not distances:
+		# ninguém perto: segue quem já tinha, como quem o acordou com um tiro
+		return current if current is not None and current.alive and not current.left else None
+	nearest = min(distances, key=distances.get)
+	# o alvo atual só perde para quem está BOSS_RETARGET_MARGIN células mais perto
+	if (boss.target_player_id in distances
+			and distances[nearest] > distances[boss.target_player_id] - BOSS_RETARGET_MARGIN):
 		return current
-	return min(_in_sight(room, boss),
-		key=lambda player: math.hypot(player.x - boss.x, player.y - boss.y), default=None)
+	return room.players[nearest]
 
 
 def _in_sight(room: Room, boss: Boss) -> list[Player]:
-	# só distância, sem linha de visão: como no C, o Boss vê através de parede
+	# só distância; quem está atrás de parede sai em _clear_line
 	return [player for player in room.players.values() if player.alive and not player.left
 		and math.hypot(player.x - boss.x, player.y - boss.y) <= BOSS_SIGHT_RANGE]
+
+
+def _clear_line(grid: list[list[str]], x0: float, y0: float, x1: float, y1: float) -> bool:
+	# DDA pelo Grid, como o raycaster do Cub3D: falso na primeira célula sólida
+	column, row = math.floor(x0), math.floor(y0)
+	end = (math.floor(x1), math.floor(y1))
+	dx, dy = x1 - x0, y1 - y0
+	step_x, step_y = (1 if dx > 0 else -1), (1 if dy > 0 else -1)
+	delta_x = abs(1 / dx) if dx else math.inf
+	delta_y = abs(1 / dy) if dy else math.inf
+	side_x = ((column + 1 - x0) if dx > 0 else (x0 - column)) * delta_x
+	side_y = ((row + 1 - y0) if dy > 0 else (y0 - row)) * delta_y
+	while (column, row) != end:
+		if side_x < side_y:
+			side_x, column = side_x + delta_x, column + step_x
+		else:
+			side_y, row = side_y + delta_y, row + step_y
+		if grid[row][column] in SOLID_CHARS:
+			return False
+	return True
 
 
 def _boss_shoot(room: Room, boss: Boss) -> None:
@@ -526,11 +558,6 @@ def _boss_shoot(room: Room, boss: Boss) -> None:
 		kind=ProjectileKind.BULLET, owner_id=None, x=boss.x, y=boss.y,
 		dx=dx / distance, dy=dy / distance))
 	room.next_projectile_id += 1
-	# rodízio: o próximo tiro vai no Player seguinte, por user_id, entre os que o Boss vê
-	in_sight = sorted(player.user_id for player in _in_sight(room, boss))
-	following = [user_id for user_id in in_sight if user_id > target.user_id] or in_sight
-	if following:
-		boss.target_player_id = following[0]
 
 
 def _boss_fits(room: Room, x: float, y: float) -> bool:
