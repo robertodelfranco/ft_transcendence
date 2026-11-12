@@ -11,7 +11,7 @@ from app.game.state import (Action, ActionKind, Input, Mode, ProjectileKind, Pro
 from app.game.world import parse_map
 
 DT = 1 / TICK_RATE
-COOLDOWN_TICKS = round(FIREBALL_COOLDOWN_S * TICK_RATE) # 12 Ticks
+COOLDOWN_TICKS = round(FIREBALL_COOLDOWN_S * TICK_RATE)
 FIRST_FLIGHT = PROJECTILE_SPEED * DT # a fireball já anda no Tick em que nasce
 # o Player 7 nasce em (1, 2) e o 9 em (3, 2), com chão livre ao norte dos dois
 MAP_TEXT = "11111\n10001\n1S0N1\n10001\n11111\n"
@@ -117,13 +117,15 @@ def test_in_cooldown_nothing_happens():
 
 
 def test_cooldown_lasts_exactly_fireball_cooldown_s():
+	# conta disparos pelo id, não pelas fireballs vivas: com cooldown longo a
+	# primeira já bateu na parede e sumiu antes do segundo disparo
 	room = new_room()
 	fire(room) # Tick 1
 	for _ in range(COOLDOWN_TICKS - 1):
-		fire(room) # Ticks 2 a 12: em cooldown
-	assert len(room.projectiles) == 1
-	fire(room) # Tick 13: 0,4 s depois do primeiro
-	assert len(room.projectiles) == 2
+		fire(room) # em cooldown
+	assert room.next_projectile_id == 2 # só o primeiro saiu
+	fire(room) # FIREBALL_COOLDOWN_S depois do primeiro
+	assert room.next_projectile_id == 3
 
 
 def test_cooldown_is_per_player():

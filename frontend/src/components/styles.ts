@@ -8,6 +8,6 @@ export const buttonSecondary =
   `rounded border border-crypt-700 px-4 py-2 hover:text-torch ${focus} disabled:opacity-60`;
 
 export const fieldClass =
-  `rounded border border-crypt-700 bg-crypt-900 px-3 py-2 text-bone ${focus} disabled:opacity-60`;
+  `rounded border border-bone/40 bg-crypt-900 px-3 py-2 text-bone ${focus} disabled:opacity-60`;
 
 export const linkClass = `underline hover:text-torch ${focus}`;
