@@ -42,9 +42,9 @@ Ordem, valores, alertas de HP baixo, estados de morte/desconexão e comportament
 de Reconnection permanecem os definidos neste contrato. Esta revisão substitui
 as molduras propostas anteriormente na #256. Validação visual e revisão de Caio pendentes.
 
-Durante a partida normal, o centro contém apenas uma retícula em cruz:
-quatro traços brancos de 6 × 2 px, com contorno preto de 1 px, distribuídos
-em uma área de 20 × 20 px com vão central de 8 px entre os traços brancos.
+Durante a partida normal, o centro contém uma retícula em forma de sigilo arcano:
+arcos interrompidos e um losango central, dourados, com traço de 1,2 px e sombra
+escura para contraste. O SVG ocupa 32 × 32 px e mantém o centro vazado.
 Ela usa a camada `z-20` acima do canvas.
 Ela fica fixa no centro da área do canvas,
 inclusive quando os painéis da HUD ficam abaixo dele em janela estreita; não
@@ -52,7 +52,8 @@ anima, não captura cliques e não recebe foco (`pointer-events: none`,
 `aria-hidden`). Aparece somente com `status = running` e Player local vivo;
 fica oculta durante conexão, Reconnection, morte e término. Serve de referência
 visual e mira, sem garantir prevenção de cinetose. Não indica acerto, alvo,
-cooldown ou disponibilidade de tiro. Implementada em `Match.tsx` em 11/11/2026;
+cooldown ou disponibilidade de tiro. Implementada em `Match.tsx` em 11/11/2026
+e revista como sigilo arcano em 12/11/2026;
 validação visual em navegador e revisão de Caio pendentes.
 
 O rodapé não cobre a mão/fireball; reservar espaço ao minimapa quando ele estiver integrado.

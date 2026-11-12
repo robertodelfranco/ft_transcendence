@@ -115,15 +115,19 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
             className="block aspect-video w-full rounded border border-crypt-700 bg-black"
           />
           {status === "running" && hud?.alive && (
-            <span
+            <svg
               aria-hidden="true"
-              className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-[20px] w-[20px] -translate-x-1/2 -translate-y-1/2"
+              focusable="false"
+              viewBox="0 0 32 32"
+              fill="none"
+              stroke="#f2c66d"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-8 w-8 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]"
             >
-              <span className="absolute left-[9px] top-0 h-[6px] w-[2px] bg-white ring-1 ring-black" />
-              <span className="absolute bottom-0 left-[9px] h-[6px] w-[2px] bg-white ring-1 ring-black" />
-              <span className="absolute left-0 top-[9px] h-[2px] w-[6px] bg-white ring-1 ring-black" />
-              <span className="absolute right-0 top-[9px] h-[2px] w-[6px] bg-white ring-1 ring-black" />
-            </span>
+              <circle cx="16" cy="16" r="10" strokeDasharray="12 9" transform="rotate(-25 16 16)" />
+              <path d="M16 12 20 16 16 20 12 16Z" />
+            </svg>
           )}
           <canvas
             ref={minimapRef}

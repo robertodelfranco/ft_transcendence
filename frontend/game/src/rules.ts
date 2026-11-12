@@ -13,13 +13,13 @@ export const POTION_HEAL = 3; // HP
 export const COUNTDOWN_S = 3.0; // s, contagem 3, 2, 1 antes de a partida valer (#255)
 export const COUNTDOWN_WAIT_S = 10.0; // s, espera máxima pelos Players antes de começar a contagem
 
-export const ENEMY_SPEED = 1.5; // cél/s
+export const ENEMY_SPEED = 2.2; // cél/s
 export const ENEMY_RADIUS = 0.2; // cél
 export const ENEMY_SEPARATION = 0.6; // cél
 export const ENEMY_RETARGET_MARGIN = 1.0; // cél
 export const ENEMY_CHASE_RANGE = 12; // cél
 export const ENEMY_ATTACK_RANGE = 0.7; // cél
-export const ENEMY_ATTACK_INTERVAL_S = 1.4; // s
+export const ENEMY_ATTACK_INTERVAL_S = 1.0; // s
 export const ENEMY_DAMAGE = 1; // HP
 export const ENEMY_DYING_S = 1.5; // s
 
