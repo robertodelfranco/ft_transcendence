@@ -10,7 +10,7 @@ import { buttonPrimary, buttonSecondary, linkClass } from "../components/styles"
 import { usePageTitle } from "../hooks/usePageTitle";
 import { mapName } from "../lobby/roomOptions";
 import CharacterPicker, { CharacterPortrait } from "../lobby/CharacterPicker";
-import { playerCharacter } from "../../game/src/playerCharacters";
+import { playerCharacter, type CharacterId } from "../../game/src/playerCharacters";
 import RoomOptionsSummary from "../lobby/RoomOptionsSummary";
 import { useLobbyRooms } from "../lobby/useLobbyRooms";
 import { useAppMessages } from "../ws/AppSocketContext";
@@ -76,6 +76,14 @@ export default function WaitingRoom() {
       cancelled = true;
     };
   }, [missing, matchId, navigate, user?.id]);
+
+  // fora do JSX: o i18next/no-literal-string trata string dentro de atributo como texto visível
+  function selectCharacter(characterId: CharacterId) {
+    if (!me || characterId === me.character_id) return;
+    void act(async () => {
+      await runAction(matchId, () => post("character", { character_id: characterId }));
+    });
+  }
 
   // join, ready e character passam pelo runAction (a resposta não sobrescreve o socket); leave e start
   // devolvem 204
@@ -170,12 +178,7 @@ export default function WaitingRoom() {
         <CharacterPicker
           value={me.character_id}
           disabled={busy}
-          onSelect={(characterId) => {
-            if (characterId === me.character_id) return;
-            void act(async () => {
-              await runAction(matchId, () => post("character", { character_id: characterId }));
-            });
-          }}
+          onSelect={selectCharacter}
         />
       )}
 

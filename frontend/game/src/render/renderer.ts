@@ -82,7 +82,7 @@ export class ThreeRenderer implements Renderer {
       const wallGeometry = new THREE.BoxGeometry(1, 1, 1);
       this.resources.push(wallGeometry);
       const wallMaterial = new THREE.MeshStandardMaterial({
-        color: 0x777777, metalness: 0,
+        color: 0x777777, metalness: 0, roughness: assets.wallRoughness,
       });
       this.resources.push(wallMaterial);
       const walls = new THREE.InstancedMesh<
@@ -92,7 +92,7 @@ export class ThreeRenderer implements Renderer {
       this.resources.push(walls);
       const texturedMaterials = [assets.walls.ea, assets.walls.we, assets.walls.no, assets.walls.so]
         .map(map => new THREE.MeshStandardMaterial({
-          map, metalness: 0,
+          map, metalness: 0, roughness: assets.wallRoughness,
         }));
       this.resources.push(...texturedMaterials);
       walls.material = [
