@@ -179,6 +179,11 @@ class ConnectionManager:
 			for c in sockets if c.match_id == match_id]
 		await asyncio.gather(*(self.disconnect(c, code, message) for c in connections))
 
+	async def close_game(self, user_id: int, match_id: int, code: int, message: str = "") -> None:
+		"""Fecha os sockets game de um User numa partida, em todas as abas (o "Sair da partida")."""
+		connections = [c for c in self._connections(user_id, "game") if c.match_id == match_id]
+		await asyncio.gather(*(self.disconnect(c, code, message) for c in connections))
+
 	def counts(self) -> dict[Channel, int]:
 		"""Sockets abertos por canal, para o `ws_connections` (§2.10)."""
 		counts: dict[Channel, int] = dict.fromkeys(CHANNELS, 0)

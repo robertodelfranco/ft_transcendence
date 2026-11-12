@@ -207,6 +207,25 @@ class RoomManager:
 			entry.created_by = next(iter(entry.seats)) # quem entrou primeiro entre os que ficaram
 		return self._info(entry)
 
+	def abandon(self, match_id: int, user_id: int) -> None:
+		"""Saída voluntária em partida (#240): o efeito do Grace period vencido, sem esperar os 30 s.
+
+		O Ruleset decide o que a saída faz com a partida (`forfeit`, ws-messages.md §2.6), e o banco
+		só recebe o Match no game_over. Depois do game_over o resultado já está congelado: a saída
+		só libera o User.
+		"""
+		entry = self._entry(match_id)
+		self._require_seat(entry, user_id)
+		if entry.room is None: # no Lobby a saída é o leave; quem escolhe entre os dois é o lobby
+			raise ValueError(f"match {match_id} is in lobby")
+		if entry.room.players[user_id].left:
+			raise NotInRoom(f"user {user_id} already left match {match_id}")
+		entry.grace.pop(user_id, None)
+		if entry.room.result is None:
+			leave(entry.room, user_id) # o player_left sai no próximo Tick
+		if self._room_of.get(user_id) == match_id:
+			del self._room_of[user_id]
+
 	def set_ready(self, match_id: int, user_id: int, ready: bool) -> RoomInfo:
 		entry = self._entry(match_id)
 		self._require_seat(entry, user_id)
@@ -249,7 +268,8 @@ class RoomManager:
 	def player_disconnected(self, match_id: int, user_id: int) -> None:
 		"""O socket caiu: começa o Grace period. Não é erro se a Room já foi removida."""
 		entry = self._entries.get(match_id)
-		if entry is None or entry.room is None:
+		# quem saiu (abandon ou Grace vencido) não ganha outro Grace period quando o socket fecha
+		if entry is None or entry.room is None or entry.room.players[user_id].left:
 			return
 		set_connected(entry.room, user_id, False)
 		if entry.status == "running": # depois do game_over não há o que esperar
