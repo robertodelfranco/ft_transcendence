@@ -43,7 +43,8 @@ export const routes: RouteObject [] = [
             children: [
               { path: "lobby", element: <Lobby /> },
               { path: "lobby/:matchId", element: <WaitingRoom /> },
-              { path: "play/:matchId", element: <Play /> },
+              // modo partida (#254): o Layout encolhe cabeçalho e rodapé para o canvas crescer
+              { path: "play/:matchId", element: <Play />, handle: { compact: true } },
               { path: "matches/:matchId", element: <FinishedMatch /> },
               { path: "users/:userId", element: <UserProfile /> },
               { path: "settings", element: <Settings />},

@@ -19,7 +19,9 @@ export default function Play() {
 
   return (
     <section className="flex flex-col gap-4">
-      <h1 className="text-2xl font-bold text-torch">{t("title")}</h1>
+      {/* modo partida (#254): o título sai da tela, que fica para o canvas, e continua para leitor
+          de tela; sr-only é absolute, então não ocupa o gap da coluna */}
+      <h1 className="sr-only">{t("title")}</h1>
       {valid ? (
         <Match
           key={`${matchId}:${attempt}`}

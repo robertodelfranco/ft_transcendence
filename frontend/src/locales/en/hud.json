@@ -6,6 +6,7 @@
   "viewResult": "View result",
   "view": "Game view",
   "retry": "Try again",
+  "fullscreen": "Full screen",
   "leave": {
     "button": "Leave match",
     "confirm": "Leave the match? You won't be able to come back.",
