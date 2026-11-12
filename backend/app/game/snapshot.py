@@ -9,6 +9,7 @@ def to_snapshot(room: Room) -> dict:
 	boss = room.boss
 	return {
 		"tick": room.tick,
+		"countdown_end_tick": room.countdown_end_tick, # #255: None enquanto espera os Players
 		"players": [
 			{
 				"id": player.user_id, "name": player.name,
@@ -52,8 +53,9 @@ def _scoreboard(room: Room) -> dict | None:
 	if room.mode != Mode.PVP:
 		return None
 	# Depois do game_over a Room continua avançando para terminar as animações.
-	end_tick = room.outcome.duration_ticks if room.outcome is not None else room.tick
-	remaining_ticks = max(0, room.options.time_limit_s * TICK_RATE - end_tick)
+	# O relógio é o tempo jogado (#255): parado na espera e na contagem.
+	played = room.outcome.duration_ticks if room.outcome is not None else room.played_ticks()
+	remaining_ticks = max(0, room.options.time_limit_s * TICK_RATE - played)
 	return {
 		"players": [{"id": player.user_id, "frags": player.frags}
 			for player in sorted(room.players.values(), key=lambda player: -player.frags)],

@@ -241,8 +241,9 @@ class RoomManager:
 		if len(entry.seats) < minimum:
 			raise NotEnoughPlayers(f"match {match_id} has {len(entry.seats)}/{minimum} players")
 		players = [(user_id, seat.username) for user_id, seat in entry.seats.items()]
+		# a Room nasce congelada: espera os Players e conta 3, 2, 1 (#255)
 		entry.room = create_room(match_id, entry.mode, entry.game_map, entry.options, players,
-			seed=random.randrange(2**32))
+			seed=random.randrange(2**32), countdown=True)
 		# o Player nasce desconectado: quem nunca abre o socket expira contando daqui (ws-messages.md)
 		entry.grace = {user_id: GRACE_TICKS for user_id in entry.seats}
 		entry.status = "running"

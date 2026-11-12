@@ -59,6 +59,7 @@ No `welcome`:
 | Campo | Tipo | Conteúdo |
 |---|---|---|
 | `tick` | int | Tick da Room em que a foto foi tirada |
+| `countdown_end_tick` | int ou `null` | Primeiro Tick em que a partida vale (#255). `null` enquanto a Room espera os Players conectarem; com `tick < countdown_end_tick`, a contagem está correndo e faltam `(countdown_end_tick - tick) / TICK_RATE` segundos. Até lá, ninguém se move (§2.9) |
 | `last_input_seq` | int | Último `seq` de `input` **deste destinatário** que o servidor aplicou; `0` antes do primeiro. É o único campo que muda por destinatário |
 | `players` | lista | Todos os Players da Room, inclusive o destinatário e os mortos |
 | `enemies` | lista | Enemies vivos e os que estão em `dying`; `[]` no `pvp` |
@@ -179,6 +180,7 @@ A regra que mantém a Prediction certa: **cada `input` é aplicado uma única ve
 - A fila guarda no máximo 1 s (30 `input`s); o que passar disso é descartado.
 - `input` ou `action` com `seq` menor ou igual ao último que entrou na fila é descartado sem resposta. Sobre TCP isso só acontece com cliente defeituoso.
 - A fila e o `seq` zeram a cada `join` aceito: na Reconnection e também quando o socket novo substitui um que ainda não tinha caído (`4408`).
+- **Room congelada (#255).** A Room nasce esperando todos os Players conectados, ou no máximo `COUNTDOWN_WAIT_S`, e então conta `COUNTDOWN_S`; o Snapshot mostra isso em `countdown_end_tick` (§2.4). Enquanto congelada, a fila é consumida inteira a cada Tick sem efeito: o `input` não move nem gira, mas o `last_input_seq` avança até ele, para a Reconciliation não esperar; a `action` só some. Enemies, Boss, Projectiles e a regeneração de Mana também param, e o relógio do `pvp` não corre. O Ruleset continua decidindo: quem sai na contagem perde por `forfeit` na hora. A duração do Match conta só a partir do fim da contagem.
 
 ## 3. Exemplo
 

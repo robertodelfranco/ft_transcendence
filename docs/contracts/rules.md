@@ -36,6 +36,8 @@ Como ler as tabelas:
 | `FIREBALL_COOLDOWN_S` | s | `0.8` | novo | No C: `attack_delay > 0.4` (`player_bonus/controls_bonus.c:90`); ajustado na F4.7 (§5.5) |
 | `DOOR_REACH` | cél | `1.0` | novo | Célula a `1.0` à frente do Player (`door_bonus/door_bonus.c:67`) |
 | `POTION_HEAL` | HP | `3` | novo | `hp += 3`, teto `10` (`game_bonus/handle_utils_bonus.c:50-52`) |
+| `COUNTDOWN_S` | s | `3.0` | novo | Sem equivalente: contagem 3, 2, 1 com a Room congelada antes de a partida valer (#255, [ws-messages.md](ws-messages.md) §2.9) |
+| `COUNTDOWN_WAIT_S` | s | `10.0` | novo | Sem equivalente: espera máxima pelos Players conectarem antes de começar a contagem (#255) |
 
 O HP inicial e o teto da poção não são constantes: vêm de `options.start_hp` ([room-options.md](room-options.md)). No C eram `LIFE_MAX = 10`.
 
