@@ -31,6 +31,8 @@ O centro fica livre durante a partida normal, para preservar a visão. O rodapé
 Ordem de prioridade em conflito de espaço: erro/conexão ou resultado; estado de morte; HP e Mana; placar/relógio; Armor e chaves; Players; ping e feed.
 Em janela estreita, reordenar os grupos e permitir nomes truncados com nome completo acessível. Não ocultar informações essenciais nem exigir rolagem para ver recursos e placar.
 
+Contagem do início (#255): enquanto `HudState.countdown` não é `null`, uma camada acinzentada (`bg-black/50`) cobre o canvas, e só ele, também abaixo do `md`. Com `"waiting"`, mostra "Aguardando jogadores…"; com `3`, `2` e `1`, o número branco e grande no centro. Some quando a partida passa a valer, sem aviso de largada. Uma região `role="status"` sempre montada anuncia o mesmo texto ao leitor de tela ("A partida começa em 3"). A HUD continua visível por baixo, e o Player não se move até o fim (a Prediction também espera, [mount-game.md](mount-game.md) §2.6).
+
 ## 3. Recursos e Players
 
 | Informação | Fonte | Apresentação e condição |
