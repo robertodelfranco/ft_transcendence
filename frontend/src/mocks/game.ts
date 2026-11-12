@@ -14,7 +14,8 @@ let failing = false;
 export function hudState(overrides: Partial<HudState> = {}): HudState {
   return {
     hp: 10, maxHp: 10, mana: 60, maxMana: 100, armor: 0, keys: 0, alive: true, ping: null,
-    players: [], scoreboard: null, killfeed: [], mode: "coop", status: "running", ...overrides,
+    players: [], scoreboard: null, killfeed: [], countdown: null, mode: "coop", status: "running",
+    ...overrides,
   };
 }
 

@@ -3,6 +3,7 @@
 import { applyInput, type Body, type CollisionWorld, type MoveInput } from "../applyInput";
 import { TICK_RATE } from "../rules";
 import type { ActionKind, ClientMessage, Keys, PlayerSnapshot, Snapshot, WelcomeMessage } from "../types";
+import { isFrozen } from "./countdown";
 import { reconcilePlayer, type PendingInput } from "./reconciliation";
 import { applyGridDelta } from "./viewstate";
 
@@ -29,6 +30,7 @@ interface Running {
   current: Body;
   pending: PendingInput[];
   visualOffset: { x: number; y: number; remainingS: number };
+  frozen: boolean; // #255: o último estado do servidor diz que a Room está congelada
 }
 
 function worldFromSnapshot(
@@ -90,6 +92,7 @@ export function createPredictionLoop(send: (message: ClientMessage) => void): Pr
         current: body,
         pending: [],
         visualOffset: { x: 0, y: 0, remainingS: 0 },
+        frozen: isFrozen(welcome.snapshot),
       };
       seq = 0; // recomeça a cada conexão (ws-messages.md §2.2)
       accumulatorS = 0;
@@ -133,6 +136,7 @@ export function createPredictionLoop(send: (message: ClientMessage) => void): Pr
         current: body,
         pending,
         visualOffset,
+        frozen: isFrozen(snapshot),
         previous: sameLife ? {
           x: state.previous.x + correction.x,
           y: state.previous.y + correction.y,
@@ -152,6 +156,14 @@ export function createPredictionLoop(send: (message: ClientMessage) => void): Pr
           remainingS: Math.max(0, remainingS - frameDtS),
         };
       }
+      if (run.frozen) {
+        // #255: congelada, nada sai. Um Input mandado agora chegaria ao servidor talvez já
+        // descongelado e o moveria sem a Prediction saber; o giro e o tempo acumulados também não
+        // vazam para a largada. Volta no primeiro Snapshot que diz que a partida vale
+        mouseDx = 0;
+        accumulatorS = 0;
+        return;
+      }
       mouseDx += frameMouseDx;
       accumulatorS += frameDtS;
       let steps = 0;
@@ -164,7 +176,7 @@ export function createPredictionLoop(send: (message: ClientMessage) => void): Pr
     },
 
     action(kind) {
-      if (run === null) return;
+      if (run === null || run.frozen) return; // #255: o servidor descartaria
       seq += 1; // o mesmo contador do Input: a fila do servidor segue a ordem do seq
       send({ v: 1, type: "action", seq, kind });
     },

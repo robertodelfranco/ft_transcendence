@@ -45,7 +45,7 @@ const WELCOME = {
   room: { match_id: 12, mode: "coop", map: "test",
     options: { theme: "dungeon", start_hp: 10, pickups: { potion: true, mana: true, armor: true } } },
   map: { grid: ["11111", "10001", "10001", "11111"] },
-  snapshot: { tick: 0, last_input_seq: 0, enemies: [], boss: null, projectiles: [], doors: [],
+  snapshot: { tick: 0, countdown_end_tick: 0, last_input_seq: 0, enemies: [], boss: null, projectiles: [], doors: [],
     grid_delta: [], scoreboard: null,
     players: [{ id: 7, name: "ana", x: 1.5, y: 1.5, dx: 0, dy: -1, hp: 10, mana: 100, armor: 0,
       keys: 0, alive: true, connected: true }] },

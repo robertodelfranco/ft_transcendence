@@ -14,7 +14,7 @@ const player = (id: number, extra: Partial<PlayerSnapshot> = {}): PlayerSnapshot
   alive: true, connected: true, ...extra });
 
 const snapshot = (tick: number, players: PlayerSnapshot[], extra: Partial<Snapshot> = {}): Snapshot => ({
-  tick, last_input_seq: 0, players, enemies: [], boss: null, projectiles: [], doors: [],
+  tick, countdown_end_tick: 0, last_input_seq: 0, players, enemies: [], boss: null, projectiles: [], doors: [],
   grid_delta: [], scoreboard: null, ...extra });
 
 const enemy = (id: string, x: number): EnemySnapshot => ({ id, x, y: 1.5, state: "alert" });

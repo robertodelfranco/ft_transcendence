@@ -3,6 +3,7 @@
 import type { HudState, HudStatus } from "../api";
 import type { ViewState } from "../render/renderer";
 import { RULESET_NUMBERS } from "../rules";
+import { countdownOf } from "./countdown";
 import type { GridCell, Mode, RoomOptions, Snapshot } from "../types";
 
 export type { ViewState }; // o tipo é do Renderer (mount-game.md §5.1); o net/ só o preenche
@@ -77,7 +78,7 @@ export interface HudContext {
 // o Mode chega no welcome, então entre ele e o primeiro Snapshot já vem preenchido
 export function emptyHud(status: HudStatus, mode: Mode | null, error?: string): HudState {
   return { hp: 0, maxHp: 0, mana: 0, maxMana: 0, armor: 0, keys: 0, alive: false, ping: null,
-    players: [], scoreboard: null, killfeed: [], mode, status,
+    players: [], scoreboard: null, killfeed: [], countdown: null, mode, status,
     ...(error === undefined ? {} : { error }) };
 }
 
@@ -98,6 +99,7 @@ export function buildHud(snapshot: Snapshot, context: HudContext, killfeed: Kill
     scoreboard: snapshot.scoreboard === null ? null
       : { players: snapshot.scoreboard.players, timeLeftS: snapshot.scoreboard.time_left_s },
     killfeed,
+    countdown: countdownOf(snapshot),
     mode: context.mode,
     status,
   };

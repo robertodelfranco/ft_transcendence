@@ -115,6 +115,7 @@ export interface Scoreboard {
 
 export interface Snapshot {
   tick: number;
+  countdown_end_tick: number | null; // #255: primeiro Tick que vale; null esperando os Players
   last_input_seq: number; // o único campo que muda por destinatário
   players: PlayerSnapshot[];
   enemies: EnemySnapshot[];

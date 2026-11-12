@@ -14,7 +14,7 @@ const WELCOME = {
   room: { match_id: 1, mode: "coop", map: "test",
     options: { theme: "dungeon", start_hp: 10, pickups: { potion: true, mana: true, armor: true } } },
   map: { grid: ["111111", "100001", "100001", "100001", "100001", "111111"] },
-  snapshot: { tick: 0, last_input_seq: 0, enemies: [], boss: null, projectiles: [], doors: [],
+  snapshot: { tick: 0, countdown_end_tick: 0, last_input_seq: 0, enemies: [], boss: null, projectiles: [], doors: [],
     grid_delta: [], scoreboard: null,
     players: [{ id: 7, name: "ana", x: 2.5, y: 2.5, dx: 0, dy: -1, hp: 10, mana: 100, armor: 0,
       keys: 0, alive: true, connected: true }] },
@@ -275,3 +275,38 @@ test("a new welcome resets pending Inputs, Seq, mouse and accumulated time", () 
     x: 3, y: 3, dx: 0, dy: -1,
   });
 });
+
+// #255: a Room nasce congelada; o servidor descartaria o Input, então nada sai
+const FROZEN = { ...WELCOME, snapshot: { ...WELCOME.snapshot, countdown_end_tick: null } } satisfies WelcomeMessage;
+
+function startFrozen(): void {
+  loop = createPredictionLoop((message) => sent.push(message));
+  loop.start(FROZEN);
+}
+
+test("frozen: no Input nor Action leaves, and the Player stays put", () => {
+  startFrozen();
+  loop.frame(0.5, UP, 0.4);
+  loop.action("fire");
+  expect(sent).toEqual([]);
+  expect(loop.localPlayer()).toMatchObject({ x: 2.5, y: 2.5, dx: 0, dy: -1 });
+});
+
+test("with the countdown running (tick before countdown_end_tick) it is still frozen", () => {
+  startFrozen();
+  loop.onSnapshot({ ...FROZEN.snapshot, tick: 30, countdown_end_tick: 120 });
+  loop.frame(0.1, UP, 0);
+  expect(sent).toEqual([]);
+});
+
+test("the first Snapshot at countdown_end_tick releases the Inputs, without the turn of the countdown", () => {
+  startFrozen();
+  loop.frame(0.5, NONE, 0.4); // girou o mouse esperando a largada
+  loop.onSnapshot({ ...FROZEN.snapshot, tick: 120, countdown_end_tick: 120 });
+  loop.frame(2 * STEP_S, UP, 0);
+  expect(inputs()).toHaveLength(2);
+  expect(inputs()[0]).toMatchObject({ seq: 1, mouse_dx: 0 });
+  // o desenho interpola entre os dois últimos passos: com dois, já mostra o primeiro andado
+  expect(loop.localPlayer()!.y).toBeLessThan(2.5);
+});
+
