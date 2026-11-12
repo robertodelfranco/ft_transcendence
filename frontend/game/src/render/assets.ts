@@ -9,6 +9,7 @@ export interface Assets {
   floor: number;
   ceiling: number;
   walls: Record<"no" | "so" | "we" | "ea", THREE.Texture>;
+  wallRoughness: number;
   door: THREE.Texture;
   hand: THREE.Texture;
   fireball: THREE.Texture;
@@ -63,6 +64,7 @@ export class AssetLoader {
       floor: theme.floor,
       ceiling: theme.ceiling,
       walls: { no: texture("no"), so: texture("so"), we: texture("we"), ea: texture("ea") },
+      wallRoughness: theme.wallRoughness,
       door: texture("door"),
       hand: texture("hand"),
       fireball: texture("fireball"),

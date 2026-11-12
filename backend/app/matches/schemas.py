@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, computed_fie
 
 from app.core.errors import ApiError, validation_fields
 from app.game.state import Mode, PickupOptions, RoomOptions
+from app.game.characters import CharacterId
 from app.matches.models import Reason, Result
 from app.matches.progression import ELO_START, threshold
 
@@ -66,6 +67,10 @@ def parse_options(mode: Mode, raw: dict[str, Any]) -> RoomOptions:
 
 class ReadyIn(Input):
 	ready: bool
+
+
+class CharacterIn(Input):
+	character_id: CharacterId = Field(strict=False)
 
 
 # ---------- MatchDetail (matches-api.md §2.4) ----------

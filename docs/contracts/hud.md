@@ -23,11 +23,39 @@ Na base conferida em 03/11 (`022cb09`), `Play.tsx` monta `Match`, que usa os com
 |---|---|---|
 | Topo esquerdo | Lista de Players, HP e estado | Dois Players, Frags e relógio |
 | Topo direito | Ping e acesso à ajuda de controles | Ping, acesso à ajuda de controles e kill feed |
-| Centro | Aviso de conexão, morte ou erro quando necessário | Aviso de conexão, espera de respawn ou erro |
+| Centro | Retícula fixa durante a partida com Player vivo; aviso de conexão, morte ou erro quando necessário | Retícula fixa durante a partida com Player vivo; aviso de conexão, espera de respawn ou erro |
 | Rodapé esquerdo | HP, Mana, Armor e chaves do Player local | HP, Mana, Armor e chaves do Player local |
 | Rodapé direito | Área reservada para o minimapa F3.6 | Área reservada para o minimapa F3.6 |
 
-O centro fica livre durante a partida normal, para preservar a visão. O rodapé não cobre a mão/fireball; reservar espaço ao minimapa quando ele estiver integrado.
+Apresentação revista localmente na #260 em 12/11/2026: a HUD usa elementos
+soltos sobre a cena, sem caixas, fundos de painel ou molduras. Textos têm sombra
+suave para contraste, tamanho base de 12 px e peso moderado. Recursos ocupam
+176–192 px de largura, com barras de 4 px: HP vermelho e Mana azul. Armor e
+chaves aparecem como ícone e número, com rótulos traduzidos acessíveis.
+Players/placar ocupam 192–208 px, sem título visível redundante; os nomes
+acessíveis das listas permanecem. O Player local recebe destaque no nome e no
+rótulo existente. No coop, HP numérico com coração; sem barra dos companheiros,
+pois o HudState não informa máximo por participante. No PvP, Frags alinhados à
+direita e relógio discreto na linha seguinte. Ping, ajuda e feed usam texto menor.
+O minimapa ocupa 112–128 px, sem moldura ou fundo opaco externo ao desenho do Grid.
+Ordem, valores, alertas de HP baixo, estados de morte/desconexão e comportamento
+de Reconnection permanecem os definidos neste contrato. Esta revisão substitui
+as molduras propostas anteriormente na #256. Validação visual e revisão de Caio pendentes.
+
+Durante a partida normal, o centro contém apenas uma retícula em cruz:
+quatro traços brancos de 6 × 2 px, com contorno preto de 1 px, distribuídos
+em uma área de 20 × 20 px com vão central de 8 px entre os traços brancos.
+Ela usa a camada `z-20` acima do canvas.
+Ela fica fixa no centro da área do canvas,
+inclusive quando os painéis da HUD ficam abaixo dele em janela estreita; não
+anima, não captura cliques e não recebe foco (`pointer-events: none`,
+`aria-hidden`). Aparece somente com `status = running` e Player local vivo;
+fica oculta durante conexão, Reconnection, morte e término. Serve de referência
+visual e mira, sem garantir prevenção de cinetose. Não indica acerto, alvo,
+cooldown ou disponibilidade de tiro. Implementada em `Match.tsx` em 11/11/2026;
+validação visual em navegador e revisão de Caio pendentes.
+
+O rodapé não cobre a mão/fireball; reservar espaço ao minimapa quando ele estiver integrado.
 Ordem de prioridade em conflito de espaço: erro/conexão ou resultado; estado de morte; HP e Mana; placar/relógio; Armor e chaves; Players; ping e feed.
 Em janela estreita, reordenar os grupos e permitir nomes truncados com nome completo acessível. Não ocultar informações essenciais nem exigir rolagem para ver recursos e placar.
 
@@ -37,8 +65,8 @@ Em janela estreita, reordenar os grupos e permitir nomes truncados com nome comp
 |---|---|---|
 | HP local | `hp`, `maxHp` | Barra e número `atual / máximo`; sempre durante `running`, inclusive morto |
 | Mana local | `mana`, `maxMana` | Barra e número `atual / máximo`; sempre durante `running` |
-| Armor local | `armor` | Ícone com rótulo traduzido e número; mostrar zero; sem barra percentual, pois não existe `maxArmor` |
-| Chaves locais | `keys` | Ícone com rótulo e quantidade; mostrar zero, inclusive se Pickups estiverem desativados |
+| Armor local | `armor` | Ícone com rótulo traduzido acessível e número; mostrar zero; sem barra percentual, pois não existe `maxArmor` |
+| Chaves locais | `keys` | Ícone com rótulo traduzido acessível e quantidade; mostrar zero, inclusive se Pickups estiverem desativados |
 | Companheiros coop | `players` | Nome, HP numérico, vivo/morto e conectado/desconectado; Player local primeiro, demais por `id` crescente |
 | Ping | `ping` | RTT inteiro em ms; `null` aparece como indisponível (`—` com descrição traduzida), nunca como 0 ms |
 

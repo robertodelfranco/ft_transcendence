@@ -20,6 +20,7 @@ from starlette.requests import HTTPConnection
 from app.game import (BOSS_DYING_S, TICK_RATE, Event, Map, MatchOutcome, Mode, Room, RoomOptions,
 	create_room, last_input_seq, leave, load_map, match_outcome, set_connected, step, to_snapshot)
 from app.game.protocol import CloseCode, encode_event, options_payload, snapshot_encoder
+from app.game.characters import CharacterId, DEFAULT_CHARACTER
 from app.matches.results import AchievementUnlock, abort_unfinished, record_match_result
 from app.ws.manager import NORMAL_CLOSURE, ConnectionManager
 
@@ -94,6 +95,7 @@ class PlayerInfo:
 	ready: bool
 	connected: bool # false durante o Grace period
 	joined_at: datetime
+	character_id: CharacterId = DEFAULT_CHARACTER
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,7 +120,8 @@ class RoomInfo:
 			"options": options_payload(self.mode, self.options),
 			"created_at": iso(self.created_at),
 			"players": [{"user_id": p.user_id, "username": p.username, "avatar_url": p.avatar_url,
-				"ready": p.ready, "connected": p.connected, "joined_at": iso(p.joined_at)}
+				"ready": p.ready, "connected": p.connected, "joined_at": iso(p.joined_at),
+				"character_id": p.character_id}
 				for p in self.players],
 		}
 
@@ -131,6 +134,7 @@ class Seat:
 	avatar_url: str
 	joined_at: datetime
 	ready: bool = False # vive aqui, nunca no banco (rooms.md decisão 2)
+	character_id: CharacterId = DEFAULT_CHARACTER
 
 
 @dataclass(slots=True)
@@ -214,6 +218,13 @@ class RoomManager:
 		entry.seats[user_id].ready = ready
 		return self._info(entry)
 
+	def set_character(self, match_id: int, user_id: int, character_id: CharacterId) -> RoomInfo:
+		entry = self._entry(match_id)
+		self._require_seat(entry, user_id)
+		self._require_lobby(entry)
+		entry.seats[user_id].character_id = CharacterId(character_id)
+		return self._info(entry)
+
 	def start(self, match_id: int) -> None:
 		"""Cria a Room da Simulation com os Players em ordem de entrada e liga o tick."""
 		entry = self._entry(match_id)
@@ -224,6 +235,8 @@ class RoomManager:
 		players = [(user_id, seat.username) for user_id, seat in entry.seats.items()]
 		entry.room = create_room(match_id, entry.mode, entry.game_map, entry.options, players,
 			seed=random.randrange(2**32))
+		for user_id, seat in entry.seats.items():
+			entry.room.players[user_id].character_id = seat.character_id
 		# o Player nasce desconectado: quem nunca abre o socket expira contando daqui (ws-messages.md)
 		entry.grace = {user_id: GRACE_TICKS for user_id in entry.seats}
 		entry.status = "running"
@@ -401,7 +414,7 @@ class RoomManager:
 			max_players=entry.max_players, min_players=MIN_PLAYERS[entry.mode], status=entry.status,
 			created_by=entry.created_by, options=entry.options, created_at=entry.created_at,
 			players=tuple(PlayerInfo(user_id=user_id, username=seat.username,
-				avatar_url=seat.avatar_url, ready=seat.ready,
+				avatar_url=seat.avatar_url, ready=seat.ready, character_id=seat.character_id,
 				# no Lobby, estar na Room é estar online (rooms.md decisão 10)
 				connected=room.players[user_id].connected if room is not None else True,
 				joined_at=seat.joined_at) for user_id, seat in entry.seats.items()))

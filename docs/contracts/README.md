@@ -43,6 +43,7 @@ Na defesa, cada pessoa explica cada linha do próprio contrato. Se você não sa
 | `ConnectionManager` e `/ws/app` | `ws-manager.md` | Augusto | Akita, Caio | arq. §7.4, §9.3 |
 | `RoomManager`, `MatchResult`, schema de partidas | `rooms.md` | Akita | Augusto, Roberto | arq. §10 |
 | API REST de lobby | `matches-api.md` | Akita | Caio | arq. §10.1 |
+| Visual individual de Player (#256, revisão pendente) | `player-characters.md` | Rafael | Caio, Akita, Augusto, Roberto | extensão de Lobby, RoomInfo e Snapshot em 12/11 |
 | Rotas, host, TLS, `.env` | `infra.md` | Akita | todos | arq. §12 |
 | i18n, catálogo de erros, rotas do SPA, API de usuários | `i18n.md` | Caio | Augusto | arq. §9.2, §11 |
 

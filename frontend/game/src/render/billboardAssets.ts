@@ -1,8 +1,17 @@
 import * as THREE from "three";
 import { dungeonTheme, type Theme } from "./themes";
+import { PLAYER_CHARACTERS, type CharacterId } from "../playerCharacters";
 
 const sequence = (prefix: string, count: number) =>
   Array.from({ length: count }, (_, i) => `/assets/${prefix}${i}.png`);
+
+const playerUrls = Object.fromEntries(PLAYER_CHARACTERS.map(({ id, sprite }) =>
+  [`player:${id}`, [sprite]],
+)) as Record<`player:${CharacterId}`, string[]>;
+
+const projectileUrls = Object.fromEntries(PLAYER_CHARACTERS.map(({ id, projectileSprite }) =>
+  [`projectile:${id}`, [projectileSprite]],
+)) as Record<`projectile:${CharacterId}`, string[]>;
 
 export const billboardUrls = (theme: Theme = dungeonTheme) => ({
   enemy: sequence(theme.sprites.enemy, 10),
@@ -13,7 +22,8 @@ export const billboardUrls = (theme: Theme = dungeonTheme) => ({
   potion: ["/assets/collectables/pot.png"],
   mana: ["/assets/placeholders/mana.svg"],
   armor: ["/assets/placeholders/armor.svg"],
-  player: ["/assets/player/nemesis.png"],
+  ...playerUrls,
+  ...projectileUrls,
 });
 
 

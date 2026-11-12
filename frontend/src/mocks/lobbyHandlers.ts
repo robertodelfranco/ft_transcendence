@@ -4,6 +4,7 @@ import { publish } from "./appSocketHandlers";
 import authResponse from "./fixtures/authResponse.json";
 import maps from "./fixtures/maps.json";
 import roomsFixture from "./fixtures/rooms.json";
+import { DEFAULT_CHARACTER, isCharacterId } from "../../game/src/playerCharacters";
 
 const me = authResponse.user;
 const catalog: MapCatalog = maps;
@@ -46,7 +47,7 @@ function isIn(room: RoomInfo): boolean {
 function asPlayer(): RoomPlayer {
   return {
     user_id: me.id, username: me.username, avatar_url: me.avatar_url,
-    ready: false, connected: true, joined_at: new Date().toISOString(),
+    ready: false, connected: true, joined_at: new Date().toISOString(), character_id: DEFAULT_CHARACTER,
   };
 }
 
@@ -135,6 +136,23 @@ export const lobbyHandlers = [
       return apiError(409, "not_in_match");
     const body = (await request.json()) as { ready: boolean };
     player.ready = body.ready;
+    publish({ type: "lobby_update", room });
+    return HttpResponse.json(room);
+  }),
+
+  http.post("/api/matches/:matchId/character", async ({ params, request }) => {
+    const body = (await request.json()) as { character_id?: unknown };
+    if (!isCharacterId(body.character_id) || Object.keys(body).length !== 1)
+      return apiError(422, "validation_error");
+    const room = findRoom(params.matchId);
+    if (!room)
+      return apiError(404, "match_not_found");
+    const player = room.players.find((seat) => seat.user_id === me.id);
+    if (!player)
+      return apiError(409, "not_in_match");
+    if (room.status !== "lobby")
+      return apiError(409, "already_started");
+    player.character_id = body.character_id;
     publish({ type: "lobby_update", room });
     return HttpResponse.json(room);
   }),

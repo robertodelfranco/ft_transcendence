@@ -88,7 +88,7 @@ export function createGameAudio(): GameAudio {
       // Motivo original em Lá menor; agendamento curto evita filas após aba suspensa.
       const melody = [110, 130.81, 164.81, 146.83, 110, 164.81, 130.81, 98];
       const tick = () => {
-        tone(melody[note % melody.length], melody[note % melody.length], 1.1, 0.08, "sine", true);
+        tone(melody[note % melody.length], melody[note % melody.length], 1.1, 0.24, "sine", true);
         note++;
       };
       tick();

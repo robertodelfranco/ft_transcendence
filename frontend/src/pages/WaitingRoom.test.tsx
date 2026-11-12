@@ -81,6 +81,28 @@ describe("sala de espera de quem não é anfitrião", () => {
     expect(await screen.findByRole("button", { name: "Não estou pronto" })).toBeInTheDocument();
   });
 
+  it("escolhe Sucubus e recebe a escolha confirmada pela Room", async () => {
+    const { user } = await joinRoom13();
+    expect(screen.getByRole("button", { name: "Nemesis" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("button", { name: "Sucubus" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Sucubus" })).toHaveAttribute("aria-pressed", "true"));
+    const room = await apiFetch<RoomInfo>("/api/matches/13");
+    expect(room.players.find((player) => player.user_id === 7)?.character_id).toBe("sucubus");
+    expect(room.players.filter((player) => player.user_id !== 7).every((player) => player.character_id === "nemesis")).toBe(true);
+  });
+
+  it("mantém a escolha confirmada quando a troca falha", async () => {
+    const { user } = await joinRoom13();
+    server.use(http.post("/api/matches/:matchId/character", () => HttpResponse.json({
+      error: { code: "already_started", message: "already_started", request_id: "test", fields: null },
+    }, { status: 409 })));
+    await user.click(screen.getByRole("button", { name: "Sucubus" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Sucubus" })).toBeEnabled());
+    expect(screen.getByRole("button", { name: "Nemesis" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Sucubus" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
+
   it("Sair volta ao lobby", async () => {
     const { user, router } = await joinRoom13();
     await user.click(screen.getByRole("button", { name: "Sair da sala" }));
@@ -118,7 +140,7 @@ it("uma resposta HTTP antiga não apaga o estado mais novo que veio pelo socket"
 
   const [akita] = room12.players;
   const me: RoomPlayer = {
-    user_id: 7, username: "augusto", avatar_url: "/media/avatars/default.png",
+    user_id: 7, username: "augusto", character_id: "nemesis", avatar_url: "/media/avatars/default.png",
     ready: true, connected: true, joined_at: "2026-10-20T18:10:00Z",
   };
   const newcomer: RoomPlayer = { ...me, user_id: 21, username: "novato", ready: false };

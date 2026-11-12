@@ -82,7 +82,7 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
       <canvas
         ref={minimapRef}
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-3 right-3 h-32 w-32 rounded-sm border border-torch/35 border-t-torch/60 bg-crypt-950/95 shadow-[0_4px_20px_rgba(0,0,0,0.5)] sm:h-40 sm:w-40"
+        className="pointer-events-none absolute bottom-3 right-3 h-28 w-28 opacity-85 sm:h-32 sm:w-32"
       />
       {hud && live && <Hud hud={hud} userId={user?.id ?? null} />}
       {/* fora da partida em andamento, o centro do canvas fala: conexão, erro ou fim */}

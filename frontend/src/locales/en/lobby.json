@@ -62,6 +62,17 @@
     "missing": "This room doesn't exist.",
     "back": "Back to the lobby"
   },
+  "characters": {
+    "title": "Choose your character",
+    "description": "Choose your appearance for this match. All characters have the same attributes.",
+    "current": "Selected: {{name}}",
+    "previewUnavailable": "Preview unavailable",
+    "names": {
+      "nemesis": "Nemesis",
+      "sucubus": "Sucubus",
+      "oil": "Oil"
+    }
+  },
   "socket": {
     "reconnecting": "Reconnecting to the server… the list may be out of date."
   }

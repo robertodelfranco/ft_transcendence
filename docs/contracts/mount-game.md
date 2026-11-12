@@ -187,10 +187,18 @@ As propostas abaixo não estão aprovadas. Responsáveis são indicados por áre
 
 Proposta compilável dos tipos, usando os campos já publicados no protocolo:
 
+Extensão #256 (12/11/2026), com revisão dos responsáveis pendente:
+`PlayerView.character_id` vem do Snapshot e escolhe a sprite do Player. A
+Interpolation e a Prediction preservam esse metadado; o Renderer resolve o ID
+pelo catálogo local e usa Nemesis como fallback. Detalhes em
+[player-characters.md](player-characters.md). A aprovação de 06/10 registrada
+abaixo não inclui esta extensão.
+
 ```ts
 type GameMap = { grid: string[] };
 type PlayerView = {
   id: number; name: string;
+  character_id: string; // visual escolhido no Lobby; extensão #256
   x: number; y: number; dx: number; dy: number;
   hp: number; mana: number; armor: number; keys: number;
   alive: boolean; connected: boolean;
@@ -265,7 +273,25 @@ A luz precisa de tipo, cor, intensidade/unidade, alcance e configuração de som
 
 Propostas a testar: câmera a 0,5 unidade do chão; Enemy e outro Player com altura 0,8; Boss 0,95; Pickups 0,2, preservando a proporção da imagem. Apoiar a base opaca do sprite no chão, compensando a transparência do PNG. Projétil, tocha, Door e mão ainda precisam de dimensões/deslocamentos.
 
+**Ajuste visual da mão em 11/11/2026:** por solicitação de Rafael, o
+`HandOverlay` passa a deslocar o centro da mão para a direita do centro da
+imagem em 12% da largura visível, antes 22%, mantendo o limite para telas
+estreitas e a base opaca na borda inferior. Isso move a mão para a esquerda
+em relação à posição anterior; a fireball acompanha seu deslocamento.
+A fireball tem `renderOrder = 1` e a mão `renderOrder = 2`: onde os pixels
+visíveis se sobrepõem, a mão aparece na frente. Trata-se do overlay visual,
+sem alterar Spawn, direção, dano ou colisão dos Projectiles da Simulation.
+Validação visual em navegador pendente.
+
 Fechar FOV e política de resize com documentação oficial e teste visual: o valor horizontal do Cub3D não deve ser copiado diretamente para o FOV vertical da câmera. Confirmar Spawn `N` olhando para cima da grade e parede a leste aparecendo à direita. Esses testes não foram executados nesta preparação.
+
+**Material das paredes, 11/11/2026:** os Themes fornecem `wallRoughness`,
+espelhado em `Assets` pelo AssetLoader. O Renderer usa `MeshStandardMaterial`
+nas paredes, com `metalness = 0` e rugosidade `0.95` no dungeon e `0.28` no
+sewer. A mudança usa texturas, filtragem e luzes existentes; não altera a
+Simulation. A menor rugosidade do sewer busca aparência úmida pelo brilho das
+luzes. Validação visual e de desempenho pendente; detalhes em
+[texturas-paredes-realistas.md](../texturas-paredes-realistas.md).
 
 ### 5.5 HUD, eventos e término — Render, Netcode e Web
 
@@ -284,6 +310,19 @@ Propor capturar falhas de `init` na integração, liberar recursos parciais e em
 
 Meta da arquitetura: 60 fps com 5 Players, 20 Enemies e 10 Projectiles, e dez trocas de Room sem crescimento de memória. Medir com Boss, registrar máquina, navegador, resolução interna, sombras e bloom. Não há medição de FPS, memória ou luzes neste documento; nenhum número de luzes é garantia de performance.
 
+
+### Tochas de parede — ajuste visual de 11/11/2026
+
+O Renderer procura, a partir de cada `T`, a parede `1` mais próxima nas
+quatro direções cardeais, interrompendo a busca em Door ou fora do Grid.
+Posiciona a chama a 0,78 célula de altura e 0,14 célula da face da parede,
+com cabo curto e suporte. Sem parede acessível, omite essa tocha decorativa.
+O `T` continua sendo chão; Grid e colisão não são alterados.
+
+Mantém o pool de até quatro PointLights, duas com sombra; shadow maps passam
+de 256 para 512 por face, sem sombras dos cabos/suportes. Multiplicador HDR
+da chama reduzido de 3 para 1,5 para conter o bloom. Sem novas luzes ou
+texturas. Validação visual dos artefatos e medição de FPS pendentes.
 
 ### F3.7 — Feedback visual local (#194)
 

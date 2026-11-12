@@ -31,6 +31,7 @@ O que **não** está aqui: a partida em si, que é WebSocket ([ws-messages.md](w
 | POST | `/api/matches/{match_id}/join` | — | 200 `RoomInfo` | 404 `match_not_found`, 409 `room_full` / `already_in` / `already_in_other_match` / `already_started` |
 | POST | `/api/matches/{match_id}/leave` | — | 204 | 404 `match_not_found`, 409 `not_in_match` / `already_started` |
 | POST | `/api/matches/{match_id}/ready` | `{ready: bool}` | 200 `RoomInfo` | 404 `match_not_found`, 409 `not_in_match` / `already_started` |
+| POST | `/api/matches/{match_id}/character` | `{character_id: string}` | 200 `RoomInfo` | 422 `validation_error`, 404 `match_not_found`, 409 `not_in_match` / `already_started` |
 | POST | `/api/matches/{match_id}/start` | — | 204 | 403 `not_host`, 409 `not_enough_players` / `already_started`, 404 `match_not_found` |
 
 - `POST /api/matches` faz duas coisas na mesma requisição: grava a linha de `matches` com `status = "lobby"` e chama `RoomManager.create`. Quem cria já entra como primeiro Player e é o host.
@@ -40,6 +41,7 @@ O que **não** está aqui: a partida em si, que é WebSocket ([ws-messages.md](w
 - **Normalização** (decidida em 10/10, [room-options.md](room-options.md) §5.3): um modelo Pydantic por Mode, com `extra="forbid"` e `strict=True`. Campo desconhecido, ou `frag_limit`/`time_limit_s` no `coop`, dá 422 `invalid_options` com `fields: {campo: "invalid_value"}`; `null`, tipo errado e string no lugar de número ou booleano também (sem coerção). `pickups` parcial recebe o default por chave. Os limites são inteiros e inclusivos. O `options` normalizado do `coop` não tem as chaves de `pvp`. Os **defaults** vêm da dataclass `RoomOptions` da Simulation (`app.game`), que é a fonte única; os modelos Pydantic da API leem os defaults dela e só acrescentam os limites, e a rota converte o resultado para a dataclass. Um teste confere que os dois concordam (roadmap do Roberto, item 20; decidido com o Rafael em 12/10).
 - **`GET /api/maps`** devolve os Maps de cada Mode para o formulário de criação ([i18n.md](i18n.md) §5.5). `MapInfo` é `{name, max_players}`: `name` é o nome do arquivo sem extensão, e `max_players` é o menor entre os Spawns do Map e o teto do Mode (5 no `coop`, 2 no `pvp`). Ordem alfabética; o primeiro de cada lista é o default de `map`. A lista é lida das pastas `backend/maps/{coop,pvp}/` com `load_map` uma vez no startup (um Map quebrado já reprova o PR pelo teste dos mapas). O `POST /api/matches` confere `map` e `max_players` contra essa mesma lista: Map fora dela → 404 `map_not_found`; `max_players` acima → 422 `invalid_options`.
 - `start` não devolve corpo: quem estava no Lobby descobre pelo `match_started` do `/ws/app` e navega para `/play/{match_id}`.
+- **Visual individual do Player (#256, 12/11/2026):** `character` altera só a escolha do User autenticado, apenas no Lobby, e publica `lobby_update`. IDs aceitos: `nemesis`, `sucubus` e `oil`; default `nemesis`. IDs desconhecidos, tipos errados, campo ausente ou campo extra dão 422 `validation_error`. A escolha vive na Room, fora das RoomOptions e do banco, e segue no Snapshot ao iniciar. Detalhes e extensão do catálogo em [player-characters.md](player-characters.md). Revisão dos responsáveis pelos contratos pendente.
 
 ### 2.3 Histórico, estatísticas e leaderboard
 
@@ -118,7 +120,7 @@ XP, level e Elo seguem as fórmulas do [progression.md](progression.md) §5–7,
 | Momento | Por onde |
 |---|---|
 | Abrir a lista de partidas abertas | `GET /api/matches` |
-| Alguém entrou, saiu, ficou pronto, ou o host mudou | `lobby_update` no `/ws/app`, com o `RoomInfo` inteiro |
+| Alguém entrou, saiu, ficou pronto, trocou o visual, ou o host mudou | `lobby_update` no `/ws/app`, com o `RoomInfo` inteiro |
 | A partida começou | `match_started` no `/ws/app` → a casca navega para `/play/{match_id}` |
 | Abrir perfil, histórico, leaderboard | HTTP |
 
@@ -152,7 +154,7 @@ Authorization: Bearer <access>
   "created_at": "2026-10-04T18:00:03Z",
   "players": [
     {"user_id": 7, "username": "akita", "avatar_url": "/media/avatars/7.png",
-     "ready": false, "connected": true, "joined_at": "2026-10-04T18:00:03Z"}
+     "ready": false, "connected": true, "joined_at": "2026-10-04T18:00:03Z", "character_id": "nemesis"}
   ]
 }
 ```

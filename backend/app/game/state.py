@@ -3,6 +3,8 @@ from collections import deque
 from dataclasses import dataclass, field
 from random import Random
 
+from app.game.characters import CharacterId, DEFAULT_CHARACTER
+
 
 class Mode(StrEnum):
 	COOP = "coop"
@@ -102,6 +104,7 @@ class Player:
 	armor_absorbed: 	int = 0
 	keys_collected: 	int = 0
 	potions_used: 		int = 0
+	character_id: CharacterId = DEFAULT_CHARACTER # só aparência, preservada no respawn
 
 
 @dataclass(slots=True)
