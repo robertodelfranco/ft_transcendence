@@ -81,7 +81,9 @@ export class ThreeRenderer implements Renderer {
 
       const wallGeometry = new THREE.BoxGeometry(1, 1, 1);
       this.resources.push(wallGeometry);
-      const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x777777 });
+      const wallMaterial = new THREE.MeshStandardMaterial({
+        color: 0x777777, metalness: 0,
+      });
       this.resources.push(wallMaterial);
       const walls = new THREE.InstancedMesh<
         THREE.BoxGeometry,
@@ -89,7 +91,9 @@ export class ThreeRenderer implements Renderer {
       >(wallGeometry, wallMaterial, wallCount);
       this.resources.push(walls);
       const texturedMaterials = [assets.walls.ea, assets.walls.we, assets.walls.no, assets.walls.so]
-        .map(map => new THREE.MeshLambertMaterial({ map }));
+        .map(map => new THREE.MeshStandardMaterial({
+          map, metalness: 0,
+        }));
       this.resources.push(...texturedMaterials);
       walls.material = [
         texturedMaterials[1], texturedMaterials[0], wallMaterial, wallMaterial,
@@ -140,7 +144,7 @@ export class ThreeRenderer implements Renderer {
       scene.add(this.fireballParticles.object);
       this.initialGrid = grid;
       this.doorTexture = assets.door;
-      this.handOverlay = new HandOverlay(assets.hand, assets.fireball);
+      this.handOverlay = new HandOverlay(assets.hand);
       this.resources.push(this.handOverlay);
       this.playerFeedback = new PlayerFeedbackOverlay();
       this.resources.push(this.playerFeedback);

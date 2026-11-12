@@ -9,12 +9,16 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, view: ViewState,
   const columns = view.grid[0]?.length ?? 0;
   if (rows === 0 || columns === 0 || width <= 0 || height <= 0) return;
 
-  const cellSize = Math.min(width / columns, height / rows);
+  const padding = Math.min(8, width / 8, height / 8);
+  const cellSize = Math.min((width - padding * 2) / columns, (height - padding * 2) / rows);
   const offsetX = (width - columns * cellSize) / 2;
   const offsetY = (height - rows * cellSize) / 2;
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "#111a19";
+  ctx.fillStyle = "#0b0a0f";
   ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = "#f2a03d18";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(3.5, 3.5, Math.max(0, width - 7), Math.max(0, height - 7));
   ctx.save();
   ctx.translate(offsetX, offsetY);
   ctx.scale(cellSize, cellSize);
@@ -23,9 +27,14 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, view: ViewState,
     for (let x = 0; x < row.length; x++) {
       const cell = row[x];
       if (cell === " ") continue;
-      ctx.fillStyle = cell === "1" ? "#78827a" : cell === "D" ? "#c48c4c"
-        : cell === "O" ? "#4c7965" : "#263d35";
+      ctx.fillStyle = cell === "1" ? "#526071" : cell === "D" ? "#d9a354"
+        : cell === "O" ? "#426e69" : "#191f2a";
       ctx.fillRect(x, y, 1, 1);
+      if (cell === "1") {
+        // Realce discreto nas paredes, sem acrescentar uma grade ao chão.
+        ctx.fillStyle = "#ffffff12";
+        ctx.fillRect(x, y, 1, 0.06);
+      }
     }
   });
 
@@ -41,17 +50,29 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, view: ViewState,
   ctx.lineTo(x + (dx * cos - dy * sin) * CONE_LENGTH_CELLS,
     y + (dx * sin + dy * cos) * CONE_LENGTH_CELLS);
   ctx.closePath();
-  ctx.fillStyle = "#f2c66d44";
+  const cone = ctx.createRadialGradient(x, y, 0, x, y, CONE_LENGTH_CELLS);
+  cone.addColorStop(0, "#f2c66d55");
+  cone.addColorStop(1, "#f2c66d00");
+  ctx.fillStyle = cone;
   ctx.fill();
 
   for (const player of [...view.otherPlayers, view.localPlayer]) {
+    const local = player.id === view.localPlayer.id;
+    const radius = Math.max(local ? 0.22 : 0.19, (local ? 3 : 2.5) / cellSize);
+    if (local && player.alive) {
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, radius + 2 / cellSize, 0, Math.PI * 2);
+      ctx.lineWidth = 1 / cellSize;
+      ctx.strokeStyle = "#f2c66d88";
+      ctx.stroke();
+    }
     ctx.beginPath();
-    ctx.arc(player.x, player.y, Math.max(0.19, 2.5 / cellSize), 0, Math.PI * 2);
-    ctx.fillStyle = !player.alive ? "#88918c" : player.id === view.localPlayer.id
+    ctx.arc(player.x, player.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = !player.alive ? "#88918c" : local
       ? "#f2c66d" : player.connected ? "#75d4d0" : "#8aaca9";
     ctx.fill();
-    ctx.lineWidth = 0.055;
-    ctx.strokeStyle = "#111a19";
+    ctx.lineWidth = 1 / cellSize;
+    ctx.strokeStyle = "#0b0a0f";
     ctx.stroke();
   }
   ctx.restore();

@@ -28,7 +28,8 @@ function context() {
     }),
     save: vi.fn(), restore: vi.fn(), translate: vi.fn(), scale: vi.fn(),
     beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(),
-    fill: vi.fn(), arc: vi.fn(), stroke: vi.fn(),
+    fill: vi.fn(), arc: vi.fn(), stroke: vi.fn(), strokeRect: vi.fn(),
+    createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
   };
   return { ctx: ctx as unknown as CanvasRenderingContext2D, calls: ctx, fills };
 }
@@ -54,7 +55,7 @@ test("the current Grid distinguishes closed and opened Doors and draws both Play
   const { ctx, calls, fills } = context();
   drawMinimap(ctx, view(0, -1), 90, 90, 16 / 9);
 
-  expect(fills.find(({ x, y }) => x === 1 && y === 1)?.color).toBe("#c48c4c");
-  expect(fills.find(({ x, y }) => x === 1 && y === 2)?.color).toBe("#4c7965");
-  expect(calls.arc.mock.calls.map(([x, y]) => [x, y])).toEqual([[2.5, 1.5], [1.5, 1.5]]);
+  expect(fills.find(({ x, y }) => x === 1 && y === 1)?.color).toBe("#d9a354");
+  expect(fills.find(({ x, y }) => x === 1 && y === 2)?.color).toBe("#426e69");
+  expect(calls.arc.mock.calls.map(([x, y]) => [x, y])).toEqual([[2.5, 1.5], [1.5, 1.5], [1.5, 1.5]]);
 });
