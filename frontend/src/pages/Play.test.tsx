@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "../api/client";
 import { setAccessToken } from "../auth/token";
 import i18n from "../i18n";
@@ -374,3 +374,76 @@ describe("contagem do início (#255)", () => {
   });
 });
 
+describe("modo partida (#254)", () => {
+  it("o layout fica compacto e o título sai da tela, mas continua para leitor de tela", async () => {
+    await renderAt("/play/13");
+    await mounted();
+    expect(document.querySelector("[data-layout]")).toHaveAttribute("data-layout", "compact");
+    expect(screen.getByRole("heading", { level: 1, name: "Partida" })).toHaveClass("sr-only");
+  });
+});
+
+describe("tela cheia (#254)", () => {
+  const original = Object.getOwnPropertyDescriptor(Document.prototype, "fullscreenEnabled");
+
+  // o jsdom não tem a Fullscreen API: cada teste diz se o navegador a oferece e o que ela responde
+  function offerFullscreen(request: () => Promise<void>) {
+    Object.defineProperty(document, "fullscreenEnabled", { value: true, configurable: true });
+    const spy = vi.fn(request);
+    HTMLElement.prototype.requestFullscreen = spy;
+    return spy;
+  }
+
+  afterEach(() => {
+    delete (document as { fullscreenEnabled?: boolean }).fullscreenEnabled;
+    if (original)
+      Object.defineProperty(Document.prototype, "fullscreenEnabled", original);
+    delete (HTMLElement.prototype as { requestFullscreen?: unknown }).requestFullscreen;
+  });
+
+  it("sem a Fullscreen API, o botão não aparece", async () => {
+    await renderAt("/play/13");
+    await mounted();
+    act(() => emitHud());
+    expect(await screen.findByRole("button", { name: "Sair da partida" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tela cheia" })).not.toBeInTheDocument();
+  });
+
+  it("leva para a tela cheia o canvas com a HUD, sem os botões de baixo", async () => {
+    const user = userEvent.setup();
+    const request = offerFullscreen(() => Promise.resolve());
+    await renderAt("/play/13");
+    const game = await mounted();
+    act(() => emitHud());
+    await user.click(await screen.findByRole("button", { name: "Tela cheia" }));
+
+    expect(request).toHaveBeenCalledTimes(1);
+    const stage = request.mock.contexts[0] as HTMLElement;
+    expect(stage).toContainElement(game.canvas);
+    expect(stage).toContainElement(screen.getByText("Mana"));
+    expect(stage).not.toContainElement(screen.getByRole("button", { name: "Sair da partida" }));
+  });
+
+  it("o navegador recusar a tela cheia não vira erro, e o jogo segue", async () => {
+    const user = userEvent.setup();
+    const request = offerFullscreen(() => Promise.reject(new TypeError("Permissions check failed")));
+    await renderAt("/play/13");
+    await mounted();
+    act(() => emitHud());
+    await user.click(await screen.findByRole("button", { name: "Tela cheia" }));
+
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Tela cheia" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("some junto com o botão de sair enquanto confirma a saída", async () => {
+    const user = userEvent.setup();
+    offerFullscreen(() => Promise.resolve());
+    await renderAt("/play/13");
+    await mounted();
+    act(() => emitHud());
+    await user.click(await screen.findByRole("button", { name: "Sair da partida" }));
+    expect(screen.queryByRole("button", { name: "Tela cheia" })).not.toBeInTheDocument();
+  });
+});
