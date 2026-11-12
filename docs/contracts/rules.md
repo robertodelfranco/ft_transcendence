@@ -68,7 +68,7 @@ O HP inicial e o teto da poção não são constantes: vêm de `options.start_hp
 | `BOSS_ATTACK_WINDUP_S` | s | `1.2` | novo | Tempo em `attack` antes de o bullet sair: 4 quadros de `0.3` s (`boss_bonus/init_boss_bonus.c:43-54` e `:69`) |
 | `BOSS_ATTACK_COOLDOWN_S` | s | `2.2` ² | novo | Intervalo entre dois bullets, contando o `BOSS_ATTACK_WINDUP_S`. A arq. soma 1 s de espera a 4 quadros de `0.3` s; o código dá cerca de `1.2` s (ponto 1) |
 | `BOSS_DYING_S` | s | `1.2` | novo | 3 quadros de `0.4` s até `DEAD` (`:71-76`) |
-| `BULLET_DAMAGE` | HP | `2` | novo | `hp -= 2` (`game_bonus/handle_game_bonus.c:116`) |
+| `BULLET_DAMAGE` | HP | `3` | novo | base C: `hp -= 2` (`game_bonus/handle_game_bonus.c:116`); balanceamento web: 3 HP |
 | `FIREBALL_BOSS_DAMAGE` | HP | `10` | novo | `boss->hp -= 10`, 6 acertos (`attack_bonus/render_fireball_bonus.c:99`) |
 
 ### 2.5 Projectile

@@ -97,12 +97,23 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
             ref={canvasRef}
             role="img"
             aria-label={t("view")}
-            className="aspect-video w-full rounded border border-crypt-700 bg-black"
+            className="block aspect-video w-full rounded border border-crypt-700 bg-black"
           />
+          {status === "running" && hud?.alive && (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-[20px] w-[20px] -translate-x-1/2 -translate-y-1/2"
+            >
+              <span className="absolute left-[9px] top-0 h-[6px] w-[2px] bg-white ring-1 ring-black" />
+              <span className="absolute bottom-0 left-[9px] h-[6px] w-[2px] bg-white ring-1 ring-black" />
+              <span className="absolute left-0 top-[9px] h-[2px] w-[6px] bg-white ring-1 ring-black" />
+              <span className="absolute right-0 top-[9px] h-[2px] w-[6px] bg-white ring-1 ring-black" />
+            </span>
+          )}
           <canvas
             ref={minimapRef}
             aria-hidden="true"
-            className="pointer-events-none absolute bottom-3 left-3 aspect-square w-1/4 rounded border border-crypt-700 bg-crypt-950/90 sm:w-40 md:left-auto md:right-3"
+            className="pointer-events-none absolute bottom-3 left-3 aspect-square w-1/4 rounded-sm border border-torch/35 border-t-torch/60 bg-crypt-950/95 shadow-[0_4px_20px_rgba(0,0,0,0.5)] sm:w-40 md:left-auto md:right-3"
           />
           {/* #255: cobre só o canvas, também abaixo do md, onde a HUD vem depois dele */}
           {hud && live && <Countdown countdown={hud.countdown} />}

@@ -34,7 +34,7 @@ export default function Hud({ hud, userId }: { hud: HudState; userId: number | n
         {death && <p className={panel}>{t(`death.${death}`)}</p>}
       </div>
       {/* rodapé esquerdo; o direito fica para o minimapa (F3.6), que o jogo desenha no canvas */}
-      <div className={`self-start md:col-start-1 md:row-start-3 md:self-end md:justify-self-start ${panel} ${dim}`}>
+      <div className={`max-w-full self-start rounded-sm border border-torch/35 border-t-torch/60 bg-gradient-to-b from-crypt-900/95 to-crypt-950/95 p-3 shadow-[0_4px_20px_rgba(0,0,0,0.5),inset_0_0_0_2px_rgba(242,160,61,0.05)] md:col-start-1 md:row-start-3 md:self-end md:justify-self-start ${dim}`}>
         <Resources hud={hud} />
       </div>
       {/* topo esquerdo: Players no coop; placar e relógio no pvp */}

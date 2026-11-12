@@ -1069,7 +1069,7 @@
     "BOSS_RADIUS": 0.2,
     "BOSS_SIGHT_RANGE": 20.0,
     "BOSS_SPEED": 2.0,
-    "BULLET_DAMAGE": 2,
+    "BULLET_DAMAGE": 3,
     "COUNTDOWN_S": 3.0,
     "COUNTDOWN_WAIT_S": 10.0,
     "DOOR_REACH": 1.0,
