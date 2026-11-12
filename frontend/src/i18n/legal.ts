@@ -1,9 +1,8 @@
 import { FALLBACK_LANGUAGE } from "./languages";
+import type { LegalPage } from "./legalPages";
 
-export const LEGAL_PAGES = ["privacy", "terms"] as const;
-export type LegalPage = (typeof LEGAL_PAGES)[number];
-
-// O Vite traz cada locales/legal/<idioma>/<página>.md como texto (?raw), já dentro do bundle
+// O Vite traz cada locales/legal/<idioma>/<página>.md como texto (?raw), já dentro do bundle.
+// Quem importa este arquivo leva os seis textos junto: só a página legal (chunk próprio) importa
 const texts = import.meta.glob<string>("../locales/legal/*/*.md", {
   query: "?raw",
   import: "default",
