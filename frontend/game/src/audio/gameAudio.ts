@@ -1,8 +1,12 @@
+import { FIREBALL_CHARGE_S } from "../rules";
+
 export interface GameAudio {
   unlock(): Promise<void>;
   playStep(): void;
   playFire(): void;
   playHit(): void;
+  playPickup(): void;
+  updateCharge(seconds: number | null): void;
   startMusic(): void;
   stopMusic(): void;
   stopAll(): void;
@@ -18,6 +22,7 @@ export function createGameAudio(): GameAudio {
   let note = 0;
   const voices = new Map<OscillatorNode, GainNode>();
   const musicVoices = new Set<OscillatorNode>();
+  const chargeVoices = new Set<OscillatorNode>();
 
   function tone(frequency: number, endFrequency: number, duration: number,
     volume: number, type: OscillatorType, music = false): void {
@@ -53,7 +58,50 @@ export function createGameAudio(): GameAudio {
     musicVoices.clear();
   }
 
+  function stopCharge(): void {
+    if (!context) return;
+    const now = context.currentTime;
+    for (const voice of chargeVoices) {
+      const gain = voices.get(voice);
+      gain?.gain.cancelScheduledValues(now);
+      gain?.gain.setTargetAtTime(0, now, 0.015);
+      voice.stop(now + 0.06);
+    }
+    chargeVoices.clear();
+  }
+
+  function updateCharge(seconds: number | null): void {
+    if (seconds === null) { stopCharge(); return; }
+    if (disposed || context?.state !== "running" || !master) return;
+    const now = context.currentTime;
+    const progress = Math.min(1, Math.max(0, seconds / FIREBALL_CHARGE_S));
+    if (chargeVoices.size === 0) {
+      if (voices.size > 30) return;
+      for (const type of ["sine", "triangle"] as const) {
+        const voice = context.createOscillator();
+        const gain = context.createGain();
+        voice.type = type;
+        voice.frequency.setValueAtTime(110, now);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(type === "sine" ? 0.18 : 0.06, now + 0.08);
+        voice.connect(gain);
+        gain.connect(master);
+        voices.set(voice, gain);
+        chargeVoices.add(voice);
+        voice.onended = () => {
+          voice.disconnect(); gain.disconnect(); voices.delete(voice); chargeVoices.delete(voice);
+        };
+        voice.start(now);
+      }
+    }
+    for (const voice of chargeVoices) {
+      const harmonic = voice.type === "triangle" ? 1.505 : 1;
+      voice.frequency.setTargetAtTime((110 + progress * 330) * harmonic, now, 0.08);
+    }
+  }
+
   function stopAll(): void {
+    chargeVoices.clear();
     stopMusic();
     voices.forEach((gain, voice) => {
       voice.onended = null;
@@ -80,9 +128,11 @@ export function createGameAudio(): GameAudio {
         throw new Error("audio_unavailable", { cause });
       }
     },
+    updateCharge,
     playStep: () => tone(110, 45, 0.09, 0.3, "triangle"),
     playFire: () => tone(600, 80, 0.25, 0.2, "sawtooth"),
     playHit: () => tone(150, 35, 0.16, 0.4, "square"),
+    playPickup: () => tone(660, 1320, 0.18, 0.2, "sine"),
     startMusic() {
       if (disposed || context?.state !== "running" || musicTimer !== null) return;
       // Motivo original em Lá menor; agendamento curto evita filas após aba suspensa.

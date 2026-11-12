@@ -342,3 +342,29 @@ O Renderer desenha bordas transparentes depois da cena e da mão, preservando o
 centro e a visão do companheiro no coop. Com `prefers-reduced-motion: reduce`,
 só a borda estática de morte permanece. Não são criados textos no canvas nem
 atalhos de teclado. Limites e roteiro: [efeitos-f3.7.md](../efeitos-f3.7.md).
+
+
+## Carga de magia — atualização local de 12/11/2026
+
+`ViewState.chargeSeconds?: number | null` é apresentação local; ausente ou
+`null` usa a mão normal. A captura mede quanto tempo Espaço está pressionado,
+e o Renderer alterna `assets/player/player_hand_white.png` e
+`assets/player/player_hand_charge.png`, mantendo a base visível na borda.
+A alternância acelera até 3 s; depois mantém a sprite energizada com brilho
+fixo até soltar, indicando carga completa.
+`Assets.handCharge` é carregado e liberado junto das outras texturas.
+O áudio usa Web Audio: dois osciladores sustentados sobem de tom até 3 s e
+mantêm o tom final depois disso; há fade ao parar, sem criar um loop por
+quadro. O gesto inicial desbloqueia o AudioContext, como nos outros sons.
+Soltar Espaço dispara; perda de foco/Pointer Lock, aba oculta, morte,
+Reconnection, fim e unmount encerram os efeitos de carga. Nenhum som decide
+regra. A autoridade e o protocolo estão em `ws-messages.md` e `rules.md`.
+Validação em navegador e revisão dos consumidores pendentes.
+
+
+Som de coleta: `item_picked` confirmado pelo servidor toca um sinal agudo
+ascendente, de 0,18 s, apenas quando `by` é o Player local e o áudio está
+desbloqueado com a partida ativa e a aba visível. Vale para chave, poção,
+Mana e Armor. Coleta de outro Player, Snapshot ou tentativa sem coleta não
+tocam o sinal. O som usa o mesmo controle de volume e ciclo de vida dos
+outros efeitos Web Audio.

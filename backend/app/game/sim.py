@@ -9,6 +9,7 @@ from app.game.rules import (BOSS_ATTACK_COOLDOWN_S, BOSS_ATTACK_RANGE, BOSS_ATTA
 	COUNTDOWN_WAIT_S, DOOR_REACH,
 	ENEMY_ATTACK_INTERVAL_S, ENEMY_ATTACK_RANGE, ENEMY_CHASE_RANGE, ENEMY_DAMAGE, ENEMY_DYING_S,
 	ENEMY_RADIUS, ENEMY_RETARGET_MARGIN, ENEMY_SEPARATION, ENEMY_SPEED, FIREBALL_BOSS_DAMAGE,
+	FIREBALL_CHARGE_S, FIREBALL_CHARGED_DAMAGE_MULT, FIREBALL_CHARGED_MANA_MULT,
 	FIREBALL_COOLDOWN_S, FIREBALL_PLAYER_DAMAGE, POTION_HEAL, PROJECTILE_HIT_RADIUS,
 	PROJECTILE_HIT_S, PROJECTILE_MAX_SUBSTEP, PROJECTILE_RADIUS, PROJECTILE_SPEED, TICK_RATE)
 from app.game.rulesets import RULESETS
@@ -85,6 +86,7 @@ def set_connected(room: Room, user_id: int, connected: bool) -> None:
 	if player.left:
 		return
 	was_connected = player.connected
+	player.charge_started_tick = None
 	player.connected = connected
 	player.input_queue.clear()
 	if connected:
@@ -104,6 +106,7 @@ def leave(room: Room, user_id: int) -> None:
 	player = room.players[user_id]
 	if player.left:
 		return
+	player.charge_started_tick = None
 	player.left = True
 	player.connected = False
 	player.input_queue.clear()
@@ -268,12 +271,21 @@ def _use_pickup(room: Room, player: Player, kind: str) -> bool:
 def _apply_action(room: Room, player: Player, action: Action, events: list[Event]) -> None:
 	if action.kind == ActionKind.DOOR:
 		_open_door(room, player, events)
-	else:
+	elif action.kind == ActionKind.CHARGE_START:
+		if player.charge_started_tick is None:
+			player.charge_started_tick = room.tick
+	elif action.kind == ActionKind.CHARGE_CANCEL:
+		player.charge_started_tick = None
+	elif action.kind == ActionKind.FIRE:
 		_fire(room, player)
 
 
 def _fire(room: Room, player: Player) -> None:
-	cost = room.numbers["FIREBALL_MANA_COST"]
+	started = player.charge_started_tick
+	player.charge_started_tick = None # toda soltura encerra a carga, inclusive sem Mana
+	charged = started is not None and room.tick - started >= round(FIREBALL_CHARGE_S * TICK_RATE)
+	damage_mult = FIREBALL_CHARGED_DAMAGE_MULT if charged else 1
+	cost = room.numbers["FIREBALL_MANA_COST"] * (FIREBALL_CHARGED_MANA_MULT if charged else 1)
 	# a Mana exata decide, não a arredondada do Snapshot (rules.md §4)
 	if room.tick < player.fire_ready_tick or player.mana < cost:
 		return
@@ -282,7 +294,7 @@ def _fire(room: Room, player: Player) -> None:
 	# nasce na posição do Player, indo para onde ele olha
 	room.projectiles.append(Projectile(id=f"f_{room.next_projectile_id}",
 		kind=ProjectileKind.FIREBALL, owner_id=player.user_id, x=player.x, y=player.y,
-		dx=math.sin(player.angle), dy=-math.cos(player.angle)))
+		dx=math.sin(player.angle), dy=-math.cos(player.angle), damage_mult=damage_mult))
 	room.next_projectile_id += 1
 
 
@@ -460,6 +472,7 @@ def _hurt_player(room: Room, player: Player, amount: int, by: int | None, source
 		"source": source, "amount": lost, "absorbed": absorbed}))
 	if player.hp == 0:
 		# morto sai de _blocking_bodies, _pick_target e _targets, que filtram alive
+		player.charge_started_tick = None
 		player.alive = False
 		player.deaths += 1
 		if by is not None and room.mode == Mode.PVP:
@@ -541,8 +554,8 @@ def _boss_fits(room: Room, x: float, y: float) -> bool:
 		for enemy in room.enemies if enemy.state != EnemyState.DYING)
 
 
-def _hurt_boss(room: Room, boss: Boss, by: int, events: list[Event]) -> None:
-	dealt = min(FIREBALL_BOSS_DAMAGE, boss.hp)
+def _hurt_boss(room: Room, boss: Boss, by: int, events: list[Event], damage_mult: int = 1) -> None:
+	dealt = min(FIREBALL_BOSS_DAMAGE * damage_mult, boss.hp)
 	boss.hp -= dealt
 	room.players[by].damage_dealt += dealt
 	if boss.hp == 0:
@@ -575,10 +588,10 @@ def _fly(room: Room, shot: Projectile, dt: float, events: list[Event]) -> None:
 			if isinstance(target, Enemy):
 				_kill_enemy(room, target, shot.owner_id, events)
 			elif isinstance(target, Boss):
-				_hurt_boss(room, target, shot.owner_id, events)
+				_hurt_boss(room, target, shot.owner_id, events, shot.damage_mult)
 			elif target is not None:
 				damage = (BULLET_DAMAGE if shot.kind == ProjectileKind.BULLET
-					else FIREBALL_PLAYER_DAMAGE)
+					else FIREBALL_PLAYER_DAMAGE * shot.damage_mult)
 				_hurt_player(room, target, damage, shot.owner_id, shot.kind, events)
 			return
 		shot.x, shot.y = x, y

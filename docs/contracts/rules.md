@@ -33,6 +33,9 @@ Como ler as tabelas:
 | `MOUSE_MAX_ROT_SPEED` | rad/s | `18.85` (6π) | sim | Limite de giro por mouse, igual nos dois Modes: o servidor e a Prediction cortam `mouse_dx` em `MOUSE_MAX_ROT_SPEED × dt` por Tick. Sem equivalente: o C girava `0.012` rad por evento de cursor nas faixas laterais de 30% da janela (`player_bonus/controls_bonus.c:63-71`) |
 | `PLAYER_RADIUS` | cél | `0.05` | novo | `R`, testado nos 4 cantos contra `1` e `D` (`include/cub3d_bonus.h:27`, `player_bonus/move_utils_bonus.c:100-111`) |
 | `BODY_BLOCK_DISTANCE` | cél | `0.6` | novo | Player não chega a menos disso (`<`) de Enemy, Boss ou outro Player vivo (`player_bonus/move_utils_bonus.c:26` e `:90`) |
+| `FIREBALL_CHARGE_S` | s | `3.0` | novo | Tempo mínimo de carga validado em Ticks pelo servidor |
+| `FIREBALL_CHARGED_DAMAGE_MULT` | multiplicador | `2` | novo | Dano contra Boss e Player; Enemy já morre com um tiro normal |
+| `FIREBALL_CHARGED_MANA_MULT` | multiplicador | `3` | novo | Custo de 30 Mana com o custo normal de 10 |
 | `FIREBALL_COOLDOWN_S` | s | `0.8` | novo | No C: `attack_delay > 0.4` (`player_bonus/controls_bonus.c:90`); ajustado na F4.7 (§5.5) |
 | `DOOR_REACH` | cél | `1.0` | novo | Célula a `1.0` à frente do Player (`door_bonus/door_bonus.c:67`) |
 | `POTION_HEAL` | HP | `3` | novo | `hp += 3`, teto `10` (`game_bonus/handle_utils_bonus.c:50-52`) |
@@ -210,3 +213,18 @@ O movimento aumenta cerca de 47% e a frequência de golpes aumenta 40%,
 passando a um golpe por segundo. Dano e alcance permanecem iguais.
 Revisão técnica do Roberto e playtest pendentes; nenhum teste foi executado
 nesta alteração.
+
+
+### 5.7 Fireball carregada — 12/11/2026
+
+Rafael autorizou carga de 3 segundos, dano ×2 e custo de Mana ×3. A carga
+completa custa 30 Mana nos dois Modes e causa 20 HP contra Boss ou 4 HP no
+PvP, antes da Armor. Enemy continua morrendo com uma fireball normal.
+A Mana é debitada somente ao disparar. Sem Mana suficiente ou em cooldown,
+a soltura encerra a carga sem tiro nem gasto. Segurar além de 3 s mantém a
+carga pronta sem aumentar os multiplicadores. O cliente mostra a carga por
+alternância das sprites da mão e brilho, acompanhados de som sintetizado.
+O servidor mede o intervalo entre `charge_start` e `fire` em Ticks; o cliente
+não escolhe dano ou duração. Perder foco/Pointer Lock ou ocultar a aba envia
+`charge_cancel`; morte, saída e mudança de conexão cancelam no servidor.
+Revisão de Roberto/Augusto e playtests coop/PvP pendentes.

@@ -82,7 +82,7 @@
       },
       "fire": {
         "keys": "Espaço",
-        "action": "Atirar"
+        "action": "Solte para atirar; segure por 3 s para carregar (2× dano, 3× Mana)"
       },
       "door": {
         "keys": "F",

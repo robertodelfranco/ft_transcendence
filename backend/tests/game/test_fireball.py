@@ -205,3 +205,101 @@ def test_projectile_id_is_never_reused():
 	room.projectiles.clear() # a fireball saiu da Room
 	fire(room, 9)
 	assert [shot.id for shot in room.projectiles] == ["f_2"]
+
+
+# Carga: o relógio é o Tick da Room; o cliente não informa duração nem dano.
+def charge(room, ticks):
+	enqueue(room, 7, Action(seq=next_seq(room, 7), kind=ActionKind.CHARGE_START))
+	step(room, DT)
+	for _ in range(ticks - 1):
+		step(room, DT)
+
+
+@pytest.mark.parametrize("ticks, multiplier, cost", [(89, 1, 10), (90, 2, 30), (150, 2, 30)])
+def test_charge_threshold_and_holding_past_full_charge(ticks, multiplier, cost):
+	room = new_room()
+	charge(room, ticks)
+	assert room.projectiles == [] # segurar nunca dispara automaticamente
+	room.players[7].mana = 50
+	fire(room)
+	assert room.projectiles[0].damage_mult == multiplier
+	assert room.players[7].mana == pytest.approx(50 - cost + RULESET_NUMBERS[Mode.COOP]["MANA_REGEN_PER_S"] * DT)
+	assert room.players[7].charge_started_tick is None
+
+
+def test_charged_fire_without_thirty_mana_does_not_fall_back_to_normal():
+	room = new_room()
+	charge(room, 90)
+	room.players[7].mana = 29.9
+	fire(room)
+	assert room.projectiles == []
+	assert room.players[7].mana > 29.9 # só regeneração; não gastou 10 nem 30
+	assert room.players[7].charge_started_tick is None
+
+
+def test_charge_cancel_does_not_spend_mana_or_create_a_projectile():
+	room = new_room()
+	charge(room, 90)
+	room.players[7].mana = 50
+	enqueue(room, 7, Action(seq=next_seq(room, 7), kind=ActionKind.CHARGE_CANCEL))
+	step(room, DT)
+	assert room.players[7].charge_started_tick is None
+	assert room.players[7].mana > 50
+	assert room.projectiles == []
+
+
+def test_charge_start_and_fire_in_the_same_tick_cannot_fake_three_seconds():
+	room = new_room()
+	enqueue(room, 7, Action(seq=1, kind=ActionKind.CHARGE_START))
+	enqueue(room, 7, Action(seq=2, kind=ActionKind.FIRE))
+	step(room, DT)
+	assert room.projectiles[0].damage_mult == 1
+
+
+def test_repeated_charge_start_does_not_restart_the_clock():
+	room = new_room()
+	charge(room, 90)
+	started = room.players[7].charge_started_tick
+	enqueue(room, 7, Action(seq=next_seq(room, 7), kind=ActionKind.CHARGE_START))
+	step(room, DT)
+	assert room.players[7].charge_started_tick == started
+	fire(room)
+	assert room.projectiles[0].damage_mult == 2
+
+
+def test_disconnect_and_death_clear_charge():
+	from app.game.sim import _hurt_player, set_connected
+	room = new_room()
+	charge(room, 90)
+	set_connected(room, 7, False)
+	assert room.players[7].charge_started_tick is None
+	charge(room, 90)
+	_hurt_player(room, room.players[7], 10, None, "enemy", [])
+	assert not room.players[7].alive
+	assert room.players[7].charge_started_tick is None
+
+
+def test_charged_fire_deals_twenty_damage_to_boss():
+	from app.game.state import Boss
+	room = new_room()
+	charge(room, 90)
+	player = room.players[7]
+	player.angle = 0
+	room.boss = Boss(x=player.x, y=player.y - 0.55, hp=60)
+	fire(room)
+	assert room.boss.hp == 40
+	assert player.damage_dealt == 20
+
+
+def test_charged_fire_deals_four_damage_and_respects_armor_in_pvp():
+	room = new_room(Mode.PVP)
+	charge(room, 90)
+	player, target = room.players[7], room.players[9]
+	player.angle = 0
+	target.x, target.y, target.armor = player.x, player.y - 0.55, 1
+	events = fire(room)
+	assert target.hp == 7
+	assert target.armor == 0
+	assert player.damage_dealt == 3
+	hit = next(event for event in events if event.name == "player_hit")
+	assert (hit.data["amount"], hit.data["absorbed"]) == (3, 1)

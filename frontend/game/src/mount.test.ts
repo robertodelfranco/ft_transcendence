@@ -9,7 +9,7 @@ import type { WelcomeMessage } from "./types";
 
 class FakeWebSocket implements WebSocketLike {
   readyState = 0;
-  sent: Array<{ type: string }> = [];
+  sent: Array<{ type: string; kind?: string }> = [];
   onopen: WebSocketLike["onopen"] = null;
   onmessage: WebSocketLike["onmessage"] = null;
   onclose: WebSocketLike["onclose"] = null;
@@ -85,7 +85,7 @@ beforeEach(() => {
   vi.stubGlobal("cancelAnimationFrame", () => { frames = []; });
   audio = {
     unlock: vi.fn(async () => {}), playStep: vi.fn(), playFire: vi.fn(), playHit: vi.fn(),
-    startMusic: vi.fn(), stopMusic: vi.fn(), stopAll: vi.fn(), dispose: vi.fn(async () => {}),
+    playPickup: vi.fn(), updateCharge: vi.fn(), startMusic: vi.fn(), stopMusic: vi.fn(), stopAll: vi.fn(), dispose: vi.fn(async () => {}),
   };
   renderer = new FakeRenderer();
   huds = [];
@@ -464,4 +464,55 @@ test("game over suppresses visual feedback and unmount stops drawing", async () 
   game.unmount();
   await runFrame(200);
   expect(renderer.views).toHaveLength(count);
+});
+
+
+test("Space holds charge visuals and audio until release", async () => {
+  await connect();
+  window.dispatchEvent(new KeyboardEvent("keydown", { code: "Space" }));
+  await vi.advanceTimersByTimeAsync(0);
+  await runFrame(0);
+  await vi.advanceTimersByTimeAsync(3500);
+  await runFrame(3500);
+  expect(renderer.views.at(-1)?.chargeSeconds).toBeGreaterThanOrEqual(3);
+  expect(audio.updateCharge).toHaveBeenCalledWith(expect.any(Number));
+  expect(ws.sent.filter(message => message.type === "action").map(message => message.kind))
+    .toEqual(["charge_start"]);
+  window.dispatchEvent(new KeyboardEvent("keyup", { code: "Space" }));
+  expect(audio.updateCharge).toHaveBeenLastCalledWith(null);
+  expect(ws.sent.filter(message => message.type === "action").map(message => message.kind))
+    .toEqual(["charge_start", "fire"]);
+});
+
+test("losing focus cancels charge audio without firing", async () => {
+  await connect();
+  window.dispatchEvent(new KeyboardEvent("keydown", { code: "Space" }));
+  window.dispatchEvent(new Event("blur"));
+  window.dispatchEvent(new KeyboardEvent("keyup", { code: "Space" }));
+  expect(audio.updateCharge).toHaveBeenLastCalledWith(null);
+  expect(ws.sent.filter(message => message.type === "action").map(message => message.kind))
+    .toEqual(["charge_start", "charge_cancel"]);
+});
+
+
+test("pickup audio waits for interaction and plays only confirmed local collections", async () => {
+  await connect();
+  const pickup = { v: 1, type: "event", tick: 1, name: "item_picked",
+    data: { kind: "mana", by: 7, x: 2, y: 2 } };
+  ws.receive(pickup);
+  expect(audio.playPickup).not.toHaveBeenCalled();
+  window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+  await vi.advanceTimersByTimeAsync(0);
+  ws.receive({ ...pickup, data: { ...pickup.data, by: 9 } });
+  expect(audio.playPickup).not.toHaveBeenCalled();
+  for (const kind of ["key", "potion", "mana", "armor"]) {
+    ws.receive({ ...pickup, data: { ...pickup.data, kind } });
+  }
+  expect(audio.playPickup).toHaveBeenCalledTimes(4);
+  ws.receive({ v: 1, type: "snapshot", ...WELCOME.snapshot, tick: 2 });
+  expect(audio.playPickup).toHaveBeenCalledTimes(4); // Snapshot não significa coleta
+  ws.receive({ v: 1, type: "event", tick: 3, name: "game_over",
+    data: { result: "win", winner_ids: [7], reason: "boss_defeated" } });
+  ws.receive(pickup);
+  expect(audio.playPickup).toHaveBeenCalledTimes(4);
 });

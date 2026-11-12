@@ -2,7 +2,7 @@ import { createGameAudio, type GameAudio } from "./audio/gameAudio";
 // Liga socket, laço de Input, teclado e Renderer atrás de mountGame (mount-game.md §2.6 e §5.2).
 // O Renderer chega por fábrica: o laço não conhece Three.js, e os testes usam um falso.
 import type { EndResult, HudState, HudStatus, MountedGame, MountOptions } from "./api";
-import { captureInput } from "./net/input";
+import { captureInput, MOUSE_SENSITIVITY } from "./net/input";
 import { createInterpolator, type Interpolator } from "./net/interpolation";
 import { createPredictionLoop } from "./net/predictionLoop";
 import { createGameSocket, type WebSocketFactory } from "./net/socket";
@@ -10,7 +10,8 @@ import { buildHud, buildViewState, createGridTracker, emptyHud, type Killfeed,
   type ViewState } from "./net/viewstate";
 import { Minimap } from "./render/minimap";
 import { createPlayerFeedback } from "./render/playerFeedback";
-import { BOSS_DYING_S } from "./rules";
+import { BOSS_DYING_S, FIREBALL_CHARGE_S, FIREBALL_CHARGED_MANA_MULT, RULESET_NUMBERS } from "./rules";
+import { isFrozen } from "./net/countdown";
 import type { EventMessage, GridCell, RoomOptions, ServerMessage, Snapshot,
   WelcomeMessage } from "./types";
 
@@ -71,7 +72,7 @@ export function createMountGame(deps: GameDeps) {
     }
 
     function syncAudio(): void {
-      if (!audioActive()) feedback.clearTransient();
+      if (!audioActive()) { feedback.clearTransient(); input.cancelCharge(); }
       previousPosition = null;
       stepDistance = 0;
       if (audioReady && audioActive()) audio.startMusic();
@@ -116,12 +117,19 @@ export function createMountGame(deps: GameDeps) {
       },
       createWebSocket: deps.createWebSocket,
     });
-    const loop = createPredictionLoop((message) => {
-      socket.send(message);
-      if (audioReady && audioActive() && loop.localPlayer()?.alive
-          && message.type === "action" && message.kind === "fire") audio.playFire();
-    });
-    const input = captureInput(canvas, (kind) => loop.action(kind));
+    const loop = createPredictionLoop((message) => socket.send(message));
+    const input = captureInput(canvas, (kind, heldSeconds = 0) => {
+      loop.action(kind); // duração local nunca vai ao servidor
+      if (kind === "fire" || kind === "charge_cancel") audio.updateCharge(null);
+      if (kind === "fire" && welcome && audioReady && audioActive()) {
+        const player = loop.localPlayer();
+        const cost = RULESET_NUMBERS[welcome.room.mode].FIREBALL_MANA_COST
+          * (heldSeconds >= FIREBALL_CHARGE_S ? FIREBALL_CHARGED_MANA_MULT : 1);
+        if (player?.alive && player.mana >= cost) audio.playFire();
+      }
+    }, MOUSE_SENSITIVITY, () => status === "running" && ending === null
+      && !document.hidden && snapshot !== null && !isFrozen(snapshot)
+      && loop.localPlayer()?.alive === true);
     const resizer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(resize);
     resizer?.observe(canvas);
     if (opts.minimapCanvas) resizer?.observe(opts.minimapCanvas);
@@ -209,6 +217,7 @@ export function createMountGame(deps: GameDeps) {
 
     // vem também em cada Reconnection: o laço recomeça o seq, o Renderer não é refeito
     function onWelcome(message: WelcomeMessage): void {
+      input.cancelCharge();
       welcome = message;
       feedback.reset();
       trackGrid = createGridTracker(message.map.grid);
@@ -250,6 +259,7 @@ export function createMountGame(deps: GameDeps) {
       snapshot = next;
       const localId = welcome.user_id;
       const localPlayer = next.players.find(player => player.id === localId);
+      if (!localPlayer?.alive || isFrozen(next)) input.cancelCharge();
       if (localPlayer) {
         feedback.snapshot(localPlayer.alive, welcome.room.mode, performance.now());
         if (status !== "running" || ending !== null || document.hidden) feedback.clearTransient();
@@ -257,6 +267,10 @@ export function createMountGame(deps: GameDeps) {
     }
 
     function onEvent(message: EventMessage): void {
+      if (audioReady && audioActive() && message.name === "item_picked"
+          && message.data.by === welcome?.user_id) {
+        audio.playPickup();
+      }
       if (audioActive() && message.name === "player_hit"
           && message.data.target === welcome?.user_id
           && message.data.amount + message.data.absorbed > 0) {
@@ -297,6 +311,9 @@ export function createMountGame(deps: GameDeps) {
       const mouseDx = input.takeMouseDx(); // lido sempre, para não acumular giro fora da partida
       if (status === "running" && ending === null) loop.frame(dtS, input.keys, mouseDx);
       const position = loop.localPlayer();
+      if (!audioActive() || !position?.alive) input.cancelCharge();
+      const chargeSeconds = input.chargeSeconds;
+      if (audioReady) audio.updateCharge(audioActive() ? chargeSeconds : null);
       const moving = input.keys.up || input.keys.down || input.keys.left || input.keys.right;
       if (audioReady && audioActive() && position?.alive && moving) {
         if (previousPosition !== null) {
@@ -336,7 +353,7 @@ export function createMountGame(deps: GameDeps) {
         const others = interpolator?.sample(nowMs) ?? null;
         const rendered = others === null ? drawing : { ...drawing, ...others };
         const showingFeedback = status === "running" && ending === null && !document.hidden;
-        renderer.render({ ...rendered,
+        renderer.render({ ...rendered, chargeSeconds,
           feedback: showingFeedback ? feedback.state(nowMs) : undefined }, dtS);
         minimap?.render(rendered, canvas.clientWidth / canvas.clientHeight || 1);
       }

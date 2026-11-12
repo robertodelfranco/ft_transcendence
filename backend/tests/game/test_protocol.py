@@ -187,3 +187,9 @@ def test_event_pong_and_error_frames():
 
 def test_frames_are_compact_json():
 	assert encode_pong(1) == '{"v":1,"type":"pong","t":1}'
+
+
+@pytest.mark.parametrize("kind", ["charge_start", "charge_cancel"])
+def test_charge_actions_are_validated_and_forwarded_to_simulation(kind):
+	message = parse_client_message(dumps({"v": 1, "type": "action", "seq": 5, "kind": kind}))
+	assert message.to_simulation() == Action(seq=5, kind=ActionKind(kind))

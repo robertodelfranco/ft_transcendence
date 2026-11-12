@@ -263,3 +263,11 @@ Um commit documental: `docs(hud): revisa cobertura e aceites da F4.3 (#142)`.
 Arquivo: `docs/contracts/hud.md`. A alteração deve entrar separada da #192.
 O fechamento da #142 depende da revisão de Caio e Augusto; esta atualização não
 atribui esse aceite nem conclui a validação funcional da F7.6 (#49).
+
+
+## Controles de carga — atualização local de 12/11/2026
+
+A ajuda em pt-BR, en e es explica: soltar Espaço dispara; segurar por 3 s
+carrega a fireball com dano ×2 e custo de Mana ×3. O feedback de carga vive
+na mão do Renderer e no áudio; não acrescenta texto ao canvas nem novos
+campos ao HudState. Revisão de Caio e validação visual pendentes.
