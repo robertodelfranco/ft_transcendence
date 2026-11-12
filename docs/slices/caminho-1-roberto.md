@@ -139,7 +139,7 @@ Decidida depois do código, cada uma custa retrabalho em mais de uma Slice.
 |---|---|
 | **Web-based game** (Major) | a Simulation: `step`, a ordem fixa dentro de um Tick, por que tudo é velocidade × `dt`; o que veio do C e o que mudou (mundo espelhado, três bugs não portados, projétil e Boss que não faziam o que o código parecia dizer) |
 | **Remote players** (Major, parte minha) | Prediction e Reconciliation com `prediction.ts` aberto; a fila de Inputs; o teste cruzado que prova que Python e TypeScript calculam igual |
-| **Multiplayer 3+** (Major, parte minha) | o que muda com N Players: alvo do Enemy, rodízio do Boss, colisão entre Players, quem saiu no meio |
+| **Multiplayer 3+** (Major, parte minha) | o que muda com N Players: alvo do Enemy, alvo do Boss com linha de visão, colisão entre Players, quem saiu no meio |
 | **Game customization** (Minor, parte minha) | como cada opção chega à Simulation e o teste de cada uma |
 | **Obrigatórios** | o servidor decide acerto, dano, coleta e vitória; nenhum estado de partida em andamento vai para o banco |
 

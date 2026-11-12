@@ -141,14 +141,40 @@ def test_two_bullets_are_boss_attack_cooldown_s_apart():
 		1 + WINDUP_TICKS + 2 * COOLDOWN_TICKS]
 
 
-def test_with_two_players_the_target_alternates_every_shot():
-	# o 7 numa linha acima do Boss e o 9 numa abaixo; o 7 um pouco mais perto, para ser o primeiro
-	room = new_room()
-	place(room.players[7], BOSS_X - 14.9, ROW_Y - 1)
-	place(room.players[9], BOSS_X - 15.0, ROW_Y + 1)
+def test_a_nearer_player_behind_a_wall_is_not_targeted():
+	# o 9 atrás de uma parede na célula (27, 1), mais perto; o 7 à vista, na linha do Boss
+	rows = CORRIDOR.split("\n")
+	rows[1] = rows[1][:27] + "1" + rows[1][28:]
+	room = new_room("\n".join(rows))
+	place(room.players[7], BOSS_X - 7.0)
+	place(room.players[9], BOSS_X - 4.0, ROW_Y - 1)
 	fired = bullet_ticks(room, 1 + WINDUP_TICKS + 2 * COOLDOWN_TICKS)
-	targets = [7 if shot.dy < 0 else 9 for _, shot in fired]
-	assert targets == [7, 9, 7]
+	assert len(fired) == 3
+	assert all(shot.dy == 0 for _, shot in fired) # todos na linha do 7
+	assert room.boss.target_player_id == 7
+
+
+@pytest.mark.parametrize("distance_9, target", [(5.6, 7), (4.5, 9)])
+def test_another_player_takes_the_target_only_when_closer_by_the_margin(distance_9, target):
+	# o 7 numa linha acima do Boss e o 9 numa abaixo, os dois à vista; o 7 começa mais perto
+	room = new_room()
+	place(room.players[7], BOSS_X - 6.0, ROW_Y - 1)
+	place(room.players[9], BOSS_X - 6.5, ROW_Y + 1)
+	run(room, 1)
+	assert room.boss.target_player_id == 7
+	place(room.players[9], BOSS_X - distance_9, ROW_Y + 1)
+	run(room, WINDUP_TICKS) # durante a mira o alvo não muda; é reescolhido depois do tiro
+	assert room.boss.target_player_id == target
+
+
+def test_without_line_of_sight_chases_without_shooting():
+	# o 7 atrás da parede da coluna WALL_COLUMN; o 9 no Spawn, além de BOSS_SIGHT_RANGE
+	room = new_room(walled_corridor())
+	place(room.players[7], BOSS_X - 10.0)
+	assert bullet_ticks(room, 1 + WINDUP_TICKS + COOLDOWN_TICKS) == []
+	assert room.boss.state == BossState.ALERT
+	assert room.boss.target_player_id == 7
+	assert room.boss.x < BOSS_X
 
 
 def test_six_fireballs_kill_the_boss():

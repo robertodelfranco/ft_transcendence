@@ -170,7 +170,7 @@ O Player é identificado pelo `user_id` do User, e é esse número que `target_p
 **O que muda por haver N jogadores** (em relação ao C):
 
 - Colisão também **player × player** (distância < 0,6), além de parede, porta, inimigo e boss.
-- Inimigo persegue o **player vivo mais próximo** e só troca de alvo se o novo estiver 1 célula mais perto (evita ping-pong e protege quem chegou primeiro). O boss escolhe alvo por rodízio a cada tiro.
+- Inimigo persegue o **player vivo mais próximo** e só troca de alvo se o novo estiver 1 célula mais perto (evita ping-pong e protege quem chegou primeiro). O boss mira o player vivo mais próximo em linha reta entre os que vê (parede e porta fechada bloqueiam a visão), com a mesma margem para trocar; sem ninguém à vista, persegue sem atirar ([contracts/rules.md](contracts/rules.md) §4, decidido em 12/11).
 - Dano vai para o **alvo**, não para `game->player`.
 - Todo projétil tem **`owner_id`**: é a base de kill feed, placar, estatísticas e conquistas.
 - Porta trancada consome a chave de **quem apertou**.
