@@ -62,6 +62,17 @@
     "missing": "Esta sala no existe.",
     "back": "Volver al lobby"
   },
+  "characters": {
+    "title": "Elige tu personaje",
+    "description": "Elige tu apariencia para esta partida. Todos tienen los mismos atributos.",
+    "current": "Seleccionado: {{name}}",
+    "previewUnavailable": "Vista previa no disponible",
+    "names": {
+      "nemesis": "Nemesis",
+      "sucubus": "Sucubus",
+      "oil": "Oil"
+    }
+  },
   "socket": {
     "reconnecting": "Reconectando al servidor… la lista puede estar desactualizada."
   }

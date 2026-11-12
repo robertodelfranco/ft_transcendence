@@ -70,7 +70,7 @@ No `welcome`:
 
 | Entidade | Campos |
 |---|---|
-| Player | `id: int` (user_id), `name: string` (username), `x`, `y`, `dx`, `dy`, `hp: int`, `mana: int`, `armor: int`, `keys: int`, `alive: bool`, `connected: bool` |
+| Player | `id: int` (user_id), `name: string` (username), `character_id: string`, `x`, `y`, `dx`, `dy`, `hp: int`, `mana: int`, `armor: int`, `keys: int`, `alive: bool`, `connected: bool` |
 | Enemy | `id: string`, `x`, `y`, `state` |
 | Boss | `x`, `y`, `hp: int`, `state` |
 | Projectile | `id: string`, `kind: "fireball" \| "bullet"`, `owner: int \| null` (user_id; `null` no bullet), `x`, `y`, `dx`, `dy`, `state` |
@@ -79,6 +79,13 @@ No `welcome`:
 | `scoreboard` | `players: [{id: int, frags: int}]` em ordem decrescente de `frags`, e `time_left_s: int` |
 
 `doors` e `grid_delta` sempre concordam. A Prediction usa o Grid para colisão; o Renderer usa `doors` para animar a porta e mostrar se está trancada.
+
+Extensão #256 (12/11/2026), com revisão de Roberto e Augusto pendente:
+`players[].character_id` identifica somente o visual escolhido no Lobby (`nemesis` ou
+`sucubus` ou `oil`, default `nemesis`). O servidor inclui o campo no `welcome.snapshot` e em
+todos os Snapshots seguintes, preservando-o em Reconnection e respawn. O render usa
+Nemesis quando recebe um ID desconhecido ou um exemplo antigo sem o campo. Nenhuma
+Action ou Input muda essa escolha durante a partida. Ver [player-characters.md](player-characters.md).
 
 Uma entidade sai da lista no primeiro Snapshot depois de o tempo dela acabar: Enemy em `dying` por `ENEMY_DYING_S`, Projectile em `hit` por `PROJECTILE_HIT_S`. Enquanto está em `dying` ou `hit`, ela não colide nem causa dano. Quando um id some da lista, o cliente remove o sprite.
 

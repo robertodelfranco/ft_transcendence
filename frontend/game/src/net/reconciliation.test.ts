@@ -7,7 +7,7 @@ import { reconcilePlayer, type PendingInput } from "./reconciliation";
 const STEP = PLAYER_SPEED / TICK_RATE;
 
 const PLAYER: PlayerSnapshot = {
-  id: 7, name: "ana", x: 2.5, y: 2.5, dx: 0, dy: -1,
+  id: 7, name: "ana", character_id: "nemesis", x: 2.5, y: 2.5, dx: 0, dy: -1,
   hp: 10, mana: 100, armor: 0, keys: 0,
   alive: true, connected: true,
 };

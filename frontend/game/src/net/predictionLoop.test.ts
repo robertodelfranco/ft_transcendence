@@ -16,7 +16,7 @@ const WELCOME = {
   map: { grid: ["111111", "100001", "100001", "100001", "100001", "111111"] },
   snapshot: { tick: 0, last_input_seq: 0, enemies: [], boss: null, projectiles: [], doors: [],
     grid_delta: [], scoreboard: null,
-    players: [{ id: 7, name: "ana", x: 2.5, y: 2.5, dx: 0, dy: -1, hp: 10, mana: 100, armor: 0,
+    players: [{ id: 7, name: "ana", character_id: "nemesis", x: 2.5, y: 2.5, dx: 0, dy: -1, hp: 10, mana: 100, armor: 0,
       keys: 0, alive: true, connected: true }] },
 } satisfies WelcomeMessage;
 

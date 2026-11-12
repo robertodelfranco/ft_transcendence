@@ -10,7 +10,7 @@ const TICK_MS = 1000 / TICK_RATE;
 const GAP_MS = 2 * TICK_MS; // um Snapshot a cada 2 Ticks
 
 const player = (id: number, extra: Partial<PlayerSnapshot> = {}): PlayerSnapshot => ({
-  id, name: `p${id}`, x: 1.5, y: 1.5, dx: 1, dy: 0, hp: 10, mana: 100, armor: 0, keys: 0,
+  id, name: `p${id}`, character_id: "nemesis", x: 1.5, y: 1.5, dx: 1, dy: 0, hp: 10, mana: 100, armor: 0, keys: 0,
   alive: true, connected: true, ...extra });
 
 const snapshot = (tick: number, players: PlayerSnapshot[], extra: Partial<Snapshot> = {}): Snapshot => ({

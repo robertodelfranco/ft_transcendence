@@ -4,7 +4,7 @@ import type { ViewState } from "./renderer";
 import { drawMinimap } from "./minimap";
 
 const player: PlayerSnapshot = {
-  id: 7, name: "ana", x: 1.5, y: 1.5, dx: 0, dy: -1,
+  id: 7, name: "ana", character_id: "nemesis", x: 1.5, y: 1.5, dx: 0, dy: -1,
   hp: 10, mana: 100, armor: 0, keys: 0, alive: true, connected: true,
 };
 
@@ -23,13 +23,14 @@ function context() {
   const ctx = {
     fillStyle: "",
     clearRect: vi.fn(),
+    strokeRect: vi.fn(),
+    createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
     fillRect: vi.fn(function (this: { fillStyle: string }, x: number, y: number) {
       fills.push({ x, y, color: this.fillStyle });
     }),
     save: vi.fn(), restore: vi.fn(), translate: vi.fn(), scale: vi.fn(),
     beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(),
-    fill: vi.fn(), arc: vi.fn(), stroke: vi.fn(), strokeRect: vi.fn(),
-    createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+    fill: vi.fn(), arc: vi.fn(), stroke: vi.fn(),
   };
   return { ctx: ctx as unknown as CanvasRenderingContext2D, calls: ctx, fills };
 }
@@ -57,5 +58,6 @@ test("the current Grid distinguishes closed and opened Doors and draws both Play
 
   expect(fills.find(({ x, y }) => x === 1 && y === 1)?.color).toBe("#d9a354");
   expect(fills.find(({ x, y }) => x === 1 && y === 2)?.color).toBe("#426e69");
+  // O Player local tem um anel além do marcador preenchido.
   expect(calls.arc.mock.calls.map(([x, y]) => [x, y])).toEqual([[2.5, 1.5], [1.5, 1.5], [1.5, 1.5]]);
 });

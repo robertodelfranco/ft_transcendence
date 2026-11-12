@@ -28,6 +28,7 @@ class RoomManager:
     def leave(self, match_id: int, user_id: int) -> RoomInfo | None: ...   # None = Room destruída
     def abandon(self, match_id: int, user_id: int) -> None: ...           # saída em partida (#240)
     def set_ready(self, match_id: int, user_id: int, ready: bool) -> RoomInfo: ...
+    def set_character(self, match_id: int, user_id: int, character_id: CharacterId) -> RoomInfo: ...
     def start(self, match_id: int) -> None: ...
     def info(self, match_id: int) -> RoomInfo: ...
     def list_open(self) -> list[RoomInfo]: ...                            # status == "lobby"
@@ -87,6 +88,13 @@ Garantias que o lobby assume:
 | `ready` | bool | **vive na Room, nunca no banco** (§4, decisão 2) |
 | `connected` | bool | `false` durante o Grace period |
 | `joined_at` | string ISO-8601 | a ordem de entrada é a ordem de sucessão do host |
+| `character_id` | string | visual individual (`nemesis`, `sucubus` ou `oil`), default `nemesis`; só muda no Lobby e vive em memória |
+
+Extensão #256 (12/11/2026), com revisão de Akita, Augusto e Roberto pendente: `set_character`
+exige participação (`NotInRoom`) e estado `lobby` (`AlreadyStarted`). A API valida o ID
+contra `CharacterId` antes de chamar o manager. O valor sai de `Seat` para o `Player`
+no `start` e segue em cada Snapshot, inclusive após Reconnection e respawn.
+Não entra em RoomOptions, MatchOutcome ou tabelas. Ver [player-characters.md](player-characters.md).
 
 ### 2.4 `MatchResult` — o que a Room entrega ao terminar
 

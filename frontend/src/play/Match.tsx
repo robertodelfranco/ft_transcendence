@@ -112,7 +112,7 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
           <canvas
             ref={minimapRef}
             aria-hidden="true"
-            className="pointer-events-none absolute bottom-3 left-3 aspect-square w-1/4 rounded-sm border border-torch/35 border-t-torch/60 bg-crypt-950/95 shadow-[0_4px_20px_rgba(0,0,0,0.5)] sm:w-40 md:left-auto md:right-3"
+            className="pointer-events-none absolute bottom-3 left-3 aspect-square w-1/4 opacity-85 sm:w-32 md:left-auto md:right-3"
           />
         </div>
         {hud && live && <Hud hud={hud} userId={user?.id ?? null} />}

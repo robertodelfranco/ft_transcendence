@@ -271,6 +271,34 @@ async def test_ready_is_a_strict_bool_for_players_only(client, db_session, app, 
 		headers=outsider)) == (409, "not_in_match")
 
 
+async def test_character_selection_is_published_and_locked_after_start(client, db_session, app, rooms, watcher):
+	match_id, host = await open_lobby(client, db_session, app)
+	await received(watcher, 1) # criação
+	path = f"/api/matches/{match_id}/character"
+	response = await client.post(path, json={"character_id": "sucubus"}, headers=host)
+	assert response.status_code == 200
+	assert response.json()["players"][0]["character_id"] == "sucubus"
+	messages = await received(watcher, 2)
+	assert messages[1]["type"] == "lobby_update"
+	assert messages[1]["room"]["players"][0]["character_id"] == "sucubus"
+	assert (await client.get(f"/api/matches/{match_id}", headers=host)).json()["players"][0]["character_id"] == "sucubus"
+	outsider = await new_user(db_session, app, "rdel")
+	assert error(await client.post(path, json={"character_id": "nemesis"}, headers=outsider)) == (409, "not_in_match")
+	assert (await client.post(path, json={"character_id": "nemesis"})).status_code == 401
+	assert (await client.post(f"/api/matches/{match_id}/start", headers=host)).status_code == 204
+	assert error(await client.post(path, json={"character_id": "nemesis"}, headers=host)) == (409, "already_started")
+
+
+@pytest.mark.parametrize("body", [
+	{}, {"character_id": "unknown"}, {"character_id": "../../other"},
+	{"character_id": None}, {"character_id": 1}, {"character_id": "nemesis", "user_id": 9},
+])
+async def test_invalid_character_changes_nothing(client, db_session, app, rooms, body):
+	match_id, host = await open_lobby(client, db_session, app)
+	assert error(await client.post(f"/api/matches/{match_id}/character", json=body, headers=host)) == (422, "validation_error")
+	assert rooms.info(match_id).players[0].character_id == "nemesis"
+
+
 async def test_only_the_host_starts_and_only_once(client, db_session, app, rooms):
 	match_id, host = await open_lobby(client, db_session, app)
 	guest = await new_user(db_session, app, "rdel")
