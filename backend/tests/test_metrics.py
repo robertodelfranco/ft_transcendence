@@ -97,7 +97,7 @@ async def test_sockets_rooms_and_ticks_are_read_from_the_live_state(client, app,
 		load=lambda name, mode: parse_map("11111\n1NNN1\n11111\n", name, mode))
 	tabs = [await connections.connect(7, "app", fake_ws()), await connections.connect(7, "app", fake_ws())]
 	await connections.connect(7, "game", fake_ws(), match_id=12)
-	rooms.create(12, Mode.COOP, "arena", 3, RoomOptions(), created_by=7)
+	rooms.create(12, Mode.COOP, "arena", 1, RoomOptions(), created_by=7) # Solo: começa com 1
 	rooms.join(12, 7, "user7", "/media/avatars/default.png")
 	rooms.create(13, Mode.COOP, "arena", 3, RoomOptions(), created_by=9) # ainda no Lobby: não conta
 	rooms.join(13, 9, "user9", "/media/avatars/default.png")
