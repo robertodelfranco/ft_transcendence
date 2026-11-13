@@ -220,16 +220,14 @@ def _consume_queue(room: Room, player: Player, dt: float, events: list[Event]) -
 
 
 def _move(room: Room, player: Player, inp: Input, dt: float) -> None:
-	world = CollisionWorld(grid=room.grid, bodies=_blocking_bodies(room, player))
+	world = CollisionWorld(grid=room.grid, bodies=_blocking_bodies(room))
 	body = apply_input(Body(player.x, player.y, player.angle), inp, world, dt)
 	player.x, player.y, player.angle = body.x, body.y, body.angle
 
 
-def _blocking_bodies(room: Room, player: Player) -> tuple[tuple[float, float], ...]:
-	# só bloqueia quem está vivo e na partida (rules.md §4)
-	bodies = [(other.x, other.y) for other in room.players.values()
-		if other is not player and other.alive and not other.left]
-	bodies += [(enemy.x, enemy.y) for enemy in room.enemies if enemy.state != EnemyState.DYING]
+def _blocking_bodies(room: Room) -> tuple[tuple[float, float], ...]:
+	# só Enemy e Boss vivos bloqueiam; outro Player é atravessável (rules.md §4)
+	bodies = [(enemy.x, enemy.y) for enemy in room.enemies if enemy.state != EnemyState.DYING]
 	if room.boss is not None and room.boss.state != BossState.DYING:
 		bodies.append((room.boss.x, room.boss.y))
 	return tuple(bodies)

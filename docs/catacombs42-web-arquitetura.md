@@ -169,8 +169,8 @@ O Player é identificado pelo `user_id` do User, e é esse número que `target_p
 
 **O que muda por haver N jogadores** (em relação ao C):
 
-- Colisão também **player × player** (distância < 0,6), além de parede, porta, inimigo e boss.
-- Inimigo persegue o **player vivo mais próximo** e só troca de alvo se o novo estiver 1 célula mais perto (evita ping-pong e protege quem chegou primeiro). O boss mira o player vivo mais próximo em linha reta entre os que vê (parede e porta fechada bloqueiam a visão), com a mesma margem para trocar; sem ninguém à vista, persegue sem atirar ([contracts/rules.md](contracts/rules.md) §4, decidido em 12/11).
+- Players **atravessam uns aos outros** (no co-op e no PvP); o player colide com parede, porta, inimigo e boss ([contracts/rules.md](contracts/rules.md) §4, decidido em 12/11).
+- Inimigo persegue o **player vivo mais próximo** e só troca de alvo se o novo estiver 1 célula mais perto (evita ping-pong e protege quem chegou primeiro). O boss escolhe alvo por rodízio a cada tiro.
 - Dano vai para o **alvo**, não para `game->player`.
 - Todo projétil tem **`owner_id`**: é a base de kill feed, placar, estatísticas e conquistas.
 - Porta trancada consome a chave de **quem apertou**.
@@ -213,7 +213,7 @@ A coluna "por segundo" assume que o MLX42 rodava a ~60 fps com vsync. Meça no C
 | Girar (tecla) | `0.03` rad | por quadro | `PLAYER_ROT_SPEED = 1.8` rad/s |
 | Girar (mouse) | 0,4 × rotação nas bordas da janela | por evento | `mouse_dx` em rad, limitado a `MOUSE_MAX_ROT_SPEED` × dt por tick |
 | Raio de colisão do player | `R = 0.05`, 4 cantos | — | igual |
-| Player × enemy/boss/player | bloqueia a `< 0.6` | — | igual |
+| Player × enemy/boss | bloqueia a `< 0.6`; player × player não bloqueia | — | igual |
 | Enemy: velocidade | `0.15` por passo a 10 Hz | discreto | `ENEMY_SPEED = 1.5` cél/s contínuo |
 | Enemy: alcance / dano | `≤ 0.7`; 1 HP a cada 7 quadros × 0,2 s | — | `1` HP a cada `1.4` s de contato |
 | Enemy: morte | `DYING` 3 quadros × 0,5 s → `DEAD` | — | igual |
@@ -635,7 +635,7 @@ Regra de fronteira: `frontend/game/` não importa nada de `frontend/src/`; `app/
 | Arquivo(s) do Cub3D | Destino | Observação |
 |---|---|---|
 | `parser_bonus/*.c` | **PY** (só o carregamento) | Vira o carregador de Map: lê a grade, com vários spawns e `M A T`. A validação com códigos de erro não migra |
-| `player_bonus/movement_bonus.c`, `move_utils_bonus.c` | **PY** + **TS** (`applyInput.ts`) | Por dt; colisão com outros players; as duas versões são idênticas |
+| `player_bonus/movement_bonus.c`, `move_utils_bonus.c` | **PY** + **TS** (`applyInput.ts`) | Por dt; colisão com inimigo e boss (players se atravessam); as duas versões são idênticas |
 | `player_bonus/init_player_bonus.c` | **PY** | Orientação inicial por spawn |
 | `player_bonus/controls_bonus.c` | **TS** | Teclas → `input`/`action`; mouse nas bordas vira Pointer Lock + `mouse_dx` |
 | `enemy_bonus/enemy_move_bonus.c`, `enemy_manage_bonus.c` (estado) | **PY** | Alvo = player vivo mais próximo |

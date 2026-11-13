@@ -260,7 +260,7 @@ Os três contratos estão na `main` e foram revisados com as decisões de 06 e 0
 - Teste: num corredor de uma célula, o Player atravessa sem travar.
 
 **R2.4 — Colisão com corpos (0,5 d).**
-- Teste: outro Player vivo bloqueia a menos de `BODY_BLOCK_DISTANCE`; Player morto não.
+- Teste: outro Player, vivo ou morto, não bloqueia (atravessável, decidido em 12/11, #263).
 - Teste: Enemy em `alert` ou `attack` bloqueia; em `dying`, não.
 - Teste: o Boss bloqueia.
 - Teste: bloqueado por um corpo num eixo, o Player desliza no outro.

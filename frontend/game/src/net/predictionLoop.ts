@@ -33,18 +33,10 @@ interface Running {
   frozen: boolean; // #255: o último estado do servidor diz que a Room está congelada
 }
 
-function worldFromSnapshot(
-  snapshot: Snapshot,
-  grid: string[],
-  userId: number,
-): CollisionWorld {
+// só Enemy e Boss vivos bloqueiam; outro Player é atravessável, igual ao sim.py (rules.md §4)
+function worldFromSnapshot(snapshot: Snapshot, grid: string[]): CollisionWorld {
   const bodies: [number, number][] = [];
 
-  for (const player of snapshot.players) {
-    if (player.id !== userId && player.alive) {
-      bodies.push([player.x, player.y]);
-    }
-  }
   for (const enemy of snapshot.enemies) {
     if (enemy.state !== "dying") bodies.push([enemy.x, enemy.y]);
   }
@@ -79,7 +71,7 @@ export function createPredictionLoop(send: (message: ClientMessage) => void): Pr
       const me = welcome.snapshot.players.find((player) => player.id === welcome.user_id);
       if (me === undefined) throw new Error("welcome without the local player");
       const grid = applyGridDelta(welcome.map.grid, welcome.snapshot.grid_delta);
-      const world = worldFromSnapshot(welcome.snapshot, grid, me.id);
+      const world = worldFromSnapshot(welcome.snapshot, grid);
       const { body } = reconcilePlayer(
         me, welcome.snapshot.last_input_seq, [], world,
       );
@@ -107,7 +99,7 @@ export function createPredictionLoop(send: (message: ClientMessage) => void): Pr
       if (me === undefined) throw new Error("snapshot without the local player");
 
       const grid = applyGridDelta(state.baseGrid, snapshot.grid_delta);
-      const world = worldFromSnapshot(snapshot, grid, me.id);
+      const world = worldFromSnapshot(snapshot, grid);
       const { body, pending } = reconcilePlayer(
         me, snapshot.last_input_seq, state.pending, world,
       );
