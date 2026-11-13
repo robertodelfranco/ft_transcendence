@@ -368,7 +368,8 @@ async def running_coop(client, db_session, app) -> tuple[int, dict[str, str], in
 	match_id, host = await open_lobby(client, db_session, app)
 	guest = await new_user(db_session, app, "caio")
 	players = (await client.post(f"/api/matches/{match_id}/join", headers=guest)).json()["players"]
-	await client.post(f"/api/matches/{match_id}/start", headers=host)
+	await ready(client, match_id, host, guest)
+	assert (await client.post(f"/api/matches/{match_id}/start", headers=host)).status_code == 204
 	return match_id, guest, players[1]["user_id"]
 
 
