@@ -38,7 +38,8 @@ Toda mensagem do socket `/ws/game/{match_id}`, nos dois sentidos. O cliente do j
 A ligação de tecla a campo é do cliente: `W/S` → `up/down`, `A/D` → `left/right`, `←/→` → `rot_left/rot_right`, `Shift` → `sprint`, `Espaço` pressionado → `charge_start`, solto → `fire`, `F` → `door`. Ela **não** copia o C, que trocava as setas e o strafe para compensar o mundo espelhado (ver Decisões).
 
 **Carga de fireball (12/11/2026):** `charge_start` registra o Tick inicial no
-Player; inícios repetidos não reiniciam a carga. `fire` encerra a carga e
+Player; um novo `charge_start` reinicia a carga, para que um `fire` ou
+`charge_cancel` perdido na fila não deixe carga órfã. `fire` encerra a carga e
 atira na direção atual: antes de 90 Ticks, tiro normal; a partir de 90 Ticks
 (3 s a 30 Hz), dano ×2 e custo de Mana ×3. Não dispara automaticamente ao
 completar. Sem os 30 de Mana, o tiro carregado é cancelado, sem gasto e sem

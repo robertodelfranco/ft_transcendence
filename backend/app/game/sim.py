@@ -272,8 +272,8 @@ def _apply_action(room: Room, player: Player, action: Action, events: list[Event
 	if action.kind == ActionKind.DOOR:
 		_open_door(room, player, events)
 	elif action.kind == ActionKind.CHARGE_START:
-		if player.charge_started_tick is None:
-			player.charge_started_tick = room.tick
+		# sempre reinicia: um fire/cancel perdido na fila não deixa carga órfã
+		player.charge_started_tick = room.tick
 	elif action.kind == ActionKind.CHARGE_CANCEL:
 		player.charge_started_tick = None
 	elif action.kind == ActionKind.FIRE:

@@ -256,15 +256,14 @@ def test_charge_start_and_fire_in_the_same_tick_cannot_fake_three_seconds():
 	assert room.projectiles[0].damage_mult == 1
 
 
-def test_repeated_charge_start_does_not_restart_the_clock():
+def test_repeated_charge_start_restarts_the_clock():
 	room = new_room()
 	charge(room, 90)
-	started = room.players[7].charge_started_tick
 	enqueue(room, 7, Action(seq=next_seq(room, 7), kind=ActionKind.CHARGE_START))
 	step(room, DT)
-	assert room.players[7].charge_started_tick == started
+	assert room.players[7].charge_started_tick == room.tick
 	fire(room)
-	assert room.projectiles[0].damage_mult == 2
+	assert room.projectiles[0].damage_mult == 1
 
 
 def test_disconnect_and_death_clear_charge():
