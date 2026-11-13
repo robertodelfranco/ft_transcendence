@@ -37,5 +37,9 @@
     "friends": "Friends",
     "settings": "Settings",
     "logout": "Log out"
+  },
+  "currentMatch": {
+    "notice": "You have a match in progress.",
+    "back": "Back to the match"
   }
 }

@@ -37,5 +37,9 @@
     "friends": "Amigos",
     "settings": "Configuración",
     "logout": "Cerrar sesión"
+  },
+  "currentMatch": {
+    "notice": "Tienes una partida en curso.",
+    "back": "Volver a la partida"
   }
 }
