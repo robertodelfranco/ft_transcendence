@@ -4,6 +4,20 @@
 >
 > Papel no time: **PM / Scrum Master**. Contratos que eu escrevo: [rooms.md](../contracts/rooms.md), [matches-api.md](../contracts/matches-api.md), [infra.md](../contracts/infra.md).
 
+## 0. Estado em 12/11
+
+Todas as tarefas da Slice estão na `main`, com as issues fechadas:
+- F0.6 (#33);
+- F5.1–F5.8 (#29, #32, #115, #155, #156, #157, #116, #158, #159);
+- F6.8 (#34, com o log sem query string em #210);
+- F8.1–F8.5 (#27, #28, #30, #31, #117);
+- F8.8–F8.11 (#118, #160, #162, #161);
+- `/media/` (#120), anonimização (#211) e o 302 para o `PUBLIC_HOST` (#235, ex-"Em aberto" 6 do [infra.md](../contracts/infra.md)).
+
+O Google saiu do escopo (#164). Em aberto:
+- **F8.6** (#163), que fecha com o ensaio do C5 em 13/11;
+- **F9.1** (#271): a minha parte do README, menos a poda dos módulos, que espera o resultado do C5.
+
 ## 1. Inventário
 
 **24–24,5 d de tarefa** (≈ 23–23,5 descontando que F8.7 é do Augusto), mais coordenação. F6.8 cresceu de 2 d para 2,5–3 d com o segundo provedor (10/10).
@@ -106,7 +120,7 @@ No calendário replanejado ([replanejamento-e-board.md](../pm/replanejamento-e-b
 | **S2** · 11–17/10 | **F5.2** lobby · **F8.3** compose final com migração no `entrypoint` · **F8.4** build de produção |
 | **S3** · 18–24/10 | Nesta ordem: **F5.3** `record_match_result` (bloqueia o #91 e o "Match gravado" do C3) → ✅ **F8.8** Prometheus e exporters, 22/10 (#118; destrava F8.9 e F8.11) → **F8.5** README esqueleto → **F5.6** histórico (se não couber, vai para a S4) |
 | **S4** · 25–31/10 | Primeiro o que o teste da 42 valida em 31/10: **F6.8** só com a 42 · **F8.9** dashboards · **F8.11** acesso seguro · trocar o `FT_CLIENT_SECRET` pelo secret novo que a intra gera sozinha em 30/10 (o atual vence em 06/11). Depois, o que não precisa da 42: **F5.4** stats → **F5.5** Elo e level → **F5.8** leaderboard, e **F5.7** conquistas quando a F4.6 do Rafael chegar. ✅ **Dom 01/11:** teste com 3 PCs na 42, D1–D8 e N1–N3 OK ([resultados](../infra/resultados-teste-pc-42-2026-10-17.md#pendente-2º-pc)); o D6 usou o secret antigo; lembrete: trocar o `FT_CLIENT_SECRET` pelo novo no `.env` de quem serve, antes da entrega ou na próxima ida à 42 |
-| **S5** · 01–14/11 | O que da F5.4–F5.8 escorregar da S4, até 07/11 · **F8.6** demo (o teste de 01/11 passou; falta a resposta do goinfre e o "Em aberto" 6 do [infra.md](../contracts/infra.md)) · ✅ **F8.10** alertas, 10/11 (#162) · **F9.1** minha parte do README · ~~Google do F6.8~~ (fora do escopo desde 09/11, #164) · folga para bug e revisão |
+| **S5** · 01–14/11 | O que da F5.4–F5.8 escorregar da S4, até 07/11 · **F8.6** demo (o teste de 01/11 passou; falta a resposta do goinfre e o "Em aberto" 6 do [infra.md](../contracts/infra.md)) · ✅ **F8.10** alertas, 10/11 (#162) · **F9.1** minha parte do README (#271, 12/11; a poda dos módulos espera o C5) · ~~Google do F6.8~~ (fora do escopo desde 09/11, #164) · folga para bug e revisão |
 | **S6** · 15–21/11 | bug, README fechado, ensaio |
 
 **O gargalo é a S4:** F5.4–F5.8 + F6.8 + F8.9 + F8.11 somavam 9 d numa semana de 5, e o segundo provedor do F6.8 soma mais 0,5–1 d. Mitigação já aplicada acima: F5.6 (1 d) foi puxado para a S3, porque só depende de F5.3 — a S4 da tabela fica em **8,5–9 d**, ainda acima da capacidade. Em 19/10 o Google saiu da S4 (a 42 sozinha já fecha o módulo, [auth.md](../contracts/auth.md) §5.13). Com a F5.6 podendo escorregar da S3, a S4 volta a ficar perto de 9–10 d.
