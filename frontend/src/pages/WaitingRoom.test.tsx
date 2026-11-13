@@ -38,16 +38,64 @@ beforeEach(async () => {
 });
 
 describe("sala de espera do anfitrião", () => {
-  it("Iniciar leva a /play", async () => {
+  it("no Solo, o anfitrião marca pronto e Iniciar leva a /play", async () => {
     const user = userEvent.setup();
     await login();
-    await apiFetch("/api/matches", { method: "POST", body: JSON.stringify({ mode: "coop", map: "enemy" }) });
+    await apiFetch("/api/matches", { method: "POST", body: JSON.stringify({ mode: "coop", map: "enemy", max_players: 1 }) });
     const router = renderAt("/lobby/100");
-    await user.click(await screen.findByRole("button", { name: "Iniciar partida" }));
+    // o host também marca pronto (rooms.md §4, decisão 13): sem isso, o Iniciar diz por que não vai
+    const start = await screen.findByRole("button", { name: "Iniciar partida" });
+    expect(start).toBeDisabled();
+    expect(start).toHaveAccessibleDescription("Todos precisam estar prontos para começar, inclusive você.");
+    await user.click(screen.getByRole("button", { name: "Estou pronto" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Iniciar partida" })).toBeEnabled());
+    expect(screen.getByRole("button", { name: "Iniciar partida" })).not.toHaveAccessibleDescription();
+    await user.click(screen.getByRole("button", { name: "Iniciar partida" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/play/100"));
     // a URL muda antes de o React desenhar a página nova: findBy espera
     expect(await screen.findByText("Conectando à partida #100…")).toBeInTheDocument();
     expect(screen.queryByText("Esta partida já começou.")).not.toBeInTheDocument();
+  });
+
+  it("falta de jogador vem antes do pronto, como no servidor", async () => {
+    const user = userEvent.setup();
+    await login();
+    await apiFetch("/api/matches", { method: "POST", body: JSON.stringify({ mode: "coop", map: "enemy" }) });
+    renderAt("/lobby/100");
+    await user.click(await screen.findByRole("button", { name: "Estou pronto" }));
+    await screen.findByRole("button", { name: "Não estou pronto" });
+    const start = screen.getByRole("button", { name: "Iniciar partida" });
+    expect(start).toBeDisabled();
+    expect(start).toHaveAccessibleDescription("É preciso ao menos 2 jogadores para começar.");
+  });
+
+  it("com outro jogador não pronto, o Iniciar fica desabilitado e diz por quê", async () => {
+    await login();
+    const host: RoomPlayer = { ...room12.players[0], user_id: 7, username: "augusto", ready: true };
+    const guest: RoomPlayer = { ...room12.players[0], user_id: 8, username: "roberto", ready: false };
+    server.use(http.get("/api/matches", () => HttpResponse.json({
+      items: [{ ...room12, created_by: 7, min_players: 2, players: [host, guest] }],
+    })));
+    renderAt("/lobby/12");
+    const start = await screen.findByRole("button", { name: "Iniciar partida" });
+    expect(start).toBeDisabled();
+    expect(start).toHaveAccessibleDescription("Todos precisam estar prontos para começar, inclusive você.");
+  });
+
+  it("se o servidor recusa por falta de pronto, o erro aparece traduzido", async () => {
+    // a tela pode estar um passo atrás: alguém desmarcou o pronto e o lobby_update ainda não chegou
+    const user = userEvent.setup();
+    await login();
+    await apiFetch("/api/matches", { method: "POST", body: JSON.stringify({ mode: "coop", map: "enemy", max_players: 1 }) });
+    server.use(http.post("/api/matches/:matchId/start", () => HttpResponse.json(
+      { error: { code: "not_all_ready", message: "not_all_ready", request_id: "test0001", fields: null } },
+      { status: 409 },
+    )));
+    renderAt("/lobby/100");
+    await user.click(await screen.findByRole("button", { name: "Estou pronto" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Iniciar partida" })).toBeEnabled());
+    await user.click(screen.getByRole("button", { name: "Iniciar partida" }));
+    expect(await screen.findByText("Nem todos os jogadores estão prontos.")).toBeInTheDocument();
   });
 
   it("quem é anfitrião aparece marcado", async () => {

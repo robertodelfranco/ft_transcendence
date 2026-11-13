@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router";
 import { ApiError, apiFetch } from "../api/client";
@@ -23,6 +23,7 @@ type Gone = "started" | "aborted" | "missing";
 // lobby (useLobbyRooms): o buffer e o GET depois de cada welcome valem aqui também
 export default function WaitingRoom() {
   const { t } = useTranslation("lobby");
+  const hintId = useId();
   const { matchId: param = "" } = useParams();
   const matchId = Number(param);
   // o mesmo filtro do /play: id que nem é número não vai ao servidor (o 422 sairia no console)
@@ -124,6 +125,12 @@ export default function WaitingRoom() {
 
   const isHost = room.created_by === user?.id;
   const enough = room.players.length >= room.min_players;
+  // como o start do servidor (rooms.md §4, decisão 13): todos prontos, o host incluído
+  const allReady = room.players.every((player) => player.ready);
+  // o motivo de o Iniciar estar desabilitado; o mínimo vem antes, como no servidor
+  const startHint = !enough ? t("room.needPlayers", { count: room.min_players })
+    : !allReady ? t("room.needReady")
+    : null;
 
   return (
     <section className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -208,7 +215,8 @@ export default function WaitingRoom() {
           {isHost && (
             <button
               type="button"
-              disabled={busy || !enough}
+              disabled={busy || startHint !== null}
+              aria-describedby={startHint ? hintId : undefined}
               onClick={() => act(async () => {
                 await post("start");
                 // o match_started também leva para /play; isto cobre o /ws/app reconectando agora
@@ -219,10 +227,7 @@ export default function WaitingRoom() {
               {t("room.start")}
             </button>
           )}
-          {/* o start do servidor confere só min_players, sem olhar o pronto (rooms.md "Em aberto" 3) */}
-          {isHost && !enough && (
-            <p className="text-sm text-bone/70">{t("room.needPlayers", { count: room.min_players })}</p>
-          )}
+          {isHost && startHint && <p id={hintId} className="text-sm text-bone/70">{startHint}</p>}
           {!isHost && <p className="text-sm text-bone/70">{t("room.waitingHost")}</p>}
         </div>
       ) : (
