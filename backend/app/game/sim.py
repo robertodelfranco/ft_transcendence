@@ -7,7 +7,7 @@ from app.game.movement import Body, CollisionWorld, apply_input, is_solid
 from app.game.rules import (BOSS_ATTACK_COOLDOWN_S, BOSS_ATTACK_RANGE, BOSS_ATTACK_WINDUP_S,
 	BOSS_HP, BOSS_MIN_RANGE, BOSS_RADIUS, BOSS_RETARGET_MARGIN, BOSS_SIGHT_RANGE, BOSS_SPEED, BULLET_DAMAGE, COUNTDOWN_S,
 	COUNTDOWN_WAIT_S, DOOR_REACH,
-	ENEMY_ATTACK_INTERVAL_S, ENEMY_ATTACK_RANGE, ENEMY_CHASE_RANGE, ENEMY_DAMAGE, ENEMY_DYING_S,
+	ENEMY_ATTACK_INTERVAL_S, ENEMY_ATTACK_RANGE, ENEMY_CHASE_RANGE, ENEMY_DAMAGE, ENEMY_DYING_S, ENEMY_HIT_RANGE,
 	ENEMY_RADIUS, ENEMY_RETARGET_MARGIN, ENEMY_SEPARATION, ENEMY_SPEED, FIREBALL_BOSS_DAMAGE,
 	FIREBALL_CHARGE_S, FIREBALL_CHARGED_DAMAGE_MULT, FIREBALL_CHARGED_MANA_MULT,
 	FIREBALL_COOLDOWN_S, FIREBALL_PLAYER_DAMAGE, POTION_HEAL, PROJECTILE_HIT_RADIUS,
@@ -447,11 +447,12 @@ def _enemy_fits(room: Room, enemy: Enemy, x: float, y: float) -> bool:
 
 
 def _strike(room: Room, enemy: Enemy, events: list[Event]) -> None:
-	# só acerta quem ainda está no alcance; no C o dano saía sem conferir a distância
+	# só acerta quem ainda está a até ENEMY_HIT_RANGE e sem parede no meio; no C o dano saía sem conferir a distância
 	target = room.players.get(enemy.target_player_id)
 	if target is None or not target.alive or target.left:
 		return
-	if math.hypot(target.x - enemy.x, target.y - enemy.y) <= ENEMY_ATTACK_RANGE:
+	if (math.hypot(target.x - enemy.x, target.y - enemy.y) <= ENEMY_HIT_RANGE
+			and _clear_line(room.grid, enemy.x, enemy.y, target.x, target.y)):
 		_hurt_player(room, target, ENEMY_DAMAGE, None, "enemy", events)
 
 

@@ -53,8 +53,9 @@ O HP inicial e o teto da poção não são constantes: vêm de `options.start_hp
 | `ENEMY_SEPARATION` | cél | `0.6` | novo | Enemy não chega a menos disso de outro Enemy (`enemy_bonus/enemy_move_bonus.c:30`) |
 | `ENEMY_RETARGET_MARGIN` | cél | `1.0` | sim | Não existe no C, que só tinha um jogador. O Enemy só troca de alvo se o novo estiver esta quantidade de passos de caminho mais perto que o atual (arq. §5) |
 | `ENEMY_CHASE_RANGE` | cél | `12` ² | novo | Não existe no C, que andava em linha reta até o único jogador. Passos de caminho (8 vizinhas) até onde a busca do Enemy alcança; Player mais longe que isso não é alvo |
-| `ENEMY_ATTACK_RANGE` | cél | `0.7` | novo | `distance <= 0.7` vira `ATTACK` (`enemy_bonus/enemy_manage_bonus.c:62-65`) |
-| `ENEMY_ATTACK_INTERVAL_S` | s | `1.0` | novo | Base C: 7 quadros de `0.2` s (`enemy_bonus/enemy_manage_bonus.c:17-23` e `:38`); no C o primeiro golpe saía em 0,8 s; ajustado na F4.7 (§5.6) |
+| `ENEMY_ATTACK_RANGE` | cél | `1.0` | novo | Base C: `distance <= 0.7` vira `ATTACK` (`enemy_bonus/enemy_manage_bonus.c:62-65`); ajustado na #278 (§5.8) |
+| `ENEMY_HIT_RANGE` | cél | `2.0` | novo | Não existe no C, que dava o dano sem conferir a distância. Até onde o golpe ainda acerta no fim do `attack`, com linha livre até o alvo (#278, §5.8) |
+| `ENEMY_ATTACK_INTERVAL_S` | s | `0.77` | novo | Base C: 7 quadros de `0.2` s (`enemy_bonus/enemy_manage_bonus.c:17-23` e `:38`); no C o primeiro golpe saía em 0,8 s; ajustado na F4.7 (§5.6) e na #278 (§5.8) |
 | `ENEMY_DAMAGE` | HP | `1` | novo | `hp -= 1` (`enemy_bonus/enemy_manage_bonus.c:21`) |
 | `ENEMY_DYING_S` | s | `1.5` | novo | 3 quadros de `0.5` s até `DEAD` (`enemy_bonus/enemy_manage_bonus.c:40-45`) |
 
@@ -132,7 +133,7 @@ Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um
 - **Projectile avança em subpassos de no máximo `0.1` célula.** O C testava parede e alvo só no ponto de chegada de cada salto de 0,5 célula.
 - **Não existe fogo amigo.** `FIREBALL_PLAYER_DAMAGE` só é lido pelo `PvpRuleset`.
 - **O teto da poção é `options.start_hp`**, não o `10` fixo do C.
-- **O Enemy golpeia a cada `ENEMY_ATTACK_INTERVAL_S` e só acerta quem ainda está em `ENEMY_ATTACK_RANGE`.** No C o primeiro golpe saía em 0,8 s e os seguintes em 1,4 s (o contador começava em 3 e voltava para 0), e o dano entrava sem conferir a distância de novo. A arq. §6.3 e o roadmap (R3) já falam em "1 HP a cada 1,4 s de contato"; um intervalo só e o alcance conferido no golpe são essa regra. O intervalo passou a 1,0 s na F4.7 (§5.6).
+- **O Enemy golpeia a cada `ENEMY_ATTACK_INTERVAL_S` e só acerta quem ainda está em `ENEMY_HIT_RANGE`, sem parede no meio.** No C o primeiro golpe saía em 0,8 s e os seguintes em 1,4 s (o contador começava em 3 e voltava para 0), e o dano entrava sem conferir a distância de novo. A arq. §6.3 e o roadmap (R3) já falam em "1 HP a cada 1,4 s de contato"; um intervalo só e o alcance conferido no golpe são essa regra. O intervalo passou a 1,0 s na F4.7 (§5.6) e a 0,77 s na #278 (§5.8). O `attack` começa em `ENEMY_ATTACK_RANGE`, mas o golpe confere o `ENEMY_HIT_RANGE`, maior: dar um passo para trás durante a animação não basta para escapar. A linha livre é o mesmo DDA do Boss (`_clear_line`), para o golpe não atravessar parede nem Door fechada.
 - **Uma fireball mata um Enemy.** O C não tem HP de Enemy (`update_fireball_bonus.c:43-45`). Se o balanceamento pedir Enemy mais resistente, entra um `ENEMY_HP`.
 - **As velocidades da tabela são as nominais.** No C, o passo de Enemy e Boss saía quando o atraso passava de 0,1 s e o excedente era descartado; a 60 fps isso dava um passo a cada 6 ou 7 quadros, até 14% mais lento que o nominal. A diferença era efeito do jeito de contar o tempo, não intenção, e fica para o balanceamento (F4.7).
 - **`BODY_BLOCK_DISTANCE` usa `<` para todos.** O C usava `<=` para Enemy e `<` para Boss. Só bloqueia quem está vivo: Enemy em `dying` não bloqueia (o C já fazia assim).
@@ -231,3 +232,22 @@ O servidor mede o intervalo entre `charge_start` e `fire` em Ticks; o cliente
 não escolhe dano ou duração. Perder foco/Pointer Lock ou ocultar a aba envia
 `charge_cancel`; morte, saída e mudança de conexão cancelam no servidor.
 Revisão de Roberto/Augusto e playtests coop/PvP pendentes.
+
+
+### 5.8 Alcance e cadência do golpe do Enemy — #278, 13/11/2026
+
+Roberto decidiu três mudanças no golpe do Enemy:
+
+- `ENEMY_ATTACK_RANGE` passa de 0,7 para 1,0 cél. É a distância que põe o
+  Enemy em `attack` e que faz o `attack` recomeçar logo depois do golpe.
+- `ENEMY_HIT_RANGE = 2.0` cél é novo. No fim da animação, o dano entra se o
+  alvo estiver a até 2 cél e sem parede no meio. Antes, o golpe conferia os
+  mesmos 0,7 cél do início, e um passo para trás bastava para escapar.
+- `ENEMY_ATTACK_INTERVAL_S` passa de 1,0 para 0,77 s, cadência 1,3× maior.
+  São 23 Ticks a 30 Hz (0,767 s), e o quadro da animação de ataque cai para
+  ~192 ms, porque deriva do intervalo.
+
+Python, TypeScript e fixture compartilham os novos valores. Testes da
+Simulation cobrem o início a 1,0 cél, o acerto a 1,5 cél, o erro a 2,1 cél e
+o golpe bloqueado por parede. Playtest coop pendente: conferir se o golpe a
+2 cél não parece injusto com o sprite ainda longe.

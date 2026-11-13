@@ -21,8 +21,9 @@ export const ENEMY_RADIUS = 0.2; // cél
 export const ENEMY_SEPARATION = 0.6; // cél
 export const ENEMY_RETARGET_MARGIN = 1.0; // cél
 export const ENEMY_CHASE_RANGE = 12; // cél
-export const ENEMY_ATTACK_RANGE = 0.7; // cél
-export const ENEMY_ATTACK_INTERVAL_S = 1.0; // s
+export const ENEMY_ATTACK_RANGE = 1.0; // cél
+export const ENEMY_HIT_RANGE = 2.0; // cél, até onde o golpe ainda acerta no fim do attack
+export const ENEMY_ATTACK_INTERVAL_S = 0.77; // s, 23 Ticks
 export const ENEMY_DAMAGE = 1; // HP
 export const ENEMY_DYING_S = 1.5; // s
 

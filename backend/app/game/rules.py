@@ -19,8 +19,9 @@ ENEMY_RADIUS = 0.2 # cél
 ENEMY_SEPARATION = 0.6 # cél
 ENEMY_RETARGET_MARGIN = 1.0 # cél
 ENEMY_CHASE_RANGE = 12 # cél
-ENEMY_ATTACK_RANGE = 0.7 # cél
-ENEMY_ATTACK_INTERVAL_S = 1.0 # s
+ENEMY_ATTACK_RANGE = 1.0 # cél
+ENEMY_HIT_RANGE = 2.0 # cél, até onde o golpe ainda acerta no fim do attack
+ENEMY_ATTACK_INTERVAL_S = 0.77 # s, 23 Ticks
 ENEMY_DAMAGE = 1 # HP
 ENEMY_DYING_S = 1.5 # s
 
