@@ -14,7 +14,7 @@ Todas as tarefas da Slice estão na `main`, com as issues fechadas:
 - F3.6, minimapa (#172)
 - F2.13, teste de carga (#173): p99 de 1,4 ms por Tick na Simulation e 2,1 ms com o RoomManager, contra a meta de 5 ms
 
-Fora do plano, também na `main`: modo partida com o canvas em destaque (#254), contagem 3, 2, 1 com a partida congelada (#255), Boss mirando o Player mais perto em linha de visão (#262) e Players atravessáveis entre si (#263). Com a #263, a colisão entre Players citada no §7 saiu: só Enemy e Boss bloqueiam.
+Fora do plano, também na `main`: modo partida com o canvas em destaque (#254), contagem 3, 2, 1 com a partida congelada (#255), Boss mirando o Player mais perto em linha de visão (#262), Players atravessáveis entre si (#263), golpe do Enemy começando a 1 cél, acertando até 2 cél sem atravessar parede e 1,3× mais rápido (#278), e o coop escalando com o número de Players: HP do Boss e dano do Enemy (#281, `rules.md` §5.9). Com a #263, a colisão entre Players citada no §7 saiu: só Enemy e Boss bloqueiam.
 
 A meta do teste de performance da F1.6 mudou de 200 ms para 2 s em 20/10 (roadmap R4.3).
 

@@ -478,7 +478,7 @@ We did not use a custom "Module of choice".
 
 - **Port of the C code.** The math of `movement_bonus.c`, `move_utils_bonus.c`, the enemy, boss, door and fireball files became the Python Simulation (`backend/app/game/`). The drawing stayed out: the client draws, the server decides.
 - **Time, not frames.** In the C code the player moved `0.06` per frame, so at 144 Hz it walked 2.4× faster than at 60 Hz. Every speed is now in cells per second and multiplied by `dt`, with constants in `rules.py` and `rules.ts`.
-- **Clear rules and a clear end.** Co-op: reach the boss and kill it (6 fireballs). The match is lost when every player is dead or gone. PvP: frag limit, time limit or forfeit. The server emits `game_over` exactly once and freezes the outcome.
+- **Clear rules and a clear end.** Co-op: reach the boss and kill it (6 fireballs per player, since its HP grows with the team). The match is lost when every player is dead or gone. PvP: frag limit, time limit or forfeit. The server emits `game_over` exactly once and freezes the outcome.
 - **Tested without a browser.** The tests in `backend/tests/game/` cover the Simulation tick by tick (movement, doors, pickups, fireballs, enemies, boss, damage, PvP, countdown, map validation), plus a performance test: 1000 ticks with 5 players, 20 enemies, the boss and 10 projectiles fit in 2 s (2 ms per tick, 6 % of the 33 ms budget).
 
 ### 2. Real-time features — Major (2)
@@ -513,7 +513,7 @@ We did not use a custom "Module of choice".
 **How:**
 
 - **N players in one Room.** Players are a dictionary keyed by user id, each with its own input queue, HP, Mana, armor, keys and stats. The n-th player to join spawns at the n-th spawn point of the map.
-- **Shared world, per-player decisions.** Enemies pick the closest living player within range and chase it by a BFS path. The boss shoots the closest player in line of sight. Doors opened and pickups taken change the Room's grid for everyone, and the Snapshot sends the change (`grid_delta`).
+- **Shared world, per-player decisions.** Enemies pick the closest living player within range and chase it by a BFS path. The boss shoots the closest player in line of sight. Doors opened and pickups taken change the Room's grid for everyone, and the Snapshot sends the change (`grid_delta`). The difficulty follows the team size: the boss has 60 HP per player, and an enemy blow takes 1 HP solo, 2 with two or three players and 3 with four or five.
 - **Leaving and dying.** A dead player stays dead in co-op and the others carry on. A player whose grace period expires leaves, and the match ends in forfeit only when everyone has left. A victory counts for every member of the Room, including those who died.
 - **Synchronized start.** The Room waits until every player is connected (or 10 s), then counts 3, 2, 1 with everything frozen, so nobody starts ahead.
 - **Load.** A benchmark of 4 full Rooms at once (5 players, 20 enemies, the boss and 10 projectiles each) measured a p99 of 1.4 ms per tick for the Simulation and 2.1 ms with the Room manager, serialization and Snapshot queues included, against a target of 5 ms (`backend/benchmark_tick.py`).
