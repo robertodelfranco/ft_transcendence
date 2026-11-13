@@ -85,7 +85,8 @@ beforeEach(() => {
   vi.stubGlobal("cancelAnimationFrame", () => { frames = []; });
   audio = {
     unlock: vi.fn(async () => {}), playStep: vi.fn(), playFire: vi.fn(), playHit: vi.fn(),
-    playPickup: vi.fn(), updateCharge: vi.fn(), startMusic: vi.fn(), stopMusic: vi.fn(), stopAll: vi.fn(), dispose: vi.fn(async () => {}),
+    playPickup: vi.fn(), playVictory: vi.fn(), playDefeat: vi.fn(), playDraw: vi.fn(), playDoor: vi.fn(),
+    updateCharge: vi.fn(), startMusic: vi.fn(), stopMusic: vi.fn(), stopAll: vi.fn(), dispose: vi.fn(async () => {}),
   };
   renderer = new FakeRenderer();
   huds = [];
@@ -154,13 +155,15 @@ test("a second welcome after a reconnection does not init the Renderer again", a
   expect(lastHud().status).toBe("running");
 });
 
-test("game_over calls onEnd once, after the Boss dying animation", async () => {
+test("game_over waits for both the Boss animation and the three-second melody", async () => {
   await connect();
   const over = { v: 1, type: "event", tick: 90, name: "game_over",
     data: { result: "win", winner_ids: [7], reason: "boss_defeated" } };
   ws.receive(over);
   ws.receive(over);
-  await vi.advanceTimersByTimeAsync(BOSS_DYING_S * 1000 - 1);
+  await vi.advanceTimersByTimeAsync(BOSS_DYING_S * 1000);
+  expect(ends).toEqual([]);
+  await vi.advanceTimersByTimeAsync(3200 - BOSS_DYING_S * 1000 - 1);
   expect(ends).toEqual([]);
   await vi.advanceTimersByTimeAsync(1);
   expect(ends).toEqual([{ result: "win", winnerIds: [7], reason: "boss_defeated" }]);
@@ -515,4 +518,70 @@ test("pickup audio waits for interaction and plays only confirmed local collecti
     data: { result: "win", winner_ids: [7], reason: "boss_defeated" } });
   ws.receive(pickup);
   expect(audio.playPickup).toHaveBeenCalledTimes(4);
+});
+
+
+test.each([
+  ["coop", "win", [7, 9], true, false],
+  ["coop", "loss", [], false, true],
+  ["pvp", "win", [7], true, false],
+  ["pvp", "win", [9], false, true],
+  ["pvp", "draw", [], false, false],
+] as const)("%s result %s with winners %j plays the local outcome once", async (mode, result, winners, victory, defeat) => {
+  await connect();
+  ws.receive({ ...WELCOME, room: { ...WELCOME.room, mode } });
+  window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+  await vi.advanceTimersByTimeAsync(0);
+  const end = { v: 1, type: "event", tick: 10, name: "game_over",
+    data: { result, winner_ids: winners, reason: "time_limit" } };
+  ws.receive(end);
+  ws.receive(end);
+  expect(audio.playVictory).toHaveBeenCalledTimes(victory ? 1 : 0);
+  expect(audio.playDefeat).toHaveBeenCalledTimes(defeat ? 1 : 0);
+  expect(audio.playDraw).toHaveBeenCalledTimes(result === "draw" ? 1 : 0);
+  const resultSound = victory ? audio.playVictory : defeat ? audio.playDefeat : audio.playDraw;
+  const resultOrder = vi.mocked(resultSound).mock.invocationCallOrder[0];
+  expect(vi.mocked(audio.stopAll).mock.invocationCallOrder.at(-1)).toBeLessThan(resultOrder);
+});
+
+test("result audio stays silent without an audio-unlocking gesture", async () => {
+  await connect();
+  ws.receive({ v: 1, type: "event", tick: 10, name: "game_over",
+    data: { result: "win", winner_ids: [7], reason: "boss_defeated" } });
+  expect(audio.playVictory).not.toHaveBeenCalled();
+  expect(audio.playDefeat).not.toHaveBeenCalled();
+  expect(audio.playDraw).not.toHaveBeenCalled();
+});
+
+test("another gameplay key during the result melody does not cut it short", async () => {
+  await connect();
+  window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+  await vi.advanceTimersByTimeAsync(0);
+  ws.receive({ v: 1, type: "event", tick: 10, name: "game_over",
+    data: { result: "draw", winner_ids: [], reason: "time_limit" } });
+  const stops = vi.mocked(audio.stopAll).mock.calls.length;
+  window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyD" }));
+  await vi.advanceTimersByTimeAsync(0);
+  expect(audio.stopAll).toHaveBeenCalledTimes(stops);
+  expect(audio.playDraw).toHaveBeenCalledTimes(1);
+});
+
+test("confirmed nearby Doors play for either Player, attenuate with distance, and stop after game over", async () => {
+  await connect();
+  const door = { v: 1, type: "event", tick: 1, name: "door_opened",
+    data: { x: 1, y: 1, by: 7 } };
+  ws.receive(door);
+  expect(audio.playDoor).not.toHaveBeenCalled();
+  window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+  await vi.advanceTimersByTimeAsync(0);
+  ws.receive(door);
+  expect(audio.playDoor).toHaveBeenLastCalledWith(1);
+  ws.receive({ ...door, data: { x: 5, y: 1, by: 9 } });
+  expect(audio.playDoor).toHaveBeenLastCalledWith(0.25);
+  ws.receive({ ...door, data: { x: 20, y: 20, by: 9 } });
+  expect(audio.playDoor).toHaveBeenCalledTimes(2);
+  ws.receive({ v: 1, type: "event", tick: 10, name: "game_over",
+    data: { result: "win", winner_ids: [7], reason: "boss_defeated" } });
+  ws.receive(door);
+  expect(audio.playDoor).toHaveBeenCalledTimes(2);
 });

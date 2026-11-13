@@ -1,4 +1,4 @@
-import { createGameAudio, type GameAudio } from "./audio/gameAudio";
+import { createGameAudio, RESULT_MUSIC_S, type GameAudio } from "./audio/gameAudio";
 // Liga socket, laço de Input, teclado e Renderer atrás de mountGame (mount-game.md §2.6 e §5.2).
 // O Renderer chega por fábrica: o laço não conhece Three.js, e os testes usam um falso.
 import type { EndResult, HudState, HudStatus, MountedGame, MountOptions } from "./api";
@@ -87,7 +87,7 @@ export function createMountGame(deps: GameDeps) {
         if (target instanceof HTMLElement && (target.isContentEditable
           || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
       }
-      if (unlocking || unmounted) return;
+      if (unlocking || unmounted || ending !== null || status === "finished" || status === "error") return;
       unlocking = true;
       void audio.unlock().then(() => {
         if (!unmounted) {
@@ -267,6 +267,15 @@ export function createMountGame(deps: GameDeps) {
     }
 
     function onEvent(message: EventMessage): void {
+      if (audioReady && audioActive() && message.name === "door_opened") {
+        const listener = loop.localPlayer();
+        if (listener) {
+          const distance = Math.hypot(message.data.x + 0.5 - listener.x,
+            message.data.y + 0.5 - listener.y);
+          const volume = Math.max(0, 1 - distance / 8) ** 2;
+          if (volume > 0) audio.playDoor(volume);
+        }
+      }
       if (audioReady && audioActive() && message.name === "item_picked"
           && message.data.by === welcome?.user_id) {
         audio.playPickup();
@@ -288,13 +297,18 @@ export function createMountGame(deps: GameDeps) {
         audio.stopAll();
         feedback.clearTransient();
         const { result, winner_ids, reason } = message.data;
+        if (audioReady && audioActive() && welcome) {
+          if (result === "draw") audio.playDraw();
+          else if (result === "win" && winner_ids.includes(welcome.user_id)) audio.playVictory();
+          else audio.playDefeat();
+        }
         const end: EndResult = { result, winnerIds: winner_ids, reason };
-        // espera a animação de morte do Boss antes da tela de fim (mount-game.md §5.5);
-        // o socket fica aberto para os Snapshots dessa animação continuarem chegando
+        // Aguarda a animação do Boss e a melodia de resultado antes da tela final.
+        // O socket continua recebendo Snapshots durante essa espera.
         ending = setTimeout(() => {
           setStatus("finished");
           if (!unmounted) opts.onEnd(end);
-        }, BOSS_DYING_S * 1000);
+        }, Math.max(BOSS_DYING_S, RESULT_MUSIC_S + 0.2) * 1000);
       }
     }
 

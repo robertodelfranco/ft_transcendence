@@ -26,7 +26,7 @@ export const dungeonTheme: Theme = {
     bullet: "player/fireball_",
   },
   light: { ambient: 0xffffff, directional: 0xffffff, torch: 0xffaa55, flame: 0xffb347 },
-  fogDensity: 0.08,
+  fogDensity: 0.18,
 };
 
 export const sewerTheme: Theme = {
@@ -46,7 +46,7 @@ export const sewerTheme: Theme = {
   },
   // Paleta inicial do esgoto; não altera o orçamento de luzes e sombras.
   light: { ambient: 0xc3d9cf, directional: 0xb5d4cf, torch: 0x88ccaa, flame: 0xaaffcc },
-  fogDensity: 0.08,
+  fogDensity: 0.20,
 };
 
 export const themes: Record<RoomOptions["theme"], Theme> = {

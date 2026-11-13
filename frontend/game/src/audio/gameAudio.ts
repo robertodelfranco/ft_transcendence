@@ -1,11 +1,17 @@
 import { FIREBALL_CHARGE_S } from "../rules";
 
+export const RESULT_MUSIC_S = 3;
+
 export interface GameAudio {
   unlock(): Promise<void>;
   playStep(): void;
   playFire(): void;
   playHit(): void;
   playPickup(): void;
+  playVictory(): void;
+  playDefeat(): void;
+  playDraw(): void;
+  playDoor(volume: number): void;
   updateCharge(seconds: number | null): void;
   startMusic(): void;
   stopMusic(): void;
@@ -20,16 +26,18 @@ export function createGameAudio(): GameAudio {
   let disposed = false;
   let musicTimer: ReturnType<typeof setInterval> | null = null;
   let note = 0;
-  const voices = new Map<OscillatorNode, GainNode>();
+  const voices = new Map<AudioScheduledSourceNode, GainNode>();
+  const noiseFilters = new Map<AudioBufferSourceNode, BiquadFilterNode>();
+  let slidingBuffer: AudioBuffer | null = null;
   const musicVoices = new Set<OscillatorNode>();
   const chargeVoices = new Set<OscillatorNode>();
 
   function tone(frequency: number, endFrequency: number, duration: number,
-    volume: number, type: OscillatorType, music = false): void {
+    volume: number, type: OscillatorType, music = false, delay = 0): void {
     if (disposed || context?.state !== "running" || !master || voices.size >= 32) return;
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-    const now = context.currentTime;
+    const now = context.currentTime + delay;
     oscillator.type = type;
     oscillator.frequency.setValueAtTime(frequency, now);
     oscillator.frequency.exponentialRampToValueAtTime(endFrequency, now + duration);
@@ -56,6 +64,53 @@ export function createGameAudio(): GameAudio {
     note = 0;
     musicVoices.forEach(voice => voice.stop());
     musicVoices.clear();
+  }
+
+  function resultMelody(frequencies: readonly number[], bass: number): void {
+    const beat = 0.36;
+    frequencies.forEach((frequency, index) => {
+      const delay = index * beat;
+      const duration = index === frequencies.length - 1 ? RESULT_MUSIC_S - delay : 0.4;
+      tone(frequency, frequency, duration, 0.2, "triangle", false, delay);
+    });
+    tone(bass, bass, RESULT_MUSIC_S, 0.08, "sine");
+  }
+
+  function slidingDoor(volume: number): void {
+    const level = Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : 0;
+    if (!level || disposed || context?.state !== "running" || !master || voices.size >= 31) return;
+    const duration = 0.9;
+    if (!slidingBuffer) {
+      slidingBuffer = context.createBuffer(1, Math.ceil(context.sampleRate * duration), context.sampleRate);
+      const samples = slidingBuffer.getChannelData(0);
+      for (let index = 0; index < samples.length; index++) samples[index] = Math.random() * 2 - 1;
+    }
+    const source = context.createBufferSource();
+    source.buffer = slidingBuffer;
+    const filter = context.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.Q.value = 0.7;
+    const gain = context.createGain();
+    const now = context.currentTime;
+    filter.frequency.setValueAtTime(260, now);
+    filter.frequency.exponentialRampToValueAtTime(950, now + 0.4);
+    filter.frequency.exponentialRampToValueAtTime(180, now + duration);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.5 * level, now + 0.12);
+    gain.gain.linearRampToValueAtTime(0.35 * level, now + 0.6);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(master);
+    voices.set(source, gain);
+    noiseFilters.set(source, filter);
+    source.onended = () => {
+      source.disconnect(); filter.disconnect(); gain.disconnect();
+      voices.delete(source); noiseFilters.delete(source);
+    };
+    source.start(now);
+    source.stop(now + duration);
+    tone(65, 35, 0.1, 0.12 * level, "sine", false, 0.8);
   }
 
   function stopCharge(): void {
@@ -110,6 +165,8 @@ export function createGameAudio(): GameAudio {
       gain.disconnect();
     });
     voices.clear();
+    noiseFilters.forEach(filter => filter.disconnect());
+    noiseFilters.clear();
   }
 
   return {
@@ -133,6 +190,16 @@ export function createGameAudio(): GameAudio {
     playFire: () => tone(600, 80, 0.25, 0.2, "sawtooth"),
     playHit: () => tone(150, 35, 0.16, 0.4, "square"),
     playPickup: () => tone(660, 1320, 0.18, 0.2, "sine"),
+    playVictory() {
+      resultMelody([392, 523.25, 659.25, 587.33, 659.25, 783.99, 1046.5], 261.63);
+    },
+    playDefeat() {
+      resultMelody([440, 392, 349.23, 329.63, 293.66, 246.94, 220], 110);
+    },
+    playDraw() {
+      resultMelody([392, 440, 392, 349.23, 392, 349.23, 392], 196);
+    },
+    playDoor: slidingDoor,
     startMusic() {
       if (disposed || context?.state !== "running" || musicTimer !== null) return;
       // Motivo original em Lá menor; agendamento curto evita filas após aba suspensa.
@@ -154,6 +221,7 @@ export function createGameAudio(): GameAudio {
       if (context && context.state !== "closed") await context.close();
       context = null;
       master = null;
+      slidingBuffer = null;
     },
   };
 }
