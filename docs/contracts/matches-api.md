@@ -25,6 +25,7 @@ O que **não** está aqui: a partida em si, que é WebSocket ([ws-messages.md](w
 |---|---|---|---|---|
 | POST | `/api/matches` | `{mode, map, max_players, options}` | 201 `RoomInfo` | 422 `invalid_options` (com `fields`), 404 `map_not_found`, 409 `already_in_other_match`, 429 `rate_limited` |
 | GET | `/api/matches` | — (`?mode=`) | 200 `{items: RoomInfo[]}` | — |
+| GET | `/api/matches/current` | — | 200 `RoomInfo` da Room do User (`lobby` ou `running`); 204 se ele não está em nenhuma | — |
 | GET | `/api/matches/{match_id}` | — | 200 `RoomInfo` da Room viva | 404 `match_not_found` (sem Room na memória) |
 | GET | `/api/matches/{match_id}/result` | — | 200 `MatchDetail` (§2.4) | 404 `match_not_found`, 409 `match_not_finished` (`lobby` ou `running`), 409 `match_aborted` |
 | GET | `/api/maps` | — | 200 `{coop: MapInfo[], pvp: MapInfo[]}` | — |
@@ -36,6 +37,7 @@ O que **não** está aqui: a partida em si, que é WebSocket ([ws-messages.md](w
 
 - `POST /api/matches` faz duas coisas na mesma requisição: grava a linha de `matches` com `status = "lobby"` e chama `RoomManager.create`. Quem cria já entra como primeiro Player e é o host.
 - `GET /api/matches` lista **só Rooms em `lobby`**, de `RoomManager.list_open()`. Nunca do banco (§4, decisão 1).
+- **`GET /api/matches/current` é a volta à partida** (13/11/2026): lê `RoomManager.room_of` ([rooms.md](rooms.md) §2.2), que o User deixa no "Sair da partida", no Grace period vencido e no `game_over`. A casca consulta a cada troca de página e, com `status = "running"`, mostra a faixa "Voltar à partida" fora do `/play`. No router, a rota fica **antes** de `/matches/{match_id}`: depois dela, `current` cairia no `int` do path e daria 422.
 - **`GET /api/matches/{id}` lê só a memória, e `GET /api/matches/{id}/result` só o banco** (§4, decisão 8). A sala de espera usa a primeira; a tela de resultado e o link do histórico usam a segunda. Depois do `game_over`, a Room ainda responde a primeira por 60 s, mas a tela de resultado não depende disso.
 - `options` é validado contra [room-options.md](room-options.md), com os defaults aplicados: **um corpo com só `{"mode": "coop", "map": "dungeon_map"}` é válido** e produz uma partida jogável — é o "defaults sem escolher nada" que o módulo *Game customization* cobra (plano §7).
 - **Normalização** (decidida em 10/10, [room-options.md](room-options.md) §5.3): um modelo Pydantic por Mode, com `extra="forbid"` e `strict=True`. Campo desconhecido, ou `frag_limit`/`time_limit_s` no `coop`, dá 422 `invalid_options` com `fields: {campo: "invalid_value"}`; `null`, tipo errado e string no lugar de número ou booleano também (sem coerção). `pickups` parcial recebe o default por chave. Os limites são inteiros e inclusivos. O `options` normalizado do `coop` não tem as chaves de `pvp`. Os **defaults** vêm da dataclass `RoomOptions` da Simulation (`app.game`), que é a fonte única; os modelos Pydantic da API leem os defaults dela e só acrescentam os limites, e a rota converte o resultado para a dataclass. Um teste confere que os dois concordam (roadmap do Roberto, item 20; decidido com o Rafael em 12/10).
@@ -123,6 +125,7 @@ XP, level e Elo seguem as fórmulas do [progression.md](progression.md) §5–7,
 | Abrir a lista de partidas abertas | `GET /api/matches` |
 | Alguém entrou, saiu, ficou pronto, trocou o visual, ou o host mudou | `lobby_update` no `/ws/app`, com o `RoomInfo` inteiro |
 | A partida começou | `match_started` no `/ws/app` → a casca navega para `/play/{match_id}` |
+| Saber se há partida para voltar (Grace period) | `GET /api/matches/current`, a cada troca de página da casca; não é polling |
 | Abrir perfil, histórico, leaderboard | HTTP |
 
 **A tela de lobby nunca faz polling.** Ela busca uma vez por HTTP e depois só escuta. O `lobby_update` carrega o `RoomInfo` completo, não um delta: a tela substitui o estado inteiro e não precisa reconciliar nada (§4, decisão 3).
