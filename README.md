@@ -40,7 +40,7 @@ The game rules and the movement math come from the original C code. Here they ru
 
 **Key features**
 
-- **Co-op for 1 to 5 players:** explore the dungeon, collect keys to open doors and defeat the boss together.
+- **Co-op for 2 to 5 players, or Solo:** explore the dungeon, collect keys to open doors and defeat the boss together. A Solo Room is a co-op Room with a single seat, to play alone.
 - **PvP 1v1:** first to the frag limit, or most frags when time runs out, wins (5 frags or 3 minutes by default).
 - **Real 3D** with Three.js: two visual themes, animated sprites, lighting effects, sound and a minimap.
 - **Responsive online play:** client-side prediction, server reconciliation, interpolation of other players, and reconnection within 30 seconds.
@@ -171,7 +171,7 @@ The CI (GitHub Actions) runs on every pull request: it builds and starts the who
    | Frag limit (PvP) | 3–10 | 5 |
    | Time limit (PvP) | 120–600 s | 180 s |
 
-4. Every player marks **ready**, and the host starts the match.
+4. Every player marks **ready**, and the host starts the match once the Room has its minimum number of players, shown on the waiting screen: 1 in a Solo Room, 2 in any other Room.
 
 **Controls**
 
@@ -185,7 +185,7 @@ The CI (GitHub Actions) runs on every pull request: it builds and starts the who
 
 **Modes**
 
-- **Co-op (1–5 players):** enemies roam the map. Collect keys to open locked doors and defeat the **boss** to win; the team loses if every player dies. A dead player's camera follows a living teammate.
+- **Co-op (2–5 players, or 1 in Solo):** enemies roam the map. Collect keys to open locked doors and defeat the **boss** to win; the team loses if every player dies. A dead player's camera follows a living teammate.
 - **PvP (2 players):** no enemies. Each kill is a *frag*; you respawn at a free spawn point. The first to reach the frag limit wins; when time runs out, the most frags wins, and a tie is a draw.
 
 **Pickups:** keys (open doors), potions (HP), mana (more fireballs) and armor (absorbs damage before HP and breaks).
