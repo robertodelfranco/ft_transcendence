@@ -122,7 +122,7 @@ Cinco linhas e a ordem visual já aparecem na implementação conferida; o aceit
 Em `error`, `replaced` explica que outra aba assumiu a partida. O fechamento `server_shutdown` inicia Reconnection e chega à HUD atual como `disconnected`, sem código de causa; usar aviso genérico de reconexão, sem afirmar o motivo da queda. A política de nova tentativa pertence ao socket, conforme [ws-manager.md §2.9](ws-manager.md). Falha passageira ao obter o token (exceção no `getAccessToken`) também chega como `disconnected` e usa o mesmo aviso (§11.5).
 O jogo pode emitir `running` antes de concluir o carregamento dos assets: isso não comprova Renderer pronto. Falha posterior chega como `asset_load_failed`.
 
-A tela de resultado usa `onEnd`, respeitando a espera de `BOSS_DYING_S` já feita pelo jogo. Não adicionar outro atraso na casca.
+A tela de resultado usa `onEnd`, respeitando a espera já feita pelo jogo: desde 12/11, `max(BOSS_DYING_S, RESULT_MUSIC_S + 0.2)` (3,2 s), para concluir a morte do Boss e a melodia de resultado ([mount-game.md](mount-game.md), Término). Não adicionar outro atraso na casca. Revisão de Caio pendente.
 Nos dois Modes, o desfecho local segue uma regra só (§11.2): `result = draw` é empate; fora disso, vitória se `winnerIds` contém o id local e derrota nos demais casos. O `result` do `onEnd` é o da Room: nunca interpretar `win` da Room como vitória dos dois Players.
 Traduzir `reason` (`boss_defeated`, `all_dead`, `forfeit`, `frag_limit`, `time_limit`) com fallback. Oferecer retorno ao lobby; resumo persistido e Achievements pertencem à F7.8/F4.6, sem inventar valores na HUD.
 
