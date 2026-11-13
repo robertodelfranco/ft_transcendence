@@ -351,7 +351,11 @@ atalhos de teclado. Limites e roteiro: [efeitos-f3.7.md](../efeitos-f3.7.md).
 e o Renderer alterna `assets/player/player_hand_white.png` e
 `assets/player/player_hand_charge.png`, mantendo a base visível na borda.
 A alternância acelera até 3 s; depois mantém a sprite energizada com brilho
-fixo até soltar, indicando carga completa.
+fixo até soltar, indicando carga completa. O estado "pronto" aparece 0,1 s
+depois do limiar, para o jitter de 1–2 Ticks não mostrar carga completa num
+tiro que o servidor ainda conta como normal. Com
+`prefers-reduced-motion: reduce` não há alternância nem pulso: a mão normal
+recebe brilho crescente e troca para a sprite energizada só quando pronta.
 `Assets.handCharge` é carregado e liberado junto das outras texturas.
 O áudio usa Web Audio: dois osciladores sustentados sobem de tom até 3 s e
 mantêm o tom final depois disso; há fade ao parar, sem criar um loop por

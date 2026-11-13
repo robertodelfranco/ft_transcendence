@@ -1,6 +1,9 @@
 import * as THREE from "three";
 import { FIREBALL_CHARGE_S } from "../rules";
 
+// Margem sobre o limiar do servidor: 1–2 Ticks de jitter não transformam "pronto" em tiro normal.
+const READY_MARGIN_S = 0.1;
+
 // Fração transparente abaixo do último pixel visível; mede uma vez, não no resize.
 function bottomPadding(image: HTMLImageElement): number {
   const width = image.naturalWidth;
@@ -32,6 +35,9 @@ export class HandOverlay {
   private readonly glow: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   private aspect = 1;
   private activeFrame = 0;
+  // `matches` é vivo: lido a cada quadro, dispensa listener.
+  private readonly preference = typeof window.matchMedia === "function"
+    ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
 
   constructor(handTexture: THREE.Texture, chargeTexture: THREE.Texture = handTexture) {
     this.camera.position.z = 1;
@@ -78,12 +84,14 @@ export class HandOverlay {
 
   updateCharge(seconds: number | null): void {
     const elapsed = Math.max(0, seconds ?? 0);
-    const ready = elapsed >= FIREBALL_CHARGE_S;
+    const ready = elapsed >= FIREBALL_CHARGE_S + READY_MARGIN_S;
+    const still = this.preference?.matches ?? false; // reduced-motion: sem alternância nem pulso
     const phase = 2 * elapsed + 0.7 * elapsed * elapsed;
-    this.activeFrame = seconds === null ? 0 : ready ? 1 : Math.floor(phase) % 2;
+    this.activeFrame = seconds === null ? 0 : ready ? 1 : still ? 0 : Math.floor(phase) % 2;
     const progress = Math.min(1, elapsed / FIREBALL_CHARGE_S);
+    const pulse = still ? 1 : 0.8 + 0.2 * Math.sin(phase * Math.PI * 2);
     this.glow.material.opacity = seconds === null ? 0 : ready ? 0.32
-      : (0.08 + progress * 0.24) * (0.8 + 0.2 * Math.sin(phase * Math.PI * 2));
+      : (0.08 + progress * 0.24) * pulse;
     this.layout();
   }
 
