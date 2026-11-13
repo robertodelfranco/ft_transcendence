@@ -251,3 +251,24 @@ Python, TypeScript e fixture compartilham os novos valores. Testes da
 Simulation cobrem o início a 1,0 cél, o acerto a 1,5 cél, o erro a 2,1 cél e
 o golpe bloqueado por parede. Playtest coop pendente: conferir se o golpe a
 2 cél não parece injusto com o sprite ainda longe.
+
+
+### 5.9 Boss e Enemy escalam com o coop — #281, 13/11/2026
+
+Roberto decidiu, com revisão do Rafael no PR #283, que o coop fica mais difícil
+a cada Player, sem mecânica nova:
+
+- O Boss nasce com `BOSS_HP × Players da partida`: 60 HP com 1 Player, 120 com
+  2 e 300 com 5. Com a fireball normal são 6 acertos por Player, ou 3 por
+  Player com a carregada.
+- O golpe do Enemy tira `ENEMY_DAMAGE + Players // 2`: 1, 2, 2, 3 e 3 HP de 1 a
+  5 Players. A Armor continua segurando ponto por ponto, então com 4 ou 5
+  Players um Pickup de Armor (3 pontos) segura um golpe inteiro.
+
+Os Players são contados quando a Room nasce. Quem sai no meio continua
+contando, para o HP do Boss e o dano não mudarem durante a partida.
+Escalar o HP dos Enemies foi descartado: eles morrem com uma fireball, e HP
+pediria um evento novo de acerto e retorno visual no render. Escalar a
+cadência também foi descartado, porque a animação de ataque deriva de
+`ENEMY_ATTACK_INTERVAL_S` e sairia de sincronia com o golpe.
+Playtest coop com 2 e com 5 Players pendente.
