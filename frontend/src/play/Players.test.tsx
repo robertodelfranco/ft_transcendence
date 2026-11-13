@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import i18n from "../i18n";
 import Players from "./Players";
@@ -33,6 +33,14 @@ describe("Players do coop", () => {
     expect(augusto).not.toHaveTextContent("morto");
     expect(rafael).toHaveTextContent("morto");
     expect(rafael).toHaveTextContent("desconectado");
+  });
+
+  it("o esmaecido fica no nome e na vida, e o rótulo de estado mantém o contraste", () => {
+    render(<Players players={team} userId={7} />);
+    const [, , , , rafael] = screen.getAllByRole("listitem");
+    expect(within(rafael).getByTitle("rafael").closest(".opacity-60")).not.toBeNull();
+    expect(within(rafael).getByText("morto").closest(".opacity-60")).toBeNull();
+    expect(within(rafael).getByText("desconectado").closest(".opacity-60")).toBeNull();
   });
 
   it("HP de cada um em número, sem barra", () => {

@@ -35,6 +35,15 @@ describe("recursos do Player local", () => {
     render(<Hud userId={7} hud={hudState({ hp: 26, maxHp: 100 })} />);
     expect(screen.queryByText("Vida baixa")).not.toBeInTheDocument();
   });
+
+  it("cada filho da lista é um div com um par termo/valor, como a dl exige", () => {
+    render(<Hud userId={7} hud={hudState({ hp: 2, maxHp: 10 })} />);
+    for (const group of stats().children) {
+      expect(group.tagName).toBe("DIV");
+      expect(group.querySelectorAll(":scope > dt")).toHaveLength(1);
+      expect(group.querySelectorAll(":scope > dd").length).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe("ping", () => {

@@ -363,6 +363,19 @@ describe("contagem do início (#255)", () => {
     }
   });
 
+  it("a mira some na espera e na contagem, e volta com a partida valendo", async () => {
+    await renderAt("/play/13");
+    const game = await mounted();
+    // no bloco do canvas, a mira é o único svg: os ícones da HUD ficam fora dele
+    const block = game.canvas.parentElement!;
+    for (const countdown of ["waiting", 3] as const) {
+      act(() => emitHud({ countdown }));
+      expect(block.querySelector("svg")).toBeNull();
+    }
+    act(() => emitHud({ countdown: null }));
+    expect(block.querySelector("svg")).not.toBeNull();
+  });
+
   it("com a partida valendo, a camada some", async () => {
     await renderAt("/play/13");
     const game = await mounted();

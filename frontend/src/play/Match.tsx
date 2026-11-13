@@ -114,7 +114,7 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
             aria-label={t("view")}
             className="block aspect-video w-full rounded border border-crypt-700 bg-black"
           />
-          {status === "running" && hud?.alive && (
+          {status === "running" && hud?.alive && hud.countdown === null && (
             <svg
               aria-hidden="true"
               focusable="false"
