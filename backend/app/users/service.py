@@ -49,7 +49,7 @@ async def profile(session: AsyncSession, me: User, user_id: int) -> ProfileUser:
 	return ProfileUser(**public_user(user).model_dump(), is_friend=is_friend, is_me=user.id == me.id)
 
 
-async def search_users(session: AsyncSession, me: User, prefix: str, 
+async def search_users(session: AsyncSession, me: User, prefix: str,
 		limit: int) -> list[PublicUser]:
 	# autoescape: "_" é coringa no LIKE, e "a_b" acharia "axb"
 	users = await session.scalars(select(User)
