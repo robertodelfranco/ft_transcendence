@@ -19,13 +19,15 @@ COOLDOWN_TICKS = round(BOSS_ATTACK_COOLDOWN_S * TICK_RATE) # 66 Ticks
 WIDTH = 32
 CORRIDOR = ("1" * WIDTH + "\n" + "1E" + "0" * (WIDTH - 3) + "1\n"
 	+ "1W" + "0" * (WIDTH - 4) + "B1\n" + "1" + "0" * (WIDTH - 2) + "1\n" + "1" * WIDTH + "\n")
+# o mesmo corredor com mais três Spawns em (1, 3), (2, 3) e (3, 3)
+FIVE_SPAWNS = CORRIDOR.replace("\n1" + "0" * (WIDTH - 2) + "1\n", "\n1NSE" + "0" * (WIDTH - 5) + "1\n")
 BOSS_X, ROW_Y = 30.5, 2.5
 WALL_COLUMN = 25
 
 
-def new_room(map_text=CORRIDOR):
+def new_room(map_text=CORRIDOR, players=((7, "roberto"), (9, "augusto"))):
 	game_map = parse_map(map_text, "t", Mode.COOP)
-	return create_room(12, Mode.COOP, game_map, RoomOptions(), [(7, "roberto"), (9, "augusto")], seed=1)
+	return create_room(12, Mode.COOP, game_map, RoomOptions(), list(players), seed=1)
 
 
 def walled_corridor():
@@ -177,8 +179,14 @@ def test_without_line_of_sight_chases_without_shooting():
 	assert room.boss.x < BOSS_X
 
 
-def test_six_fireballs_kill_the_boss():
-	room = new_room()
+@pytest.mark.parametrize("count", [1, 2, 5])
+def test_boss_hp_is_boss_hp_per_player(count):
+	players = [(user_id, f"p{user_id}") for user_id in range(1, count + 1)]
+	assert new_room(FIVE_SPAWNS, players).boss.hp == BOSS_HP * count
+
+
+def test_six_fireballs_kill_a_solo_boss():
+	room = new_room(players=[(7, "roberto")])
 	boss, shooter = room.boss, room.players[7]
 	events = []
 	for number in range(1, 7):
@@ -198,7 +206,7 @@ def test_a_hit_wakes_an_idle_boss_aimed_at_the_shooter():
 	run(room, 1)
 	assert boss.state == BossState.IDLE
 	fireball_at_boss(room, 1)
-	assert boss.hp == BOSS_HP - FIREBALL_BOSS_DAMAGE
+	assert boss.hp == 2 * BOSS_HP - FIREBALL_BOSS_DAMAGE # dois Players
 	assert boss.state == BossState.ALERT
 	assert boss.target_player_id == 7
 

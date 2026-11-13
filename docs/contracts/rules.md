@@ -63,7 +63,7 @@ O HP inicial e o teto da poção não são constantes: vêm de `options.start_hp
 
 | Nome | Unidade | Valor | Arq. | No C |
 |---|---|---|---|---|
-| `BOSS_HP` | HP | `60` | novo | `boss_bonus/init_boss_bonus.c:103` |
+| `BOSS_HP` | HP por Player | `60` | novo | Base C: `boss_bonus/init_boss_bonus.c:103`. O Boss nasce com `BOSS_HP × Players da partida`, contados na criação da Room: 60 com 1, 120 com 2, 300 com 5 (#281) |
 | `BOSS_SPEED` | cél/s | `2.0` | sim | `0.2` por passo (`:109`), um passo quando `move_delay > 0.1` s (`:36`) |
 | `BOSS_RADIUS` | cél | `0.2` | novo | 4 cantos a `0.2` (`boss_bonus/move_boss_bonus.c:41-51`) |
 | `BOSS_SIGHT_RANGE` | cél | `20` | novo | `distance <= 20.0` vira `ALERT` (`boss_bonus/init_boss_bonus.c:33`) |

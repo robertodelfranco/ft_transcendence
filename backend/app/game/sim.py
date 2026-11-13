@@ -62,7 +62,8 @@ def create_room(match_id: int, mode: Mode, game_map: Map, options: RoomOptions,
 		room.enemies.append(Enemy(id=f"e_{number}", x=x, y=y))
 	if game_map.boss is not None:
 		boss_x, boss_y = game_map.boss
-		room.boss = Boss(x=boss_x, y=boss_y, hp=BOSS_HP)
+		# o Boss escala com o coop: BOSS_HP por Player que entrou na partida
+		room.boss = Boss(x=boss_x, y=boss_y, hp=BOSS_HP * len(players))
 	for x, y in game_map.doors:
 		room.doors.append(Door(x=x, y=y))
 	if not countdown:
