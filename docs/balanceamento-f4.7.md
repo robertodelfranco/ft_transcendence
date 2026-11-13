@@ -216,7 +216,8 @@ novo de quantidade de partidas do subject.
 ### Primeira rodada — coop
 
 1. Começar com `dungeon_map`, 10 HP, Pickups ligados e Theme dungeon.
-2. Jogar uma vez sozinho para aprender os controles e o percurso. Pressionar
+2. Jogar uma vez em Solo (`coop` com 1 vaga; o `coop` com 2+ vagas só começa
+   com dois Players, #241) para aprender os controles e o percurso. Pressionar
    Espaço para cada tentativa de tiro; segurar a tecla não produz rajada automática.
 3. Anotar duração aproximada, motivo do fim, mortes, momentos sem Mana,
    se poções/Armor foram úteis e dificuldade de atravessar os Enemies/chegar ao Boss.

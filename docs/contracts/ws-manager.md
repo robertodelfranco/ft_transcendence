@@ -199,7 +199,7 @@ Lobby: a Room 12 ganhou um Player, e a 13 foi abandonada:
 
 ```json
 {"v": 1, "type": "lobby_update", "room": {
-  "match_id": 12, "mode": "coop", "map": "dungeon_map", "max_players": 5, "min_players": 1,
+  "match_id": 12, "mode": "coop", "map": "dungeon_map", "max_players": 5, "min_players": 2,
   "status": "lobby", "created_by": 7,
   "options": {"theme": "dungeon", "start_hp": 10, "pickups": {"potion": true, "mana": true, "armor": true}},
   "created_at": "2026-10-07T18:00:03Z",
