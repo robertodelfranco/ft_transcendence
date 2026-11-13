@@ -1,12 +1,10 @@
-*This project has been created as part of the 42 curriculum by \<login1\>, acesar-m, \<login3\>, \<login4\>, \<login5\>.*
+*This project has been created as part of the 42 curriculum by \<login1\>, acesar-m, \<login3\>, \<login4\>, gyasuhir.*
 
 > **TODO F9.1 (@robertodelfranco):** replace one `<loginN>` above with your 42 intra login.
 >
 > **TODO F9.1 (@rflheringer):** replace one `<loginN>` above with your 42 intra login.
 >
 > **TODO F9.1 (@caioosantos):** replace one `<loginN>` above with your 42 intra login.
->
-> **TODO F9.1 (@kanashir0):** replace one `<loginN>` above with your 42 intra login.
 
 # Catacombs 42
 
@@ -40,7 +38,7 @@ The game rules and the movement math come from the original C code. Here they ru
 
 **Key features**
 
-- **Co-op for 1 to 5 players:** explore the dungeon, collect keys to open doors and defeat the boss together.
+- **Co-op for 2 to 5 players, or Solo:** explore the dungeon, collect keys to open doors and defeat the boss together. A Solo Room is a co-op Room with a single seat, to play alone.
 - **PvP 1v1:** first to the frag limit, or most frags when time runs out, wins (5 frags or 3 minutes by default).
 - **Real 3D** with Three.js: two visual themes, animated sprites, lighting effects, sound and a minimap.
 - **Responsive online play:** client-side prediction, server reconciliation, interpolation of other players, and reconnection within 30 seconds.
@@ -171,7 +169,7 @@ The CI (GitHub Actions) runs on every pull request: it builds and starts the who
    | Frag limit (PvP) | 3–10 | 5 |
    | Time limit (PvP) | 120–600 s | 180 s |
 
-4. Every player marks **ready**, and the host starts the match.
+4. Every player marks **ready**, and the host starts the match once the Room has its minimum number of players, shown on the waiting screen: 1 in a Solo Room, 2 in any other Room.
 
 **Controls**
 
@@ -185,7 +183,7 @@ The CI (GitHub Actions) runs on every pull request: it builds and starts the who
 
 **Modes**
 
-- **Co-op (1–5 players):** enemies roam the map. Collect keys to open locked doors and defeat the **boss** to win; the team loses if every player dies. A dead player's camera follows a living teammate.
+- **Co-op (2–5 players, or 1 in Solo):** enemies roam the map. Collect keys to open locked doors and defeat the **boss** to win; the team loses if every player dies. A dead player's camera follows a living teammate.
 - **PvP (2 players):** no enemies. Each kill is a *frag*; you respawn at a free spawn point. The first to reach the frag limit wins; when time runs out, the most frags wins, and a tie is a draw.
 
 **Pickups:** keys (open doors), potions (HP), mana (more fireballs) and armor (absorbs damage before HP and breaks).
@@ -430,10 +428,10 @@ Win/loss statistics are always read from `match_players.won`, never from `matche
 |---|---|---|
 | Sign up and log in with e-mail and password | Accounts with a unique e-mail and username; passwords hashed with Argon2id; the same error for a wrong e-mail or a wrong password; repeated failed logins are rate-limited (`429`) | Augusto (backend), Caio (screens) |
 | Sessions: access token + rotating refresh cookie | 15-minute access token kept in memory; refresh token in an `HttpOnly` cookie, rotated on every use, with reuse detection that revokes the whole session; logout revokes the current session | Augusto |
-| Log in with 42 (OAuth 2.0) | **TODO F9.1 (@kanashir0)** | Akita (backend), Caio (button) |
+| Log in with 42 (OAuth 2.0) | Authorization Code flow with the 42 intra, protected by a signed `state` cookie; the first login creates the account, or links it to the existing account with the same e-mail; it ends with the same tokens as the e-mail login | Akita (backend), Caio (button) |
 | Profile, avatar upload and settings | **TODO F9.1 (@caioosantos)** | Caio |
 | Friends and online status | **TODO F9.1 (@caioosantos)** | Caio, Augusto (presence over `/ws/app`) |
-| Real-time Lobby: create, join, ready, start | **TODO F9.1 (@kanashir0)** | Akita (backend), Caio (screen), Augusto (connection manager) |
+| Real-time Lobby: create, join, ready, start | Create a Room with a map, a capacity and options; list the open Rooms; join, leave, mark ready, pick a character and start. Every change reaches every open tab right after it is saved. A user is in one Room at most, the last free seat goes to one player only, and a user who goes offline leaves the Lobby. A Solo Room starts with one player; every other Room needs two | Akita (backend), Caio (screen), Augusto (connection manager) |
 | Authoritative game simulation (co-op) | **TODO F9.1 (@robertodelfranco)** | Roberto |
 | PvP 1v1 rules | **TODO F9.1 (@robertodelfranco)** | Roberto |
 | Game WebSocket, Room manager and reconnection | One `asyncio` task per Room ticking at a fixed 30 Hz with drift compensation; Snapshots at 15 Hz; strict message validation; 30 s grace period and automatic reconnection to the same match; ping/pong with the RTT shown on the HUD | Augusto |
@@ -444,12 +442,12 @@ Win/loss statistics are always read from `match_players.won`, never from `matche
 | Maps, balance and Room options | **TODO F9.1 (@rflheringer)** | Rafael |
 | HUD | **TODO F9.1 (@caioosantos)** | Caio (implementation), Rafael (specification) |
 | Minimap | **TODO F9.1 (@robertodelfranco)** | Roberto |
-| Match recording, stats, XP/levels and Elo | **TODO F9.1 (@kanashir0)** | Akita (backend), Caio (screens) |
-| Match history, achievements and leaderboard | **TODO F9.1 (@kanashir0)** | Akita (backend), Rafael (achievement design), Caio (screens) |
+| Match recording, stats, XP/levels and Elo | When a match ends, the server records it exactly once, in one transaction: each player's numbers, the stats per mode, XP and level, and the Elo in PvP (starts at 1000, K = 32). Matches left unfinished by a restart are marked `aborted` at startup | Akita (backend), Caio (screens) |
+| Match history, achievements and leaderboard | Paginated history (mode, map, result, duration, teammates or opponent); 7 achievements, unlocked at the end of a match and shown on the profile; a leaderboard per mode by Elo, XP, wins or kills | Akita (backend), Rafael (achievement design), Caio (screens) |
 | Three languages (i18n) | **TODO F9.1 (@caioosantos)** | Caio |
 | Privacy Policy and Terms of Service | **TODO F9.1 (@caioosantos)** | Caio |
-| HTTPS, Docker Compose and CI | **TODO F9.1 (@kanashir0)** | Akita |
-| Monitoring: metrics, dashboards and alerts | **TODO F9.1 (@kanashir0)** | Akita, Augusto (backend metrics) |
+| HTTPS, Docker Compose and CI | One `docker compose up` starts the 8 services; only Nginx publishes ports, with HTTPS and `wss://` everywhere. A GitHub Actions run on every pull request starts the whole stack and probes it over HTTPS, checks the migrations, and runs the backend and frontend tests, the lint and the build | Akita |
+| Monitoring: metrics, dashboards and alerts | Prometheus scrapes the backend, the host and the database; 3 Grafana dashboards and 4 alerting rules, all provisioned from versioned files (see *Monitoring guide*) | Akita, Augusto (backend metrics) |
 
 ## Modules
 
@@ -513,7 +511,16 @@ We did not use a custom "Module of choice".
 
 ### 6. ORM — Minor (1)
 
-> **TODO F9.1 (@kanashir0):** why we chose it and how it was implemented.
+**Why:** users, friendships, matches and the players of each match are relational data. We wanted typed models in Python, constraints enforced by the database itself, and a schema that is rebuilt the same way on every machine, from an empty volume, with no manual SQL.
+
+**How:**
+
+- **SQLAlchemy 2 (async)** with asyncpg: typed models (`Mapped[...]`), one session per request through a FastAPI dependency, and a separate session factory for code that runs outside a request (the end of a match, the startup).
+- **Alembic:** linear, versioned migrations. The backend container runs `alembic upgrade head` before it starts, so `docker compose up` on an empty database creates the whole schema. The CI runs `alembic upgrade head` followed by `alembic check`, which fails if a model changed without a migration.
+- **The database settles the races.** A `UNIQUE` constraint, not an earlier `SELECT`, decides who gets a username. Foreign keys have explicit `ON DELETE` rules, and `CHECK` constraints guard the valid values.
+- **Locks where they matter.** `SELECT … FOR UPDATE` on the match row and on the `player_stats` rows makes recording a result safe against a second call. `INSERT … ON CONFLICT DO NOTHING … RETURNING` unlocks an achievement once and returns only the new ones.
+
+The user and token models are Augusto's; the match, stats and achievement models and the migration setup are mine.
 
 ### 7. Standard user management — Major (2)
 
@@ -534,7 +541,24 @@ Profile, avatar, friends and the screens are Caio's part of this module.
 
 ### 8. OAuth 2.0 — Minor (1)
 
-> **TODO F9.1 (@kanashir0):** why we chose it and how it was implemented.
+**Why:** every student and every evaluator already has a 42 intra account. Logging in with it skips the sign-up form, and the school's e-mail is already verified.
+
+**How:**
+
+- **Authorization Code flow** (RFC 6749 §4.1) in two routes:
+  - `GET /api/auth/oauth/42/login` redirects to the intra with a random `state`;
+  - `GET /api/auth/oauth/42/callback` receives the `code`.
+- **CSRF protection:** the same `state` travels in a signed cookie (10 min, `HttpOnly`, `Secure`, valid only under `/api/auth/oauth`). The callback compares the two in constant time and refuses a cookie from another provider or another flow.
+- **Server to server:** the backend exchanges the `code` for a token with httpx (5 s timeout) and reads `/v2/me`. The client secret never reaches the browser, and the 42 token is thrown away after that read.
+- **Which account logs in:**
+  1. the one already linked to this 42 id;
+  2. otherwise the one with the same e-mail, linked now;
+  3. otherwise a new account with no password, named after the 42 login (normalized; a suffix is added if the name is taken).
+
+  A unique `(provider, provider_user_id)` in `oauth_accounts` keeps one link per 42 account.
+- **Same session as the e-mail login:** the callback calls the same `issue_tokens`, and the refresh cookie is set on the redirect back to the site.
+- **Errors:** refusing on the 42 screen returns `oauth_cancelled`; any other failure returns `oauth_failed`. Both are translated by the frontend. The logs keep only the reason: never the `code` or the `state`, not even in the Nginx access log.
+- **No configured redirect URI:** it is derived from `PUBLIC_HOST`, the only source of the public name. The flow is generic, so another provider would be one more entry in a table of adapters.
 
 ### 9. Advanced 3D graphics — Major (2)
 
@@ -546,11 +570,48 @@ Profile, avatar, friends and the screens are Caio's part of this module.
 
 ### 11. Game statistics and match history — Minor (1)
 
-> **TODO F9.1 (@kanashir0):** why we chose it and how it was implemented.
+**Why:** progression gives players a reason to come back, and it gives the profile something to show: how you play, how you improved and where you stand against the others.
+
+**How:**
+
+- **Recorded once, by the server.** When a match ends, the Room calls `record_match_result`. A single transaction writes:
+  - the row of each player (`match_players`);
+  - the stats per mode (`player_stats`);
+  - XP, level and Elo;
+  - the new achievements.
+
+  The client never sends a result.
+- **XP:** 20 for taking part; plus performance, up to 100 (5 per kill in co-op, 10 per frag in PvP); plus the result (a win is worth 100 in co-op and 60 in PvP; a draw is worth 30). A player disconnected at the end gets no XP and no achievements. **Level** = 1 + ⌊√(XP / 100)⌋, so each level costs more than the previous one.
+- **Elo (PvP only):** standard formula, everyone starts at 1000, K = 32. The points one player wins are the points the other loses. The rating before and after each match is stored, so the history can show "+16 Elo".
+- **Endpoints:**
+  - `GET /api/users/{id}/stats`: per mode, with level and XP progress;
+  - `GET /api/users/{id}/matches`: history, newest first, paginated, with the other players fetched in one extra query for the whole page;
+  - `GET /api/users/{id}/achievements`: the catalog and what the user unlocked;
+  - `GET /api/matches/{id}/result`: the result screen;
+  - `GET /api/leaderboard?mode=`: by Elo or XP by default, also by wins or kills.
+- **Rules that keep the numbers honest:**
+  - Wins come from `match_players.won`, never from `matches.result`.
+  - A leaderboard tie is broken by more wins, then by the oldest account, so a rank never repeats.
+  - Only players who finished a match in that mode are ranked.
 
 ### 12. Monitoring system — Major (2)
 
-> **TODO F9.1 (@kanashir0):** why we chose it and how it was implemented.
+**Why:** a real-time game has a budget (one tick every 33 ms), and during playtests we needed to see whether it held, whether the API was failing and whether someone was hammering the login. We wanted to see it without opening the containers.
+
+**How:**
+
+- **Collect:** Prometheus scrapes, every 15 s:
+  - the backend's `/metrics` (Augusto: HTTP requests, logins by result, open WebSockets, Rooms in a match, tick duration);
+  - node-exporter for the host;
+  - postgres-exporter for the database.
+- **Show:** Grafana, with the data source and 3 dashboards (game and backend, host, Postgres) provisioned from versioned files. A `down -v` loses nothing that matters.
+- **Alert:** 4 Prometheus alerting rules (target down, slow tick, 5xx rate, failed-login spike). Each one has a `promtool` unit test that the CI runs, and the CI also checks that Prometheus loaded all four.
+- **Secure:**
+  - Prometheus and the exporters have no published port, and the proxy does not route `/metrics`;
+  - Grafana is reachable only at `/grafana/` behind Nginx (HTTPS), with a login, no sign-up, no anonymous access and no outbound requests;
+  - the admin password comes from `.env`, and Compose refuses to start without it.
+
+The dashboards, the alerts and how to trigger one live are in the *Monitoring guide*.
 
 ### 13. Multiple languages — Minor (1)
 
@@ -622,7 +683,26 @@ Profile, avatar, friends and the screens are Caio's part of this module.
 
 ### Gabriel Kanashiro (Akita) — Project Manager
 
-> **TODO F9.1 (@kanashir0):** what you built (features, modules, components), and the challenges you faced and how you overcame them.
+**What I built**
+
+- **Project management:** one issue per task ID with an owner, the GitHub Projects board and the workflow that moves its cards; the Monday meetings and the Friday checkpoints; a weekly status page generated from the board (progress, velocity, forecast, blockers); the replanning each time the dates moved.
+- **Contracts:** the Rooms contract (life cycle of a Room, from Lobby to the recorded match), the match API (Lobby, results, stats, history, achievements, leaderboard) and the infrastructure contract (services, ports, environment variables, Nginx routes).
+- **Database:** the Alembic setup, the migration run at startup and the match schema (`matches`, `match_players`, `player_stats`, `user_achievements`).
+- **Lobby backend:** create, list, join, leave, ready, character and start, with the "one Room per user" rule; publishing every change to the open tabs; leaving the Lobby when a user goes offline.
+- **End of a match and progression:** `record_match_result` and the abort of unfinished matches at startup; stats per mode, XP and levels, Elo, history, the 7 achievements, the result endpoint and the leaderboard.
+- **Log in with 42:** the OAuth 2.0 flow, account linking and the shared token issue.
+- **Edge and infrastructure:**
+  - Nginx with TLS (certificates from `mkcert`), HTTP→HTTPS, the WebSocket upgrade, static `/media/`, the redirect to `PUBLIC_HOST`, access logs without the query string;
+  - Docker Compose with healthchecks, so one command starts everything in order;
+  - the CI.
+- **Monitoring:** Prometheus and the two exporters, the three Grafana dashboards, the four alerting rules and their tests.
+
+**Challenges**
+
+- **Recording a result exactly once.** The end of a match can be reached twice: a retry, an abort that arrives at the same time, or a backend restart. The match row in `running` is the idempotency key: it is locked with `SELECT … FOR UPDATE` until the commit, and a second call no longer finds it. The `player_stats` rows are created if missing and locked in the same transaction, so two matches ending at once for the same player do not lose an update. Achievements are announced only after the commit. Along the way, a game test failed about once in 60 runs under load: it waited for the socket to close, but the abort writes to the database a couple of event-loop turns later. The fix was in the test (wait for the tick task to finish), not in the production code.
+- **Grafana in the CI.** The check that Grafana loaded its data source failed now and then with a 404. The cause: at startup, Grafana 13's plugin installer replaced the bundled Prometheus plugin with a newer download, and for about 5 seconds the data source did not exist. Turning off the plugin preinstall fixed it, and Grafana now makes no outbound requests at all. A second issue: behind the proxy, Grafana's redirects lost the HTTPS port. `absolute_redirect off` in Nginx keeps them relative.
+- **Security at the edge.** The OAuth callback carries the `code` and `state` in the query string, and the default Nginx log wrote them to disk. A custom `log_format` logs only the path, and a CI step checks it. Then, in the multi-machine test at 42, opening the site by the server's IP made every session refresh fail with `403`. The refresh accepts only requests whose `Origin` is `PUBLIC_HOST`, a protection against CSRF. Nginx now answers any other host name with a `302` to `PUBLIC_HOST`, so the browser always uses the name the session belongs to.
+- **Five slices, one game.** Every feature crossed at least two people. Writing each boundary as a contract, signed before the code, let each person build against a fake of the other side; when someone was late, the others did not stop. When the dates changed, the plan changed with them: tasks were moved, and the cut order made clear what would go first. The weekly status, generated from the board instead of from memory, made a blocker visible on Monday rather than on Friday's checkpoint.
 
 ## Known limitations
 
@@ -646,6 +726,9 @@ Profile, avatar, friends and the screens are Caio's part of this module.
 - [PostgreSQL 16](https://www.postgresql.org/docs/16/) · [Nginx](https://nginx.org/en/docs/) · [Docker Compose](https://docs.docker.com/compose/)
 - [Prometheus: configuration and alerting rules](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) · [Grafana provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)
 - [42 API](https://api.intra.42.fr/apidoc) · [RFC 6749, OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749) · [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+- [PostgreSQL: explicit locking](https://www.postgresql.org/docs/16/explicit-locking.html) · [PostgreSQL: `INSERT … ON CONFLICT`](https://www.postgresql.org/docs/16/sql-insert.html#SQL-ON-CONFLICT) · [Alembic: autogenerate and `alembic check`](https://alembic.sqlalchemy.org/en/latest/autogenerate.html)
+- [Prometheus: unit testing for rules](https://prometheus.io/docs/prometheus/latest/configuration/unit_testing_rules/) · [node-exporter](https://github.com/prometheus/node_exporter) · [postgres-exporter](https://github.com/prometheus-community/postgres_exporter) · [Grafana behind a reverse proxy](https://grafana.com/tutorials/run-grafana-behind-a-proxy/)
+- [Nginx `log_format`](https://nginx.org/en/docs/http/ngx_http_log_module.html#log_format) · [mkcert](https://github.com/FiloSottile/mkcert) · [GitHub Actions](https://docs.github.com/en/actions)
 
 **Articles and tutorials**
 
