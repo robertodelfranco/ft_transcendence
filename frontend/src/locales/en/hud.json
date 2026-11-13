@@ -82,7 +82,7 @@
       },
       "fire": {
         "keys": "Space",
-        "action": "Fire"
+        "action": "Release to fire; hold for 3 s to charge (2× damage, 3× Mana)"
       },
       "door": {
         "keys": "F",

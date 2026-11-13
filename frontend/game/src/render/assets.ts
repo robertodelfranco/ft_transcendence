@@ -12,6 +12,7 @@ export interface Assets {
   wallRoughness: number;
   door: THREE.Texture;
   hand: THREE.Texture;
+  handCharge: THREE.Texture;
   fireball: THREE.Texture;
   billboards: BillboardAssets;
   dispose(): void;
@@ -24,6 +25,7 @@ export class AssetLoader {
       ...theme.walls,
       door: "/assets/map/door_2.png",
       hand: "/assets/player/player_hand_white.png",
+      handCharge: "/assets/player/player_hand_charge.png",
       fireball: "/assets/player/fireball_1.png",
     };
     // A fireball da mão também é um quadro dos billboards: uma carga e um proprietário por URL.
@@ -67,6 +69,7 @@ export class AssetLoader {
       wallRoughness: theme.wallRoughness,
       door: texture("door"),
       hand: texture("hand"),
+      handCharge: texture("handCharge"),
       fireball: texture("fireball"),
       billboards,
       dispose() {

@@ -15,6 +15,8 @@ const ACTION_KEYS: Record<string, ActionKind> = { Space: "fire", KeyF: "door" };
 
 export interface InputCapture {
   readonly keys: Keys;
+  readonly chargeSeconds: number | null;
+  cancelCharge(): void;
   takeMouseDx(): number; // giro acumulado desde a última chamada, em rad
   dispose(): void;
 }
@@ -29,10 +31,25 @@ function isTyping(target: EventTarget | null): boolean {
     || target.closest("button, a, input, textarea, select, summary") !== null);
 }
 
-export function captureInput(canvas: HTMLCanvasElement, onAction: (kind: ActionKind) => void,
-  sensitivity = MOUSE_SENSITIVITY): InputCapture {
+export function captureInput(canvas: HTMLCanvasElement, onAction: (kind: ActionKind, heldSeconds?: number) => void,
+  sensitivity = MOUSE_SENSITIVITY, canCharge: () => boolean = () => true): InputCapture {
   const keys = released();
   let mouseDx = 0;
+  let chargeAt: number | null = null;
+
+  function cancelCharge(): void {
+    if (chargeAt === null) return;
+    chargeAt = null;
+    onAction("charge_cancel");
+  }
+
+  function onVisibility(): void {
+    if (document.hidden) onBlur();
+  }
+
+  function onPointerLockChange(): void {
+    if (document.pointerLockElement !== canvas) cancelCharge();
+  }
 
   function onKeyDown(event: KeyboardEvent): void {
     const move = MOVE_KEYS[event.code];
@@ -40,17 +57,33 @@ export function captureInput(canvas: HTMLCanvasElement, onAction: (kind: ActionK
     if ((move === undefined && action === undefined) || isTyping(event.target)) return;
     event.preventDefault(); // Espaço e setas rolariam a página
     if (move !== undefined) keys[move] = true;
-    if (action !== undefined && !event.repeat) onAction(action); // uma Action por tecla pressionada
+    if (action !== undefined && !event.repeat) {
+      if (event.code === "Space") {
+        if (chargeAt === null && canCharge()) {
+          chargeAt = performance.now();
+          onAction("charge_start");
+        }
+      } else onAction(action);
+    }
   }
 
   function onKeyUp(event: KeyboardEvent): void {
     const move = MOVE_KEYS[event.code];
     if (move !== undefined) keys[move] = false;
+    if (event.code === "Space" && chargeAt !== null) {
+      if (isTyping(event.target) || !canCharge()) cancelCharge();
+      else {
+        const heldSeconds = (performance.now() - chargeAt) / 1000;
+        chargeAt = null;
+        onAction("fire", heldSeconds);
+      }
+    }
   }
 
   // sem isto, soltar a tecla com a janela fora de foco deixa o Player andando sozinho
   function onBlur(): void {
     Object.assign(keys, released());
+    cancelCharge();
   }
 
   function onMouseMove(event: MouseEvent): void {
@@ -67,20 +100,27 @@ export function captureInput(canvas: HTMLCanvasElement, onAction: (kind: ActionK
   window.addEventListener("keyup", onKeyUp);
   window.addEventListener("blur", onBlur);
   document.addEventListener("mousemove", onMouseMove);
+  document.addEventListener("visibilitychange", onVisibility);
+  document.addEventListener("pointerlockchange", onPointerLockChange);
   canvas.addEventListener("click", onClick);
 
   return {
     keys,
+    get chargeSeconds() { return chargeAt === null ? null : (performance.now() - chargeAt) / 1000; },
+    cancelCharge,
     takeMouseDx() {
       const taken = mouseDx;
       mouseDx = 0;
       return taken;
     },
     dispose() {
+      cancelCharge();
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
       document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("pointerlockchange", onPointerLockChange);
       canvas.removeEventListener("click", onClick);
       if (document.pointerLockElement === canvas) document.exitPointerLock?.();
     },

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { ActionKind } from "../types";
 import { captureInput, type InputCapture } from "./input";
 
@@ -23,6 +23,7 @@ beforeEach(() => {
 afterEach(() => {
   input.dispose();
   lockPointer(null);
+  vi.restoreAllMocks();
 });
 
 test("WASD, arrows and Shift set the matching keys", () => {
@@ -33,11 +34,14 @@ test("WASD, arrows and Shift set the matching keys", () => {
   expect(input.keys.up).toBe(false);
 });
 
-test("Space fires and F opens, once per press", () => {
+test("Space starts charging, fires on release, and F opens once per press", () => {
   press("Space");
   press("Space", true);
   press("KeyF");
-  expect(actions).toEqual(["fire", "door"]);
+  expect(actions).toEqual(["charge_start", "door"]);
+  release("Space");
+  release("Space");
+  expect(actions).toEqual(["charge_start", "door", "fire"]);
 });
 
 test("game keys do not scroll the page, others pass through", () => {
@@ -92,5 +96,44 @@ test("after dispose nothing is read", () => {
   press("KeyW");
   press("Space");
   expect(input.keys.up).toBe(false);
+  expect(actions).toEqual([]);
+});
+
+
+test("charge continues past three seconds until Space is released", () => {
+  const clock = vi.spyOn(performance, "now").mockReturnValue(0);
+  press("Space");
+  clock.mockReturnValue(5000);
+  expect(input.chargeSeconds).toBe(5);
+  expect(actions).toEqual(["charge_start"]);
+  release("Space");
+  expect(input.chargeSeconds).toBeNull();
+  expect(actions).toEqual(["charge_start", "fire"]);
+  clock.mockRestore();
+});
+
+test("blur cancels charge without firing on subsequent release", () => {
+  press("Space");
+  window.dispatchEvent(new Event("blur"));
+  release("Space");
+  expect(input.chargeSeconds).toBeNull();
+  expect(actions).toEqual(["charge_start", "charge_cancel"]);
+});
+
+test("unlocking the pointer cancels charge", () => {
+  lockPointer(canvas);
+  press("Space");
+  lockPointer(null);
+  document.dispatchEvent(new Event("pointerlockchange"));
+  release("Space");
+  expect(actions).toEqual(["charge_start", "charge_cancel"]);
+});
+
+test("cannot start charging while dead or frozen", () => {
+  input.dispose();
+  input = captureInput(canvas, kind => actions.push(kind), 0.01, () => false);
+  press("Space");
+  release("Space");
+  expect(input.chargeSeconds).toBeNull();
   expect(actions).toEqual([]);
 });

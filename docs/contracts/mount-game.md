@@ -301,7 +301,7 @@ luzes. Validação visual e de desempenho pendente; detalhes em
 - **Placar:** decidido em 06/10: a HUD usa a lista do protocolo (§2.6).
 - **Unidades/atualização:** proposta da F2.12 (#108), a confirmar com a Web e o Render: `ping` em ms, sem arredondar (a HUD arredonda, [hud.md](hud.md) §3). O jogo manda um `ping` logo depois de cada `welcome` e outro a cada 2 s enquanto o status é `running`; nunca antes do `welcome`, porque numa Reconnection o `join` ainda espera o token e o servidor fecha com `4400` o que chegar antes dele. O RTT é `performance.now()` no `pong` menos o `t` que voltou: só o relógio do cliente entra na conta. Cada `pong` gera um `onHud` (no máximo um a cada 2 s por causa do ping). Quando a conexão cai, `ping` volta a `null` até o próximo `pong`. Falta fechar a frequência dos outros `onHud` e os valores antes do `welcome`.
 - **Feed:** `player_died` alimenta `{by, victim: player_id, tick}`. A forma atual não representa Kills de Enemy/Boss; decidir se o feed mostra só eliminações de Player ou precisa de uma união de tipos. Duração e limite de linhas também faltam.
-- **Término:** o `game_over` chega no Tick em que a partida se decide (no `coop`, quando o Boss entra em `dying`), e depois dele o servidor só avança animações ([ws-messages.md](ws-messages.md) §2.6). Decidido em 06/10: o jogo espera `BOSS_DYING_S` antes de chamar `onEnd`, para não cortar a morte do Boss, e `winner_ids` vira `winnerIds`. Decidido com a Web em 26/10 ([hud.md](hud.md) §11.2): o `result` do `onEnd` continua sendo o da Room, sem conversão no jogo, e a casca decide o desfecho local pelo `winnerIds` nos dois Modes (`draw` é empate; id local em `winnerIds` é vitória; o resto é derrota). No `pvp`, `win` da Room não é vitória de quem perdeu.
+- **Término:** o `game_over` chega no Tick em que a partida se decide (no `coop`, quando o Boss entra em `dying`), e depois dele o servidor só avança animações ([ws-messages.md](ws-messages.md) §2.6). Decidido em 06/10: o jogo aguarda a morte do Boss antes de chamar `onEnd`, e `winner_ids` vira `winnerIds`. Revisado em 12/11: espera `max(BOSS_DYING_S, RESULT_MUSIC_S + 0.2)` (3,2 s), para também concluir a melodia de resultado. Decidido com a Web em 26/10 ([hud.md](hud.md) §11.2): o `result` do `onEnd` continua sendo o da Room, sem conversão no jogo, e a casca decide o desfecho local pelo `winnerIds` nos dois Modes (`draw` é empate; id local em `winnerIds` é vitória; o resto é derrota). No `pvp`, `win` da Room não é vitória de quem perdeu.
 - **Mode:** decidido em 26/10 ([hud.md](hud.md) §11.1) e implementado na #168: `HudState.mode` (§2.6), `null` antes do `welcome`.
 - **Efeitos:** resolvido em 06/10 sem campo novo: todo Event traz `x, y` ou cita um id presente no Snapshot ([ws-messages.md](ws-messages.md) §2.6).
 
@@ -342,3 +342,55 @@ O Renderer desenha bordas transparentes depois da cena e da mão, preservando o
 centro e a visão do companheiro no coop. Com `prefers-reduced-motion: reduce`,
 só a borda estática de morte permanece. Não são criados textos no canvas nem
 atalhos de teclado. Limites e roteiro: [efeitos-f3.7.md](../efeitos-f3.7.md).
+
+
+## Carga de magia — atualização local de 12/11/2026
+
+`ViewState.chargeSeconds?: number | null` é apresentação local; ausente ou
+`null` usa a mão normal. A captura mede quanto tempo Espaço está pressionado,
+e o Renderer alterna `assets/player/player_hand_white.png` e
+`assets/player/player_hand_charge.png`, mantendo a base visível na borda.
+A alternância acelera até 3 s; depois mantém a sprite energizada com brilho
+fixo até soltar, indicando carga completa. O estado "pronto" aparece 0,1 s
+depois do limiar, para o jitter de 1–2 Ticks não mostrar carga completa num
+tiro que o servidor ainda conta como normal. Com
+`prefers-reduced-motion: reduce` não há alternância nem pulso: a mão normal
+recebe brilho crescente e troca para a sprite energizada só quando pronta.
+`Assets.handCharge` é carregado e liberado junto das outras texturas.
+O áudio usa Web Audio: dois osciladores sustentados sobem de tom até 3 s e
+mantêm o tom final depois disso; há fade ao parar, sem criar um loop por
+quadro. O gesto inicial desbloqueia o AudioContext, como nos outros sons.
+Soltar Espaço dispara; perda de foco/Pointer Lock, aba oculta, morte,
+Reconnection, fim e unmount encerram os efeitos de carga. Nenhum som decide
+regra. A autoridade e o protocolo estão em `ws-messages.md` e `rules.md`.
+Validação em navegador e revisão dos consumidores pendentes.
+
+
+Som de coleta: `item_picked` confirmado pelo servidor toca um sinal agudo
+ascendente, de 0,18 s, apenas quando `by` é o Player local e o áudio está
+desbloqueado com a partida ativa e a aba visível. Vale para chave, poção,
+Mana e Armor. Coleta de outro Player, Snapshot ou tentativa sem coleta não
+tocam o sinal. O som usa o mesmo controle de volume e ciclo de vida dos
+outros efeitos Web Audio.
+
+
+## Áudio de resultado e Door — atualização local de 12/11/2026
+
+O Event `game_over` primeiro encerra música e efeitos ativos. Com áudio já
+desbloqueado e a aba visível, o Player local ouve uma melodia ascendente de
+vitória se seu ID está em `winner_ids` com `result = win`; nos outros
+resultados não empatados, ouve uma melodia descendente de derrota. `draw`
+toca uma terceira melodia, neutra. Cada melodia dura 3 s (`RESULT_MUSIC_S`)
+e toca uma única vez. A tela final espera `max(BOSS_DYING_S, RESULT_MUSIC_S + 0.2)`
+(3,2 s), para não cortar a música. Não toca som de derrota por desconexão ou falha de
+rede. Ocultar a aba, sair ou desmontar encerra os sons agendados.
+
+O Event `door_opened` toca um som de pedra deslizando (ruído filtrado de
+0,9 s, com entrada/saída suaves e encaixe grave no fim), inclusive para Door aberta
+por outro Player. A posição de escuta é a posição prevista do Player local;
+a fonte é o centro da célula da Door. O volume decai por
+`max(0, 1 - distância / 8)²` e fica silencioso a partir de 8 células.
+Apenas com partida ativa, aba visível e áudio desbloqueado; tentar abrir
+uma Door sem sucesso não toca som. Os efeitos usam o mesmo master de áudio
+e os mesmos recursos de limpeza dos demais sons. Validação auditiva em
+navegador e execução dos testes pendentes.

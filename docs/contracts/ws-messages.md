@@ -22,7 +22,7 @@ Toda mensagem do socket `/ws/game/{match_id}`, nos dois sentidos. O cliente do j
 |---|---|---|
 | `join` | `match_id: int`, `token: string` (access JWT) | Primeira mensagem. Sem `join` válido em 5 s, fecha com `4401`. `match_id` igual ao do caminho, senão `4400` |
 | `input` | `seq: int`, `keys: {up, down, left, right, rot_left, rot_right, sprint}` (7 booleanos, todos obrigatórios), `mouse_dx: number` (rad) | Um por passo de `1 / TICK_RATE` s do cliente. `seq` começa em 1 e só cresce; recomeça a cada conexão nova. Como o servidor aplica: §2.9 |
-| `action` | `seq: int` (mesmo contador do `input`), `kind: "fire" \| "door"` | Uma por tecla pressionada; entra na mesma fila do `input` (§2.9). Action que não pode acontecer (sem Mana, cooldown, Player morto, nenhuma Door fechada à frente) é ignorada sem resposta |
+| `action` | `seq: int` (mesmo contador do `input`), `kind: "fire" \| "door" \| "charge_start" \| "charge_cancel"` | Uma por transição da tecla; entra na mesma fila do `input` (§2.9). Action que não pode acontecer (sem Mana, cooldown, Player morto, nenhuma Door fechada à frente) é ignorada sem resposta |
 | `ping` | `t: number` (relógio do cliente, ms) | O servidor devolve o mesmo `t` no `pong` |
 
 **O que cada tecla significa** (pergunta 8). Com frente `f = (dx, dy)` e direita `r = (-dy, dx)`:
@@ -35,7 +35,22 @@ Toda mensagem do socket `/ws/game/{match_id}`, nos dois sentidos. O cliente do j
 | `sprint` | multiplica o passo por `PLAYER_SPRINT_MULT` | |
 | `mouse_dx` | giro acumulado desde o último `input`; positivo = mesmo sentido de `rot_right`. O servidor corta em `MOUSE_MAX_ROT_SPEED × dt` por Tick | |
 
-A ligação de tecla a campo é do cliente: `W/S` → `up/down`, `A/D` → `left/right`, `←/→` → `rot_left/rot_right`, `Shift` → `sprint`, `Espaço` → `fire`, `F` → `door`. Ela **não** copia o C, que trocava as setas e o strafe para compensar o mundo espelhado (ver Decisões).
+A ligação de tecla a campo é do cliente: `W/S` → `up/down`, `A/D` → `left/right`, `←/→` → `rot_left/rot_right`, `Shift` → `sprint`, `Espaço` pressionado → `charge_start`, solto → `fire`, `F` → `door`. Ela **não** copia o C, que trocava as setas e o strafe para compensar o mundo espelhado (ver Decisões).
+
+**Carga de fireball (12/11/2026):** `charge_start` registra o Tick inicial no
+Player; um novo `charge_start` reinicia a carga, para que um `fire` ou
+`charge_cancel` perdido na fila não deixe carga órfã. `fire` encerra a carga e
+atira na direção atual: antes de 90 Ticks, tiro normal; a partir de 90 Ticks
+(3 s a 30 Hz), dano ×2 e custo de Mana ×3. Não dispara automaticamente ao
+completar. Sem os 30 de Mana, o tiro carregado é cancelado, sem gasto e sem
+substituição por tiro normal. `fire` sem início de carga continua sendo um
+tiro normal, preservando os clientes anteriores. Cooldown permanece igual.
+O cliente nunca manda duração, dano ou multiplicador. `charge_cancel` limpa
+a carga sem atirar; o cliente envia ao perder foco, ocultar a aba ou perder
+Pointer Lock. Morte, saída e mudança de conexão também limpam a carga no
+servidor. A duração de rede continua na Simulation; sprites e som são
+apresentação local. Actions de carga não mudam o schema do Snapshot.
+Mudança implementada; revisão de Roberto e Augusto e validação pendentes.
 
 ### 2.3 Servidor → cliente
 
@@ -181,7 +196,7 @@ A regra que mantém a Prediction certa: **cada `input` é aplicado uma única ve
 - A cada Tick, o servidor consome a fila em ordem até aplicar um `input`. Se ficaram 3 ou mais `input`s esperando, aplica dois nesse Tick, para alcançar o cliente depois de um atraso da rede. Nunca mais que dois por Tick: é o limite de 60 por segundo.
 - **Fila vazia: o Player fica parado nesse Tick.** O servidor não repete o último Input, porque esse passo a mais o cliente não previu.
 - Dentro de um `input`, a ordem é fixa e igual nos dois lados: gira pelo `mouse_dx`, cortado em `MOUSE_MAX_ROT_SPEED × dt`; gira pelas teclas; soma as quatro teclas de andar num vetor de intenção e o normaliza; anda em `x` e depois em `y`, cada eixo validado sozinho; coleta o Pickup da célula nova.
-- Uma `action` é executada com a posição e a direção que o Player tem naquele ponto da fila. Assim a fireball sai para onde o Player olhava quando apertou, mesmo com o servidor alguns Inputs atrás.
+- Uma `action` é executada com a posição e a direção que o Player tem naquele ponto da fila. Assim a fireball sai para onde o Player olhava quando soltou Espaço, mesmo com o servidor alguns Inputs atrás.
 - Player morto: os Inputs são consumidos e ignorados, para o `seq` continuar andando.
 - `last_input_seq` é o `seq` do último `input` aplicado.
 - A fila guarda no máximo 1 s (30 `input`s); o que passar disso é descartado.

@@ -12,9 +12,9 @@ describe("ajuda de controles", () => {
   it("fechada por padrão, abre pelo resumo", async () => {
     const user = userEvent.setup();
     render(<Help mode="coop" />);
-    expect(screen.getByText("Atirar")).not.toBeVisible();
+    expect(screen.getByText("Solte para atirar; segure por 3 s para carregar (2× dano, 3× Mana)")).not.toBeVisible();
     await user.click(screen.getByText("Controles e objetivo"));
-    expect(screen.getByText("Atirar")).toBeVisible();
+    expect(screen.getByText("Solte para atirar; segure por 3 s para carregar (2× dano, 3× Mana)")).toBeVisible();
   });
 
   it("lista as teclas do input.ts, cada uma com a sua ação", () => {
@@ -22,7 +22,7 @@ describe("ajuda de controles", () => {
     const keys = screen.getAllByRole("term", { hidden: true }).map((term) => term.textContent);
     const actions = screen.getAllByRole("definition", { hidden: true }).map((item) => item.textContent);
     expect(keys).toEqual(["W A S D", "← →", "Mouse", "Shift", "Espaço", "F", "Esc"]);
-    expect(actions[keys.indexOf("Espaço")]).toBe("Atirar");
+    expect(actions[keys.indexOf("Espaço")]).toBe("Solte para atirar; segure por 3 s para carregar (2× dano, 3× Mana)");
     expect(actions[keys.indexOf("F")]).toBe("Abrir porta");
   });
 
