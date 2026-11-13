@@ -4,6 +4,26 @@
 >
 > Papel no time: **Tech Lead**. Contratos que eu escrevo: [ws-messages.md](../contracts/ws-messages.md) com o [snapshot.example.json](../contracts/snapshot.example.json), [map-format.md](../contracts/map-format.md) e os nomes e unidades de [rules.md](../contracts/rules.md). O detalhe de execução (passos, listas de teste, armadilhas do C) está no [roadmap](../roadmap-roberto.md); este arquivo é o resumo para o time.
 
+## 0. Estado em 13/11
+
+Todas as tarefas da Slice estão na `main`, com as issues fechadas:
+
+- F1.1 a F1.7 (#23, #22, #24, #60, #61, #62, #63)
+- F1.8 e F1.9 (#126, #127), com o empate no Frag mútuo corrigido em #217
+- F2.7, as duas partes (#64, #125)
+- F3.6, minimapa (#172)
+- F2.13, teste de carga (#173): p99 de 1,4 ms por Tick na Simulation e 2,1 ms com o RoomManager, contra a meta de 5 ms
+
+Fora do plano, também na `main`: modo partida com o canvas em destaque (#254), contagem 3, 2, 1 com a partida congelada (#255), Boss mirando o Player mais perto em linha de visão (#262) e Players atravessáveis entre si (#263). Com a #263, a colisão entre Players citada no §7 saiu: só Enemy e Boss bloqueiam.
+
+A meta do teste de performance da F1.6 mudou de 200 ms para 2 s em 20/10 (roadmap R4.3).
+
+Em aberto:
+
+- **F9.1** (#275): a minha parte do README
+- **F9.2**: o ensaio da defesa, na S6
+- playtest coop e PvP da fireball carregada do Rafael (#268, PR #269 já na `main`): a sensação do tiro ao soltar Espaço e a névoa contra o Boss
+
 ## 1. Inventário
 
 **17,5 d de tarefa**, mais os contratos da S1 (já escritos) e o papel de Tech Lead. Datas pelo calendário de [replanejamento-e-board.md](../pm/replanejamento-e-board.md).
@@ -124,7 +144,7 @@ Decidida depois do código, cada uma custa retrabalho em mais de uma Slice.
 | **S2** · 11–17/10 | **F1.4** portas e Pickups · **F1.5** entidades · **F1.6** `CoopRuleset` · **F1.7** CLI · **F2.7** primeira parte (`applyInput.ts`, teste cruzado, laço de passo fixo) · par com o Augusto nas primeiras horas de F2.3 |
 | **S3** · 18–24/10 | **F1.8** PvP · **F1.9** opções · **F2.7** segunda parte (Reconciliation ligada no cliente) · sessão de jogo com o Rafael |
 | **S4** · 25–31/10 | **F3.6** minimapa · par com o Augusto na reconexão (F2.10) |
-| **S5** · 01–14/11 | **F2.13** teste de carga · F9.1 · folga para bug e revisão |
+| **S5** · 01–14/11 | ✅ **F2.13** teste de carga, 28/10 (#173) · **F9.1** minha parte do README (#275, 13/11) · folga para bug e revisão |
 | **S6** · 15–21/11 | bug, README fechado, ensaio |
 
 **A conta não fecha até o C3, e eu sei disso.** Com 4 dias de tarefa e 1 de Tech Lead por semana, tenho 11 dias até 23/10; o plano pede 17,5 nesse período (toda a Simulation, PvP, opções e Prediction). No total cabe: 23 dias disponíveis até o freeze contra 19 pedidos. O que escorrega primeiro, nesta ordem: a segunda parte de F2.7 vai para a S4; F1.9 vai para a S4; o fim de F1.8 vai para o começo da S5. Aviso na reunião de segunda assim que uma dessas se confirmar, porque cada uma atrasa alguém do §4.
