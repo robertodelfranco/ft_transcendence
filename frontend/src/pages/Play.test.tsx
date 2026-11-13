@@ -62,8 +62,9 @@ describe("montagem do jogo", () => {
     const router = await renderAt("/play/13");
     const game = await mounted();
     await act(() => router.navigate("/privacy"));
-    // a navegação é uma transição: o /play fica na tela até o chunk da página legal chegar
-    await waitFor(() => expect(game.unmounted).toBe(true));
+    // a navegação é uma transição: o /play fica na tela até o chunk da página legal chegar,
+    // e o primeiro carregamento do chunk na suíte pode passar de 1 s
+    await waitFor(() => expect(game.unmounted).toBe(true), { timeout: 3000 });
   });
 
   // Regressão: o minimapa é absolute e se ancora ao pai dele. Abaixo do md o HUD vem depois do
@@ -361,6 +362,19 @@ describe("contagem do início (#255)", () => {
       expect(within(block).getByText(String(seconds))).toBeInTheDocument();
       expect(announced(`A partida começa em ${seconds}`)).toBe(true);
     }
+  });
+
+  it("a mira some na espera e na contagem, e volta com a partida valendo", async () => {
+    await renderAt("/play/13");
+    const game = await mounted();
+    // no bloco do canvas, a mira é o único svg: os ícones da HUD ficam fora dele
+    const block = game.canvas.parentElement!;
+    for (const countdown of ["waiting", 3] as const) {
+      act(() => emitHud({ countdown }));
+      expect(block.querySelector("svg")).toBeNull();
+    }
+    act(() => emitHud({ countdown: null }));
+    expect(block.querySelector("svg")).not.toBeNull();
   });
 
   it("com a partida valendo, a camada some", async () => {
