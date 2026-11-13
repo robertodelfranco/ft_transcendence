@@ -62,8 +62,9 @@ describe("montagem do jogo", () => {
     const router = await renderAt("/play/13");
     const game = await mounted();
     await act(() => router.navigate("/privacy"));
-    // a navegação é uma transição: o /play fica na tela até o chunk da página legal chegar
-    await waitFor(() => expect(game.unmounted).toBe(true));
+    // a navegação é uma transição: o /play fica na tela até o chunk da página legal chegar,
+    // e o primeiro carregamento do chunk na suíte pode passar de 1 s
+    await waitFor(() => expect(game.unmounted).toBe(true), { timeout: 3000 });
   });
 
   // Regressão: o minimapa é absolute e se ancora ao pai dele. Abaixo do md o HUD vem depois do
