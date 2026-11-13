@@ -28,7 +28,7 @@ Como ler as tabelas:
 | Nome | Unidade | Valor | Arq. | No C |
 |---|---|---|---|---|
 | `PLAYER_SPEED` | cél/s | `3.6` ¹ | sim | `0.06` por quadro (`player_bonus/init_player_bonus.c:78`) |
-| `PLAYER_SPRINT_MULT` | multiplicador | `2.0` | novo | `move_speed * 2.0` (`player_bonus/movement_bonus.c:22`) |
+| `PLAYER_SPRINT_MULT` | multiplicador | `1.5` | novo | Base C: `move_speed * 2.0` (`player_bonus/movement_bonus.c:22`); ajustado em 13/11 (§5.10) |
 | `PLAYER_ROT_SPEED` | rad/s | `1.8` ¹ | sim | `0.03` rad por quadro (`player_bonus/init_player_bonus.c:79`) |
 | `MOUSE_MAX_ROT_SPEED` | rad/s | `18.85` (6π) | sim | Limite de giro por mouse, igual nos dois Modes: o servidor e a Prediction cortam `mouse_dx` em `MOUSE_MAX_ROT_SPEED × dt` por Tick. Sem equivalente: o C girava `0.012` rad por evento de cursor nas faixas laterais de 30% da janela (`player_bonus/controls_bonus.c:63-71`) |
 | `PLAYER_RADIUS` | cél | `0.05` | novo | `R`, testado nos 4 cantos contra `1` e `D` (`include/cub3d_bonus.h:27`, `player_bonus/move_utils_bonus.c:100-111`) |
@@ -48,7 +48,7 @@ O HP inicial e o teto da poção não são constantes: vêm de `options.start_hp
 
 | Nome | Unidade | Valor | Arq. | No C |
 |---|---|---|---|---|
-| `ENEMY_SPEED` | cél/s | `2.2` | sim | Base C: `0.15` por passo (`enemy_bonus/enemy_images_bonus.c:131`), um passo quando `move_delay > 0.1` s (`enemy_bonus/enemy_manage_bonus.c:63`); ajustado na F4.7 (§5.6) |
+| `ENEMY_SPEED` | cél/s | `3.0` | sim | Base C: `0.15` por passo (`enemy_bonus/enemy_images_bonus.c:131`), um passo quando `move_delay > 0.1` s (`enemy_bonus/enemy_manage_bonus.c:63`); ajustado na F4.7 (§5.6) e em 13/11 (§5.10) |
 | `ENEMY_RADIUS` | cél | `0.2` | novo | 4 cantos a `0.2` do centro (`enemy_bonus/enemy_move_bonus.c:40-50`) |
 | `ENEMY_SEPARATION` | cél | `0.6` | novo | Enemy não chega a menos disso de outro Enemy (`enemy_bonus/enemy_move_bonus.c:30`) |
 | `ENEMY_RETARGET_MARGIN` | cél | `1.0` | sim | Não existe no C, que só tinha um jogador. O Enemy só troca de alvo se o novo estiver esta quantidade de passos de caminho mais perto que o atual (arq. §5) |
@@ -113,17 +113,17 @@ O mesmo nome e o mesmo valor nos dois arquivos, com a unidade no comentário:
 # backend/app/game/rules.py
 TICK_RATE = 30            # Hz
 PLAYER_SPEED = 3.6        # cél/s
-PLAYER_SPRINT_MULT = 2.0
+PLAYER_SPRINT_MULT = 1.5
 ```
 
 ```ts
 // frontend/game/src/rules.ts
 export const TICK_RATE = 30;            // Hz
 export const PLAYER_SPEED = 3.6;        // cél/s
-export const PLAYER_SPRINT_MULT = 2.0;
+export const PLAYER_SPRINT_MULT = 1.5;
 ```
 
-Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um Tick andando move `0.12` célula (`0.24` correndo), e 30 Ticks movem `3.6` células.
+Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um Tick andando move `0.12` célula (`0.18` correndo), e 30 Ticks movem `3.6` células.
 
 ## 4. Decisões
 
@@ -272,3 +272,27 @@ pediria um evento novo de acerto e retorno visual no render. Escalar a
 cadência também foi descartado, porque a animação de ataque deriva de
 `ENEMY_ATTACK_INTERVAL_S` e sairia de sincronia com o golpe.
 Playtest coop com 2 e com 5 Players pendente.
+
+
+### 5.10 Enemy mais rápido e sprint mais curto — #265, 13/11/2026
+
+Roberto decidiu, depois do playtest com bots de 1 a 5 Players na stack de
+teste:
+
+- `ENEMY_SPEED` passa de 2,2 para 3,0 cél/s. Nas 13 campanhas coop com bots
+  atirando, nenhum Enemy chegou a golpear: a fireball (12 cél/s, um acerto
+  mata) derrubava todos no caminho. A 3,0 cél/s o Enemy cruza os 12 passos de
+  `ENEMY_CHASE_RANGE` em 4 s, contra 5,5 s antes, e o Player tem menos tiros
+  antes do contato.
+- `PLAYER_SPRINT_MULT` passa de 2,0 para 1,5: correndo, o Player vai a
+  5,4 cél/s, contra 7,2 antes. A constante é a mesma no `coop` e no `pvp`.
+
+Andando (3,6 cél/s), o Player ainda é mais rápido que o Enemy, com folga de
+0,6 cél/s; correndo, a folga é de 2,4 cél/s. Contra o Boss, correr de lado
+durante o voo do bullet (0,67 s a 8 cél) afasta o Player 3,6 cél da linha,
+mais que o `PROJECTILE_HIT_RADIUS` de 0,3.
+Python, TypeScript e fixture compartilham os novos valores; a fixture foi
+regenerada com `python -m app.game.mirror`. O teste de geometria do acerto da
+fireball congela o Enemy, porque a 3,0 cél/s ele saía da parede em que o teste
+o encostava e entrava no caminho do tiro.
+Playtest coop e PvP com os novos valores pendente.
