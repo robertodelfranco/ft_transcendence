@@ -31,6 +31,8 @@ class ProjectileKind(StrEnum):
 
 class ActionKind(StrEnum):
 	FIRE = "fire"
+	CHARGE_START = "charge_start"
+	CHARGE_CANCEL = "charge_cancel"
 	DOOR = "door"
 
 
@@ -95,6 +97,7 @@ class Player:
 	input_queue: 		deque[Input | Action] = field(default_factory=deque)
 	last_input_seq:		int = 0
 	last_queued_seq:	int = 0 # maior seq que entrou na fila
+	charge_started_tick: int | None = None
 	fire_ready_tick:	int = 0 # Tick a partir do qual pode atirar de novo
 	kills: 				int = 0
 	frags: 				int = 0
@@ -139,6 +142,7 @@ class Projectile:
 	dy: 		float
 	state: 		ProjectileState = ProjectileState.MOVING
 	state_tick:	int = 0 # Tick em que entrou no state atual
+	damage_mult: int = 1 # fixado pelo servidor ao disparar
 
 
 @dataclass(slots=True)

@@ -16,6 +16,7 @@ import type { PlayerFeedbackState } from "./playerFeedback";
 export type GameMap = { grid: string[] };
 export type CameraView = Pick<PlayerSnapshot, "x" | "y" | "dx" | "dy"> & { pitch: number };
 export interface ViewState {
+  chargeSeconds?: number | null; // apresentação local; servidor valida a duração real
   feedback?: PlayerFeedbackState; // visual local; ausente equivale a nenhum efeito
   localPlayer: PlayerSnapshot;
   otherPlayers: PlayerSnapshot[];
@@ -144,7 +145,7 @@ export class ThreeRenderer implements Renderer {
       scene.add(this.fireballParticles.object);
       this.initialGrid = grid;
       this.doorTexture = assets.door;
-      this.handOverlay = new HandOverlay(assets.hand);
+      this.handOverlay = new HandOverlay(assets.hand, assets.handCharge);
       this.resources.push(this.handOverlay);
       this.playerFeedback = new PlayerFeedbackOverlay();
       this.resources.push(this.playerFeedback);
@@ -191,6 +192,7 @@ export class ThreeRenderer implements Renderer {
     this.fireballParticles?.update(view.projectiles, dt);
     // Bloom e conversão de cor da cena primeiro; a mão continua nítida por cima.
     this.composer.render(dt);
+    this.handOverlay?.updateCharge(view.chargeSeconds ?? null);
     this.handOverlay?.render(this.renderer);
     this.playerFeedback?.render(this.renderer, view.feedback);
   }

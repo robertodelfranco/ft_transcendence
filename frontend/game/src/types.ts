@@ -15,7 +15,7 @@ export interface Keys {
   sprint: boolean;
 }
 
-export type ActionKind = "fire" | "door";
+export type ActionKind = "fire" | "door" | "charge_start" | "charge_cancel";
 
 export interface JoinMessage {
   v: 1;

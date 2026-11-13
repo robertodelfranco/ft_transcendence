@@ -26,7 +26,7 @@ export const dungeonTheme: Theme = {
     bullet: "player/fireball_",
   },
   light: { ambient: 0xffffff, directional: 0xffffff, torch: 0xffaa55, flame: 0xffb347 },
-  fogDensity: 0.08,
+  fogDensity: 0.12, // ~90% de névoa a 12,6 cél: o Boss (BOSS_MIN_RANGE = 8) continua visível
 };
 
 export const sewerTheme: Theme = {
@@ -46,7 +46,7 @@ export const sewerTheme: Theme = {
   },
   // Paleta inicial do esgoto; não altera o orçamento de luzes e sombras.
   light: { ambient: 0xc3d9cf, directional: 0xb5d4cf, torch: 0x88ccaa, flame: 0xaaffcc },
-  fogDensity: 0.08,
+  fogDensity: 0.13, // um pouco mais densa que a do dungeon, ~90% a 11,7 cél
 };
 
 export const themes: Record<RoomOptions["theme"], Theme> = {
