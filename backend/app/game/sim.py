@@ -454,7 +454,8 @@ def _strike(room: Room, enemy: Enemy, events: list[Event]) -> None:
 		return
 	if (math.hypot(target.x - enemy.x, target.y - enemy.y) <= ENEMY_HIT_RANGE
 			and _clear_line(room.grid, enemy.x, enemy.y, target.x, target.y)):
-		_hurt_player(room, target, ENEMY_DAMAGE, None, "enemy", events)
+		# o coop fica mais punitivo com mais gente: 1, 2, 2, 3 e 3 HP de 1 a 5 Players
+		_hurt_player(room, target, ENEMY_DAMAGE + len(room.players) // 2, None, "enemy", events)
 
 
 def _hurt_player(room: Room, player: Player, amount: int, by: int | None, source: str,

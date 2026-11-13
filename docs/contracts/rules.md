@@ -56,7 +56,7 @@ O HP inicial e o teto da poção não são constantes: vêm de `options.start_hp
 | `ENEMY_ATTACK_RANGE` | cél | `1.0` | novo | Base C: `distance <= 0.7` vira `ATTACK` (`enemy_bonus/enemy_manage_bonus.c:62-65`); ajustado na #278 (§5.8) |
 | `ENEMY_HIT_RANGE` | cél | `2.0` | novo | Não existe no C, que dava o dano sem conferir a distância. Até onde o golpe ainda acerta no fim do `attack`, com linha livre até o alvo (#278, §5.8) |
 | `ENEMY_ATTACK_INTERVAL_S` | s | `0.77` | novo | Base C: 7 quadros de `0.2` s (`enemy_bonus/enemy_manage_bonus.c:17-23` e `:38`); no C o primeiro golpe saía em 0,8 s; ajustado na F4.7 (§5.6) e na #278 (§5.8) |
-| `ENEMY_DAMAGE` | HP | `1` | novo | `hp -= 1` (`enemy_bonus/enemy_manage_bonus.c:21`) |
+| `ENEMY_DAMAGE` | HP | `1` | novo | Base C: `hp -= 1` (`enemy_bonus/enemy_manage_bonus.c:21`). O golpe tira `ENEMY_DAMAGE + Players // 2`, contados na criação da Room: 1, 2, 2, 3 e 3 HP de 1 a 5 Players (#281) |
 | `ENEMY_DYING_S` | s | `1.5` | novo | 3 quadros de `0.5` s até `DEAD` (`enemy_bonus/enemy_manage_bonus.c:40-45`) |
 
 ### 2.4 Boss
