@@ -1,12 +1,14 @@
 # Caminho 4 — Web, usuários e i18n · Caio
 
-> Escopo da Slice 4, de ponta a ponta: o que é meu, o que eu faço sozinho, de quem eu dependo e o que eu explico na defesa. A alocação está no [plano §9](../catacombs42-plano-de-tarefas.md#9-divisão-entre-as-5-pessoas); as estimativas e os "pronto quando" são copiados do [plano §5](../catacombs42-plano-de-tarefas.md#5-tarefas-por-frente), sem reinterpretação. Calendário: [replanejamento-e-board.md](../pm/replanejamento-e-board.md) (C1 em 09/10, freeze em 14/11, defesa em 21/11). Vocabulário: [CONTEXT.md](../../CONTEXT.md).
+> Escopo da Slice 4, de ponta a ponta: o que é meu, o que eu faço sozinho, de quem eu dependo e o que eu explico na defesa. A alocação está no [plano §9](../catacombs42-plano-de-tarefas.md#9-divisão-entre-as-5-pessoas); as estimativas e os "pronto quando" são copiados do [plano §5](../catacombs42-plano-de-tarefas.md#5-tarefas-por-frente), sem reinterpretação. Calendário: [replanejamento-e-board.md](../pm/replanejamento-e-board.md) (C1 em 09/10, C5 em 13/11, entrega de tudo na `main` em 14/11, defesa com data a confirmar). Vocabulário: [CONTEXT.md](../../CONTEXT.md).
 >
 > Papel no time: **PO**. Contrato que eu escrevo: [i18n.md](../contracts/i18n.md). Contratos que eu assino: [auth.md](../contracts/auth.md), [ws-manager.md](../contracts/ws-manager.md), [mount-game.md](../contracts/mount-game.md) (`HudState` e `MountOptions`), [matches-api.md](../contracts/matches-api.md) e [room-options.md](../contracts/room-options.md).
 >
 > Base da primeira versão (07/10): a `main` mais os rascunhos de `feat/Auth` (`auth.md`, `ws-manager.md`) e de `contracts-decisions` (decisões de 06–07/10), todos mergeados desde então.
 >
-> **Atualizado em 11/11**: Estado das tarefas (§1) e das dependências (§5); divergências resolvidas e conferidas (§9). Na `main`: F0.4, F6.6, F6.7 e a F7 inteira, menos a F7.9. A F7.8 está com as telas prontas, e as rotas de conquistas e leaderboard do Akita já estão no ar (#158 ✅, #159 ✅). Em revisão: a barra de level com o `xp_level_start` (#225, PR #226). Em andamento: F7.9 (#212). A F9.1 espera o esqueleto do README (#117).
+> **Atualizado em 13/11**: Estado das tarefas (§1) e das dependências (§5), calendário até a entrega (§8) e divergências novas (§9). Na `main`: F0.4, F6.6, F6.7 e a F7 inteira, menos a parte 2 da F7.9. A F7.8 está integrada contra o backend real. Em revisão: F7.9 parte 2 (#212, PR #273) e a F9.1 com este slice (#274).
+>
+> Atualizado em 11/11: estado das tarefas (§1) e das dependências (§5); divergências resolvidas e conferidas (§9).
 >
 > Atualizado em 20/10: coluna de Estado (§1, §5), ordem de execução refeita a partir da S3 (§8) e divergências 8 a 12 (§9).
 
@@ -35,8 +37,8 @@
 | F7.5 | Perfil próprio e de terceiros, edição, upload de avatar, lista de amigos com status online | 2 | F6.6, F6.7 | S3 | Critérios do *Standard user management* visíveis | ✅ #201 (PR #204, 05/11) |
 | F7.6 | Rota `/play/:matchId` que monta `mountGame`; HUD em React (HP, mana, armadura, chaves, ping, players, placar e kill feed no PvP) via `onHud` | 2 | F2.5, F4.3 | S2–S3 | HUD reage ao Snapshot | ✅ #49: parte 1 (PR #138, 23/10) e HUD completa (PR #176, 28/10) |
 | F7.7 | Lobby: criar Room com opções de customização (e defaults visíveis), listar Rooms, entrar, pronto | 2 | F5.2, F4.5 | S2–S4 | Criar partida sem mexer em nada usa os defaults | ✅ #50: parte 1 (PR #134, 21/10); #209: parte 2, RoomOptions editáveis (PR #213, 05/11) |
-| F7.8 | Tela de resultado; histórico; estatísticas, ranking e level com barra de progresso; conquistas; leaderboard | 2,5 | F5.4–F5.8 | S4 | Os seis itens do módulo de estatísticas aparecem | 🔄 telas ✅ #214: resultado (PR #215) e histórico, estatísticas, conquistas e ranking (PR #218), 06/11. Barra de level com o `xp_level_start` em revisão (#225, PR #226). Rotas de conquistas e leaderboard do Akita no ar (#158 ✅, #159 ✅) |
-| F7.9 | Responsivo, acessibilidade básica, passada de console limpo em todas as telas | 1 | — | S5 | Console vazio navegando o site inteiro | 🔄 #212, desde 06/11. A passada de console fica por último; as rotas #158 e #159 já estão no ar ✅ |
+| F7.8 | Tela de resultado; histórico; estatísticas, ranking e level com barra de progresso; conquistas; leaderboard | 2,5 | F5.4–F5.8 | S4 | Os seis itens do módulo de estatísticas aparecem | ✅ telas #214: resultado (PR #215) e histórico, estatísticas, conquistas e ranking (PR #218), 06/11; barra de level com o `xp_level_start` (#225, PR #226). Integrada contra o backend real em 13/11: com partidas Solo, coop e PvP jogadas na stack, stats, level, conquistas, histórico, resultado e leaderboard bateram com a API sem mudança nas telas |
+| F7.9 | Responsivo, acessibilidade básica, passada de console limpo em todas as telas | 1 | — | S5 | Console vazio navegando o site inteiro | 🔄 #212. Parte 1 ✅ (PR #242, revertido no #247 e reaplicado no #251). Parte 2 em revisão (PR #273): corrige a HUD (`<dl>` inválida, contraste dos rótulos de estado, mira sobre a contagem); 0 violações do axe-core em 60 telas, sem rolagem horizontal a 320 e 360 px, Lighthouse Accessibility 100 e console limpo nos 3 idiomas, com os erros de rede aceitos listados na #212 |
 
 ### F6.6–F6.7 — backend de perfil e amigos (3,5 d)
 
@@ -49,7 +51,7 @@ As rotas exatas de F6.6 e F6.7 estão no [i18n.md](../contracts/i18n.md) §2.7. 
 
 ### F9 — de todos
 
-F9.1 (minha parte do README) na S5; F9.2 (ensaio) na S6. A F9.1 espera o esqueleto do README (F8.5, #117, Akita).
+F9.1 (minha parte do README) em revisão (#274), sobre o esqueleto do F8.5 (#117 ✅): Features List, módulos 5, 7 (perfil e amigos) e 13, Individual Contributions e Resources. F9.2 (ensaio) antes da defesa.
 
 ## 2. Fronteiras: o que é meu e o que não é
 
@@ -65,7 +67,7 @@ F9.1 (minha parte do README) na S5; F9.2 (ensaio) na S6. A F9.1 espera o esquele
 | Tabelas `users` e `friendships` | **Não** | Augusto escreve o schema; a migração inicial é do Akita. Eu só leio e escrevo linhas por cima dela |
 | Presença (quem está online) | **Não** | Augusto (F2.1, `ConnectionManager` e `/ws/app`). Eu consulto `is_online` em F6.7 e escuto `presence` na casca |
 | Rotas de lobby, histórico, estatísticas, leaderboard | **Não** | Akita ([matches-api.md](../contracts/matches-api.md)). Eu faço as telas |
-| Volume `/media` e `location /media/` no Nginx | **Não** | Akita ([infra.md](../contracts/infra.md)). Eu gravo o arquivo e a URL | ⏳ |
+| Volume `/media` e `location /media/` no Nginx | **Não** | Akita ([infra.md](../contracts/infra.md)). Eu gravo o arquivo e a URL |
 | Catálogo de RoomOptions e de Maps | **Não** | Rafael (F4.5, [room-options.md](../contracts/room-options.md)) e Akita (validação no `POST /api/matches`) |
 | Lista de conquistas e fórmulas de XP e Elo | **Não** | Rafael (F4.6), implementadas pelo Akita. Eu traduzo o `code` e desenho a barra de progresso |
 | Botões de OAuth | **Sim**, o botão | O fluxo é do Akita (F6.8); o botão é só um link para `/api/auth/oauth/{provider}/login` |
@@ -113,11 +115,11 @@ Nada aqui espera ninguém. É por onde eu começo quando algo travar.
 | **F8.2 / F8.4**: CI com lint e `vitest`; build de produção | Akita | a regra `no-literal-string` só vale se rodar no CI | S1 / S2 | ✅ CI no PR #53; F8.4 ✅ (#31) |
 | Volume `/media` e `location /media/` no Nginx | Akita | avatar servido (F6.6) | S3 | ✅ #120 (20/10) |
 | **F5.2**: lobby no backend; `GET /api/maps` ou equivalente | Akita | F7.7 (C2: "um player cria Room no lobby") | S2 | ✅ rotas e `GET /api/maps` (#84); publicação no `/ws/app` (#128, 20/10); Maps de `pvp` no PR #198 (03/11) |
-| **F5.3–F5.8**: resultado, histórico, stats, Elo, conquistas, leaderboard | Akita | F7.8 integrada | S4 | 🔄 F5.3 ✅ (#115; `MatchDetail` em `GET /api/matches/{id}/result`, #155); F5.4 e F5.5 ✅ (#156, #157, PR #222) e F5.6 ✅ (#116, PR #223), 06/11; F5.7 conquistas (#158) ✅ e F5.8 leaderboard (#159) ✅ |
+| **F5.3–F5.8**: resultado, histórico, stats, Elo, conquistas, leaderboard | Akita | F7.8 integrada | S4 | ✅ F5.3 (#115; `MatchDetail` em `GET /api/matches/{id}/result`, #155); F5.4 e F5.5 ✅ (#156, #157, PR #222) e F5.6 ✅ (#116, PR #223), 06/11; F5.7 conquistas (#158) ✅ e F5.8 leaderboard (#159) ✅ |
 | **F2.5**: `mountGame` real; **F4.3**: especificação da HUD | Augusto (F2.5) e Rafael (F4.3) | F7.6 integrada | S2 | ✅ `mountGame` (#109); especificação da HUD (#142, 03/11) |
 | **F4.5**: catálogo de RoomOptions; **F4.6**: `code` das conquistas | Rafael | F7.7 (opções no lobby), F7.8 (nomes das conquistas) | S3 | ✅ F4.5 ([room-options.md](../contracts/room-options.md)); F4.6 (#119, 23/10) |
 | Estrutura do `frontend/` combinada | Rafael | a branch `front` dele cria `package.json` na raiz (§9, item 1) | **antes de F0.4** | ✅ F0.4 (PR #53) |
-| **F8.5**: esqueleto do README com as seções do cap. VI | Akita | F9.1 (minha parte do README) | S5 | ⏳ #117 |
+| **F8.5**: esqueleto do README com as seções do cap. VI | Akita | F9.1 (minha parte do README) | S5 | ✅ #117 (PR #233, 10/11) |
 
 **Dependência cruzada que eu devo a outros:** o Augusto precisa do meu `i18n.md` para fechar o `auth.md`; o Akita precisa dele para o `infra.md` e da minha lista de campos para o `matches-api.md`; o Rafael e o Akita precisam do F0.4 para o `dev.html` e para o CI. **O `i18n.md` e o F0.4 são o meu caminho crítico para o time.**
 
@@ -182,8 +184,10 @@ No calendário replanejado ([replanejamento-e-board.md](../pm/replanejamento-e-b
 | **S2** · 11–17/10 | ✅ **F7.1** (PR #99, sem o `/ws/app`) · ✅ **F7.4** (PR #112) · ~~F7.7 parte 1~~ e ~~F7.6 parte 1~~ passaram para a S3 (o `/ws/app` entrou em 16/10 e o `mountGame` em 19/10) → **C2 (16/10)** sem a minha parte | ≈ 4,5 |
 | **S3** · 18–24/10 | **F7.7 parte 1** (#50: listar ao vivo, criar com defaults, sala de espera, mais o `/ws/app` com reconexão da F7.1), até qua 21/10 · **F7.6 parte 1** (#49): `/play/:matchId` montando o `mountGame` real, com HUD mínima, qui–sex 22–23/10 → **C3 (23/10)** · início da **F6.6** no fim de semana | ≈ 5 |
 | **S4** · 25–31/10 | **F6.6** fecha · **F6.7** · **F7.5** · **F7.7 parte 2**: RoomOptions editáveis · **F7.6 parte 2**: HUD completa · **F7.8** contra os exemplos do `matches-api.md` · **F7.1** fecha quando o F6.3 do Augusto chegar | ≈ 9 ⚠️ |
-| **S5** · 01–14/11 *(duas semanas)* | **F7.3** · **F7.2** traduções completas · **F7.9** · integração da **F7.8** · checklist de PO em todos os módulos (§11) · **F9.1** | ≈ 4,5 + folga |
-| **S6** · 15–21/11 | bug, tradução, README fechado, ensaio | — |
+| **S5** · 01–14/11 *(duas semanas)* | ✅ **F7.3** · ✅ **F7.2** traduções completas · **F7.9** (parte 1 ✅, parte 2 no PR #273) · ✅ integração da **F7.8** (13/11) · checklist de PO em todos os módulos (§11) no C5 (13/11) · **F9.1** (#274) → **entrega de tudo na `main` em 14/11** | ≈ 4,5 + folga |
+| **S6** · depois de 14/11 | ensaio da defesa (F9.2), com as quatro modificações rápidas da §10; defesa com data a confirmar | — |
+
+**Replanejamento de 13/11.** A entrega passou para sáb 14/11: código, README e este slice na `main` até lá. A S6 deixa de ter bug, tradução e README, e fica só com o ensaio. Escopo novo aberto em 11–12/11 (#241, #252, #253) só entra se o time decidir que cabe antes de 14/11 (§9, itens 13 e 14).
 
 **Replanejamento de 20/10.** A S2 fechou com F7.1 (sem o `/ws/app`) e F7.4 na `main`, mas sem a minha parte do C2 (o lobby e o `/play`), que passa para o começo da S3. O C3 precisa das duas: sem lobby ninguém cria a Room, e sem `/play` ninguém sai dela para o jogo. Por isso a F6.6 escorrega para o fim da S3 e a F6.7 para a S4. **A S4 fica com ≈ 9 d numa semana de 5**: pela regra do plano §8.1, vai para a reunião de segunda (26/10) com a proposta de corte dentro da tarefa: F7.8 só contra os mocks na S4, com a integração na S5 (que já depende do F5.4–F5.8 do Akita), e a HUD completa (F7.6 parte 2) limitada ao que a especificação do Rafael (F4.3) tiver até lá.
 
@@ -212,6 +216,9 @@ Registro aqui e aviso o dono de cada arquivo, em vez de implementar por um docum
 10. **Nenhum Map de `pvp`** em `backend/maps/pvp/` (20/10): o `GET /api/maps` devolve `pvp: []`, e o formulário mostra o Mode sem Map. Rafael e Roberto. **Resolvido em 03/11 (PR #198, Rafael):** `pvp_crossroads` e `pvp_ring`. A issue #197 (F4.4) continua aberta, e o Rafael é quem fecha.
 11. **Falha de conexão do WebSocket aparece no console do Chrome** quando o backend está fora, como o 401 do login ([i18n.md](../contracts/i18n.md) "Em aberto" 7). A espera crescente limita; a demo é feita com a stack no ar.
 12. **Nomes dos Maps na tela são provisórios** (20/10). O `game.json` traz `dungeon_map`, `enemy` e `enemy_sewer` traduzidos ("Masmorra", "Salões inimigos", "Salões do esgoto") para o lobby não mostrar nome de arquivo. Conteúdo é do Rafael: ele confirma ou troca, nos três idiomas. Map sem chave mostra o nome do arquivo ([i18n.md](../contracts/i18n.md) §2.2). Os dois Maps de `pvp` também ganharam nome provisório ("Encruzilhada" e "Anel"), e continua valendo a confirmação do Rafael.
+13. **Solo e coop depois do #270 (#241)** (13/11). O backend passou a exigir 2 Players para iniciar uma Room de coop com 2 ou mais vagas; a de 1 vaga é o Solo e começa com 1. A sala de espera já lê o `min_players` do `RoomInfo`, então acompanha sem mudança. Ficaram desatualizados o mock (`lobbyHandlers.ts` devolve `min_players: 1` para todo coop) e o comentário do `MIN_PLAYERS` em `roomOptions.ts`. A parte de tela da #241 (rótulo "Solo", início automático) não começou: decidir com o time se entra antes de 14/11.
+14. **Escopo visual novo na HUD** (13/11). A #252 (fonte de jogo) não começou. Da #253, os ícones dos recursos já entraram no #261, como SVG em vez de sprites; faltam as barras pelo Theme e a moldura dos painéis. As duas estão sem dono; a proposta é deixá-las para depois da entrega, porque mudam o visual de várias telas e obrigam a refazer a passada de responsivo e contraste da F7.9.
+15. **A HUD compacta (#261) e a mira (#266) trouxeram regressões de acessibilidade** (13/11): a `<dl>` dos recursos ficou com `div` dentro de `div`, os rótulos "morto" e "desconectado" ficaram com contraste 3,1–3,4 por causa de um `opacity` no pai, e a mira passou a cobrir a contagem. O jsdom não pega nenhuma delas; a passada no Edge pegou. **Resolvido no PR #273**, com testes; o Rafael foi avisado no PR.
 
 ## 10. O que eu explico na defesa
 
