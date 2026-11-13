@@ -10,7 +10,7 @@ export const ERROR_CODES = [
   // matches-api.md §2.6
   "match_not_found", "user_not_found", "room_full", "already_in",
   "already_in_other_match", "not_in_match", "not_host", "not_enough_players",
-  "already_started", "invalid_options", "map_not_found",
+  "not_all_ready", "already_started", "invalid_options", "map_not_found",
   "match_not_finished", "match_aborted",
 
   // ws-manager.md §2.8

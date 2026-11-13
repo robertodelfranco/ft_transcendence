@@ -86,6 +86,10 @@ class NotEnoughPlayers(RoomError):
 	code = "not_enough_players"
 
 
+class NotAllReady(RoomError):
+	code = "not_all_ready"
+
+
 # ---------- RoomInfo (rooms.md §2.3) ----------
 
 def iso(moment: datetime) -> str:
@@ -256,6 +260,9 @@ class RoomManager:
 		minimum = start_minimum(entry.mode, entry.max_players)
 		if len(entry.seats) < minimum:
 			raise NotEnoughPlayers(f"match {match_id} has {len(entry.seats)}/{minimum} players")
+		waiting = sum(not seat.ready for seat in entry.seats.values())
+		if waiting:
+			raise NotAllReady(f"match {match_id} waits for {waiting} player(s) to be ready")
 		players = [(user_id, seat.username) for user_id, seat in entry.seats.items()]
 		# a Room nasce congelada: espera os Players e conta 3, 2, 1 (#255)
 		entry.room = create_room(match_id, entry.mode, entry.game_map, entry.options, players,

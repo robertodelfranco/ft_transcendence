@@ -54,6 +54,7 @@
     "start": "Start match",
     "needPlayers_one": "At least {{count}} player is needed to start.",
     "needPlayers_other": "At least {{count}} players are needed to start.",
+    "needReady": "Everyone must be ready to start, you included.",
     "waitingHost": "Waiting for the host to start the match.",
     "notMember": "You are not in this room.",
     "join": "Join this room",
