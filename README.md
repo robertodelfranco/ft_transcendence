@@ -1,10 +1,8 @@
-*This project has been created as part of the 42 curriculum by \<login1\>, acesar-m, \<login3\>, \<login4\>, gyasuhir.*
+*This project has been created as part of the 42 curriculum by \<login1\>, acesar-m, \<login3\>, cbrito-s, gyasuhir.*
 
 > **TODO F9.1 (@robertodelfranco):** replace one `<loginN>` above with your 42 intra login.
 >
 > **TODO F9.1 (@rflheringer):** replace one `<loginN>` above with your 42 intra login.
->
-> **TODO F9.1 (@caioosantos):** replace one `<loginN>` above with your 42 intra login.
 
 # Catacombs 42
 
@@ -429,8 +427,8 @@ Win/loss statistics are always read from `match_players.won`, never from `matche
 | Sign up and log in with e-mail and password | Accounts with a unique e-mail and username; passwords hashed with Argon2id; the same error for a wrong e-mail or a wrong password; repeated failed logins are rate-limited (`429`) | Augusto (backend), Caio (screens) |
 | Sessions: access token + rotating refresh cookie | 15-minute access token kept in memory; refresh token in an `HttpOnly` cookie, rotated on every use, with reuse detection that revokes the whole session; logout revokes the current session | Augusto |
 | Log in with 42 (OAuth 2.0) | Authorization Code flow with the 42 intra, protected by a signed `state` cookie; the first login creates the account, or links it to the existing account with the same e-mail; it ends with the same tokens as the e-mail login | Akita (backend), Caio (button) |
-| Profile, avatar upload and settings | **TODO F9.1 (@caioosantos)** | Caio |
-| Friends and online status | **TODO F9.1 (@caioosantos)** | Caio, Augusto (presence over `/ws/app`) |
+| Profile, avatar upload and settings | A profile page for every user (avatar, level, stats, achievements and match history); change the username and the preferred language; upload an avatar (PNG, JPEG or WebP up to 2 MiB), checked in the browser and again on the server, which re-encodes it as a 256 × 256 PNG with no metadata, or go back to the default one | Caio |
+| Friends and online status | Search users by the start of their name; add and remove friends (one-way: no request to accept); the friends list shows who is online and changes live when a friend opens or closes the site | Caio, Augusto (presence over `/ws/app`) |
 | Real-time Lobby: create, join, ready, start | Create a Room with a map, a capacity and options; list the open Rooms; join, leave, mark ready, pick a character and start. Every change reaches every open tab right after it is saved. A user is in one Room at most, the last free seat goes to one player only, and a user who goes offline leaves the Lobby. A Solo Room starts with one player; every other Room needs two | Akita (backend), Caio (screen), Augusto (connection manager) |
 | Authoritative game simulation (co-op) | **TODO F9.1 (@robertodelfranco)** | Roberto |
 | PvP 1v1 rules | **TODO F9.1 (@robertodelfranco)** | Roberto |
@@ -440,12 +438,12 @@ Win/loss statistics are always read from `match_players.won`, never from `matche
 | 3D rendering, themes and visual effects | **TODO F9.1 (@rflheringer)** | Rafael |
 | Audio | **TODO F9.1 (@rflheringer)** | Rafael |
 | Maps, balance and Room options | **TODO F9.1 (@rflheringer)** | Rafael |
-| HUD | **TODO F9.1 (@caioosantos)** | Caio (implementation), Rafael (specification) |
+| HUD | A React layer over the game canvas, fed by the game through one callback: HP, mana, armor and keys; the players in co-op, or the score, time left and kill feed in PvP; ping; the countdown, death and reconnection notices; the controls. Low HP has a text label, not only a color; on narrow screens the HUD moves below the canvas. The canvas itself has no text | Caio (implementation), Rafael (specification) |
 | Minimap | **TODO F9.1 (@robertodelfranco)** | Roberto |
 | Match recording, stats, XP/levels and Elo | When a match ends, the server records it exactly once, in one transaction: each player's numbers, the stats per mode, XP and level, and the Elo in PvP (starts at 1000, K = 32). Matches left unfinished by a restart are marked `aborted` at startup | Akita (backend), Caio (screens) |
 | Match history, achievements and leaderboard | Paginated history (mode, map, result, duration, teammates or opponent); 7 achievements, unlocked at the end of a match and shown on the profile; a leaderboard per mode by Elo, XP, wins or kills | Akita (backend), Rafael (achievement design), Caio (screens) |
-| Three languages (i18n) | **TODO F9.1 (@caioosantos)** | Caio |
-| Privacy Policy and Terms of Service | **TODO F9.1 (@caioosantos)** | Caio |
+| Three languages (i18n) | Portuguese (Brazil), English and Spanish on every screen, the HUD, the legal pages and the backend errors; a language selector on every page, saved to the profile; a lint rule and tests keep every text translated | Caio |
+| Privacy Policy and Terms of Service | Real content in the three languages, readable without logging in and linked from the footer of every page: what data we keep, why, for how long and how to have it deleted; the rules for using the site | Caio |
 | HTTPS, Docker Compose and CI | One `docker compose up` starts the 8 services; only Nginx publishes ports, with HTTPS and `wss://` everywhere. A GitHub Actions run on every pull request starts the whole stack and probes it over HTTPS, checks the migrations, and runs the backend and frontend tests, the lint and the build | Akita |
 | Monitoring: metrics, dashboards and alerts | Prometheus scrapes the backend, the host and the database; 3 Grafana dashboards and 4 alerting rules, all provisioned from versioned files (see *Monitoring guide*) | Akita, Augusto (backend metrics) |
 
@@ -507,7 +505,19 @@ We did not use a custom "Module of choice".
 
 ### 5. Frontend and backend frameworks — Major (2)
 
-> **TODO F9.1 (@caioosantos):** why we chose it and how it was implemented.
+**Why:** the site is a single-page application with many screens that share one session (Lobby, match, profile, stats), and the backend serves a REST API, two WebSockets and the game loop in one process. React with TypeScript gives typed screens built from small components; FastAPI is async from end to end, with native WebSockets and Pydantic validation at the boundary (see *Technical Stack*).
+
+**How (frontend, Caio):**
+
+- **One package in `frontend/`:** Vite, React 19, TypeScript and Tailwind CSS 4. The shell lives in `src/` and the game in `game/`; an ESLint rule forbids the game from importing anything from the shell, so the only door between them is `mountGame` (ADR 003).
+- **Routes:** React Router, with public pages (home, login, sign-up, legal pages, 404) and every other page behind one guard that sends a visitor without a session to the login.
+- **Session:** an `AuthContext` keeps the access token in memory only, never in `localStorage`, so a script injected into the page cannot steal a long-lived credential; the refresh token stays in its `HttpOnly` cookie. On load the context asks `/api/auth/refresh` whether there is a session, and it renews the token at 80 % of its lifetime.
+- **One HTTP client** for every call: it adds the token, turns the error envelope into a typed error with its `code`, and on a `401` refreshes once and retries. Calls that need a refresh at the same time share a single request.
+- **No data library:** a small `useApi` hook fetches what a screen reads and drops a late answer that belongs to the previous page, so every line can be explained.
+- **The game stays outside React:** the `/play` page owns the canvas and calls `mountGame`; the game reports through `onHud` and `onEnd`, and React draws the HUD and the result screen. The game loop never re-renders React.
+- **Tests:** Vitest, Testing Library and MSW. The mocks were written from the JSON examples in the contracts, so each screen was built and tested before its backend route existed; the same mocks run the site without a backend (`VITE_MOCK_API=1`).
+
+**How (backend):** the FastAPI package, the settings, the error envelope and the middlewares are Augusto's (see module 7). My routes (profile, avatar, friends and user search) are built on them, with the same `CurrentUser`, database session and `RateLimit` dependencies.
 
 ### 6. ORM — Minor (1)
 
@@ -537,7 +547,17 @@ The user and token models are Augusto's; the match, stats and achievement models
 - `CurrentUser`, a FastAPI dependency, protects every authenticated route; `authenticate_ws_token` does the same for both WebSockets.
 - Rate limits as dependencies: 5 failed logins per minute per IP, plus caps on sign-up and refresh.
 
-Profile, avatar, friends and the screens are Caio's part of this module.
+**How (profile and friends, Caio):**
+
+- **Profile:** `GET /api/users/{id}` for any user and `PATCH /api/users/me` for the username and the preferred language, validated with the same rules as the sign-up. The database's `UNIQUE` constraint, not an earlier `SELECT`, decides a taken username (`409 username_taken`).
+- **Avatar** (`PUT` and `DELETE /api/users/me/avatar`):
+  - the browser checks the type and the size before uploading, and the server checks again;
+  - the server reads at most 2 MiB, identifies the format by the content with Pillow (PNG, JPEG or WebP; never by the extension or the `Content-Type`) and refuses images over 4096 × 4096 pixels;
+  - it re-encodes every avatar as a 256 × 256 PNG with no metadata, under a new random name, so it never serves the file as it was sent;
+  - Nginx serves the files from `/media/avatars/`; without an avatar, or after a `DELETE`, the user gets the default one.
+- **Friends:** add, remove and list under `/api/users/me/friends`. A friendship is one-way: one row, no request to accept. The `online` field comes from the `ConnectionManager`, and `presence` messages on `/ws/app` keep the list live.
+- **Search:** `GET /api/users` by the start of a username (escaped, so `_` is not a wildcard), limited to 60 searches per minute per user.
+- **Screens:** sign-up and login with the same validation as the backend, `/settings`, `/friends` and the profile page.
 
 ### 8. OAuth 2.0 — Minor (1)
 
@@ -615,7 +635,20 @@ The dashboards, the alerts and how to trigger one live are in the *Monitoring gu
 
 ### 13. Multiple languages — Minor (1)
 
-> **TODO F9.1 (@caioosantos):** why we chose it and how it was implemented.
+**Why:** the team speaks Portuguese, the players at 42 speak Portuguese, Spanish or English, and a game that mixes languages on one screen looks unfinished. Building i18n from the first component cost much less than translating a finished site.
+
+**How:**
+
+- **react-i18next**, with Portuguese (Brazil), English and Spanish in 8 namespaces per language (`frontend/src/locales/`), bundled in the build: changing the language needs no request.
+- **Which language is used:** after login, the one saved in the profile; before it, the last choice saved in the browser, then the browser's own languages (`pt-*`, `es-*`, `en-*`), then English. `<html lang>` follows the current language.
+- **A selector on every page**, in the header. With a session, the choice is saved to the profile (`PATCH /api/users/me`), so it follows the user to another computer.
+- **The backend never sends a sentence to show.** Errors carry a `code`, plus one per invalid field, and the frontend translates them. The same goes for the reasons a match ends, the map names and the achievements.
+- **Plurals and formats:** i18next handles plurals and variables; numbers, percentages and dates use `Intl` in the current language.
+- **Legal pages:** one Markdown file per language and per page, rendered with react-markdown and loaded only when opened.
+- **Nothing left untranslated:**
+  - the ESLint rule `i18next/no-literal-string` fails the lint, and so the CI, on any literal text in JSX;
+  - a test checks that the three languages have the same namespaces and keys, no empty text, the same `{{variables}}`, and a translation for every error `code` the backend can send.
+- **The game canvas has no text:** everything written during a match is the React HUD, translated like any other screen.
 
 ## Monitoring guide
 
@@ -679,7 +712,28 @@ The dashboards, the alerts and how to trigger one live are in the *Monitoring gu
 
 ### Caio Santos — Product Owner
 
-> **TODO F9.1 (@caioosantos):** what you built (features, modules, components), and the challenges you faced and how you overcame them.
+**What I built**
+
+- **Product owner:** the subject checklist, module by module, run at each checkpoint: a module only goes into this README if every item passes on screen. The i18n contract (`docs/contracts/i18n.md`: languages, error codes, avatar rules, user API).
+- **Frontend foundation:** the `frontend/` package (Vite, React, TypeScript, Tailwind, ESLint, Vitest), shared with the game.
+- **Web shell:** routes and protected pages, the session context, the HTTP client, the `/ws/app` client with reconnection and backoff, the language selector.
+- **Screens:**
+  - home, login and sign-up, with the same validation as the backend;
+  - the Lobby: the live list of Rooms, the creation form with the Room options and their defaults, the waiting room;
+  - the `/play` page and the HUD;
+  - the result screen, the profile (stats, level bar, achievements, history) and the leaderboard;
+  - friends, settings, the legal pages and the 404.
+- **Backend:** profile, avatar, friends and user search, with their tests.
+- **Three languages** on every screen, and the Privacy Policy and Terms of Service.
+- **Final pass:** responsive layout, accessibility and a clean console on every page.
+
+**Challenges**
+
+- **A clean console when the browser logs on its own.** Chrome writes every non-2xx response to the console in red, and no code can hide it. So every error the site could avoid, it avoids: `/refresh` without a cookie answers `200` with `{"authenticated": false}` instead of a `401`, the token is renewed before it expires, and an invalid id in a URL is refused before any request. The few that cannot be avoided, like a wrong password (`401`), are a real answer from the server, and we list them on purpose.
+- **Building screens before the backend.** Most of my screens depended on routes from Akita and Augusto that did not exist yet. I wrote the mocks from the examples in the contracts, so the screens and their tests were ready first. When the real routes arrived, integrating was mostly checking: the stats screens matched the real backend without a change.
+- **React from a basic level.** I studied each topic before the task that needed it (routing, context, effects with cleanup, testing), and kept the dependencies small, without a data library, so that I can explain every line.
+- **Tests that wait for the right thing.** The legal pages load on demand, which turns navigation into a transition: the old page stays until the new one arrives, so the tests must wait for it, not read the page right away. A test that waited only 1 s failed now and then on a cold first load; it got more time.
+- **What jsdom cannot see.** jsdom computes no layout and no real colors, so the final accessibility pass ran in a real browser: every screen in the three languages, at 320 and 360 px, with axe-core inside. It found what the unit tests missed: HUD labels that a parent `opacity` pushed below the 4.5:1 contrast ratio, and an invalid `<dl>`. Both were fixed, with tests.
 
 ### Gabriel Kanashiro (Akita) — Project Manager
 
@@ -729,6 +783,8 @@ The dashboards, the alerts and how to trigger one live are in the *Monitoring gu
 - [PostgreSQL: explicit locking](https://www.postgresql.org/docs/16/explicit-locking.html) · [PostgreSQL: `INSERT … ON CONFLICT`](https://www.postgresql.org/docs/16/sql-insert.html#SQL-ON-CONFLICT) · [Alembic: autogenerate and `alembic check`](https://alembic.sqlalchemy.org/en/latest/autogenerate.html)
 - [Prometheus: unit testing for rules](https://prometheus.io/docs/prometheus/latest/configuration/unit_testing_rules/) · [node-exporter](https://github.com/prometheus/node_exporter) · [postgres-exporter](https://github.com/prometheus-community/postgres_exporter) · [Grafana behind a reverse proxy](https://grafana.com/tutorials/run-grafana-behind-a-proxy/)
 - [Nginx `log_format`](https://nginx.org/en/docs/http/ngx_http_log_module.html#log_format) · [mkcert](https://github.com/FiloSottile/mkcert) · [GitHub Actions](https://docs.github.com/en/actions)
+- [React Router](https://reactrouter.com/) · [react-i18next](https://react.i18next.com/) · [MDN: Using Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch) · [MDN: WebSocket](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket) · [Pillow](https://pillow.readthedocs.io/)
+- [Vitest](https://vitest.dev/) · [Testing Library](https://testing-library.com/docs/react-testing-library/intro/) · [MSW](https://mswjs.io/) · [WAI-ARIA Authoring Practices](https://www.w3.org/WAI/ARIA/apg/) · [axe-core](https://github.com/dequelabs/axe-core) · [Lighthouse](https://developer.chrome.com/docs/lighthouse/)
 
 **Articles and tutorials**
 
