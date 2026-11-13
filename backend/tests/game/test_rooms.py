@@ -123,7 +123,7 @@ async def test_room_info_has_the_shape_of_the_contract_example(manager):
 async def test_create_makes_an_empty_lobby_without_a_task(manager):
 	manager.create(12, Mode.COOP, "arena", 5, RoomOptions(), created_by=7)
 	info = manager.info(12)
-	assert (info.status, info.map, info.min_players, info.players) == ("lobby", "arena", 1, ())
+	assert (info.status, info.map, info.min_players, info.players) == ("lobby", "arena", 2, ())
 	assert manager.game_room(12) is None
 	assert room_tasks() == []
 
@@ -215,8 +215,8 @@ async def test_character_cannot_change_another_players_seat(manager):
 
 
 async def test_list_open_shows_only_lobbies(manager):
-	lobby(manager, match_id=12)
-	lobby(manager, match_id=13, players=(9,))
+	lobby(manager, match_id=12, max_players=1)
+	lobby(manager, match_id=13, players=(9,), max_players=1)
 	manager.start(13)
 	assert [info.match_id for info in manager.list_open()] == [12]
 
@@ -227,6 +227,25 @@ async def test_pvp_needs_two_players(manager):
 	lobby(manager, mode=Mode.PVP, max_players=2)
 	with pytest.raises(NotEnoughPlayers, match="1/2"):
 		manager.start(12)
+
+
+@pytest.mark.parametrize("max_players", [2, 5])
+async def test_coop_with_room_for_more_needs_two_players(manager, max_players):
+	# #241: só o Solo (1 vaga) começa com uma pessoa
+	lobby(manager, max_players=max_players)
+	assert manager.info(12).min_players == 2
+	with pytest.raises(NotEnoughPlayers, match="1/2"):
+		manager.start(12)
+	manager.join(12, 9, "user9", AVATAR)
+	manager.start(12)
+	assert manager.info(12).status == "running"
+
+
+async def test_solo_starts_with_one_player(manager):
+	lobby(manager, max_players=1)
+	assert manager.info(12).min_players == 1
+	manager.start(12)
+	assert manager.info(12).status == "running"
 
 
 async def test_start_creates_the_simulation_room_in_order_of_arrival(manager):
@@ -322,7 +341,7 @@ async def test_game_over_frees_the_players_before_the_animation_ends(manager, mo
 
 async def test_the_ticks_after_game_over_stop_after_the_animation(manager):
 	# nos 60 s seguintes a Room só espera: nada de 30 Hz de CPU e Snapshot para uma partida acabada
-	lobby(manager)
+	lobby(manager, max_players=1)
 	manager.start(12)
 	room = manager.game_room(12)
 	end_game(manager)
@@ -335,7 +354,7 @@ async def test_the_ticks_after_game_over_stop_after_the_animation(manager):
 
 async def test_the_room_is_removed_after_its_ttl(manager, monkeypatch):
 	monkeypatch.setattr(rooms, "ROOM_TTL_S", 0)
-	lobby(manager)
+	lobby(manager, max_players=1)
 	manager.start(12)
 	(task,) = room_tasks()
 	end_game(manager)
@@ -383,7 +402,7 @@ async def test_unlocked_achievements_go_to_the_players(manager, connections, fak
 async def test_a_failed_record_is_logged_and_the_room_still_ends(manager, results, monkeypatch, caplog):
 	monkeypatch.setattr(rooms, "ROOM_TTL_S", 0)
 	results.fail = True
-	lobby(manager)
+	lobby(manager, max_players=1)
 	manager.start(12)
 	(task,) = room_tasks()
 	end_game(manager)
@@ -406,7 +425,7 @@ async def test_one_failing_step_is_logged_and_the_room_goes_on(manager, monkeypa
 		return real_step(room, dt)
 
 	monkeypatch.setattr(rooms, "step", flaky_step)
-	lobby(manager)
+	lobby(manager, max_players=1)
 	manager.start(12)
 	await until(lambda: manager.game_room(12).tick >= 3)
 	assert manager.info(12).status == "running"
@@ -447,7 +466,7 @@ async def test_a_snapshot_that_always_fails_also_closes_the_room(manager, connec
 
 	monkeypatch.setattr(rooms, "to_snapshot", broken_snapshot)
 	monkeypatch.setattr(rooms, "MAX_STEP_FAILURES", 3)
-	lobby(manager)
+	lobby(manager, max_players=1)
 	ws = fake_ws()
 	await connections.connect(7, "game", ws, match_id=12)
 	manager.start(12)
@@ -468,7 +487,7 @@ async def test_a_failed_abort_is_logged_and_the_room_still_closes(manager, conne
 	monkeypatch.setattr(rooms, "step", broken_step)
 	monkeypatch.setattr(rooms, "MAX_STEP_FAILURES", 3)
 	monkeypatch.setattr(manager, "_abort_match", broken_abort)
-	lobby(manager)
+	lobby(manager, max_players=1)
 	ws = fake_ws()
 	await connections.connect(7, "game", ws, match_id=12)
 	manager.start(12)
@@ -480,7 +499,7 @@ async def test_a_failed_abort_is_logged_and_the_room_still_closes(manager, conne
 
 async def test_the_tick_task_does_not_carry_the_request_id_of_the_start(manager):
 	# o start roda dentro do POST /start; o log do tick não pode sair com o id daquela requisição
-	lobby(manager)
+	lobby(manager, max_players=1)
 	token = current_request_id.set("3f2b9c00-0000-4000-8000-000000000000")
 	try:
 		manager.start(12)
@@ -491,8 +510,8 @@ async def test_the_tick_task_does_not_carry_the_request_id_of_the_start(manager)
 
 
 async def test_close_cancels_every_tick_task(manager):
-	lobby(manager, match_id=12)
-	lobby(manager, match_id=13, players=(9,))
+	lobby(manager, match_id=12, max_players=1)
+	lobby(manager, match_id=13, players=(9,), max_players=1)
 	manager.start(12)
 	manager.start(13)
 	tasks = room_tasks()
@@ -502,7 +521,7 @@ async def test_close_cancels_every_tick_task(manager):
 
 
 async def test_close_also_cancels_a_finished_room_waiting_its_ttl(manager):
-	lobby(manager)
+	lobby(manager, max_players=1)
 	manager.start(12)
 	(task,) = room_tasks()
 	end_game(manager)
@@ -602,7 +621,7 @@ async def test_who_never_opens_the_socket_expires_counting_from_the_start(manage
 async def test_a_disconnect_after_game_over_starts_no_grace_period(manager, monkeypatch,
 		short_grace):
 	monkeypatch.setattr(rooms, "DYING_TICKS", 10_000) # o Tick continua andando depois do game_over
-	lobby(manager)
+	lobby(manager, max_players=1)
 	manager.start(12)
 	room = manager.game_room(12)
 	manager.player_connected(12, 7)
@@ -666,7 +685,7 @@ async def test_the_socket_closing_after_abandon_starts_no_grace_period(manager, 
 
 async def test_abandon_after_game_over_only_frees_the_user(manager, monkeypatch, results):
 	monkeypatch.setattr(rooms, "DYING_TICKS", 10_000)
-	lobby(manager)
+	lobby(manager, max_players=1)
 	manager.start(12)
 	room = manager.game_room(12)
 	manager.player_connected(12, 7)

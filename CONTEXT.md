@@ -41,6 +41,10 @@ _Evitar_: settings, config, opções (no código)
 **Mode**:
 A regra de vitória da Room: `coop` (fuga da masmorra, até 5 Players: vitória quando o Boss morre, derrota quando todos morrem, sem respawn) ou `pvp` (1v1 sem inimigos, com respawn: vence quem chegar a `frag_limit` eliminações ou tiver o maior placar em `time_limit_s`). Cada Mode tem seu Ruleset.
 
+**Solo**:
+A Room de `coop` com uma vaga (`max_players == 1`): começa com um Player só. Não é um Mode; o `coop` com 2 a 5 vagas só começa com dois Players (#241).
+_Evitar_: singleplayer, modo solo (no código)
+
 **Map**:
 Um arquivo de grade escrito pelo time, com os caracteres do `.cub` do Cub3D: paredes, Spawns e as posições de Enemy, Boss, Door e Pickup. Não tem texturas nem cores (isso é do Theme). Imutável.
 _Evitar_: level, fase, mapa (no código)

@@ -23,6 +23,7 @@ MAPS = { # sem Enemy e sem Boss: o que se testa aqui é o lobby, não a Simulati
 }
 CATALOG = {Mode.COOP: [MapInfo("arena", 5)], Mode.PVP: [MapInfo("duel", 2)]}
 COOP = {"mode": "coop", "map": "arena"}
+SOLO = {**COOP, "max_players": 1} # #241: o único coop que começa com uma pessoa
 
 
 def load_test_map(name: str, mode: Mode):
@@ -81,7 +82,7 @@ async def test_defaults_create_a_playable_lobby(client, db_session, app, rooms):
 	assert response.status_code == 201
 	body = response.json()
 	assert (body["mode"], body["map"], body["status"]) == ("coop", "arena", "lobby")
-	assert (body["max_players"], body["min_players"]) == (5, 1) # sem max_players: o teto do Map
+	assert (body["max_players"], body["min_players"]) == (5, 2) # sem max_players: o teto do Map
 	assert body["options"] == {"theme": "dungeon", "start_hp": 10,
 		"pickups": {"potion": True, "mana": True, "armor": True}}
 	assert [p["username"] for p in body["players"]] == ["akita"]
@@ -272,7 +273,7 @@ async def test_ready_is_a_strict_bool_for_players_only(client, db_session, app, 
 
 
 async def test_character_selection_is_published_and_locked_after_start(client, db_session, app, rooms, watcher):
-	match_id, host = await open_lobby(client, db_session, app)
+	match_id, host = await open_lobby(client, db_session, app, SOLO)
 	await received(watcher, 1) # criação
 	path = f"/api/matches/{match_id}/character"
 	response = await client.post(path, json={"character_id": "sucubus"}, headers=host)
@@ -328,9 +329,21 @@ async def test_leaving_a_running_match_frees_the_user_and_keeps_the_match_runnin
 	assert error(await client.post(f"/api/matches/{match_id}/leave", headers=guest)) == (409, "not_in_match")
 
 
-async def test_pvp_needs_two_to_start(client, db_session, app, rooms):
-	match_id, host = await open_lobby(client, db_session, app, PVP)
+@pytest.mark.parametrize("body", [PVP, COOP, {**COOP, "max_players": 2}])
+async def test_pvp_and_coop_need_two_to_start(client, db_session, app, rooms, body):
+	# #241: coop com 2+ vagas não começa sozinho, nem chamando a API direto
+	match_id, host = await open_lobby(client, db_session, app, body)
 	assert error(await client.post(f"/api/matches/{match_id}/start", headers=host)) == (409, "not_enough_players")
+	assert rooms.info(match_id).status == "lobby"
+
+
+async def test_solo_has_one_seat_and_starts_alone(client, db_session, app, rooms):
+	match_id, host = await open_lobby(client, db_session, app, SOLO)
+	info = rooms.info(match_id)
+	assert (info.max_players, info.min_players) == (1, 1)
+	guest = await new_user(db_session, app, "rdel")
+	assert error(await client.post(f"/api/matches/{match_id}/join", headers=guest)) == (409, "room_full")
+	assert (await client.post(f"/api/matches/{match_id}/start", headers=host)).status_code == 204
 
 
 # ---------- lobby ao vivo (ws-manager.md §2.5) ----------
@@ -364,7 +377,7 @@ async def test_leaving_updates_the_room_and_the_last_one_out_removes_it(client, 
 
 async def test_start_tells_the_players_and_removes_the_room_for_everyone(client, db_session, app,
 		rooms, watcher, fake_ws):
-	match_id, host = await open_lobby(client, db_session, app)
+	match_id, host = await open_lobby(client, db_session, app, SOLO)
 	player_tab = fake_ws()
 	await app.state.connection_manager.connect(rooms.info(match_id).created_by, "app", player_tab)
 	await client.post(f"/api/matches/{match_id}/start", headers=host)
@@ -390,7 +403,7 @@ async def test_going_offline_leaves_the_lobby(client, db_session, app, rooms, wa
 
 
 async def test_going_offline_in_a_running_match_keeps_the_seat(client, db_session, app, rooms):
-	match_id, host = await open_lobby(client, db_session, app)
+	match_id, host = await open_lobby(client, db_session, app, SOLO)
 	host_id = rooms.info(match_id).created_by
 	await client.post(f"/api/matches/{match_id}/start", headers=host)
 	await service.leave_when_offline(rooms, app.state.connection_manager, lambda: db_session,

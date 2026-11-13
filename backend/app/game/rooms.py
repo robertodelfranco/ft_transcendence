@@ -33,7 +33,7 @@ TickObserver = Callable[[float], None]
 RecordResult = Callable[[int, MatchOutcome, datetime], Awaitable[list[AchievementUnlock]]]
 AbortMatch = Callable[[int], Awaitable[int]]
 
-MIN_PLAYERS = {Mode.COOP: 1, Mode.PVP: 2} # rooms.md "Em aberto" 3
+MIN_PLAYERS = {Mode.COOP: 1, Mode.PVP: 2} # menor capacidade aceita; coop com 1 vaga é o Solo (#241)
 MAX_PLAYERS = {Mode.COOP: 5, Mode.PVP: 2}
 SNAPSHOT_EVERY = 2 # Ticks: 15 Hz (ws-messages.md §2.8)
 MAX_STEP_FAILURES = TICK_RATE # falhas sem um ciclo bom no meio: a Room fecha com 4503
@@ -41,6 +41,11 @@ DYING_TICKS = math.ceil(BOSS_DYING_S * TICK_RATE) # depois do game_over, só a a
 ROOM_TTL_S = 60 # a Room some 60 s depois do fim (arq. §10.1)
 GRACE_PERIOD_S = 30 # ws-messages.md §2.8
 GRACE_TICKS = GRACE_PERIOD_S * TICK_RATE # contado em Ticks: o prazo anda com a partida
+
+
+def start_minimum(mode: Mode, max_players: int) -> int:
+	"""Mínimo de Players para o start (#241): o Solo começa com 1; coop com 2+ vagas e PvP pedem 2."""
+	return 1 if mode is Mode.COOP and max_players == 1 else 2
 
 
 # ---------- recusas (rooms.md §2.2) ----------
@@ -248,7 +253,7 @@ class RoomManager:
 		"""Cria a Room da Simulation com os Players em ordem de entrada e liga o tick."""
 		entry = self._entry(match_id)
 		self._require_lobby(entry)
-		minimum = MIN_PLAYERS[entry.mode]
+		minimum = start_minimum(entry.mode, entry.max_players)
 		if len(entry.seats) < minimum:
 			raise NotEnoughPlayers(f"match {match_id} has {len(entry.seats)}/{minimum} players")
 		players = [(user_id, seat.username) for user_id, seat in entry.seats.items()]
@@ -432,7 +437,7 @@ class RoomManager:
 	def _info(self, entry: Entry) -> RoomInfo:
 		room = entry.room
 		return RoomInfo(match_id=entry.match_id, mode=entry.mode, map=entry.game_map.name,
-			max_players=entry.max_players, min_players=MIN_PLAYERS[entry.mode], status=entry.status,
+			max_players=entry.max_players, min_players=start_minimum(entry.mode, entry.max_players), status=entry.status,
 			created_by=entry.created_by, options=entry.options, created_at=entry.created_at,
 			players=tuple(PlayerInfo(user_id=user_id, username=seat.username,
 				avatar_url=seat.avatar_url, ready=seat.ready, character_id=seat.character_id,

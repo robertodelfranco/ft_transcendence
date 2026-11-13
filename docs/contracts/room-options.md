@@ -92,10 +92,11 @@ Definir também a ordem do catálogo para o default “primeiro da lista” ser 
 
 | Mode | Capacidade proposta | Default proposto | Mínimo proposto para começar |
 |---|---|---:|---:|
-| `coop` | Inteiro de 1 a 5 | 5 | 1 |
+| `coop` Solo | Exatamente 1 | — | 1 |
+| `coop` | Inteiro de 2 a 5 | 5 | 2 |
 | `pvp` | Exatamente 2 | 2 | 2 |
 
-O mínimo repete a proposta de [rooms.md](rooms.md) §5: permite desenvolver e jogar coop sozinho, mantendo a demonstração multiplayer com três ou mais pessoas. PvP precisa de dois oponentes. A quantidade de Players “prontos” exigida pelo início deve ser fechada no contrato de lobby.
+Decidido em 12/11 (#241, [rooms.md](rooms.md) §4, decisão 12): o Solo é o `coop` com `max_players == 1` e começa com uma pessoa; o `coop` com 2 a 5 vagas só começa com duas. O servidor publica o mínimo em `RoomInfo.min_players`. PvP precisa de dois oponentes. A quantidade de Players “prontos” exigida pelo início deve ser fechada no contrato de lobby.
 
 ### 5.3 Normalização — Conteúdo, Partidas e Web
 
