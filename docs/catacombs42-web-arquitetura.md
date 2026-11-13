@@ -91,7 +91,7 @@ Repositório `robertodelfranco/42-Cub3D` (bonus em `src/bonus/`, mapas em `maps/
 | Mapa `.cub` | `NO/SO/WE/EA` texturas, `F/C` cores, grid com `1` parede, `0` chão, `N/S/E/W` spawn único, `D` porta (vira `O` aberta), `K` chave, `P` poção, `I` inimigo, `B` boss |
 | Jogador | `t_player` único: posição, direção, plano de câmera, HP 10, chaves, sprint, flags de tecla |
 | Inimigos | Lista `t_enemy_list`, estados `ALERT / ATTACK / DYING / DEAD / HITED`, perseguem **o** jogador, atacam a < 0,7 |
-| Boss | `t_boss` único: persegue, atira bullets, HP 60 |
+| Boss | `t_boss` único: persegue, atira bullets, HP 60 por Player da partida (#281) |
 | Projéteis | fireballs (jogador) e bullets (boss), avançam 0,5 célula a cada 0,2 s |
 | Portas | `F` abre/fecha a porta 1 célula à frente; a primeira abertura consome chave |
 | Controles | `W/A/S/D`, `←/→`, `Shift` sprint, `Space` fireball (cooldown 0,4 s), `F` porta, mouse nas bordas gira |
@@ -217,7 +217,7 @@ A coluna "por segundo" assume que o MLX42 rodava a ~60 fps com vsync. Meça no C
 | Enemy: velocidade | `0.15` por passo a 10 Hz | discreto | `ENEMY_SPEED = 1.5` cél/s contínuo |
 | Enemy: alcance / dano | `≤ 0.7`; 1 HP a cada 7 quadros × 0,2 s | — | `1` HP a cada `1.4` s de contato |
 | Enemy: morte | `DYING` 3 quadros × 0,5 s → `DEAD` | — | igual |
-| Boss: HP | `60`; fireball tira `10` | — | igual (6 acertos) |
+| Boss: HP | `60` por Player; fireball tira `10` | — | 6 acertos por Player (#281) |
 | Boss: velocidade | `0.2` por passo, só se `8 < dist ≤ 20` | discreto | `BOSS_SPEED = 2.0` cél/s |
 | Boss: ataque | `dist ≤ 16` (≤ 18 com cooldown vencido), cooldown ≈ 2,2 s | — | igual |
 | Bullet: dano | `2` HP | — | igual |

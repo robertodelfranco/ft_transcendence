@@ -7,6 +7,7 @@ from app.game.world import parse_map
 
 DT = 1 / TICK_RATE
 ATTACK_TICKS = round(ENEMY_ATTACK_INTERVAL_S * TICK_RATE) # 23 Ticks
+BLOW = ENEMY_DAMAGE + 2 // 2 # o golpe com os dois Players da Room: 2 HP
 ROW_Y = 3.5
 # uma sala aberta: o Player 7 em (1, 3), o Enemy em (6, 3) e o Player 9 em (9, 3), na mesma linha
 ARENA = ("11111111111\n10000000001\n10000000001\n1E0000I00W1\n"
@@ -42,18 +43,18 @@ def test_armor_absorbs_the_blow_before_hp():
 	target = room.players[9]
 	target.armor = 3
 	events = strike_player_9(room)
-	assert (target.armor, target.hp) == (3 - ENEMY_DAMAGE, 10)
+	assert (target.armor, target.hp) == (3 - BLOW, 10)
 	assert events == [Event("player_hit", room.tick, {"target": 9, "by": None,
-		"source": "enemy", "amount": 0, "absorbed": ENEMY_DAMAGE})]
+		"source": "enemy", "amount": 0, "absorbed": BLOW})]
 
 
 def test_without_armor_the_blow_comes_out_of_hp():
 	room = new_room()
 	target = room.players[9]
 	events = strike_player_9(room)
-	assert (target.armor, target.hp) == (0, 10 - ENEMY_DAMAGE)
+	assert (target.armor, target.hp) == (0, 10 - BLOW)
 	assert events == [Event("player_hit", room.tick, {"target": 9, "by": None,
-		"source": "enemy", "amount": ENEMY_DAMAGE, "absorbed": 0})]
+		"source": "enemy", "amount": BLOW, "absorbed": 0})]
 
 
 @pytest.mark.parametrize("armor, hp, expected", [
@@ -63,7 +64,7 @@ def test_without_armor_the_blow_comes_out_of_hp():
 	(0, 2, (2, 0, 0, 0)), # o excesso não conta: amount é o HP que o Player tinha
 ])
 def test_damage_splits_between_armor_and_hp(armor, hp, expected):
-	# nenhum golpe de Enemy divide o dano (ENEMY_DAMAGE = 1): chama a função direto
+	# chama a função direto para escolher o dano, sem depender do número de Players
 	room = new_room()
 	player = room.players[7]
 	player.armor, player.hp = armor, hp

@@ -62,7 +62,8 @@ def create_room(match_id: int, mode: Mode, game_map: Map, options: RoomOptions,
 		room.enemies.append(Enemy(id=f"e_{number}", x=x, y=y))
 	if game_map.boss is not None:
 		boss_x, boss_y = game_map.boss
-		room.boss = Boss(x=boss_x, y=boss_y, hp=BOSS_HP)
+		# o Boss escala com o coop: BOSS_HP por Player que entrou na partida
+		room.boss = Boss(x=boss_x, y=boss_y, hp=BOSS_HP * len(players))
 	for x, y in game_map.doors:
 		room.doors.append(Door(x=x, y=y))
 	if not countdown:
@@ -453,7 +454,8 @@ def _strike(room: Room, enemy: Enemy, events: list[Event]) -> None:
 		return
 	if (math.hypot(target.x - enemy.x, target.y - enemy.y) <= ENEMY_HIT_RANGE
 			and _clear_line(room.grid, enemy.x, enemy.y, target.x, target.y)):
-		_hurt_player(room, target, ENEMY_DAMAGE, None, "enemy", events)
+		# o coop fica mais punitivo com mais gente: 1, 2, 2, 3 e 3 HP de 1 a 5 Players
+		_hurt_player(room, target, ENEMY_DAMAGE + len(room.players) // 2, None, "enemy", events)
 
 
 def _hurt_player(room: Room, player: Player, amount: int, by: int | None, source: str,

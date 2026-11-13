@@ -14,11 +14,14 @@ from app.game.world import parse_map
 DT = 1 / TICK_RATE
 STEP = ENEMY_SPEED * DT # o que um Enemy anda num Tick
 ATTACK_TICKS = round(ENEMY_ATTACK_INTERVAL_S * TICK_RATE) # 23 Ticks
+BLOW = ENEMY_DAMAGE + 2 // 2 # o golpe com os dois Players da Room: 2 HP
 DYING_TICKS = round(ENEMY_DYING_S * TICK_RATE) # 45 Ticks
 ROW_Y = 3.5
 # uma sala aberta: o Player 7 em (1, 3), o Enemy em (6, 3) e o Player 9 em (9, 3), na mesma linha
 ARENA = ("11111111111\n10000000001\n10000000001\n1E0000I00W1\n"
 	"10000000001\n10000000001\n11111111111\n")
+# a mesma sala com mais três Spawns em (1, 5), (2, 5) e (3, 5)
+FIVE_SPAWNS = ARENA.replace("10000000001\n11111111111\n", "1NSN0000001\n11111111111\n")
 TWO_ENEMIES = ARENA.replace("1E0000I00W1", "1E00I0I00W1")
 # o Enemy em (3, 3), uma parede em (4, 3) e o Player 9 atrás dela, em (5, 3)
 BEHIND_A_WALL = "1111111\n1E00001\n1000001\n100I1W1\n1000001\n1000001\n1111111\n"
@@ -30,10 +33,10 @@ FAR_CORRIDOR = ("1" * (FAR_ENEMY_CELL + 2) + "\n" + "1EW" + "0" * ENEMY_CHASE_RA
 BEHIND_A_DOOR = "11111111\n1EWD00I1\n11111111\n"
 
 
-def new_room(map_text=ARENA):
+def new_room(map_text=ARENA, players=((7, "roberto"), (9, "augusto"))):
 	# ninguém manda join: os Players ficam desconectados, e mesmo assim são alvo
 	game_map = parse_map(map_text, "t", Mode.COOP)
-	return create_room(12, Mode.COOP, game_map, RoomOptions(), [(7, "roberto"), (9, "augusto")], seed=1)
+	return create_room(12, Mode.COOP, game_map, RoomOptions(), list(players), seed=1)
 
 
 def place(entity, x, y=ROW_Y):
@@ -248,7 +251,7 @@ def test_the_blow_lands_after_enemy_attack_interval_s():
 	run(room, ATTACK_TICKS - 1) # até o Tick 23
 	assert target.hp == 10
 	run(room, 1) # Tick 24: ENEMY_ATTACK_INTERVAL_S depois de entrar em attack
-	assert target.hp == 10 - ENEMY_DAMAGE
+	assert target.hp == 10 - BLOW
 
 
 def test_blows_in_a_row_are_exactly_one_interval_apart():
@@ -281,7 +284,7 @@ def test_a_target_that_stepped_back_within_hit_range_is_hit():
 	target = room.players[9]
 	place(target, enemy.x - 1.5) # recuou durante o golpe, ainda dentro de ENEMY_HIT_RANGE
 	run(room, ATTACK_TICKS)
-	assert target.hp == 10 - ENEMY_DAMAGE
+	assert target.hp == 10 - BLOW
 
 
 def test_the_blow_does_not_go_through_a_wall():
@@ -292,6 +295,18 @@ def test_the_blow_does_not_go_through_a_wall():
 	enemy.state, enemy.state_tick, enemy.target_player_id = EnemyState.ATTACK, room.tick, 9
 	run(room, ATTACK_TICKS + 1)
 	assert target.hp == 10
+
+
+
+@pytest.mark.parametrize("count, damage", [(1, 1), (2, 2), (3, 2), (4, 3), (5, 3)])
+def test_the_blow_grows_with_the_players_in_the_room(count, damage):
+	players = [(9, "augusto")] + [(user_id, f"p{user_id}") for user_id in range(1, count)]
+	room = new_room(FIVE_SPAWNS, players)
+	target = room.players[9]
+	place(target, 8.5)
+	in_attack(room)
+	run(room, ATTACK_TICKS)
+	assert target.hp == 10 - damage
 
 
 @pytest.mark.parametrize("field", ["alive", "left"])
