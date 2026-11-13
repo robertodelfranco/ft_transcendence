@@ -4,7 +4,7 @@ import math
 import pytest
 
 from app.game.rules import (ENEMY_ATTACK_INTERVAL_S, ENEMY_ATTACK_RANGE, ENEMY_CHASE_RANGE,
-	ENEMY_DAMAGE, ENEMY_DYING_S, ENEMY_SEPARATION, ENEMY_SPEED, TICK_RATE)
+	ENEMY_DAMAGE, ENEMY_DYING_S, ENEMY_HIT_RANGE, ENEMY_SEPARATION, ENEMY_SPEED, TICK_RATE)
 from app.game.sim import create_room, enqueue, step
 from app.game.snapshot import to_snapshot
 from app.game.state import (Action, ActionKind, Enemy, EnemyState, Event, Mode, Projectile,
@@ -13,7 +13,7 @@ from app.game.world import parse_map
 
 DT = 1 / TICK_RATE
 STEP = ENEMY_SPEED * DT # o que um Enemy anda num Tick
-ATTACK_TICKS = round(ENEMY_ATTACK_INTERVAL_S * TICK_RATE) # 30 Ticks
+ATTACK_TICKS = round(ENEMY_ATTACK_INTERVAL_S * TICK_RATE) # 23 Ticks
 DYING_TICKS = round(ENEMY_DYING_S * TICK_RATE) # 45 Ticks
 ROW_Y = 3.5
 # uma sala aberta: o Player 7 em (1, 3), o Enemy em (6, 3) e o Player 9 em (9, 3), na mesma linha
@@ -167,8 +167,8 @@ def test_the_path_is_redone_when_the_player_changes_cell():
 def test_enemy_walks_enemy_speed_per_second():
 	room = new_room()
 	[enemy] = room.enemies
-	run(room, TICK_RATE)
-	assert (enemy.x, enemy.y) == pytest.approx((6.5 + ENEMY_SPEED, ROW_Y))
+	run(room, TICK_RATE // 2) # meio segundo: 1,1 cél, ainda longe de ENEMY_ATTACK_RANGE
+	assert (enemy.x, enemy.y) == pytest.approx((6.5 + ENEMY_SPEED / 2, ROW_Y))
 
 
 def test_behind_a_wall_the_enemy_goes_around():
@@ -231,13 +231,23 @@ def test_in_attack_range_the_enemy_enters_attack_and_stops():
 	assert enemy.state == EnemyState.ATTACK
 
 
+@pytest.mark.parametrize("distance, attacks",
+	[(ENEMY_ATTACK_RANGE - 0.01, True), (ENEMY_ATTACK_RANGE + 0.05, False)])
+def test_the_attack_starts_only_within_enemy_attack_range(distance, attacks):
+	room = new_room()
+	[enemy] = room.enemies
+	place(enemy, room.players[9].x - distance)
+	run(room, 1)
+	assert (enemy.state == EnemyState.ATTACK) == attacks
+
+
 def test_the_blow_lands_after_enemy_attack_interval_s():
 	room = new_room()
 	in_attack(room) # Tick 1
 	target = room.players[9]
-	run(room, ATTACK_TICKS - 1) # até o Tick 30
+	run(room, ATTACK_TICKS - 1) # até o Tick 23
 	assert target.hp == 10
-	run(room, 1) # Tick 31: ENEMY_ATTACK_INTERVAL_S depois de entrar em attack
+	run(room, 1) # Tick 24: ENEMY_ATTACK_INTERVAL_S depois de entrar em attack
 	assert target.hp == 10 - ENEMY_DAMAGE
 
 
@@ -258,11 +268,30 @@ def test_a_target_that_left_the_range_is_not_hit():
 	room = new_room()
 	enemy = in_attack(room)
 	target = room.players[9]
-	place(target, enemy.x - 2.0) # afastou-se durante o golpe
+	place(target, enemy.x - ENEMY_HIT_RANGE - 0.1) # afastou-se além de ENEMY_HIT_RANGE durante o golpe
 	run(room, ATTACK_TICKS)
 	assert target.hp == 10
 	assert enemy.state == EnemyState.ALERT # voltou a perseguir
 	assert enemy.target_player_id == 9
+
+
+def test_a_target_that_stepped_back_within_hit_range_is_hit():
+	room = new_room()
+	enemy = in_attack(room)
+	target = room.players[9]
+	place(target, enemy.x - 1.5) # recuou durante o golpe, ainda dentro de ENEMY_HIT_RANGE
+	run(room, ATTACK_TICKS)
+	assert target.hp == 10 - ENEMY_DAMAGE
+
+
+def test_the_blow_does_not_go_through_a_wall():
+	room = new_room(BEHIND_A_WALL)
+	[enemy] = room.enemies
+	target = room.players[9]
+	assert gap(enemy, target) <= ENEMY_HIT_RANGE # 2 cél em linha reta, com a parede no meio
+	enemy.state, enemy.state_tick, enemy.target_player_id = EnemyState.ATTACK, room.tick, 9
+	run(room, ATTACK_TICKS + 1)
+	assert target.hp == 10
 
 
 @pytest.mark.parametrize("field", ["alive", "left"])

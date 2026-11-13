@@ -6,7 +6,7 @@ from app.game.state import EnemyState, Event, Input, Mode, RoomOptions
 from app.game.world import parse_map
 
 DT = 1 / TICK_RATE
-ATTACK_TICKS = round(ENEMY_ATTACK_INTERVAL_S * TICK_RATE) # 42 Ticks
+ATTACK_TICKS = round(ENEMY_ATTACK_INTERVAL_S * TICK_RATE) # 23 Ticks
 ROW_Y = 3.5
 # uma sala aberta: o Player 7 em (1, 3), o Enemy em (6, 3) e o Player 9 em (9, 3), na mesma linha
 ARENA = ("11111111111\n10000000001\n10000000001\n1E0000I00W1\n"
