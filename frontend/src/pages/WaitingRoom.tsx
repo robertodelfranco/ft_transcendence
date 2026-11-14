@@ -190,7 +190,7 @@ export default function WaitingRoom() {
       )}
 
       {me ? (
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
           <button
             type="button"
             disabled={busy}
@@ -227,12 +227,12 @@ export default function WaitingRoom() {
               {t("room.start")}
             </button>
           )}
-          {isHost && startHint && <p id={hintId} className="text-sm text-bone/70">{startHint}</p>}
-          {!isHost && <p className="text-sm text-bone/70">{t("room.waitingHost")}</p>}
+          {isHost && startHint && <p id={hintId} className="text-center md:text-left text-sm text-bone/70">{startHint}</p>}
+          {!isHost && <p className="text-center md:text-left text-sm text-bone/70">{t("room.waitingHost")}</p>}
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-3">
-          <p>{t("room.notMember")}</p>
+        <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+          <p className="text-center md:text-left">{t("room.notMember")}</p>
           <button
             type="button"
             disabled={busy || room.players.length >= room.max_players}

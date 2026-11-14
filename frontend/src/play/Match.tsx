@@ -169,13 +169,14 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
           </div>
         )}
       </div>
-      {/* abaixo do canvas: com o Pointer Lock, o Esc solta o mouse e o botão fica clicável */}
+      {/* abaixo do canvas: com o Pointer Lock, o Esc solta o mouse e o botão fica clicável. Em
+          janela estreita fica centralizado, como a HUD logo acima; a partir do md, à direita */}
       {(live || leaving) && (
-        <div className="mt-2 flex flex-col items-end gap-2">
+        <div className="mt-2 flex flex-col items-center gap-2 md:items-end">
           {leaveFailure && <ErrorNotice failure={leaveFailure} />}
           {confirming ? (
-            <div role="group" aria-label={t("leave.button")} className="flex flex-wrap items-center justify-end gap-2">
-              <p>{t("leave.confirm")}</p>
+            <div role="group" aria-label={t("leave.button")} className="flex flex-wrap items-center justify-center gap-2 md:justify-end">
+              <p className="text-center md:text-right">{t("leave.confirm")}</p>
               <button type="button" disabled={leaving} onClick={() => void leave()} className={buttonPrimary}>
                 {leaving ? t("leave.leaving") : t("leave.yes")}
               </button>
@@ -184,7 +185,7 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
               </button>
             </div>
           ) : (
-            <div className="flex flex-wrap justify-end gap-2">
+            <div className="flex flex-wrap justify-center gap-2 md:justify-end">
               {canFullscreen && (
                 <button type="button" onClick={enterFullscreen} className={buttonSecondary}>
                   {t("fullscreen")}

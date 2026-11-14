@@ -46,7 +46,7 @@ describe("sala de espera do anfitrião", () => {
     // o host também marca pronto (rooms.md §4, decisão 13): sem isso, o Iniciar diz por que não vai
     const start = await screen.findByRole("button", { name: "Iniciar partida" });
     expect(start).toBeDisabled();
-    expect(start).toHaveAccessibleDescription("Todos precisam estar prontos para começar, inclusive você.");
+    expect(start).toHaveAccessibleDescription("Todos precisam estar prontos para começar.");
     await user.click(screen.getByRole("button", { name: "Estou pronto" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Iniciar partida" })).toBeEnabled());
     expect(screen.getByRole("button", { name: "Iniciar partida" })).not.toHaveAccessibleDescription();
@@ -79,7 +79,7 @@ describe("sala de espera do anfitrião", () => {
     renderAt("/lobby/12");
     const start = await screen.findByRole("button", { name: "Iniciar partida" });
     expect(start).toBeDisabled();
-    expect(start).toHaveAccessibleDescription("Todos precisam estar prontos para começar, inclusive você.");
+    expect(start).toHaveAccessibleDescription("Todos precisam estar prontos para começar.");
   });
 
   it("se o servidor recusa por falta de pronto, o erro aparece traduzido", async () => {

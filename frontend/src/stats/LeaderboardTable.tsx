@@ -36,7 +36,7 @@ export default function LeaderboardTable({ rows, selection, userId }: {
               <th scope="row" className="py-2 pr-4 text-left font-normal">
                 <div className="flex items-center gap-2">
                   <Avatar user={row} />
-                  <Link to={`/users/${row.user_id}`} className={`font-bold ${linkClass}`}>
+                  <Link to={`/users/${row.user_id}`} className={linkClass}>
                     {row.username}
                   </Link>
                   {row.user_id === userId && <span className="text-bone/70">{t("leaderboard.you")}</span>}

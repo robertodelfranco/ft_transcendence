@@ -54,7 +54,7 @@
     "start": "Iniciar partida",
     "needPlayers_one": "É preciso ao menos {{count}} jogador para começar.",
     "needPlayers_other": "É preciso ao menos {{count}} jogadores para começar.",
-    "needReady": "Todos precisam estar prontos para começar, inclusive você.",
+    "needReady": "Todos precisam estar prontos para começar.",
     "waitingHost": "Esperando o anfitrião iniciar a partida.",
     "notMember": "Você não está nesta sala.",
     "join": "Entrar nesta sala",
