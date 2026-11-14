@@ -32,7 +32,7 @@ O que **não** está aqui: a partida em si, que é WebSocket ([ws-messages.md](w
 | POST | `/api/matches/{match_id}/leave` | — | 204 | 404 `match_not_found`, 409 `not_in_match` |
 | POST | `/api/matches/{match_id}/ready` | `{ready: bool}` | 200 `RoomInfo` | 404 `match_not_found`, 409 `not_in_match` / `already_started` |
 | POST | `/api/matches/{match_id}/character` | `{character_id: string}` | 200 `RoomInfo` | 422 `validation_error`, 404 `match_not_found`, 409 `not_in_match` / `already_started` |
-| POST | `/api/matches/{match_id}/start` | — | 204 | 403 `not_host`, 409 `not_enough_players` / `already_started`, 404 `match_not_found` |
+| POST | `/api/matches/{match_id}/start` | — | 204 | 403 `not_host`, 409 `not_enough_players` / `not_all_ready` / `already_started`, 404 `match_not_found` |
 
 - `POST /api/matches` faz duas coisas na mesma requisição: grava a linha de `matches` com `status = "lobby"` e chama `RoomManager.create`. Quem cria já entra como primeiro Player e é o host.
 - `GET /api/matches` lista **só Rooms em `lobby`**, de `RoomManager.list_open()`. Nunca do banco (§4, decisão 1).
@@ -131,7 +131,7 @@ XP, level e Elo seguem as fórmulas do [progression.md](progression.md) §5–7,
 
 O Caio traduz cada um; código fora desta lista aparece sem tradução, então a lista é fechada aqui e cresce só por PR que muda este arquivo.
 
-`match_not_found`, `user_not_found`, `room_full`, `already_in`, `already_in_other_match`, `not_in_match`, `not_host`, `not_enough_players`, `already_started`, `invalid_options`, `map_not_found`, `rate_limited`, `match_not_finished`, `match_aborted`.
+`match_not_found`, `user_not_found`, `room_full`, `already_in`, `already_in_other_match`, `not_in_match`, `not_host`, `not_enough_players`, `not_all_ready`, `already_started`, `invalid_options`, `map_not_found`, `rate_limited`, `match_not_finished`, `match_aborted`.
 
 Os `code` de `reason` que aparecem no histórico e na tela de resultado também são traduzíveis: `boss_defeated`, `all_dead`, `frag_limit`, `time_limit`, `forfeit`, `server_shutdown`.
 

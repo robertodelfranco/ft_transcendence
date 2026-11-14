@@ -7,7 +7,7 @@ from app.game.movement import Body, CollisionWorld, apply_input, is_solid
 from app.game.rules import (BOSS_ATTACK_COOLDOWN_S, BOSS_ATTACK_RANGE, BOSS_ATTACK_WINDUP_S,
 	BOSS_HP, BOSS_MIN_RANGE, BOSS_RADIUS, BOSS_RETARGET_MARGIN, BOSS_SIGHT_RANGE, BOSS_SPEED, BULLET_DAMAGE, COUNTDOWN_S,
 	COUNTDOWN_WAIT_S, DOOR_REACH,
-	ENEMY_ATTACK_INTERVAL_S, ENEMY_ATTACK_RANGE, ENEMY_CHASE_RANGE, ENEMY_DAMAGE, ENEMY_DYING_S,
+	ENEMY_ATTACK_INTERVAL_S, ENEMY_ATTACK_RANGE, ENEMY_CHASE_RANGE, ENEMY_DAMAGE, ENEMY_DYING_S, ENEMY_HIT_RANGE,
 	ENEMY_RADIUS, ENEMY_RETARGET_MARGIN, ENEMY_SEPARATION, ENEMY_SPEED, FIREBALL_BOSS_DAMAGE,
 	FIREBALL_CHARGE_S, FIREBALL_CHARGED_DAMAGE_MULT, FIREBALL_CHARGED_MANA_MULT,
 	FIREBALL_COOLDOWN_S, FIREBALL_PLAYER_DAMAGE, POTION_HEAL, PROJECTILE_HIT_RADIUS,
@@ -62,7 +62,8 @@ def create_room(match_id: int, mode: Mode, game_map: Map, options: RoomOptions,
 		room.enemies.append(Enemy(id=f"e_{number}", x=x, y=y))
 	if game_map.boss is not None:
 		boss_x, boss_y = game_map.boss
-		room.boss = Boss(x=boss_x, y=boss_y, hp=BOSS_HP)
+		# o Boss escala com o coop: BOSS_HP por Player que entrou na partida
+		room.boss = Boss(x=boss_x, y=boss_y, hp=BOSS_HP * len(players))
 	for x, y in game_map.doors:
 		room.doors.append(Door(x=x, y=y))
 	if not countdown:
@@ -447,12 +448,14 @@ def _enemy_fits(room: Room, enemy: Enemy, x: float, y: float) -> bool:
 
 
 def _strike(room: Room, enemy: Enemy, events: list[Event]) -> None:
-	# só acerta quem ainda está no alcance; no C o dano saía sem conferir a distância
+	# só acerta quem ainda está a até ENEMY_HIT_RANGE e sem parede no meio; no C o dano saía sem conferir a distância
 	target = room.players.get(enemy.target_player_id)
 	if target is None or not target.alive or target.left:
 		return
-	if math.hypot(target.x - enemy.x, target.y - enemy.y) <= ENEMY_ATTACK_RANGE:
-		_hurt_player(room, target, ENEMY_DAMAGE, None, "enemy", events)
+	if (math.hypot(target.x - enemy.x, target.y - enemy.y) <= ENEMY_HIT_RANGE
+			and _clear_line(room.grid, enemy.x, enemy.y, target.x, target.y)):
+		# o coop fica mais punitivo com mais gente: 1, 2, 2, 3 e 3 HP de 1 a 5 Players
+		_hurt_player(room, target, ENEMY_DAMAGE + len(room.players) // 2, None, "enemy", events)
 
 
 def _hurt_player(room: Room, player: Player, amount: int, by: int | None, source: str,

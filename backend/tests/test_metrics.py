@@ -99,6 +99,7 @@ async def test_sockets_rooms_and_ticks_are_read_from_the_live_state(client, app,
 	await connections.connect(7, "game", fake_ws(), match_id=12)
 	rooms.create(12, Mode.COOP, "arena", 1, RoomOptions(), created_by=7) # Solo: começa com 1
 	rooms.join(12, 7, "user7", "/media/avatars/default.png")
+	rooms.set_ready(12, 7, True) # o start exige todos prontos (rooms.md §4, decisão 13)
 	rooms.create(13, Mode.COOP, "arena", 3, RoomOptions(), created_by=9) # ainda no Lobby: não conta
 	rooms.join(13, 9, "user9", "/media/avatars/default.png")
 	rooms.start(12)

@@ -91,7 +91,7 @@ Repositório `robertodelfranco/42-Cub3D` (bonus em `src/bonus/`, mapas em `maps/
 | Mapa `.cub` | `NO/SO/WE/EA` texturas, `F/C` cores, grid com `1` parede, `0` chão, `N/S/E/W` spawn único, `D` porta (vira `O` aberta), `K` chave, `P` poção, `I` inimigo, `B` boss |
 | Jogador | `t_player` único: posição, direção, plano de câmera, HP 10, chaves, sprint, flags de tecla |
 | Inimigos | Lista `t_enemy_list`, estados `ALERT / ATTACK / DYING / DEAD / HITED`, perseguem **o** jogador, atacam a < 0,7 |
-| Boss | `t_boss` único: persegue, atira bullets, HP 60 |
+| Boss | `t_boss` único: persegue, atira bullets, HP 60 por Player da partida (#281) |
 | Projéteis | fireballs (jogador) e bullets (boss), avançam 0,5 célula a cada 0,2 s |
 | Portas | `F` abre/fecha a porta 1 célula à frente; a primeira abertura consome chave |
 | Controles | `W/A/S/D`, `←/→`, `Shift` sprint, `Space` fireball (cooldown 0,4 s), `F` porta, mouse nas bordas gira |
@@ -200,7 +200,7 @@ O Player é identificado pelo `user_id` do User, e é esse número que `target_p
 
 O C chamava tudo a cada quadro, desenho incluso. O servidor chama `step(room, 1/30)` a cada tick, numa `asyncio.Task` por Room, com compensação de deriva (`next_tick += 1/30; sleep(max(0, next_tick - now))`, relógio `time.monotonic()`), e envia Snapshot a cada 2 ticks. Sai do laço tudo que desenha: `perform_raycasting`, `render_*`, `update_minimap`, `update_lightning`, `call_clean_and_draw_functions`.
 
-Custo: poucas dezenas de entidades e aritmética simples. Meta: 1000 ticks com 5 players + 20 inimigos + boss + 10 projéteis em < 200 ms; p99 do tick < 5 ms com 4 Rooms cheias. O GIL só atrapalha código que satura CPU, e esse não satura.
+Custo: poucas dezenas de entidades e aritmética simples. Meta: 1000 ticks com 5 players + 35 inimigos + boss + 10 projéteis em < 200 ms; p99 do tick < 5 ms com 4 Rooms cheias. O GIL só atrapalha código que satura CPU, e esse não satura.
 
 ### 6.3 Constantes (`rules.py` e `rules.ts`, mesmos nomes)
 
@@ -209,15 +209,15 @@ A coluna "por segundo" assume que o MLX42 rodava a ~60 fps com vsync. Meça no C
 | Grandeza | No C | Como o C aplicava | No servidor |
 |---|---|---|---|
 | Andar | `0.06` | por quadro | `PLAYER_SPEED = 3.6` cél/s |
-| Sprint | × 2 | por quadro | `7.2` cél/s |
+| Sprint | × 2 | por quadro | `PLAYER_SPRINT_MULT = 1.5`: `5.4` cél/s (rules.md §5.10) |
 | Girar (tecla) | `0.03` rad | por quadro | `PLAYER_ROT_SPEED = 1.8` rad/s |
 | Girar (mouse) | 0,4 × rotação nas bordas da janela | por evento | `mouse_dx` em rad, limitado a `MOUSE_MAX_ROT_SPEED` × dt por tick |
 | Raio de colisão do player | `R = 0.05`, 4 cantos | — | igual |
 | Player × enemy/boss | bloqueia a `< 0.6`; player × player não bloqueia | — | igual |
-| Enemy: velocidade | `0.15` por passo a 10 Hz | discreto | `ENEMY_SPEED = 1.5` cél/s contínuo |
+| Enemy: velocidade | `0.15` por passo a 10 Hz | discreto | `ENEMY_SPEED = 3.0` cél/s contínuo (rules.md §5.10) |
 | Enemy: alcance / dano | `≤ 0.7`; 1 HP a cada 7 quadros × 0,2 s | — | `1` HP a cada `1.4` s de contato |
 | Enemy: morte | `DYING` 3 quadros × 0,5 s → `DEAD` | — | igual |
-| Boss: HP | `60`; fireball tira `10` | — | igual (6 acertos) |
+| Boss: HP | `60` por Player; fireball tira `10` | — | 6 acertos por Player (#281) |
 | Boss: velocidade | `0.2` por passo, só se `8 < dist ≤ 20` | discreto | `BOSS_SPEED = 2.0` cél/s |
 | Boss: ataque | `dist ≤ 16` (≤ 18 com cooldown vencido), cooldown ≈ 2,2 s | — | igual |
 | Bullet: dano | `2` HP | — | igual |
@@ -355,7 +355,7 @@ interface Renderer {
 - **Minimapa**: canvas 2D sobreposto, a partir do grid e das posições.
 - **Áudio**: Web Audio, iniciado só após a primeira interação (evita o warning de autoplay).
 - **Assets**: `AssetLoader` carrega PNGs, modelos e sons; falha vira `HudState.status = "error"` na tela.
-- **Meta de performance**: 60 fps num laptop de sala com 5 players, 20 inimigos e 10 projéteis; trocar de Room 10 vezes sem crescer memória.
+- **Meta de performance**: 60 fps num laptop de sala com 5 players, 35 inimigos e 10 projéteis; trocar de Room 10 vezes sem crescer memória.
 
 ### 8.3 `mountGame` e `HudState` (contrato com F7)
 

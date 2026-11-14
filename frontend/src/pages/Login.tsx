@@ -5,6 +5,7 @@ import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { useAuthForm } from "../auth/useAuthForm";
 import { normalize, validateEmail, validateLoginPassword } from "../auth/validation";
+import { linkClass } from "../components/styles";
 import TextField from "../components/TextField";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { errorMessage } from "../i18n/errorMessage";
@@ -88,7 +89,7 @@ export default function Login() {
       
       <p className="text-sm">
         {t("login.noAccount")}{" "}
-        <Link to={signupTo} className="underline hover:text-torch focus-visible:outline-2 focus-visible:outline-torch">
+        <Link to={signupTo} className={linkClass}>
           {t("login.toSignup")}
         </Link>
       </p>

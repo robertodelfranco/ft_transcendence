@@ -57,6 +57,7 @@ async def rooms(connections):
 	rooms.create(MATCH, Mode.COOP, "arena", 5, RoomOptions(), created_by=7)
 	for user_id in (7, 9):
 		rooms.join(MATCH, user_id, f"user{user_id}", "/media/avatars/default.png")
+		rooms.set_ready(MATCH, user_id, True) # o start exige todos prontos (rooms.md §4, decisão 13)
 	rooms.start(MATCH)
 	yield rooms
 	await rooms.close()
@@ -241,6 +242,7 @@ async def test_the_grace_period_expiring_while_the_old_socket_closes_is_4403(fak
 	rooms.create(MATCH, Mode.COOP, "arena", 5, RoomOptions(), created_by=7)
 	for user_id in (7, 9):
 		rooms.join(MATCH, user_id, f"user{user_id}", "/media/avatars/default.png")
+		rooms.set_ready(MATCH, user_id, True) # o start exige todos prontos (rooms.md §4, decisão 13)
 	rooms.start(MATCH)
 	old = fake_ws() # um socket game que sobrou de uma partida anterior
 	await connections.connect(7, "game", old, match_id=MATCH - 1)
@@ -291,6 +293,7 @@ async def five(fake_ws):
 		rooms.create(MATCH, Mode.COOP, "arena", 5, RoomOptions(), created_by=FIVE[0])
 		for user_id in FIVE:
 			rooms.join(MATCH, user_id, f"user{user_id}", "/media/avatars/default.png")
+			rooms.set_ready(MATCH, user_id, True) # o start exige todos prontos (rooms.md §4, decisão 13)
 		rooms.start(MATCH)
 		sockets = {}
 		for user_id in FIVE:

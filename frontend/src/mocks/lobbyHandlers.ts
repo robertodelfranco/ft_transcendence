@@ -73,10 +73,12 @@ export const lobbyHandlers = [
       return apiError(404, "map_not_found");
     if (rooms.some(isIn))
       return apiError(409, "already_in_other_match");
+    const maxPlayers = body.max_players ?? map.max_players;
     const room: RoomInfo = {
       match_id: nextMatchId++, mode: body.mode, map: body.map,
-      max_players: body.max_players ?? map.max_players,
-      min_players: body.mode === "pvp" ? 2 : 1,
+      max_players: maxPlayers,
+      // como o start_minimum do servidor (rooms.md §4, decisão 12): só o Solo começa com um
+      min_players: maxPlayers === 1 ? 1 : 2,
       status: "lobby", created_by: me.id,
       // como o servidor: os defaults do Mode, com o que o formulário mandou por cima
       options: { ...defaultOptions(body.mode), ...body.options },
@@ -170,6 +172,8 @@ export const lobbyHandlers = [
       return apiError(409, "already_started");
     if (room.players.length < room.min_players)
       return apiError(409, "not_enough_players");
+    if (room.players.some((player) => !player.ready))
+      return apiError(409, "not_all_ready");
     room.status = "running";
     // como o #128: o match_started (no servidor, só para quem joga) vem antes do lobby_removed.
     // O mock tem um User só, então manda os dois para todo socket

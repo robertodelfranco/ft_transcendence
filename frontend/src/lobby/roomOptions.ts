@@ -7,7 +7,8 @@ export const MODES: readonly Mode[] = ["coop", "pvp"];
 export const THEMES: readonly Theme[] = ["dungeon", "sewer"];
 export const PICKUPS: readonly (keyof Pickups)[] = ["potion", "mana", "armor"];
 
-// Mínimo de Players para o start, como o MIN_PLAYERS do backend (rooms.md "Em aberto" 3)
+// Menor capacidade aceita na criação, como o MIN_PLAYERS do backend. O mínimo para o start vem do
+// servidor, no RoomInfo.min_players (rooms.md §4, decisão 12)
 export const MIN_PLAYERS: Record<Mode, number> = { coop: 1, pvp: 2 };
 
 // Defaults do room-options.md §2, só para mostrar no formulário antes de criar. Quem aplica é o

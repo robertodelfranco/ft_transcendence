@@ -48,8 +48,8 @@ export default function Resources({ hud }: { hud: HudState }) {
   const low = isLowHp(hud);
 
   return (
-    <dl aria-label={t("stats.label")} className="flex w-44 max-w-full flex-col gap-2 sm:w-48">
-      <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1">
+    <dl aria-label={t("stats.label")} className="flex w-44 max-w-full flex-wrap gap-x-5 gap-y-2 sm:w-48">
+      <div className="grid w-full grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1">
         <dt className="flex items-center gap-1.5 text-[11px] text-bone/90">
           <span className="text-red-500"><ResourceIcon kind="hp" /></span>
           {t("stats.hp")}
@@ -58,7 +58,7 @@ export default function Resources({ hud }: { hud: HudState }) {
         <dd aria-hidden="true" className="col-span-2"><Bar value={hud.hp} max={hud.maxHp} className="bg-red-600" /></dd>
         {low && <dd className="col-span-2 text-[10px] font-medium text-red-300">{t("stats.lowHp")}</dd>}
       </div>
-      <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1">
+      <div className="grid w-full grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1">
         <dt className="flex items-center gap-1.5 text-[11px] text-bone/90">
           <span className="text-sky-400"><ResourceIcon kind="mana" /></span>
           {t("stats.mana")}
@@ -66,10 +66,9 @@ export default function Resources({ hud }: { hud: HudState }) {
         <dd className="text-xs font-medium tabular-nums text-sky-200">{t("stats.ofMax", { value: hud.mana, max: hud.maxMana })}</dd>
         <dd aria-hidden="true" className="col-span-2"><Bar value={hud.mana} max={hud.maxMana} className="bg-sky-500" /></dd>
       </div>
-      <div className="flex items-center gap-5 pt-0.5">
-        <Row label={t("stats.armor")} icon="armor">{hud.armor}</Row>
-        <Row label={t("stats.keys")} icon="keys">{hud.keys}</Row>
-      </div>
+      {/* a dl só aceita div com um par dt/dd: Armadura e Chaves são filhos diretos, lado a lado pelo flex-wrap */}
+      <Row label={t("stats.armor")} icon="armor">{hud.armor}</Row>
+      <Row label={t("stats.keys")} icon="keys">{hud.keys}</Row>
     </dl>
   );
 }

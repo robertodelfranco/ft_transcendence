@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
@@ -80,6 +80,103 @@ describe("cabeçalho", () => {
     expect(getAccessToken()).toBeNull();
   });
 })
+
+describe("página atual nos links de navegação", () => {
+  it("no rodapé, só o link da página aberta fica marcado", async () => {
+    renderAt("/privacy");
+    const footer = await screen.findByRole("navigation", { name: "Legal information" });
+    expect(within(footer).getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("aria-current", "page");
+    expect(within(footer).getByRole("link", { name: "Terms of Service" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("no cabeçalho, a marca acompanha a navegação", async () => {
+    const user = userEvent.setup();
+    await reloadWithSession();
+    renderAt("/friends");
+    const nav = await screen.findByRole("navigation", { name: "Sua conta" });
+    expect(within(nav).getByRole("link", { name: "Amigos" })).toHaveAttribute("aria-current", "page");
+
+    await user.click(within(nav).getByRole("link", { name: "Ranking" }));
+    await waitFor(() => expect(within(nav).getByRole("link", { name: "Ranking" })).toHaveAttribute("aria-current", "page"));
+    expect(within(nav).getByRole("link", { name: "Amigos" })).not.toHaveAttribute("aria-current");
+  });
+});
+
+describe("menu em janela estreita", () => {
+  // o jsdom não aplica o CSS do md: o que se testa é o comportamento do botão e do painel
+  async function openShell() {
+    const user = userEvent.setup();
+    await reloadWithSession();
+    renderAt("/lobby");
+    const button = await screen.findByRole("button", { name: "Menu" });
+    const panel = document.getElementById(button.getAttribute("aria-controls")!)!;
+    return { user, button, panel };
+  }
+
+  it("o botão abre e fecha o painel; o username fica fora dele", async () => {
+    const { user, button, panel } = await openShell();
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(within(panel).getByRole("link", { name: "Ranking" })).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: "Sair" })).toBeInTheDocument();
+    expect(within(panel).queryByRole("link", { name: "augusto" })).not.toBeInTheDocument();
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("Esc fecha o menu e devolve o foco ao botão", async () => {
+    const { user, button, panel } = await openShell();
+    await user.click(button);
+    await user.tab();
+    expect(within(panel).getByRole("link", { name: "Ranking" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(button).toHaveFocus();
+  });
+
+  it("clicar no link da página atual também fecha o menu", async () => {
+    const { user, button, panel } = await openShell();
+    await user.click(within(panel).getByRole("link", { name: "Amigos" }));
+    await screen.findByRole("heading", { name: "Amigos" });
+    await user.click(button);
+    await user.click(within(panel).getByRole("link", { name: "Amigos" }));
+    expect(button).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("sair por outro caminho e voltar pelo histórico não reabre o menu", async () => {
+    const user = userEvent.setup();
+    await reloadWithSession();
+    const router = renderAt("/lobby");
+    await user.click(await screen.findByRole("button", { name: "Menu" }));
+    await act(() => router.navigate("/friends")); // um link da página, não o do menu
+    await screen.findByRole("heading", { name: "Amigos" });
+    await act(() => router.navigate(-1)); // o Voltar do navegador
+    await screen.findByRole("heading", { name: "Lobby" });
+    expect(screen.getByRole("button", { name: "Menu" })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("clicar fora do menu o fecha", async () => {
+    const { user, button } = await openShell();
+    await user.click(button);
+    await user.click(screen.getByRole("heading", { name: "Lobby" }));
+    expect(button).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("sem sessão não há menu: o cabeçalho só tem o nome do jogo e o idioma", async () => {
+    renderAt("/privacy");
+    await screen.findByLabelText("Language");
+    expect(screen.queryByRole("button", { name: "Menu" })).not.toBeInTheDocument();
+  });
+
+  it("navegar pelo menu o fecha", async () => {
+    const { user, button, panel } = await openShell();
+    await user.click(button);
+    await user.click(within(panel).getByRole("link", { name: "Amigos" }));
+    expect(await screen.findByRole("heading", { name: "Amigos" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Menu" })).toHaveAttribute("aria-expanded", "false");
+  });
+});
 
 describe("telas da conta", () => {
   it.each(["/users/7", "/settings", "/friends", "/leaderboard"])("%s sem sessão manda para o login", async (path) => {

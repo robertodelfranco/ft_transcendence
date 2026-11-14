@@ -28,7 +28,7 @@ Como ler as tabelas:
 | Nome | Unidade | Valor | Arq. | No C |
 |---|---|---|---|---|
 | `PLAYER_SPEED` | cél/s | `3.6` ¹ | sim | `0.06` por quadro (`player_bonus/init_player_bonus.c:78`) |
-| `PLAYER_SPRINT_MULT` | multiplicador | `2.0` | novo | `move_speed * 2.0` (`player_bonus/movement_bonus.c:22`) |
+| `PLAYER_SPRINT_MULT` | multiplicador | `1.5` | novo | Base C: `move_speed * 2.0` (`player_bonus/movement_bonus.c:22`); ajustado em 13/11 (§5.10) |
 | `PLAYER_ROT_SPEED` | rad/s | `1.8` ¹ | sim | `0.03` rad por quadro (`player_bonus/init_player_bonus.c:79`) |
 | `MOUSE_MAX_ROT_SPEED` | rad/s | `18.85` (6π) | sim | Limite de giro por mouse, igual nos dois Modes: o servidor e a Prediction cortam `mouse_dx` em `MOUSE_MAX_ROT_SPEED × dt` por Tick. Sem equivalente: o C girava `0.012` rad por evento de cursor nas faixas laterais de 30% da janela (`player_bonus/controls_bonus.c:63-71`) |
 | `PLAYER_RADIUS` | cél | `0.05` | novo | `R`, testado nos 4 cantos contra `1` e `D` (`include/cub3d_bonus.h:27`, `player_bonus/move_utils_bonus.c:100-111`) |
@@ -48,21 +48,22 @@ O HP inicial e o teto da poção não são constantes: vêm de `options.start_hp
 
 | Nome | Unidade | Valor | Arq. | No C |
 |---|---|---|---|---|
-| `ENEMY_SPEED` | cél/s | `2.2` | sim | Base C: `0.15` por passo (`enemy_bonus/enemy_images_bonus.c:131`), um passo quando `move_delay > 0.1` s (`enemy_bonus/enemy_manage_bonus.c:63`); ajustado na F4.7 (§5.6) |
+| `ENEMY_SPEED` | cél/s | `3.0` | sim | Base C: `0.15` por passo (`enemy_bonus/enemy_images_bonus.c:131`), um passo quando `move_delay > 0.1` s (`enemy_bonus/enemy_manage_bonus.c:63`); ajustado na F4.7 (§5.6) e em 13/11 (§5.10) |
 | `ENEMY_RADIUS` | cél | `0.2` | novo | 4 cantos a `0.2` do centro (`enemy_bonus/enemy_move_bonus.c:40-50`) |
 | `ENEMY_SEPARATION` | cél | `0.6` | novo | Enemy não chega a menos disso de outro Enemy (`enemy_bonus/enemy_move_bonus.c:30`) |
 | `ENEMY_RETARGET_MARGIN` | cél | `1.0` | sim | Não existe no C, que só tinha um jogador. O Enemy só troca de alvo se o novo estiver esta quantidade de passos de caminho mais perto que o atual (arq. §5) |
 | `ENEMY_CHASE_RANGE` | cél | `12` ² | novo | Não existe no C, que andava em linha reta até o único jogador. Passos de caminho (8 vizinhas) até onde a busca do Enemy alcança; Player mais longe que isso não é alvo |
-| `ENEMY_ATTACK_RANGE` | cél | `0.7` | novo | `distance <= 0.7` vira `ATTACK` (`enemy_bonus/enemy_manage_bonus.c:62-65`) |
-| `ENEMY_ATTACK_INTERVAL_S` | s | `1.0` | novo | Base C: 7 quadros de `0.2` s (`enemy_bonus/enemy_manage_bonus.c:17-23` e `:38`); no C o primeiro golpe saía em 0,8 s; ajustado na F4.7 (§5.6) |
-| `ENEMY_DAMAGE` | HP | `1` | novo | `hp -= 1` (`enemy_bonus/enemy_manage_bonus.c:21`) |
+| `ENEMY_ATTACK_RANGE` | cél | `1.0` | novo | Base C: `distance <= 0.7` vira `ATTACK` (`enemy_bonus/enemy_manage_bonus.c:62-65`); ajustado na #278 (§5.8) |
+| `ENEMY_HIT_RANGE` | cél | `2.0` | novo | Não existe no C, que dava o dano sem conferir a distância. Até onde o golpe ainda acerta no fim do `attack`, com linha livre até o alvo (#278, §5.8) |
+| `ENEMY_ATTACK_INTERVAL_S` | s | `0.77` | novo | Base C: 7 quadros de `0.2` s (`enemy_bonus/enemy_manage_bonus.c:17-23` e `:38`); no C o primeiro golpe saía em 0,8 s; ajustado na F4.7 (§5.6) e na #278 (§5.8) |
+| `ENEMY_DAMAGE` | HP | `1` | novo | Base C: `hp -= 1` (`enemy_bonus/enemy_manage_bonus.c:21`). O golpe tira `ENEMY_DAMAGE + Players // 2`, contados na criação da Room: 1, 2, 2, 3 e 3 HP de 1 a 5 Players (#281) |
 | `ENEMY_DYING_S` | s | `1.5` | novo | 3 quadros de `0.5` s até `DEAD` (`enemy_bonus/enemy_manage_bonus.c:40-45`) |
 
 ### 2.4 Boss
 
 | Nome | Unidade | Valor | Arq. | No C |
 |---|---|---|---|---|
-| `BOSS_HP` | HP | `60` | novo | `boss_bonus/init_boss_bonus.c:103` |
+| `BOSS_HP` | HP por Player | `60` | novo | Base C: `boss_bonus/init_boss_bonus.c:103`. O Boss nasce com `BOSS_HP × Players da partida`, contados na criação da Room: 60 com 1, 120 com 2, 300 com 5 (#281) |
 | `BOSS_SPEED` | cél/s | `2.0` | sim | `0.2` por passo (`:109`), um passo quando `move_delay > 0.1` s (`:36`) |
 | `BOSS_RADIUS` | cél | `0.2` | novo | 4 cantos a `0.2` (`boss_bonus/move_boss_bonus.c:41-51`) |
 | `BOSS_SIGHT_RANGE` | cél | `20` | novo | `distance <= 20.0` vira `ALERT` (`boss_bonus/init_boss_bonus.c:33`) |
@@ -112,17 +113,17 @@ O mesmo nome e o mesmo valor nos dois arquivos, com a unidade no comentário:
 # backend/app/game/rules.py
 TICK_RATE = 30            # Hz
 PLAYER_SPEED = 3.6        # cél/s
-PLAYER_SPRINT_MULT = 2.0
+PLAYER_SPRINT_MULT = 1.5
 ```
 
 ```ts
 // frontend/game/src/rules.ts
 export const TICK_RATE = 30;            // Hz
 export const PLAYER_SPEED = 3.6;        // cél/s
-export const PLAYER_SPRINT_MULT = 2.0;
+export const PLAYER_SPRINT_MULT = 1.5;
 ```
 
-Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um Tick andando move `0.12` célula (`0.24` correndo), e 30 Ticks movem `3.6` células.
+Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um Tick andando move `0.12` célula (`0.18` correndo), e 30 Ticks movem `3.6` células.
 
 ## 4. Decisões
 
@@ -132,7 +133,7 @@ Uso, igual nos dois lados: `x += dir_x * PLAYER_SPEED * dt`. Com `dt = 1/30`, um
 - **Projectile avança em subpassos de no máximo `0.1` célula.** O C testava parede e alvo só no ponto de chegada de cada salto de 0,5 célula.
 - **Não existe fogo amigo.** `FIREBALL_PLAYER_DAMAGE` só é lido pelo `PvpRuleset`.
 - **O teto da poção é `options.start_hp`**, não o `10` fixo do C.
-- **O Enemy golpeia a cada `ENEMY_ATTACK_INTERVAL_S` e só acerta quem ainda está em `ENEMY_ATTACK_RANGE`.** No C o primeiro golpe saía em 0,8 s e os seguintes em 1,4 s (o contador começava em 3 e voltava para 0), e o dano entrava sem conferir a distância de novo. A arq. §6.3 e o roadmap (R3) já falam em "1 HP a cada 1,4 s de contato"; um intervalo só e o alcance conferido no golpe são essa regra. O intervalo passou a 1,0 s na F4.7 (§5.6).
+- **O Enemy golpeia a cada `ENEMY_ATTACK_INTERVAL_S` e só acerta quem ainda está em `ENEMY_HIT_RANGE`, sem parede no meio.** No C o primeiro golpe saía em 0,8 s e os seguintes em 1,4 s (o contador começava em 3 e voltava para 0), e o dano entrava sem conferir a distância de novo. A arq. §6.3 e o roadmap (R3) já falam em "1 HP a cada 1,4 s de contato"; um intervalo só e o alcance conferido no golpe são essa regra. O intervalo passou a 1,0 s na F4.7 (§5.6) e a 0,77 s na #278 (§5.8). O `attack` começa em `ENEMY_ATTACK_RANGE`, mas o golpe confere o `ENEMY_HIT_RANGE`, maior: dar um passo para trás durante a animação não basta para escapar. A linha livre é o mesmo DDA do Boss (`_clear_line`), para o golpe não atravessar parede nem Door fechada.
 - **Uma fireball mata um Enemy.** O C não tem HP de Enemy (`update_fireball_bonus.c:43-45`). Se o balanceamento pedir Enemy mais resistente, entra um `ENEMY_HP`.
 - **As velocidades da tabela são as nominais.** No C, o passo de Enemy e Boss saía quando o atraso passava de 0,1 s e o excedente era descartado; a 60 fps isso dava um passo a cada 6 ou 7 quadros, até 14% mais lento que o nominal. A diferença era efeito do jeito de contar o tempo, não intenção, e fica para o balanceamento (F4.7).
 - **`BODY_BLOCK_DISTANCE` usa `<` para todos.** O C usava `<=` para Enemy e `<` para Boss. Só bloqueia quem está vivo: Enemy em `dying` não bloqueia (o C já fazia assim).
@@ -231,3 +232,67 @@ O servidor mede o intervalo entre `charge_start` e `fire` em Ticks; o cliente
 não escolhe dano ou duração. Perder foco/Pointer Lock ou ocultar a aba envia
 `charge_cancel`; morte, saída e mudança de conexão cancelam no servidor.
 Revisão de Roberto/Augusto e playtests coop/PvP pendentes.
+
+
+### 5.8 Alcance e cadência do golpe do Enemy — #278, 13/11/2026
+
+Roberto decidiu três mudanças no golpe do Enemy:
+
+- `ENEMY_ATTACK_RANGE` passa de 0,7 para 1,0 cél. É a distância que põe o
+  Enemy em `attack` e que faz o `attack` recomeçar logo depois do golpe.
+- `ENEMY_HIT_RANGE = 2.0` cél é novo. No fim da animação, o dano entra se o
+  alvo estiver a até 2 cél e sem parede no meio. Antes, o golpe conferia os
+  mesmos 0,7 cél do início, e um passo para trás bastava para escapar.
+- `ENEMY_ATTACK_INTERVAL_S` passa de 1,0 para 0,77 s, cadência 1,3× maior.
+  São 23 Ticks a 30 Hz (0,767 s), e o quadro da animação de ataque cai para
+  ~192 ms, porque deriva do intervalo.
+
+Python, TypeScript e fixture compartilham os novos valores. Testes da
+Simulation cobrem o início a 1,0 cél, o acerto a 1,5 cél, o erro a 2,1 cél e
+o golpe bloqueado por parede. Playtest coop pendente: conferir se o golpe a
+2 cél não parece injusto com o sprite ainda longe.
+
+
+### 5.9 Boss e Enemy escalam com o coop — #281, 13/11/2026
+
+Roberto decidiu, com revisão do Rafael no PR #283, que o coop fica mais difícil
+a cada Player, sem mecânica nova:
+
+- O Boss nasce com `BOSS_HP × Players da partida`: 60 HP com 1 Player, 120 com
+  2 e 300 com 5. Com a fireball normal são 6 acertos por Player, ou 3 por
+  Player com a carregada.
+- O golpe do Enemy tira `ENEMY_DAMAGE + Players // 2`: 1, 2, 2, 3 e 3 HP de 1 a
+  5 Players. A Armor continua segurando ponto por ponto, então com 4 ou 5
+  Players um Pickup de Armor (3 pontos) segura um golpe inteiro.
+
+Os Players são contados quando a Room nasce. Quem sai no meio continua
+contando, para o HP do Boss e o dano não mudarem durante a partida.
+Escalar o HP dos Enemies foi descartado: eles morrem com uma fireball, e HP
+pediria um evento novo de acerto e retorno visual no render. Escalar a
+cadência também foi descartado, porque a animação de ataque deriva de
+`ENEMY_ATTACK_INTERVAL_S` e sairia de sincronia com o golpe.
+Playtest coop com 2 e com 5 Players pendente.
+
+
+### 5.10 Enemy mais rápido e sprint mais curto — #265, 13/11/2026
+
+Roberto decidiu, depois do playtest com bots de 1 a 5 Players na stack de
+teste:
+
+- `ENEMY_SPEED` passa de 2,2 para 3,0 cél/s. Nas 13 campanhas coop com bots
+  atirando, nenhum Enemy chegou a golpear: a fireball (12 cél/s, um acerto
+  mata) derrubava todos no caminho. A 3,0 cél/s o Enemy cruza os 12 passos de
+  `ENEMY_CHASE_RANGE` em 4 s, contra 5,5 s antes, e o Player tem menos tiros
+  antes do contato.
+- `PLAYER_SPRINT_MULT` passa de 2,0 para 1,5: correndo, o Player vai a
+  5,4 cél/s, contra 7,2 antes. A constante é a mesma no `coop` e no `pvp`.
+
+Andando (3,6 cél/s), o Player ainda é mais rápido que o Enemy, com folga de
+0,6 cél/s; correndo, a folga é de 2,4 cél/s. Contra o Boss, correr de lado
+durante o voo do bullet (0,67 s a 8 cél) afasta o Player 3,6 cél da linha,
+mais que o `PROJECTILE_HIT_RADIUS` de 0,3.
+Python, TypeScript e fixture compartilham os novos valores; a fixture foi
+regenerada com `python -m app.game.mirror`. O teste de geometria do acerto da
+fireball congela o Enemy, porque a 3,0 cél/s ele saía da parede em que o teste
+o encostava e entrava no caminho do tiro.
+Playtest coop e PvP com os novos valores pendente.

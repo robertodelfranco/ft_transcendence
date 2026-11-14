@@ -256,7 +256,7 @@ Para ambos os Themes, somar o índice e `.png` ao prefixo correspondente:
 | Entidade / estado | Índices PNG | Quantidade | Proposta de ms por quadro | Repetição |
 |---|---|---:|---:|---|
 | Enemy `alert` | 0, 1, 2 | 3 | 300 | Sim |
-| Enemy `attack` | 3, 4, 5, 6 | 4 | 250 (`ENEMY_ATTACK_INTERVAL_S / 4`) | Sim enquanto `attack` |
+| Enemy `attack` | 3, 4, 5, 6 | 4 | ~192 (`ENEMY_ATTACK_INTERVAL_S / 4`) | Sim enquanto `attack` |
 | Enemy `dying` | 7, 8, 9 | 3 | 500 | Não; segura o último até remoção |
 | Boss `idle` / `alert` | 0, 1, 2 | 3 | 300 | Sim |
 | Boss `attack` | 3, 4, 5, 6 | 4 | 300 | Não; os 1,2 s são o `BOSS_ATTACK_WINDUP_S`, e o bullet sai ao fim |
@@ -264,7 +264,7 @@ Para ambos os Themes, somar o índice e `.png` ao prefixo correspondente:
 | Projectile `moving` | 0 | 1 | Estático | — |
 | Projectile `hit` | 0, 1, 2, 3 | 4 | 100 | Não |
 
-**O quadro do ataque do Enemy deriva da regra**: `ENEMY_ATTACK_INTERVAL_S / 4`, para um ciclo de quatro PNGs durar o intervalo entre golpes; não é o valor do C (200 ms). Eram 350 ms para os 1,4 s originais; com o intervalo de 1,0 s da F4.7 (`rules.md` §5.6, 12/11/2026) são 250 ms. A Simulation confirmou em 06/10 que o ciclo bate com `ENEMY_ATTACK_INTERVAL_S`; falta validar visualmente, sem usar o fim do clipe para aplicar dano. Fireball usa `assets/player/fireball_` nos dois Themes.
+**O quadro do ataque do Enemy deriva da regra**: `ENEMY_ATTACK_INTERVAL_S / 4`, para um ciclo de quatro PNGs durar o intervalo entre golpes; não é o valor do C (200 ms). Eram 350 ms para os 1,4 s originais; com o intervalo de 1,0 s da F4.7 (`rules.md` §5.6, 12/11/2026) eram 250 ms, e com os 0,77 s da #278 (`rules.md` §5.8, 13/11/2026) são ~192 ms. A Simulation confirmou em 06/10 que o ciclo bate com `ENEMY_ATTACK_INTERVAL_S`; falta validar visualmente, sem usar o fim do clipe para aplicar dano. Fireball usa `assets/player/fireball_` nos dois Themes.
 
 Outros recursos reaproveitáveis: `assets/map/door_2.png`, `assets/collectables/key.png`, `assets/collectables/pot.png`, `assets/player/player_hand_white.png`. O briefing menciona 65 PNGs; nesta revisão do Cub3D foram encontrados 64 arquivos `.png` em `assets/`, dos quais 62 são candidatos ao render; `win_game.png` e `end_game.png` ficam fora da tela final, que será HUD traduzida. Faltam desenhos próprios de Mana, Armor, tocha e outro Player. Fechar seus arquivos, dimensões e clipes antes de completar o manifesto.
 
@@ -309,7 +309,7 @@ luzes. Validação visual e de desempenho pendente; detalhes em
 
 Propor capturar falhas de `init` na integração, liberar recursos parciais e emitir `onHud` com código traduzível; o código de asset ainda precisa entrar no catálogo de erros. Confirmar quais assets são obrigatórios e testar URL ausente, imagem corrompida e falha de som. Callback de erro sozinho não comprova console limpo no navegador.
 
-Meta da arquitetura: 60 fps com 5 Players, 20 Enemies e 10 Projectiles, e dez trocas de Room sem crescimento de memória. Medir com Boss, registrar máquina, navegador, resolução interna, sombras e bloom. Não há medição de FPS, memória ou luzes neste documento; nenhum número de luzes é garantia de performance.
+Meta da arquitetura: 60 fps com 5 Players, 35 Enemies e 10 Projectiles, e dez trocas de Room sem crescimento de memória. Medir com Boss, registrar máquina, navegador, resolução interna, sombras e bloom. Não há medição de FPS, memória ou luzes neste documento; nenhum número de luzes é garantia de performance.
 
 
 ### Tochas de parede — ajuste visual de 11/11/2026

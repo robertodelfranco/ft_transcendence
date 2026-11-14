@@ -6,6 +6,8 @@ import { dungeonTheme, type Theme } from "./themes";
 export interface Assets {
   light: Theme["light"];
   fogDensity: number;
+  water?: Theme["water"];
+  bulletTint?: Theme["bulletTint"];
   floor: number;
   ceiling: number;
   walls: Record<"no" | "so" | "we" | "ea", THREE.Texture>;
@@ -63,6 +65,8 @@ export class AssetLoader {
     return {
       light: theme.light,
       fogDensity: theme.fogDensity,
+      water: theme.water,
+      bulletTint: theme.bulletTint,
       floor: theme.floor,
       ceiling: theme.ceiling,
       walls: { no: texture("no"), so: texture("so"), we: texture("we"), ea: texture("ea") },

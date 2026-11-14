@@ -4,6 +4,7 @@
     "pvp": "PvP 1v1"
   },
   "maps": {
+    "crypt_descent": "Crypt descent",
     "dungeon_map": "Dungeon",
     "enemy": "Enemy halls",
     "enemy_sewer": "Sewer halls",

@@ -56,7 +56,7 @@ export default function MatchPlayers({ detail, userId }: {
               <th scope="row" className="py-2 pr-4 text-left font-normal">
                 <div className="flex items-center gap-2">
                   <Avatar user={player} />
-                  <Link to={`/users/${player.user_id}`} className={`font-bold ${linkClass}`}>
+                  <Link to={`/users/${player.user_id}`} className={linkClass}>
                     {player.username}
                   </Link>
                   {player.user_id === userId && <span className="text-bone/70">{t("result.you")}</span>}

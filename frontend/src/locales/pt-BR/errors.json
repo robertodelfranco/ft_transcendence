@@ -30,6 +30,7 @@
   "not_in_match": "Você não está nesta partida.",
   "not_host": "Só quem criou a sala pode fazer isso.",
   "not_enough_players": "Faltam jogadores para começar.",
+  "not_all_ready": "Nem todos os jogadores estão prontos.",
   "already_started": "Esta partida já começou.",
   "invalid_options": "As opções da partida são inválidas.",
   "map_not_found": "Mapa não encontrado.",

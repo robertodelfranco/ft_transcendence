@@ -10,4 +10,7 @@ export const buttonSecondary =
 export const fieldClass =
   `rounded border border-bone/40 bg-crypt-900 px-3 py-2 text-bone ${focus} disabled:opacity-60`;
 
-export const linkClass = `underline hover:text-torch ${focus}`;
+// Link dentro da página: sem sublinhado parado, porque a cor da tocha e o peso já o separam do texto
+// em volta (sem o peso, só a cor fica abaixo de 3:1); o sublinhado aparece no hover. O cabeçalho e o
+// rodapé têm o estilo deles, no Layout
+export const linkClass = `font-semibold text-torch underline-offset-4 hover:underline ${focus}`;

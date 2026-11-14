@@ -49,7 +49,7 @@ def test_player_starts_full_and_disconnected():
 def test_entities_come_from_the_map():
 	room = new_room()
 	assert [(e.id, e.x, e.y, e.state) for e in room.enemies] == [("e_1", 5.5, 2.5, EnemyState.ALERT)]
-	assert (room.boss.x, room.boss.y, room.boss.hp, room.boss.state) == (5.5, 3.5, BOSS_HP, BossState.IDLE)
+	assert (room.boss.x, room.boss.y, room.boss.hp, room.boss.state) == (5.5, 3.5, BOSS_HP * len(PLAYERS), BossState.IDLE)
 	assert [(d.x, d.y, d.locked, d.open) for d in room.doors] == [(3, 2, True, False)]
 
 

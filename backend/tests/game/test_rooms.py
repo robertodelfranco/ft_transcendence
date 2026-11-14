@@ -12,8 +12,8 @@ import app.game.rooms as rooms
 from app.game import MatchOutcome, Mode, RoomOptions, set_connected, to_snapshot
 from app.game.characters import CharacterId
 from app.game.protocol import CloseCode
-from app.game.rooms import (AlreadyIn, AlreadyInOtherMatch, AlreadyStarted, NotEnoughPlayers,
-	NotInRoom, RoomError, RoomFull, RoomManager, RoomNotFound, get_room_manager)
+from app.game.rooms import (AlreadyIn, AlreadyInOtherMatch, AlreadyStarted, NotAllReady,
+	NotEnoughPlayers, NotInRoom, RoomError, RoomFull, RoomManager, RoomNotFound, get_room_manager)
 from app.core.request_id import current_request_id
 from app.game.world import parse_map
 from app.matches.results import AchievementUnlock
@@ -80,6 +80,13 @@ def lobby(manager: RoomManager, match_id: int = 12, mode: Mode = Mode.COOP, max_
 	manager.create(match_id, mode, "arena", max_players, RoomOptions(), created_by=players[0])
 	for user_id in players:
 		manager.join(match_id, user_id, f"user{user_id}", AVATAR)
+
+
+def start_ready(manager: RoomManager, match_id: int = 12) -> None:
+	# o start exige todos prontos (rooms.md §4, decisão 13); aqui o teste só quer a partida rodando
+	for player in manager.info(match_id).players:
+		manager.set_ready(match_id, player.user_id, True)
+	manager.start(match_id)
 
 
 async def until(condition: Callable[[], bool], timeout: float = 1.0) -> None:
@@ -196,7 +203,7 @@ async def test_character_is_individual_and_survives_start_and_reconnection(manag
 	assert [p.character_id for p in manager.info(12).players] == ["nemesis", "nemesis"]
 	info = manager.set_character(12, 9, CharacterId.SUCUBUS)
 	assert [p.character_id for p in info.players] == ["nemesis", "sucubus"]
-	manager.start(12)
+	start_ready(manager)
 	room = manager.game_room(12)
 	manager.player_connected(12, 9)
 	manager.player_disconnected(12, 9)
@@ -217,7 +224,7 @@ async def test_character_cannot_change_another_players_seat(manager):
 async def test_list_open_shows_only_lobbies(manager):
 	lobby(manager, match_id=12, max_players=1)
 	lobby(manager, match_id=13, players=(9,), max_players=1)
-	manager.start(13)
+	start_ready(manager, 13)
 	assert [info.match_id for info in manager.list_open()] == [12]
 
 
@@ -237,20 +244,53 @@ async def test_coop_with_room_for_more_needs_two_players(manager, max_players):
 	with pytest.raises(NotEnoughPlayers, match="1/2"):
 		manager.start(12)
 	manager.join(12, 9, "user9", AVATAR)
-	manager.start(12)
+	start_ready(manager)
 	assert manager.info(12).status == "running"
 
 
 async def test_solo_starts_with_one_player(manager):
 	lobby(manager, max_players=1)
 	assert manager.info(12).min_players == 1
+	start_ready(manager)
+	assert manager.info(12).status == "running"
+
+
+async def test_start_waits_for_everyone_ready_the_host_included(manager):
+	lobby(manager, players=(7, 9))
+	with pytest.raises(NotAllReady, match="2 player"):
+		manager.start(12)
+	manager.set_ready(12, 9, True)
+	with pytest.raises(NotAllReady, match="1 player"):
+		manager.start(12) # o host (7) ainda não marcou: o clique dele não vale pelo pronto
+	assert manager.info(12).status == "lobby" and room_tasks() == []
+	manager.set_ready(12, 7, True)
 	manager.start(12)
 	assert manager.info(12).status == "running"
 
 
+async def test_solo_also_marks_ready_before_starting(manager):
+	lobby(manager, max_players=1)
+	with pytest.raises(NotAllReady):
+		manager.start(12)
+	manager.set_ready(12, 7, True)
+	manager.start(12)
+	assert manager.info(12).status == "running"
+
+
+async def test_not_enough_players_comes_before_not_ready(manager):
+	# quem está sozinho numa Room de dois ouve o motivo que resolve: falta gente, não o pronto
+	lobby(manager, mode=Mode.PVP, max_players=2)
+	manager.set_ready(12, 7, True)
+	with pytest.raises(NotEnoughPlayers):
+		manager.start(12)
+	manager.set_ready(12, 7, False)
+	with pytest.raises(NotEnoughPlayers):
+		manager.start(12)
+
+
 async def test_start_creates_the_simulation_room_in_order_of_arrival(manager):
 	lobby(manager, players=(9, 7, 15))
-	manager.start(12)
+	start_ready(manager)
 	room = manager.game_room(12)
 	assert list(room.players) == [9, 7, 15]
 	assert manager.info(12).status == "running"
@@ -260,7 +300,7 @@ async def test_start_creates_the_simulation_room_in_order_of_arrival(manager):
 async def test_start_creates_the_room_frozen_until_the_players_connect(manager):
 	# #255: a Room da partida de verdade nasce esperando os Players e conta 3, 2, 1
 	lobby(manager, players=(7, 9))
-	manager.start(12)
+	start_ready(manager)
 	room = manager.game_room(12)
 	assert room.countdown_end_tick is None
 	assert room.frozen()
@@ -268,7 +308,7 @@ async def test_start_creates_the_room_frozen_until_the_players_connect(manager):
 
 async def test_nothing_changes_the_lobby_after_start(manager):
 	lobby(manager, players=(7, 9))
-	manager.start(12)
+	start_ready(manager)
 	for change in (lambda: manager.start(12), lambda: manager.join(12, 15, "x", AVATAR),
 			lambda: manager.leave(12, 9), lambda: manager.set_ready(12, 9, True)):
 		with pytest.raises(AlreadyStarted):
@@ -278,7 +318,7 @@ async def test_nothing_changes_the_lobby_after_start(manager):
 
 async def test_connected_comes_from_the_simulation_after_start(manager):
 	lobby(manager, players=(7, 9))
-	manager.start(12)
+	start_ready(manager)
 	set_connected(manager.game_room(12), 7, True)
 	assert [p.connected for p in manager.info(12).players] == [True, False]
 
@@ -287,7 +327,7 @@ async def test_connected_comes_from_the_simulation_after_start(manager):
 
 async def test_tick_sends_events_and_a_snapshot_every_two_ticks(manager, connections, fake_ws):
 	lobby(manager, players=(7, 9))
-	manager.start(12)
+	start_ready(manager)
 	room = manager.game_room(12)
 	ws7, ws9 = fake_ws(), fake_ws()
 	await connections.connect(7, "game", ws7, match_id=12)
@@ -315,7 +355,7 @@ def end_game(manager: RoomManager, match_id: int = 12) -> None:
 
 async def test_game_over_records_the_match_once_even_with_ticks_after(manager, results):
 	lobby(manager, players=(7, 9))
-	manager.start(12)
+	start_ready(manager)
 	room = manager.game_room(12)
 	end_game(manager)
 	end_tick = room.tick + rooms.DYING_TICKS + 1 # +1: o game_over só é visto no Tick seguinte
@@ -330,7 +370,7 @@ async def test_game_over_records_the_match_once_even_with_ticks_after(manager, r
 async def test_game_over_frees_the_players_before_the_animation_ends(manager, monkeypatch):
 	monkeypatch.setattr(rooms, "DYING_TICKS", 10_000)
 	lobby(manager, players=(7, 9))
-	manager.start(12)
+	start_ready(manager)
 	(task,) = room_tasks()
 	end_game(manager)
 	await until(lambda: manager.room_of(7) is None)
@@ -342,7 +382,7 @@ async def test_game_over_frees_the_players_before_the_animation_ends(manager, mo
 async def test_the_ticks_after_game_over_stop_after_the_animation(manager):
 	# nos 60 s seguintes a Room só espera: nada de 30 Hz de CPU e Snapshot para uma partida acabada
 	lobby(manager, max_players=1)
-	manager.start(12)
+	start_ready(manager)
 	room = manager.game_room(12)
 	end_game(manager)
 	game_over_tick = room.tick
@@ -355,7 +395,7 @@ async def test_the_ticks_after_game_over_stop_after_the_animation(manager):
 async def test_the_room_is_removed_after_its_ttl(manager, monkeypatch):
 	monkeypatch.setattr(rooms, "ROOM_TTL_S", 0)
 	lobby(manager, max_players=1)
-	manager.start(12)
+	start_ready(manager)
 	(task,) = room_tasks()
 	end_game(manager)
 	await until(task.done)
@@ -373,7 +413,7 @@ async def test_removing_the_room_closes_its_game_sockets_with_1000(manager, conn
 	other = fake_ws() # o socket de outra partida não pode cair junto
 	await connections.connect(7, "game", ws, match_id=12)
 	await connections.connect(9, "game", other, match_id=13)
-	manager.start(12)
+	start_ready(manager)
 	(task,) = room_tasks()
 	end_game(manager)
 	await until(task.done)
@@ -390,7 +430,7 @@ async def test_unlocked_achievements_go_to_the_players(manager, connections, fak
 	ws7, ws9 = fake_ws(), fake_ws()
 	await connections.connect(7, "game", ws7, match_id=12)
 	await connections.connect(9, "game", ws9, match_id=12)
-	manager.start(12)
+	start_ready(manager)
 	end_game(manager)
 	await until(lambda: manager.room_of(7) is None)
 
@@ -403,7 +443,7 @@ async def test_a_failed_record_is_logged_and_the_room_still_ends(manager, result
 	monkeypatch.setattr(rooms, "ROOM_TTL_S", 0)
 	results.fail = True
 	lobby(manager, max_players=1)
-	manager.start(12)
+	start_ready(manager)
 	(task,) = room_tasks()
 	end_game(manager)
 	await until(task.done)
@@ -426,7 +466,7 @@ async def test_one_failing_step_is_logged_and_the_room_goes_on(manager, monkeypa
 
 	monkeypatch.setattr(rooms, "step", flaky_step)
 	lobby(manager, max_players=1)
-	manager.start(12)
+	start_ready(manager)
 	await until(lambda: manager.game_room(12).tick >= 3)
 	assert manager.info(12).status == "running"
 	assert "tick failed" in caplog.text
@@ -444,7 +484,7 @@ async def test_repeated_failures_close_the_room_with_4503(manager, connections, 
 	other = fake_ws() # o socket de outra partida não pode cair junto
 	await connections.connect(7, "game", ws, match_id=12)
 	await connections.connect(9, "game", other, match_id=13)
-	manager.start(12)
+	start_ready(manager)
 	(task,) = room_tasks()
 	# a task só termina depois do _abort inteiro: o socket fecha antes, e o banco grava depois
 	await until(task.done)
@@ -469,7 +509,7 @@ async def test_a_snapshot_that_always_fails_also_closes_the_room(manager, connec
 	lobby(manager, max_players=1)
 	ws = fake_ws()
 	await connections.connect(7, "game", ws, match_id=12)
-	manager.start(12)
+	start_ready(manager)
 	await until(lambda: ws.close_code is not None)
 
 	assert ws.close_code == CloseCode.SERVER_SHUTDOWN
@@ -490,7 +530,7 @@ async def test_a_failed_abort_is_logged_and_the_room_still_closes(manager, conne
 	lobby(manager, max_players=1)
 	ws = fake_ws()
 	await connections.connect(7, "game", ws, match_id=12)
-	manager.start(12)
+	start_ready(manager)
 	(task,) = room_tasks()
 	await until(task.done)
 	assert ws.close_code == CloseCode.SERVER_SHUTDOWN
@@ -502,7 +542,7 @@ async def test_the_tick_task_does_not_carry_the_request_id_of_the_start(manager)
 	lobby(manager, max_players=1)
 	token = current_request_id.set("3f2b9c00-0000-4000-8000-000000000000")
 	try:
-		manager.start(12)
+		start_ready(manager)
 	finally:
 		current_request_id.reset(token)
 	(task,) = room_tasks()
@@ -512,8 +552,8 @@ async def test_the_tick_task_does_not_carry_the_request_id_of_the_start(manager)
 async def test_close_cancels_every_tick_task(manager):
 	lobby(manager, match_id=12, max_players=1)
 	lobby(manager, match_id=13, players=(9,), max_players=1)
-	manager.start(12)
-	manager.start(13)
+	start_ready(manager)
+	start_ready(manager, 13)
 	tasks = room_tasks()
 	await manager.close()
 	assert len(tasks) == 2 and all(task.cancelled() for task in tasks)
@@ -522,7 +562,7 @@ async def test_close_cancels_every_tick_task(manager):
 
 async def test_close_also_cancels_a_finished_room_waiting_its_ttl(manager):
 	lobby(manager, max_players=1)
-	manager.start(12)
+	start_ready(manager)
 	(task,) = room_tasks()
 	end_game(manager)
 	await until(lambda: manager.room_of(7) is None)
@@ -545,7 +585,7 @@ def events_of(ws, user_id: int) -> list[str]:
 async def test_coming_back_within_the_grace_period_keeps_the_player(manager, connections, fake_ws,
 		short_grace):
 	lobby(manager, players=(7, 9))
-	manager.start(12)
+	start_ready(manager)
 	room = manager.game_room(12)
 	ws9 = fake_ws()
 	await connections.connect(9, "game", ws9, match_id=12)
@@ -568,7 +608,7 @@ async def test_coming_back_within_the_grace_period_keeps_the_player(manager, con
 async def test_the_grace_period_expiring_takes_the_player_out_of_a_coop(manager, connections,
 		fake_ws, short_grace):
 	lobby(manager, players=(7, 9))
-	manager.start(12)
+	start_ready(manager)
 	room = manager.game_room(12)
 	ws9 = fake_ws()
 	await connections.connect(9, "game", ws9, match_id=12)
@@ -585,7 +625,7 @@ async def test_the_grace_period_expiring_takes_the_player_out_of_a_coop(manager,
 
 async def test_everyone_expiring_ends_the_coop_with_a_forfeit(manager, results, short_grace):
 	lobby(manager, players=(7, 9))
-	manager.start(12)
+	start_ready(manager)
 	for user_id in (7, 9):
 		manager.player_connected(12, user_id)
 		manager.player_disconnected(12, user_id)
@@ -598,7 +638,7 @@ async def test_everyone_expiring_ends_the_coop_with_a_forfeit(manager, results, 
 
 async def test_connecting_after_the_grace_period_expired_is_refused(manager, short_grace):
 	lobby(manager, players=(7, 9))
-	manager.start(12)
+	start_ready(manager)
 	room = manager.game_room(12)
 	manager.player_connected(12, 9)
 	await until(lambda: room.players[7].left)
@@ -610,7 +650,7 @@ async def test_connecting_after_the_grace_period_expired_is_refused(manager, sho
 
 async def test_who_never_opens_the_socket_expires_counting_from_the_start(manager, short_grace):
 	lobby(manager, players=(7, 9))
-	manager.start(12)
+	start_ready(manager)
 	room = manager.game_room(12)
 	manager.player_connected(12, 9)
 	await until(lambda: room.players[7].left)
@@ -622,7 +662,7 @@ async def test_a_disconnect_after_game_over_starts_no_grace_period(manager, monk
 		short_grace):
 	monkeypatch.setattr(rooms, "DYING_TICKS", 10_000) # o Tick continua andando depois do game_over
 	lobby(manager, max_players=1)
-	manager.start(12)
+	start_ready(manager)
 	room = manager.game_room(12)
 	manager.player_connected(12, 7)
 	end_game(manager)
@@ -642,7 +682,7 @@ async def test_a_disconnect_from_a_removed_room_is_not_an_error(manager):
 async def test_abandon_takes_the_player_out_without_waiting_the_grace_period(manager, connections,
 		fake_ws):
 	lobby(manager, players=(7, 9))
-	manager.start(12)
+	start_ready(manager)
 	room = manager.game_room(12)
 	ws9 = fake_ws()
 	await connections.connect(9, "game", ws9, match_id=12)
@@ -659,7 +699,7 @@ async def test_abandon_takes_the_player_out_without_waiting_the_grace_period(man
 
 async def test_abandon_in_pvp_gives_the_win_to_who_stayed(manager, results):
 	lobby(manager, mode=Mode.PVP, max_players=2, players=(7, 9))
-	manager.start(12)
+	start_ready(manager)
 	for user_id in (7, 9):
 		manager.player_connected(12, user_id)
 	manager.abandon(12, 7)
@@ -671,7 +711,7 @@ async def test_abandon_in_pvp_gives_the_win_to_who_stayed(manager, results):
 
 async def test_the_socket_closing_after_abandon_starts_no_grace_period(manager, short_grace):
 	lobby(manager, players=(7, 9))
-	manager.start(12)
+	start_ready(manager)
 	room = manager.game_room(12)
 	for user_id in (7, 9):
 		manager.player_connected(12, user_id)
@@ -686,7 +726,7 @@ async def test_the_socket_closing_after_abandon_starts_no_grace_period(manager, 
 async def test_abandon_after_game_over_only_frees_the_user(manager, monkeypatch, results):
 	monkeypatch.setattr(rooms, "DYING_TICKS", 10_000)
 	lobby(manager, max_players=1)
-	manager.start(12)
+	start_ready(manager)
 	room = manager.game_room(12)
 	manager.player_connected(12, 7)
 	end_game(manager)
@@ -701,7 +741,7 @@ async def test_abandon_refusals(manager):
 	lobby(manager, players=(7, 9))
 	with pytest.raises(ValueError):
 		manager.abandon(12, 7) # no Lobby a saída é o leave
-	manager.start(12)
+	start_ready(manager)
 	with pytest.raises(NotInRoom):
 		manager.abandon(12, 8)
 	with pytest.raises(RoomNotFound):

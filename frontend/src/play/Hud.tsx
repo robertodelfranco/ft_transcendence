@@ -9,8 +9,8 @@ import Resources from "./Resources";
 import Scoreboard from "./Scoreboard";
 
 // Duas formas, a mesma ordem (hud.md §2). Em janela estreita os grupos ficam abaixo do canvas, um
-// sob o outro, na ordem de prioridade: aviso, recursos, Players ou placar, e por fim ping, ajuda e
-// feed. A partir do md viram uma camada sobre o canvas, cada grupo no seu canto, e o
+// sob o outro e centralizados, na ordem de prioridade: aviso, recursos, Players ou placar, e por fim
+// ping, ajuda e feed. A partir do md viram uma camada sobre o canvas, cada grupo no seu canto, e o
 // pointer-events-none deixa o clique passar para o canvas, que pede o Pointer Lock
 export default function Hud({ hud, userId }: { hud: HudState; userId: number | null }) {
   const { t } = useTranslation("hud");
@@ -32,19 +32,19 @@ export default function Hud({ hud, userId }: { hud: HudState; userId: number | n
         {death && <p className="px-2 py-1">{t(`death.${death}`)}</p>}
       </div>
       {/* rodapé esquerdo; o direito fica para o minimapa (F3.6), que o jogo desenha no canvas */}
-      <div className={`max-w-full self-start md:col-start-1 md:row-start-3 md:self-end md:justify-self-start ${dim}`}>
+      <div className={`max-w-full self-center md:col-start-1 md:row-start-3 md:self-end md:justify-self-start ${dim}`}>
         <Resources hud={hud} />
       </div>
       {/* topo esquerdo: Players no coop; placar e relógio no pvp */}
       {hud.mode !== null && (
-        <div className={`w-48 max-w-full self-start sm:w-52 md:col-start-1 md:row-start-1 md:justify-self-start ${dim}`}>
+        <div className={`w-48 max-w-full self-center sm:w-52 md:col-start-1 md:row-start-1 md:self-start md:justify-self-start ${dim}`}>
           {hud.mode === "coop"
             ? <Players players={hud.players} userId={userId} />
             : <Scoreboard hud={hud} userId={userId} />}
         </div>
       )}
       {/* topo direito: ping e ajuda; no pvp, também o kill feed */}
-      <div className={`flex max-w-full flex-col items-start gap-1 self-start md:col-start-2 md:row-start-1 md:items-end md:justify-self-end ${dim}`}>
+      <div className={`flex max-w-full flex-col items-center gap-1 self-center md:col-start-2 md:row-start-1 md:items-end md:self-start md:justify-self-end ${dim}`}>
         <Ping ping={hud.ping} />
         <Help mode={hud.mode} />
         {hud.mode === "pvp" && <KillFeed killfeed={hud.killfeed} players={hud.players} />}

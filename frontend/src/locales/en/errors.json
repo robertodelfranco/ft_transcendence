@@ -30,6 +30,7 @@
   "not_in_match": "You are not in this match.",
   "not_host": "Only the room creator can do this.",
   "not_enough_players": "Not enough players to start.",
+  "not_all_ready": "Not every player is ready.",
   "already_started": "This match has already started.",
   "invalid_options": "The match options are invalid.",
   "map_not_found": "Map not found.",

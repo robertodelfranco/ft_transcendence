@@ -214,6 +214,13 @@ async def open_lobby(client, db_session, app, body=COOP) -> tuple[int, dict[str,
 	return response.json()["match_id"], headers
 
 
+async def ready(client, match_id: int, *users: dict[str, str]) -> None:
+	# o start exige todos prontos, o host incluído (rooms.md §4, decisão 13)
+	for headers in users:
+		response = await client.post(f"/api/matches/{match_id}/ready", json={"ready": True}, headers=headers)
+		assert response.status_code == 200
+
+
 async def match_row(db_session, match_id: int):
 	# lê do banco, não do identity map da sessão
 	query = select(Match.status, Match.created_by, Match.started_at).where(Match.id == match_id)
@@ -286,6 +293,7 @@ async def test_character_selection_is_published_and_locked_after_start(client, d
 	outsider = await new_user(db_session, app, "rdel")
 	assert error(await client.post(path, json={"character_id": "nemesis"}, headers=outsider)) == (409, "not_in_match")
 	assert (await client.post(path, json={"character_id": "nemesis"})).status_code == 401
+	await ready(client, match_id, host)
 	assert (await client.post(f"/api/matches/{match_id}/start", headers=host)).status_code == 204
 	assert error(await client.post(path, json={"character_id": "nemesis"}, headers=host)) == (409, "already_started")
 
@@ -305,6 +313,11 @@ async def test_only_the_host_starts_and_only_once(client, db_session, app, rooms
 	guest = await new_user(db_session, app, "rdel")
 	await client.post(f"/api/matches/{match_id}/join", headers=guest)
 	assert error(await client.post(f"/api/matches/{match_id}/start", headers=guest)) == (403, "not_host")
+	await ready(client, match_id, guest)
+	# o host também marca: o clique em "Iniciar" não vale pelo pronto dele
+	assert error(await client.post(f"/api/matches/{match_id}/start", headers=host)) == (409, "not_all_ready")
+	assert [info.match_id for info in rooms.list_open()] == [match_id]
+	await ready(client, match_id, host)
 	assert (await client.post(f"/api/matches/{match_id}/start", headers=host)).status_code == 204
 	row = await match_row(db_session, match_id)
 	assert row.status == "running" and row.started_at is not None
@@ -318,6 +331,7 @@ async def test_leaving_a_running_match_frees_the_user_and_keeps_the_match_runnin
 	match_id, host = await open_lobby(client, db_session, app)
 	guest = await new_user(db_session, app, "rdel")
 	await client.post(f"/api/matches/{match_id}/join", headers=guest)
+	await ready(client, match_id, host, guest)
 	await client.post(f"/api/matches/{match_id}/start", headers=host)
 	assert (await client.post(f"/api/matches/{match_id}/leave", headers=guest)).status_code == 204
 
@@ -343,6 +357,7 @@ async def test_solo_has_one_seat_and_starts_alone(client, db_session, app, rooms
 	assert (info.max_players, info.min_players) == (1, 1)
 	guest = await new_user(db_session, app, "rdel")
 	assert error(await client.post(f"/api/matches/{match_id}/join", headers=guest)) == (409, "room_full")
+	await ready(client, match_id, host)
 	assert (await client.post(f"/api/matches/{match_id}/start", headers=host)).status_code == 204
 
 
@@ -378,6 +393,7 @@ async def test_leaving_updates_the_room_and_the_last_one_out_removes_it(client, 
 async def test_start_tells_the_players_and_removes_the_room_for_everyone(client, db_session, app,
 		rooms, watcher, fake_ws):
 	match_id, host = await open_lobby(client, db_session, app, SOLO)
+	await ready(client, match_id, host) # antes de abrir a aba: o lobby_update do pronto não conta aqui
 	player_tab = fake_ws()
 	await app.state.connection_manager.connect(rooms.info(match_id).created_by, "app", player_tab)
 	await client.post(f"/api/matches/{match_id}/start", headers=host)
@@ -385,7 +401,8 @@ async def test_start_tells_the_players_and_removes_the_room_for_everyone(client,
 	started, removed = await received(player_tab, 2)
 	assert started == {"v": 1, "type": "match_started", "match_id": match_id}
 	assert removed == {"v": 1, "type": "lobby_removed", "match_id": match_id, "reason": "started"}
-	assert (await received(watcher, 2))[1] == removed # quem não joga não recebe o match_started
+	# criação, pronto e remoção: quem não joga não recebe o match_started
+	assert (await received(watcher, 3))[2] == removed
 
 
 # ---------- presença ----------
@@ -405,6 +422,7 @@ async def test_going_offline_leaves_the_lobby(client, db_session, app, rooms, wa
 async def test_going_offline_in_a_running_match_keeps_the_seat(client, db_session, app, rooms):
 	match_id, host = await open_lobby(client, db_session, app, SOLO)
 	host_id = rooms.info(match_id).created_by
+	await ready(client, match_id, host)
 	await client.post(f"/api/matches/{match_id}/start", headers=host)
 	await service.leave_when_offline(rooms, app.state.connection_manager, lambda: db_session,
 		host_id, False)

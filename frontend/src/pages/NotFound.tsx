@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
+import { linkClass } from "../components/styles";
 import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function NotFound() {
@@ -12,7 +13,7 @@ export default function NotFound() {
       <p className="mt-4">{t("notFound.description")}</p>
       <Link
         to="/"
-        className="mt-4 inline-block underline hover:text-torch focus-visible:outline-2 focus-visible:outline-torch"
+        className={`mt-4 inline-block ${linkClass}`}
       >
         {t("notFound.back")}
       </Link>
