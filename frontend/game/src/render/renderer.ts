@@ -11,6 +11,7 @@ import { Billboards } from "./billboards";
 import { Torches } from "./torches";
 import { FireballParticles } from "./fireballParticles";
 import { WaterRipples } from "./waterRipples";
+import { createWaterTexture, flowWater } from "./waterSurface";
 import { PlayerFeedbackOverlay } from "./playerFeedbackOverlay";
 import type { PlayerFeedbackState } from "./playerFeedback";
 
@@ -49,6 +50,7 @@ export class ThreeRenderer implements Renderer {
   private torches: Torches | null = null;
   private fireballParticles: FireballParticles | null = null;
   private ripples: WaterRipples | null = null;
+  private waterTexture: THREE.DataTexture | null = null;
   private playerFeedback: PlayerFeedbackOverlay | null = null;
   private resources: Array<{ dispose(): void }> = [];
   private disposed = false;
@@ -125,9 +127,13 @@ export class ThreeRenderer implements Renderer {
       this.resources.push(surfaceGeometry);
       // Água: o plano sobe até a linha pintada nas paredes e reflete as tochas.
       const waterLevel = assets.water?.level ?? 0;
+      if (assets.water) {
+        this.waterTexture = createWaterTexture(width, depth);
+        this.resources.push(this.waterTexture);
+      }
       const floorMaterial = assets.water
         ? new THREE.MeshStandardMaterial({
-          color: assets.floor, metalness: 0, roughness: assets.water.roughness,
+          map: this.waterTexture, metalness: 0, roughness: assets.water.roughness,
         })
         : new THREE.MeshLambertMaterial({ color: assets.floor });
       this.resources.push(floorMaterial);
@@ -207,6 +213,7 @@ export class ThreeRenderer implements Renderer {
     this.torches?.update(this.camera.position, dt);
     this.fireballParticles?.update(view.projectiles, dt);
     this.ripples?.update(view, dt);
+    if (this.waterTexture) flowWater(this.waterTexture, dt);
     // Bloom e conversão de cor da cena primeiro; a mão continua nítida por cima.
     this.composer.render(dt);
     this.handOverlay?.updateCharge(view.chargeSeconds ?? null);
@@ -249,6 +256,7 @@ export class ThreeRenderer implements Renderer {
     this.torches = null;
     this.fireballParticles = null;
     this.ripples = null;
+    this.waterTexture = null;
     this.playerFeedback = null;
     this.renderer.dispose();
   }
