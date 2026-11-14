@@ -63,7 +63,8 @@ Um PR da branch `190-themes-dungeon-sewer`, com `Closes #190`, em dois commits:
 
 ## Água no sewer (#290)
 
-Registrado em 13/11/2026. Só visual: nada aqui muda a Simulation, o Grid ou as regras.
+Registrado em 13/11/2026; textura, correnteza e tochas em 14/11/2026. Só visual: nada
+aqui muda a Simulation, o Grid ou as regras.
 
 ### Por que
 
@@ -83,6 +84,24 @@ chão parecia deslocado da parede, e o Player coop ficava em pé no seco.
   `MeshStandardMaterial` com essa `roughness`, que reflete as tochas, no lugar do
   `MeshLambertMaterial`. O teste de profundidade esconde tudo o que fica abaixo do
   plano, então o que está na água sai cortado pela superfície sem código extra.
+- **Textura e correnteza** (`waterSurface.ts`): com a cor chapada, a água parecia um
+  chão azul parado, liso no meio do pixel art. A textura é uma célula de 64×64 texels,
+  a mesma densidade das paredes, gerada em memória como `DataTexture`: fundo
+  `0,0,168` e 22 traços horizontais de 2 a 5 texels nas cores da água pintada nas
+  paredes (`0,168,168`, `84,84,252` e, mais raro, `84,252,252`). Ela se repete uma vez
+  por célula do Grid (`repeat = largura, profundidade`) e o traço que passa da borda
+  continua do outro lado, sem emenda. O gerador tem semente fixa, então o desenho é o
+  mesmo em todo cliente. De perto o filtro é `Nearest` (pixel nítido); de longe, mipmap,
+  como nos anéis. A correnteza soma `FLOW × dt` (0,06 e 0,02 célula/s) ao `offset` da
+  UV a cada quadro, com `% 1` para o valor não crescer; depende do tempo, não do FPS.
+- **Tochas** (`torches.ts`, vale para os dois Themes): a luz cai com 1/d², e a
+  `PointLight` ficava na chama, a 0,14 da face da parede; ali a parede recebia ~50× a
+  luz de 1 célula de distância e a textura estourava em branco, pior no sewer, com
+  parede mais lisa. Agora a luz fica 0,2 à frente da chama (`LIGHT_OFFSET`), a
+  intensidade caiu de 2 para 1,4, e a `wallRoughness` do sewer subiu de 0,28 para 0,5,
+  o que espalha o brilho especular. A chama (cone instanciado) estica e encolhe ±15%
+  com a mesma fase `sin(7t + índice)` que faz a luz oscilar, crescendo para cima com a
+  base fixa.
 - **Altura de cada billboard** (`billboards.ts`): a base de cada um em relação à
   superfície da água.
 
@@ -132,15 +151,21 @@ O script não foi versionado.
 
 ### Validação
 
-- Pelo agente: `vitest --project game` (174 testes, incluindo os novos de
-  `billboards.test.ts` e `waterRipples.test.ts`), `eslint game/src/render` e `tsc -b`.
+- Pelo agente: `vitest --project game` (179 testes, incluindo os novos de
+  `billboards.test.ts`, `waterRipples.test.ts`, `waterSurface.test.ts` e
+  `torches.test.ts`), `eslint game/src/render` e `tsc -b`.
   No `tsc`, os únicos erros são em `Legal.tsx`, porque falta `react-markdown` no
   `node_modules` local; não vêm desta mudança.
 - Pelo Roberto, no jogo, em coop no sewer: altura da água; sea dragon andando,
   atacando e morrendo; Boss parado, atacando e morrendo; Pickups; Player coop e anéis.
-- Pendentes (checklist da #290): Door abrindo no sewer, dungeon sem regressão,
-  console do Chrome sem warnings e FPS na cena de carga do sewer
-  (`/game/dev.html?stress=1&theme=sewer`), anotado em `performance-f3.10.md`.
+- Pelo agente em 14/11, no Chrome headless com bot aliado (stack isolada, `main` +
+  #291): partidas completas no dungeon (`enemy`) e no sewer (`enemy_sewer`), e Door
+  abrindo no sewer (mapa `enemy` com Theme sewer, porque `enemy_sewer` não tem Door).
+  A Door sobe e é cortada em y=1; no dungeon, a base comum do skeleton desloca no
+  máximo 1 texel (0,013); console sem mensagens; 61 FPS em 1280×800 durante o jogo.
+  Antes e depois da textura e das tochas comparados nos mesmos pontos de spawn.
+- Pendente: FPS na cena de carga do sewer (`/game/dev.html?stress=1&theme=sewer`),
+  anotado em `performance-f3.10.md`.
 
 ### Cache do PNG editado
 
