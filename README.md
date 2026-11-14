@@ -604,6 +604,8 @@ The user and token models are Augusto's; the match, stats and achievement models
 
 The implementation lives in `frontend/game/src/render/`. The integration boundary is documented in [mount-game.md](docs/contracts/mount-game.md).
 
+**Observed performance:** in a manual Chrome FPS-meter check on 14 November 2026, Rafael observed 55–60 FPS on Crypt Descent with the dungeon Theme and 1 Player (Solo), with Enemies present. The overlay reported 7 MB of GPU memory used. These readings describe that session; GPU memory is not total application memory.
+
 ### 10. Game customization — Minor (1)
 
 **Why:** Room creation lets Players choose the dungeon's appearance and match settings, so they can vary the experience without changing source files.
