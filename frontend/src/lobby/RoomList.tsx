@@ -6,7 +6,7 @@ import type { Mode, RoomInfo } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import ErrorNotice, { toFailure, type Failure } from "../components/ErrorNotice";
 import { buttonPrimary, buttonSecondary, fieldClass, linkClass } from "../components/styles";
-import { MODES, mapName } from "./roomOptions";
+import { MODES, mapName, modeChoice } from "./roomOptions";
 import type { useLobbyRooms } from "./useLobbyRooms";
 
 type Filter = Mode | "all";
@@ -91,7 +91,7 @@ export default function RoomList({ lobby }: { lobby: ReturnType<typeof useLobbyR
               <div className="flex flex-col gap-1">
                 <p className="flex items-baseline gap-2">
                   <span className="font-bold">{mapName(t, room.map)}</span>
-                  <span className="text-sm text-torch">{t(`game:modes.${room.mode}`)}</span>
+                  <span className="text-sm text-torch">{t(`game:modes.${modeChoice(room.mode, room.max_players)}`)}</span>
                 </p>
                 <p className="text-sm text-bone/70">
                   {t(`game:themes.${room.options.theme}`)}

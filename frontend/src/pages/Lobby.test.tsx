@@ -52,6 +52,17 @@ describe("lista de Rooms", () => {
     expect(list().getByText("Salões do esgoto")).toBeInTheDocument();
   });
 
+  it("uma Room de coop com uma vaga aparece como Solo", async () => {
+    server.use(http.get("/api/matches", () => HttpResponse.json({
+      items: [{ ...room12, max_players: 1, min_players: 1 }],
+    })));
+    await renderWithSession();
+    expect(await list().findByText("Masmorra")).toBeInTheDocument();
+    const card = roomCards()[0];
+    expect(within(card).getByText("Solo")).toBeInTheDocument();
+    expect(within(card).queryByText("Cooperativo")).not.toBeInTheDocument();
+  });
+
   it("o filtro por modo esconde as Rooms de outro Mode", async () => {
     const user = userEvent.setup();
     await renderWithSession();
@@ -169,6 +180,45 @@ describe("criar Room", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe("/lobby/100"));
     expect(body).toEqual({ mode: "coop", map: "dungeon_map", max_players: 5 });
     expect(await screen.findByRole("button", { name: "Iniciar partida" })).toBeInTheDocument();
+  });
+
+  it("Modo oferece Solo, Cooperativo e PvP, e o coop vai de 2 vagas ao teto do Map", async () => {
+    const user = userEvent.setup();
+    await renderWithSession();
+    const button = await screen.findByRole("button", { name: "Criar sala" });
+    await waitFor(() => expect(button).toBeEnabled());
+    const options = (label: string) =>
+      within(screen.getByLabelText(label)).getAllByRole("option").map((option) => option.textContent);
+
+    expect(options("Modo")).toEqual(["Solo", "Cooperativo", "PvP 1x1"]);
+    // a Room de 1 vaga é o Solo (rooms.md §4, decisão 12)
+    expect(options("Jogadores")).toEqual(["2", "3", "4", "5"]);
+
+    // ida e volta pelo Solo: o coop volta ao máximo de vagas do Map
+    await user.selectOptions(screen.getByLabelText("Modo"), "solo");
+    await user.selectOptions(screen.getByLabelText("Modo"), "coop");
+    expect(screen.getByLabelText("Jogadores")).toHaveValue("5");
+  });
+
+  it("Solo cria uma Room de coop com uma vaga, sem o campo de vagas", async () => {
+    const user = userEvent.setup();
+    let body: unknown = null;
+    server.use(
+      http.post("/api/matches", async ({ request }) => {
+        body = await request.clone().json();
+      }),
+    );
+    const router = await renderWithSession();
+    const button = await screen.findByRole("button", { name: "Criar sala" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.selectOptions(screen.getByLabelText("Modo"), "solo");
+    expect(screen.queryByLabelText("Jogadores")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Mapa")).toHaveValue("dungeon_map");
+
+    await user.click(button);
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/lobby/100"));
+    expect(body).toEqual({ mode: "coop", map: "dungeon_map", max_players: 1 });
   });
 
   it("opções editadas vão no corpo, só as do Mode", async () => {

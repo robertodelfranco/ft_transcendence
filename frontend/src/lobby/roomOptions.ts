@@ -7,9 +7,38 @@ export const MODES: readonly Mode[] = ["coop", "pvp"];
 export const THEMES: readonly Theme[] = ["dungeon", "sewer"];
 export const PICKUPS: readonly (keyof Pickups)[] = ["potion", "mana", "armor"];
 
-// Menor capacidade aceita na criação, como o MIN_PLAYERS do backend. O mínimo para o start vem do
-// servidor, no RoomInfo.min_players (rooms.md §4, decisão 12)
-export const MIN_PLAYERS: Record<Mode, number> = { coop: 1, pvp: 2 };
+// O que o formulário de criação oferece. O Solo não é um Mode do servidor: é o coop com uma vaga
+// (rooms.md §4, decisão 12), e as estatísticas e o leaderboard continuam vendo coop
+export type ModeChoice = Mode | "solo";
+export const MODE_CHOICES: readonly ModeChoice[] = ["solo", "coop", "pvp"];
+
+export function serverMode(choice: ModeChoice): Mode {
+  return choice === "solo" ? "coop" : choice;
+}
+
+// O nome do Mode na tela. Coop com um lugar só é o Solo: a Room de uma vaga, ou a partida gravada
+// com um Player (o coop com 2 ou mais vagas não começa com um, decisão 12)
+export function modeChoice(mode: Mode, places: number): ModeChoice {
+  return mode === "coop" && places === 1 ? "solo" : mode;
+}
+
+// Vagas na criação, como o MIN_PLAYERS e o MAX_PLAYERS do backend, com o Solo à parte: a Room de
+// 1 vaga é o Solo, então o coop começa em 2. O mínimo para o start vem do servidor, no
+// RoomInfo.min_players (decisão 12)
+const SEATS: Record<ModeChoice, { min: number; max: number }> = {
+  solo: { min: 1, max: 1 },
+  coop: { min: 2, max: 5 },
+  pvp: { min: 2, max: 2 },
+};
+
+// As vagas que o select mostra, até o teto do Map (o número de Spawns dele)
+export function seatOptions(choice: ModeChoice, mapMax: number): number[] {
+  const { min, max } = SEATS[choice];
+  const seats: number[] = [];
+  for (let count = min; count <= Math.min(max, mapMax); count += 1)
+    seats.push(count);
+  return seats;
+}
 
 // Defaults do room-options.md §2, só para mostrar no formulário antes de criar. Quem aplica é o
 // servidor (a dataclass RoomOptions); a Room criada traz as opções dela em `options`
