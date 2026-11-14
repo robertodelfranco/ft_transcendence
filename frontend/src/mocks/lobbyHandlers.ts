@@ -60,6 +60,13 @@ export const lobbyHandlers = [
     return HttpResponse.json({ items });
   }),
 
+  // A Room do User, em lobby ou em partida (matches-api.md §2.2). Antes do /:matchId: no MSW
+  // ganha o primeiro que casa, e o :matchId casaria "current"
+  http.get("/api/matches/current", () => {
+    const room = rooms.find(isIn);
+    return room ? HttpResponse.json(room) : new HttpResponse(null, { status: 204 });
+  }),
+
   http.get("/api/matches/:matchId", ({ params }) => {
     const room = findRoom(params.matchId);
     return room ? HttpResponse.json(room) : apiError(404, "match_not_found");

@@ -52,6 +52,7 @@
     "unsetReady": "I'm not ready",
     "leave": "Leave room",
     "start": "Start match",
+    "begin": "Start",
     "needPlayers_one": "At least {{count}} player is needed to start.",
     "needPlayers_other": "At least {{count}} players are needed to start.",
     "needReady": "Everyone must be ready to start.",

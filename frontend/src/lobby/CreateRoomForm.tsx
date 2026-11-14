@@ -7,20 +7,26 @@ import type { CreateMatchInput, MapCatalog, Mode, RoomInfo } from "../api/types"
 import ErrorNotice, { toFailure, type Failure } from "../components/ErrorNotice";
 import { buttonPrimary, buttonSecondary, fieldClass } from "../components/styles";
 import {
-  DEFAULT_OPTIONS, MIN_PLAYERS, MODES, draftToOptions, hasErrors, mapName, serverOptionErrors, toDraft, validateDraft, type OptionErrors, type OptionsDraft,
+  DEFAULT_OPTIONS, MODE_CHOICES, draftToOptions, hasErrors, mapName, seatOptions, serverMode, serverOptionErrors, toDraft, validateDraft,
+  type ModeChoice, type OptionErrors, type OptionsDraft,
 } from "./roomOptions";
 import RoomOptionsFields from "./RoomOptionsFields";
 
 interface Choice {
-  mode: Mode;
+  mode: ModeChoice;
   map: string; // "" quando o Mode não tem Map
   maxPlayers: number;
 }
 
-// O default de um Mode: o primeiro Map da lista (matches-api.md §2.2), com o máximo de vagas dele
-function defaultChoice(catalog: MapCatalog, mode: Mode): Choice {
-  const first = catalog[mode][0];
-  return { mode, map: first?.name ?? "", maxPlayers: first?.max_players ?? 0 };
+// O máximo de vagas que a escolha permite no Map: no Solo, uma
+function mostSeats(mode: ModeChoice, mapMax = 0): number {
+  return seatOptions(mode, mapMax).at(-1) ?? 0;
+}
+
+// O default de uma escolha: o primeiro Map do Mode (matches-api.md §2.2), com o máximo de vagas
+function defaultChoice(catalog: MapCatalog, mode: ModeChoice): Choice {
+  const first = catalog[serverMode(mode)][0];
+  return { mode, map: first?.name ?? "", maxPlayers: mostSeats(mode, first?.max_players) };
 }
 
 // Mode, Map, vagas e as RoomOptions, que começam nos defaults do Mode. Criar sem mexer em nada
@@ -32,6 +38,7 @@ export default function CreateRoomForm() {
   const [catalog, setCatalog] = useState<MapCatalog | null>(null);
   const [choice, setChoice] = useState<Choice>({ mode: "coop", map: "", maxPlayers: 0 });
   const { mode, map, maxPlayers } = choice;
+  const apiMode = serverMode(mode); // o Solo vai ao servidor como coop
   const [draft, setDraft] = useState<OptionsDraft>(() => toDraft(DEFAULT_OPTIONS.coop));
   const [edited, setEdited] = useState(false); // alguém mexeu nas opções desde o último default
   const [optionErrors, setOptionErrors] = useState<OptionErrors>({});
@@ -64,18 +71,18 @@ export default function CreateRoomForm() {
   }
 
   // Trocar de Mode volta tudo ao default dele: Map, vagas e opções
-  function selectMode(next: Mode) {
+  function selectMode(next: ModeChoice) {
     if (!catalog)
       return;
     setChoice(defaultChoice(catalog, next));
-    resetOptions(next);
+    resetOptions(serverMode(next));
   }
 
   // Trocar de Map volta ao máximo de vagas dele
   function selectMap(name: string) {
-    const info = catalog?.[mode].find((candidate) => candidate.name === name);
+    const info = catalog?.[apiMode].find((candidate) => candidate.name === name);
     if (info)
-      setChoice({ mode, map: name, maxPlayers: info.max_players });
+      setChoice({ mode, map: name, maxPlayers: mostSeats(mode, info.max_players) });
   }
 
   // Depois de um envio com erro, a validação acompanha a digitação: o aviso some quando o valor passa
@@ -83,7 +90,7 @@ export default function CreateRoomForm() {
     setDraft(next);
     setEdited(true);
     if (hasErrors(optionErrors))
-      setOptionErrors(validateDraft(mode, next));
+      setOptionErrors(validateDraft(apiMode, next));
   }
 
   // Erro no envio leva o foco ao primeiro campo inválido da tela, como no login. flushSync: o
@@ -98,15 +105,15 @@ export default function CreateRoomForm() {
     if (!map)
       return;
     setFailure(null);
-    const errors = validateDraft(mode, draft);
+    const errors = validateDraft(apiMode, draft);
     showOptionErrors(errors);
     if (hasErrors(errors))
       return;
     setSubmitting(true);
     // Sem mexer nas opções, o corpo vai sem `options` e quem aplica os defaults é o servidor
-    const body: CreateMatchInput = { mode, map, max_players: maxPlayers };
+    const body: CreateMatchInput = { mode: apiMode, map, max_players: maxPlayers };
     if (edited)
-      body.options = draftToOptions(mode, draft);
+      body.options = draftToOptions(apiMode, draft);
     try {
       const room = await apiFetch<RoomInfo>("/api/matches", {
         method: "POST",
@@ -117,7 +124,7 @@ export default function CreateRoomForm() {
       setSubmitting(false);
       // um 422 com campo do formulário aparece no campo; o resto, no aviso geral
       const fromServer = error instanceof ApiError && error.fields
-        ? serverOptionErrors(mode, error.fields)
+        ? serverOptionErrors(apiMode, error.fields)
         : {};
       if (hasErrors(fromServer))
         showOptionErrors(fromServer);
@@ -126,11 +133,9 @@ export default function CreateRoomForm() {
     }
   }
 
-  const maps = catalog?.[mode] ?? [];
+  const maps = catalog?.[apiMode] ?? [];
   const mapInfo = maps.find((candidate) => candidate.name === map);
-  const seats: number[] = [];
-  for (let count = MIN_PLAYERS[mode]; count <= (mapInfo?.max_players ?? 0); count += 1)
-    seats.push(count);
+  const seats = seatOptions(mode, mapInfo?.max_players ?? 0);
 
   return (
     <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-4">
@@ -145,10 +150,10 @@ export default function CreateRoomForm() {
             name="mode"
             value={mode}
             disabled={!catalog}
-            onChange={(e) => selectMode(e.target.value as Mode)}
+            onChange={(e) => selectMode(e.target.value as ModeChoice)}
             className={fieldClass}
           >
-            {MODES.map((option) => (
+            {MODE_CHOICES.map((option) => (
               <option key={option} value={option}>{t(`game:modes.${option}`)}</option>
             ))}
           </select>
@@ -172,30 +177,33 @@ export default function CreateRoomForm() {
                 ))}
               </select>
             </label>
-            <label className="flex flex-col gap-1 text-sm">
-              {t("create.maxPlayers")}
-              <select
-                name="max_players"
-                value={maxPlayers}
-                disabled={!catalog}
-                onChange={(e) => setChoice({ ...choice, maxPlayers: Number(e.target.value) })}
-                className={fieldClass}
-              >
-                {seats.map((count) => (
-                  <option key={count} value={count}>{count}</option>
-                ))}
-              </select>
-            </label>
+            {/* o Solo tem uma vaga só: não há o que escolher */}
+            {mode !== "solo" && (
+              <label className="flex flex-col gap-1 text-sm">
+                {t("create.maxPlayers")}
+                <select
+                  name="max_players"
+                  value={maxPlayers}
+                  disabled={!catalog}
+                  onChange={(e) => setChoice({ ...choice, maxPlayers: Number(e.target.value) })}
+                  className={fieldClass}
+                >
+                  {seats.map((count) => (
+                    <option key={count} value={count}>{count}</option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
         )}
 
         <fieldset className="flex flex-col gap-4 rounded border border-crypt-700 p-3">
           <legend className="px-1 text-sm">{t("create.options")}</legend>
-          <RoomOptionsFields mode={mode} draft={draft} errors={optionErrors} onChange={editOptions} />
+          <RoomOptionsFields mode={apiMode} draft={draft} errors={optionErrors} onChange={editOptions} />
           <button
             type="button"
             disabled={!edited}
-            onClick={() => resetOptions(mode)}
+            onClick={() => resetOptions(apiMode)}
             className={`${buttonSecondary} self-start text-sm`}
           >
             {t("create.reset")}
