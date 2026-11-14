@@ -28,7 +28,7 @@
       "end": {
         "angle": 0.0,
         "x": 1.5,
-        "y": 2.899999999999997
+        "y": 3.8000000000000034
       },
       "name": "sprint",
       "runs": [
@@ -238,8 +238,8 @@
       ],
       "end": {
         "angle": -55.43402020886876,
-        "x": 6.030097593355717,
-        "y": 1.7784566018259573
+        "x": 5.211368012869863,
+        "y": 1.827048868874419
       },
       "name": "thousand_inputs",
       "runs": [
@@ -1083,7 +1083,7 @@
     "ENEMY_RADIUS": 0.2,
     "ENEMY_RETARGET_MARGIN": 1.0,
     "ENEMY_SEPARATION": 0.6,
-    "ENEMY_SPEED": 2.2,
+    "ENEMY_SPEED": 3.0,
     "FIREBALL_BOSS_DAMAGE": 10,
     "FIREBALL_CHARGED_DAMAGE_MULT": 2,
     "FIREBALL_CHARGED_MANA_MULT": 3,
@@ -1094,7 +1094,7 @@
     "PLAYER_RADIUS": 0.05,
     "PLAYER_ROT_SPEED": 1.8,
     "PLAYER_SPEED": 3.6,
-    "PLAYER_SPRINT_MULT": 2.0,
+    "PLAYER_SPRINT_MULT": 1.5,
     "POTION_HEAL": 3,
     "PROJECTILE_HIT_RADIUS": 0.3,
     "PROJECTILE_HIT_S": 0.4,

@@ -113,7 +113,9 @@ def test_target_on_the_path_is_hit_even_when_the_tick_covers_more_than_a_cell():
 
 
 @pytest.mark.parametrize("offset, is_hit", [(0.2, True), (0.4, False)])
-def test_only_a_target_within_hit_radius_of_the_path_is_hit(offset, is_hit):
+def test_only_a_target_within_hit_radius_of_the_path_is_hit(offset, is_hit, monkeypatch):
+	# o Enemy parado: o teste é da geometria do acerto, não da perseguição
+	monkeypatch.setattr("app.game.sim._update_enemies", lambda room, dt, events: None)
 	room = new_room(WITH_ENEMY)
 	[enemy] = room.enemies
 	enemy.y = ROW_Y + offset # ao lado do caminho

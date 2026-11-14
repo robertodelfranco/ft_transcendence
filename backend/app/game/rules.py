@@ -1,6 +1,6 @@
 TICK_RATE = 30 # Hz
 PLAYER_SPEED = 3.6 # cél/s
-PLAYER_SPRINT_MULT = 2.0 # multiplicador
+PLAYER_SPRINT_MULT = 1.5 # multiplicador
 PLAYER_ROT_SPEED = 1.8 # rad/s
 MOUSE_MAX_ROT_SPEED = 18.85 # rad/s (6π)
 PLAYER_RADIUS = 0.05 # cél
@@ -14,7 +14,7 @@ POTION_HEAL = 3 # HP
 COUNTDOWN_S = 3.0 # s, contagem 3, 2, 1 antes de a partida valer (#255)
 COUNTDOWN_WAIT_S = 10.0 # s, espera máxima pelos Players antes de começar a contagem
 
-ENEMY_SPEED = 2.2 # cél/s
+ENEMY_SPEED = 3.0 # cél/s
 ENEMY_RADIUS = 0.2 # cél
 ENEMY_SEPARATION = 0.6 # cél
 ENEMY_RETARGET_MARGIN = 1.0 # cél

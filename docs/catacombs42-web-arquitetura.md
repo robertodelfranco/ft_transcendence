@@ -209,12 +209,12 @@ A coluna "por segundo" assume que o MLX42 rodava a ~60 fps com vsync. Meça no C
 | Grandeza | No C | Como o C aplicava | No servidor |
 |---|---|---|---|
 | Andar | `0.06` | por quadro | `PLAYER_SPEED = 3.6` cél/s |
-| Sprint | × 2 | por quadro | `7.2` cél/s |
+| Sprint | × 2 | por quadro | `PLAYER_SPRINT_MULT = 1.5`: `5.4` cél/s (rules.md §5.10) |
 | Girar (tecla) | `0.03` rad | por quadro | `PLAYER_ROT_SPEED = 1.8` rad/s |
 | Girar (mouse) | 0,4 × rotação nas bordas da janela | por evento | `mouse_dx` em rad, limitado a `MOUSE_MAX_ROT_SPEED` × dt por tick |
 | Raio de colisão do player | `R = 0.05`, 4 cantos | — | igual |
 | Player × enemy/boss | bloqueia a `< 0.6`; player × player não bloqueia | — | igual |
-| Enemy: velocidade | `0.15` por passo a 10 Hz | discreto | `ENEMY_SPEED = 1.5` cél/s contínuo |
+| Enemy: velocidade | `0.15` por passo a 10 Hz | discreto | `ENEMY_SPEED = 3.0` cél/s contínuo (rules.md §5.10) |
 | Enemy: alcance / dano | `≤ 0.7`; 1 HP a cada 7 quadros × 0,2 s | — | `1` HP a cada `1.4` s de contato |
 | Enemy: morte | `DYING` 3 quadros × 0,5 s → `DEAD` | — | igual |
 | Boss: HP | `60` por Player; fireball tira `10` | — | 6 acertos por Player (#281) |

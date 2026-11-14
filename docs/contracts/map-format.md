@@ -117,7 +117,7 @@ O Map de 47 × 40 do [snapshot.example.json](snapshot.example.json), derivado do
 
 - **O Map é só a grade, sem parser com códigos de erro, com vários `N/S/E/W`.** Já decidido para todos os contratos ([README](README.md#o-que-já-está-decidido)) e na arq. §4, decisão 8.
 - **Extensão `.txt`.** Sem o cabeçalho, o arquivo não é mais um `.cub`: o parser do Cub3D o recusaria.
-- **Espaço é sólido para o servidor.** O C só bloqueava `1` e `D` e confiava no mapa fechado. A 30 Hz o passo correndo é de 0,24 célula, e numa diagonal ele anda mais de 0,1 em cada eixo, mais que a caixa do Player (`2 × 0.05`). Assim a caixa passa pelo vértice entre duas paredes em diagonal sem tocar nenhuma. No `enemy.cub`, 13 células livres encostam em espaço na diagonal.
+- **Espaço é sólido para o servidor.** O C só bloqueava `1` e `D` e confiava no mapa fechado. A 30 Hz o passo correndo é de 0,18 célula, e numa diagonal ele anda cerca de 0,13 em cada eixo, mais que a caixa do Player (`2 × 0.05`). Assim a caixa passa pelo vértice entre duas paredes em diagonal sem tocar nenhuma. No `enemy.cub`, 13 células livres encostam em espaço na diagonal.
 - **O Grid entregue é retangular.** As linhas dos mapas têm tamanhos diferentes (no `enemy.cub`, de 11 a 55), e completar com espaço tira a checagem de limite de linha de todo acesso ao Grid, no Python e no TypeScript.
 - **Spawn, `I` e `B` viram `0` no Grid.** Players, Enemies e Boss chegam no Snapshot; o cliente nunca precisa interpretar esses caracteres.
 - **Door entre duas paredes opostas** (checagem 8). É o que diz ao Rafael para que lado a porta desliza. Todas as Doors dos mapas do Cub3D seguem a regra, menos uma no `enemy.cub`.
