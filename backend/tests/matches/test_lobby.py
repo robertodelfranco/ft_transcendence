@@ -361,6 +361,58 @@ async def test_solo_has_one_seat_and_starts_alone(client, db_session, app, rooms
 	assert (await client.post(f"/api/matches/{match_id}/start", headers=host)).status_code == 204
 
 
+# ---------- partida atual (voltar à partida) ----------
+
+async def running_coop(client, db_session, app) -> tuple[int, dict[str, str], int]:
+	"""Coop com dois Players, já iniciado; o convidado nunca abriu o /ws/game (está no Grace period)."""
+	match_id, host = await open_lobby(client, db_session, app)
+	guest = await new_user(db_session, app, "caio")
+	players = (await client.post(f"/api/matches/{match_id}/join", headers=guest)).json()["players"]
+	await ready(client, match_id, host, guest)
+	assert (await client.post(f"/api/matches/{match_id}/start", headers=host)).status_code == 204
+	return match_id, guest, players[1]["user_id"]
+
+
+async def test_current_is_204_when_the_user_is_in_no_room(client, db_session, app, rooms):
+	# também prova a ordem das rotas: depois de /matches/{match_id}, "current" daria 422
+	headers = await new_user(db_session, app)
+	response = await client.get("/api/matches/current", headers=headers)
+	assert (response.status_code, response.content) == (204, b"")
+
+
+async def test_current_returns_the_waiting_room(client, db_session, app, rooms):
+	# o backend devolve lobby e running; quem escolhe mostrar só o running é a casca
+	match_id, headers = await open_lobby(client, db_session, app)
+	response = await client.get("/api/matches/current", headers=headers)
+	assert response.status_code == 200
+	assert (response.json()["match_id"], response.json()["status"]) == (match_id, "lobby")
+
+
+async def test_current_returns_the_running_match_during_the_grace_period(client, db_session, app, rooms):
+	match_id, guest, guest_id = await running_coop(client, db_session, app)
+	body = (await client.get("/api/matches/current", headers=guest)).json()
+	assert (body["match_id"], body["status"]) == (match_id, "running")
+	assert [p["connected"] for p in body["players"] if p["user_id"] == guest_id] == [False]
+
+
+async def test_current_is_204_after_leaving_a_running_match(client, db_session, app, rooms):
+	match_id, guest, _ = await running_coop(client, db_session, app)
+	await client.post(f"/api/matches/{match_id}/leave", headers=guest) # o "Sair da partida" (#240)
+	assert (await client.get("/api/matches/current", headers=guest)).status_code == 204
+
+
+async def test_current_is_204_after_the_grace_period_expires(client, db_session, app, rooms):
+	match_id, guest, guest_id = await running_coop(client, db_session, app)
+	entry = rooms._entries[match_id]
+	entry.grace[guest_id] = 0 # vence já, sem esperar os 30 s do tick
+	rooms._expire_grace(entry)
+	assert (await client.get("/api/matches/current", headers=guest)).status_code == 204
+
+
+async def test_current_needs_a_token(client, db_session, rooms):
+	assert (await client.get("/api/matches/current")).status_code == 401
+
+
 # ---------- lobby ao vivo (ws-manager.md §2.5) ----------
 
 async def test_create_join_and_ready_reach_every_tab(client, db_session, app, rooms, watcher):
