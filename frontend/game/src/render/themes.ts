@@ -31,7 +31,7 @@ export const dungeonTheme: Theme = {
 };
 
 export const sewerTheme: Theme = {
-  wallRoughness: 0.28,
+  wallRoughness: 0.5,
   floor: 0x0000a8,
   ceiling: 0x161e00,
   walls: {
