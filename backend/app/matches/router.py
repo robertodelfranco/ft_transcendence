@@ -1,7 +1,7 @@
 """Rotas de lobby (matches-api.md §2.2), estatísticas, histórico e leaderboard (§2.3) e resultado (§2.4)."""
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 
 from app.auth.deps import CurrentUser
 from app.auth.schemas import DEFAULT_AVATAR_URL
@@ -36,6 +36,16 @@ async def list_matches(_: CurrentUser, rooms: Rooms, mode: Mode | None = None) -
 	# só Rooms em lobby, da memória, nunca do banco (matches-api.md decisão 1)
 	return {"items": [info.to_payload() for info in rooms.list_open()
 		if mode is None or info.mode == mode]}
+
+
+@router.get("/matches/current", response_model=None)
+async def current_match(user: CurrentUser, rooms: Rooms) -> dict[str, Any] | Response:
+	# a Room do User (lobby ou running), para a casca oferecer a volta durante o Grace period.
+	# Antes de /matches/{match_id}: depois dela, "current" cairia no int do path e daria 422
+	match_id = rooms.room_of(user.id)
+	if match_id is None:
+		return Response(status_code=status.HTTP_204_NO_CONTENT)
+	return rooms.info(match_id).to_payload()
 
 
 @router.get("/matches/{match_id}")

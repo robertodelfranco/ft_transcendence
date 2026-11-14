@@ -181,9 +181,11 @@ it.each(["abc", "0", "0x10", "1e1", "99999999999999999999"])(
   "id inválido (%s) não vai ao servidor e avisa que a sala não existe",
   async (param) => {
     let requested = false;
-    // não devolver nada passa o pedido adiante: aqui só registra que ele saiu
-    server.use(http.get("/api/matches/:matchId", () => {
-      requested = true;
+    // não devolver nada passa o pedido adiante: aqui só registra que ele saiu. O :matchId casa
+    // também o /current da faixa de partida em andamento (Layout), que não é desta tela
+    server.use(http.get("/api/matches/:matchId", ({ params }) => {
+      if (params.matchId !== "current")
+        requested = true;
     }));
     await login();
     renderAt(`/lobby/${param}`);
