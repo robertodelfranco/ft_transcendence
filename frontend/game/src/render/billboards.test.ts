@@ -64,8 +64,9 @@ it("na água, Enemy, Boss e Pickup ficam logo abaixo da superfície; o Player af
   }, 0);
   const [enemy, boss, player, potion, mana] = billboards.object.children as THREE.Sprite[];
   expect(enemy.position.y).toBeCloseTo(0.17);
-  expect(potion.position.y).toBeCloseTo(0.2); // só a sombra pintada fica submersa
-  expect(mana.position.y).toBe(0.25); // placeholder sem sombra: na superfície
+  // Pickups flutuam ±0,02 em torno da base + 0,02; fase pela célula (potion em 0,0: seno 0)
+  expect(potion.position.y).toBeCloseTo(0.22); // só a sombra pintada fica submersa
+  expect(mana.position.y).toBeCloseTo(0.27 + 0.02 * Math.sin(1)); // placeholder sem sombra
   expect(boss.position.y).toBeCloseTo(0.19);
   expect(player.position.y).toBe(0);
   billboards.update({
@@ -133,4 +134,83 @@ it.each(["local", "remote"])("usa o projétil da Sucubus do Player %s e preserva
   for (const sheet of [fireball, bullet, sucubus]) {
     for (const item of sheet.frames) item.texture.dispose();
   }
+});
+
+const sheetOf = (count: number) => ({
+  frames: Array.from({ length: count }, () =>
+    ({ texture: new THREE.Texture(), width: 64, height: 64, anchorX: 0.5, anchorY: 0 })),
+  referenceHeight: 64,
+});
+const empty = { localPlayer: { id: 1 }, otherPlayers: [], enemies: [], boss: null, projectiles: [], grid: [] };
+
+it("o Enemy troca o quadro de andar pela distância andada, não pelo tempo", () => {
+  const enemy = sheetOf(10);
+  const billboards = new Billboards({ enemy } as unknown as BillboardAssets);
+  const at = (x: number) => ({ ...empty, enemies: [{ id: "e1", x, y: 1, state: "alert" as const }] });
+  billboards.update(at(1), 0);
+  const sprite = billboards.object.children[0] as THREE.Sprite;
+  billboards.update(at(1), 5); // parado: 5 s sem trocar de quadro
+  expect(sprite.material.map).toBe(enemy.frames[0].texture);
+  billboards.update(at(1.4), 0.1);
+  billboards.update(at(1.7), 0.1); // 0,7 célula andada: passou de 0,66, segundo quadro
+  expect(sprite.material.map).toBe(enemy.frames[1].texture);
+  billboards.dispose();
+});
+
+it("o Boss pisca em vermelho por 0,12 s quando o HP cai", () => {
+  const boss = sheetOf(10);
+  const billboards = new Billboards({ boss } as unknown as BillboardAssets);
+  const withHp = (hp: number) => ({ ...empty, boss: { x: 1, y: 1, hp, state: "alert" as const } });
+  billboards.update(withHp(60), 0);
+  const sprite = billboards.object.children[0] as THREE.Sprite;
+  const flashing = () => sprite.material.color.r > 1; // HDR: clareia além da textura
+  expect(flashing()).toBe(false);
+  billboards.update(withHp(50), 0.016);
+  expect(flashing()).toBe(true);
+  billboards.update(withHp(50), 0.06);
+  expect(flashing()).toBe(true);
+  billboards.update(withHp(50), 0.1);
+  expect(flashing()).toBe(false);
+  expect(sprite.material.color.getHex()).toBe(0xffffff);
+  billboards.dispose();
+});
+
+it("o Pickup flutua ±0,02 com o tempo e nunca desce abaixo da base", () => {
+  const potion = sheetOf(1);
+  const billboards = new Billboards({ potion } as unknown as BillboardAssets);
+  const view = { ...empty, grid: ["P"] };
+  const heights: number[] = [];
+  billboards.update(view, 0);
+  const sprite = billboards.object.children[0] as THREE.Sprite;
+  for (let i = 0; i < 30; i++) {
+    billboards.update(view, 0.1);
+    heights.push(sprite.position.y);
+  }
+  // dungeon: base 0 − 0,05 (sombra escondida sob o chão) + 0,02, oscilando ±0,02
+  expect(Math.min(...heights)).toBeGreaterThanOrEqual(-0.05 - 1e-9);
+  expect(Math.max(...heights)).toBeLessThanOrEqual(0.01 + 1e-9);
+  expect(Math.max(...heights) - Math.min(...heights)).toBeGreaterThan(0.03);
+  billboards.dispose();
+});
+
+it("outro Player dá um pulinho por passo enquanto anda e volta ao chão quando para", () => {
+  const nemesis = sheetOf(1);
+  const billboards = new Billboards({ "player:nemesis": nemesis } as unknown as BillboardAssets);
+  const other = (x: number): PlayerSnapshot => ({
+    id: 2, character_id: "nemesis", name: "other", x, y: 1, dx: 1, dy: 0,
+    hp: 10, mana: 100, armor: 0, keys: 0, alive: true, connected: true,
+  });
+  let x = 1;
+  billboards.update({ ...empty, otherPlayers: [other(x)] }, 0);
+  const sprite = billboards.object.children[0] as THREE.Sprite;
+  const heights: number[] = [];
+  for (let i = 0; i < 20; i++) {
+    x += 0.06; // 3,6 cél/s a 60 FPS
+    billboards.update({ ...empty, otherPlayers: [other(x)] }, 1 / 60);
+    heights.push(sprite.position.y);
+  }
+  expect(Math.max(...heights)).toBeGreaterThan(0.02);
+  for (let i = 0; i < 12; i++) billboards.update({ ...empty, otherPlayers: [other(x)] }, 1 / 60);
+  expect(sprite.position.y).toBe(0);
+  billboards.dispose();
 });
