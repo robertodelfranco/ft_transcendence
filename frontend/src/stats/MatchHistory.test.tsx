@@ -91,7 +91,10 @@ describe("histórico no perfil", () => {
     const rows = await within(await history()).findAllByRole("listitem");
     expect(within(rows[0]).getByText("Derrota")).toBeInTheDocument();
     expect(within(rows[0]).getByText("Com rdel_fra e caio")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("Cooperativo")).toBeInTheDocument();
     expect(within(rows[1]).getByText("Sozinho")).toBeInTheDocument();
+    // coop sem companheiros só pode ser o Solo: o coop com 2+ vagas não começa com um
+    expect(within(rows[1]).getByText("Solo")).toBeInTheDocument();
   });
 
   it("sem partidas", async () => {

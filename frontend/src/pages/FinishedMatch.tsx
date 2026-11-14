@@ -5,7 +5,7 @@ import ErrorNotice, { type Failure } from "../components/ErrorNotice";
 import Loading from "../components/Loading";
 import { linkClass } from "../components/styles";
 import { usePageTitle } from "../hooks/usePageTitle";
-import { mapName } from "../lobby/roomOptions";
+import { mapName, modeChoice } from "../lobby/roomOptions";
 import { knownReason, matchOutcome } from "../play/outcome";
 import { formatClock } from "../play/scoreboardUtils";
 import MatchAchievements from "../stats/MatchAchievements";
@@ -52,7 +52,7 @@ function MatchView({ matchId }: { matchId: number }) {
 
   // um item por linha: texto traduzido não se concatena (i18n.md §2.2)
   const rows: Array<[string, string]> = [
-    [t("result.details.mode"), t(`game:modes.${detail.mode}`)],
+    [t("result.details.mode"), t(`game:modes.${modeChoice(detail.mode, detail.players.length)}`)],
     [t("result.details.map"), mapName(t, detail.map)],
     [t("result.details.duration"), formatClock(detail.duration_s)],
     [t("result.details.endedAt"), endedAt],

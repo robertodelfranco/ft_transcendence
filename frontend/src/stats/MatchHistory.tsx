@@ -6,7 +6,7 @@ import ErrorNotice from "../components/ErrorNotice";
 import Loading from "../components/Loading";
 import { buttonSecondary, linkClass } from "../components/styles";
 import { useApi } from "../hooks/useApi";
-import { mapName } from "../lobby/roomOptions";
+import { mapName, modeChoice } from "../lobby/roomOptions";
 import { formatClock } from "../play/scoreboardUtils";
 
 const PER_PAGE = 10;
@@ -80,7 +80,7 @@ function HistoryRow({ item }: { item: MatchHistoryItem }) {
           <span className={`font-bold ${item.result === "win" ? "text-torch" : ""}`}>
             {t(`history.results.${item.result}`)}
           </span>
-          <span>{t(`game:modes.${item.mode}`)}</span>
+          <span>{t(`game:modes.${modeChoice(item.mode, item.others.length + 1)}`)}</span>
           <span>{mapName(t, item.map)}</span>
         </p>
         <p className="flex flex-wrap gap-x-3 text-sm text-bone/70">
