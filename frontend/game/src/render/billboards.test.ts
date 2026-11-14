@@ -250,3 +250,44 @@ it("o tiro do Boss leva o tingimento do Theme; a fireball do Player não", () =>
   expect(player.material.color.getHex()).toBe(0xffffff);
   billboards.dispose();
 });
+
+it.each([
+  ...[1 / 30, 1 / 60, 1 / 144].map(dt => ({ character: "nemesis", count: 2, dt })),
+  ...[1 / 30, 1 / 60, 1 / 144].map(dt => ({ character: "sucubus", count: 4, dt })),
+  ...[1 / 30, 1 / 60, 1 / 144].map(dt => ({ character: "oil", count: 3, dt })),
+])("$character caminha por distância, para e ignora teleporte (dt=$dt)", ({ character, count, dt }) => {
+  const sheet = sheetOf(count);
+  const billboards = new Billboards({ [`player:${character}`]: sheet } as unknown as BillboardAssets);
+  const other: PlayerSnapshot = {
+    id: 2, character_id: character, name: "other", x: 1, y: 1, dx: 1, dy: 0,
+    hp: 10, mana: 100, armor: 0, keys: 0, alive: true, connected: true,
+  };
+  const update = () => billboards.update({ ...empty, otherPlayers: [{ ...other }] }, dt);
+  update();
+  const sprite = billboards.object.children[0] as THREE.Sprite;
+  expect(sprite.material.map).toBe(sheet.frames[0].texture);
+  for (let index = 1; index <= count; index++) {
+    other.x += 0.36;
+    update();
+    expect(sprite.material.map).toBe(sheet.frames[index % count].texture);
+  }
+  other.x += 0.36;
+  update();
+  expect(sprite.material.map).toBe(sheet.frames[1].texture);
+  other.dx = 0;
+  other.dy = 1; // girar sem deslocamento não é andar
+  update();
+  expect(sprite.material.map).toBe(sheet.frames[0].texture);
+  other.x += 10;
+  update();
+  expect(sprite.material.map).toBe(sheet.frames[0].texture);
+  other.x += 0.36;
+  update();
+  expect(sprite.material.map).toBe(sheet.frames[1].texture);
+  other.connected = false;
+  other.x += 0.36;
+  update();
+  expect(sprite.material.map).toBe(sheet.frames[0].texture);
+  billboards.dispose();
+  for (const frame of sheet.frames) frame.texture.dispose();
+});

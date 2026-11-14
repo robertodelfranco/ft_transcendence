@@ -5,8 +5,8 @@ import { PLAYER_CHARACTERS, type CharacterId } from "../playerCharacters";
 const sequence = (prefix: string, count: number) =>
   Array.from({ length: count }, (_, i) => `/assets/${prefix}${i}.png`);
 
-const playerUrls = Object.fromEntries(PLAYER_CHARACTERS.map(({ id, sprite }) =>
-  [`player:${id}`, [sprite]],
+const playerUrls = Object.fromEntries(PLAYER_CHARACTERS.map((character) =>
+  [`player:${character.id}`, [character.sprite, ...("walkSprites" in character ? character.walkSprites : [])]],
 )) as Record<`player:${CharacterId}`, string[]>;
 
 const projectileUrls = Object.fromEntries(PLAYER_CHARACTERS.map(({ id, projectileSprite }) =>
@@ -74,9 +74,12 @@ export function createBillboardAssets(
         }
       }
       if (bottom === -1) throw new Error("billboard_asset_empty");
-      referenceHeight = Math.max(referenceHeight, bottom - top + 1);
+      const opaqueHeight = bottom - top + 1;
+      // Players podem ter quadros com resoluções distintas: a altura visível fica constante.
+      const scale = kind.startsWith("player:") ? 1 / opaqueHeight : 1;
+      referenceHeight = Math.max(referenceHeight, opaqueHeight * scale);
       return {
-        texture, width, height,
+        texture, width: width * scale, height: height * scale,
         anchorX: (left + right + 1) / (2 * width),
         anchorY: 1 - (bottom + 1) / height,
       };
