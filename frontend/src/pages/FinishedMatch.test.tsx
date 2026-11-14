@@ -76,6 +76,13 @@ describe("/matches/:matchId", () => {
     expect(screen.queryByText("venceu")).not.toBeInTheDocument();
   });
 
+  it("coop com um Player só aparece como Solo", async () => {
+    serve({ ...coop, players: [coop.players[0]] });
+    await renderAt("/matches/14");
+    expect(await screen.findByText("Solo")).toBeInTheDocument();
+    expect(screen.queryByText("Cooperativo")).not.toBeInTheDocument();
+  });
+
   it("pvp: quem perdeu vê Derrota, mesmo com o result win da Room", async () => {
     serve(pvp);
     await renderAt("/matches/14");

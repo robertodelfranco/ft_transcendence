@@ -1,5 +1,6 @@
 {
   "modes": {
+    "solo": "Solo",
     "coop": "Co-op",
     "pvp": "PvP 1v1"
   },

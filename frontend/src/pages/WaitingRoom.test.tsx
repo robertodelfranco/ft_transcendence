@@ -38,23 +38,64 @@ beforeEach(async () => {
 });
 
 describe("sala de espera do anfitrião", () => {
-  it("no Solo, o anfitrião marca pronto e Iniciar leva a /play", async () => {
+  it("no Solo, Começar marca pronto, inicia e leva a /play", async () => {
     const user = userEvent.setup();
+    const calls: string[] = [];
+    // sem return: segue para o handler do mock, que faz o pronto e o start
+    server.use(
+      http.post("/api/matches/:matchId/ready", async ({ request }) => {
+        calls.push(`ready ${JSON.stringify(await request.clone().json())}`);
+      }),
+      http.post("/api/matches/:matchId/start", () => {
+        calls.push("start");
+      }),
+    );
     await login();
     await apiFetch("/api/matches", { method: "POST", body: JSON.stringify({ mode: "coop", map: "enemy", max_players: 1 }) });
     const router = renderAt("/lobby/100");
-    // o host também marca pronto (rooms.md §4, decisão 13): sem isso, o Iniciar diz por que não vai
-    const start = await screen.findByRole("button", { name: "Iniciar partida" });
-    expect(start).toBeDisabled();
-    expect(start).toHaveAccessibleDescription("Todos precisam estar prontos para começar.");
-    await user.click(screen.getByRole("button", { name: "Estou pronto" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Iniciar partida" })).toBeEnabled());
-    expect(screen.getByRole("button", { name: "Iniciar partida" })).not.toHaveAccessibleDescription();
-    await user.click(screen.getByRole("button", { name: "Iniciar partida" }));
+    const begin = await screen.findByRole("button", { name: "Começar" });
+    expect(screen.getByText("Solo")).toBeInTheDocument();
+    // um botão só: nem o pronto, nem o Iniciar com o motivo ao lado
+    expect(screen.queryByRole("button", { name: "Estou pronto" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Iniciar partida" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Todos precisam estar prontos para começar.")).not.toBeInTheDocument();
+
+    await user.click(begin);
+
     await waitFor(() => expect(router.state.location.pathname).toBe("/play/100"));
+    // o host também marca pronto (rooms.md §4, decisão 13), e o start vem depois
+    expect(calls).toEqual(['ready {"ready":true}', "start"]);
     // a URL muda antes de o React desenhar a página nova: findBy espera
     expect(await screen.findByText("Conectando à partida #100…")).toBeInTheDocument();
     expect(screen.queryByText("Esta partida já começou.")).not.toBeInTheDocument();
+  });
+
+  it("no Solo, um start que falha mostra o erro, e Começar de novo só repete o start", async () => {
+    const user = userEvent.setup();
+    let readies = 0;
+    let starts = 0;
+    server.use(
+      http.post("/api/matches/:matchId/ready", () => {
+        readies += 1;
+      }),
+      http.post("/api/matches/:matchId/start", () => {
+        starts += 1;
+        if (starts === 1)
+          return HttpResponse.error(); // a conexão caiu no meio
+      }),
+    );
+    await login();
+    await apiFetch("/api/matches", { method: "POST", body: JSON.stringify({ mode: "coop", map: "enemy", max_players: 1 }) });
+    const router = renderAt("/lobby/100");
+    await user.click(await screen.findByRole("button", { name: "Começar" }));
+    expect(await screen.findByText("Sem conexão com o servidor. Verifique sua internet.")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/lobby/100");
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Começar" })).toBeEnabled());
+    await user.click(screen.getByRole("button", { name: "Começar" }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/play/100"));
+    expect([readies, starts]).toEqual([1, 2]);
   });
 
   it("falta de jogador vem antes do pronto, como no servidor", async () => {
@@ -86,15 +127,21 @@ describe("sala de espera do anfitrião", () => {
     // a tela pode estar um passo atrás: alguém desmarcou o pronto e o lobby_update ainda não chegou
     const user = userEvent.setup();
     await login();
-    await apiFetch("/api/matches", { method: "POST", body: JSON.stringify({ mode: "coop", map: "enemy", max_players: 1 }) });
-    server.use(http.post("/api/matches/:matchId/start", () => HttpResponse.json(
-      { error: { code: "not_all_ready", message: "not_all_ready", request_id: "test0001", fields: null } },
-      { status: 409 },
-    )));
-    renderAt("/lobby/100");
-    await user.click(await screen.findByRole("button", { name: "Estou pronto" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Iniciar partida" })).toBeEnabled());
-    await user.click(screen.getByRole("button", { name: "Iniciar partida" }));
+    const host: RoomPlayer = { ...room12.players[0], user_id: 7, username: "augusto", ready: true };
+    const guest: RoomPlayer = { ...room12.players[0], user_id: 8, username: "roberto", ready: true };
+    server.use(
+      http.get("/api/matches", () => HttpResponse.json({
+        items: [{ ...room12, created_by: 7, players: [host, guest] }],
+      })),
+      http.post("/api/matches/:matchId/start", () => HttpResponse.json(
+        { error: { code: "not_all_ready", message: "not_all_ready", request_id: "test0001", fields: null } },
+        { status: 409 },
+      )),
+    );
+    renderAt("/lobby/12");
+    const start = await screen.findByRole("button", { name: "Iniciar partida" });
+    expect(start).toBeEnabled();
+    await user.click(start);
     expect(await screen.findByText("Nem todos os jogadores estão prontos.")).toBeInTheDocument();
   });
 

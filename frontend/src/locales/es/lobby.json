@@ -52,6 +52,7 @@
     "unsetReady": "No estoy listo",
     "leave": "Salir de la sala",
     "start": "Iniciar partida",
+    "begin": "Empezar",
     "needPlayers_one": "Se necesita al menos {{count}} jugador para empezar.",
     "needPlayers_other": "Se necesitan al menos {{count}} jugadores para empezar.",
     "needReady": "Todos deben estar listos para empezar.",

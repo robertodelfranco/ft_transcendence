@@ -8,7 +8,7 @@ import ErrorNotice, { toFailure, type Failure } from "../components/ErrorNotice"
 import Loading from "../components/Loading";
 import { buttonPrimary, buttonSecondary, linkClass } from "../components/styles";
 import { usePageTitle } from "../hooks/usePageTitle";
-import { mapName } from "../lobby/roomOptions";
+import { mapName, modeChoice } from "../lobby/roomOptions";
 import CharacterPicker, { CharacterPortrait } from "../lobby/CharacterPicker";
 import { playerCharacter, type CharacterId } from "../../game/src/playerCharacters";
 import RoomOptionsSummary from "../lobby/RoomOptionsSummary";
@@ -124,6 +124,8 @@ export default function WaitingRoom() {
     return failure ? <ErrorNotice failure={failure} /> : <Loading />;
 
   const isHost = room.created_by === user?.id;
+  // no Solo, um botão só faz o pronto e o start (o host também marca pronto, decisão 13)
+  const solo = modeChoice(room.mode, room.max_players) === "solo";
   const enough = room.players.length >= room.min_players;
   // como o start do servidor (rooms.md §4, decisão 13): todos prontos, o host incluído
   const allReady = room.players.every((player) => player.ready);
@@ -138,7 +140,7 @@ export default function WaitingRoom() {
         <h1 className="text-2xl font-bold text-torch">{t("room.title")}</h1>
         <p className="text-lg">
           {mapName(t, room.map)}
-          <span className="ml-2 text-sm text-torch">{t(`game:modes.${room.mode}`)}</span>
+          <span className="ml-2 text-sm text-torch">{t(`game:modes.${modeChoice(room.mode, room.max_players)}`)}</span>
         </p>
       </div>
 
@@ -191,16 +193,18 @@ export default function WaitingRoom() {
 
       {me ? (
         <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => act(async () => {
-              await runAction(matchId, () => post("ready", { ready: !me.ready }));
-            })}
-            className={buttonSecondary}
-          >
-            {me.ready ? t("room.unsetReady") : t("room.setReady")}
-          </button>
+          {!solo && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => act(async () => {
+                await runAction(matchId, () => post("ready", { ready: !me.ready }));
+              })}
+              className={buttonSecondary}
+            >
+              {me.ready ? t("room.unsetReady") : t("room.setReady")}
+            </button>
+          )}
           <button
             type="button"
             disabled={busy}
@@ -212,7 +216,23 @@ export default function WaitingRoom() {
           >
             {t("room.leave")}
           </button>
-          {isHost && (
+          {solo && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => act(async () => {
+                // depois de um start recusado, o pronto já vale: só o start vai de novo
+                if (!me.ready)
+                  await runAction(matchId, () => post("ready", { ready: true }));
+                await post("start");
+                navigate(`/play/${matchId}`, { replace: true });
+              })}
+              className={buttonPrimary}
+            >
+              {t("room.begin")}
+            </button>
+          )}
+          {!solo && isHost && (
             <button
               type="button"
               disabled={busy || startHint !== null}
@@ -227,7 +247,7 @@ export default function WaitingRoom() {
               {t("room.start")}
             </button>
           )}
-          {isHost && startHint && <p id={hintId} className="text-center md:text-left text-sm text-bone/70">{startHint}</p>}
+          {!solo && isHost && startHint && <p id={hintId} className="text-center md:text-left text-sm text-bone/70">{startHint}</p>}
           {!isHost && <p className="text-center md:text-left text-sm text-bone/70">{t("room.waitingHost")}</p>}
         </div>
       ) : (
