@@ -436,6 +436,7 @@ Win/loss statistics are always read from `match_players.won`, never from `matche
 | Client-side prediction and reconciliation | The client moves its own player at once with `applyInput.ts`, the same function as the server's `apply_input`, in fixed steps of 1/30 s. Each Snapshot resets the player to the server's position and replays the inputs it has not seen. An error under 0.05 cell is smoothed over 0.1 s, a larger one snaps | Roberto |
 | Interpolation of other entities | Other players, enemies, the boss and projectiles are drawn 100 ms in the past, between the two Snapshots around that instant, so they glide instead of jumping 15 times per second; a jump of more than 2 cells (a respawn) snaps instead of sliding through walls | Augusto |
 | 3D rendering, themes and visual effects | **TODO F9.1 (@rflheringer)** | Rafael |
+| Sewer water | The water surface sits at the waterline painted on the sewer walls and reflects the torches. Players wade with their legs under it; enemies, the boss and pickups sit just below it, so the ripples painted on their sprites stay on the surface. Animated ripple rings spread at everyone's feet | Roberto |
 | Audio | **TODO F9.1 (@rflheringer)** | Rafael |
 | Maps, balance and Room options | **TODO F9.1 (@rflheringer)** | Rafael |
 | HUD | **TODO F9.1 (@caioosantos)** | Caio (implementation), Rafael (specification) |
@@ -672,6 +673,7 @@ The dashboards, the alerts and how to trigger one live are in the *Monitoring gu
 - **Mirror tests:** `mirror.py` generates `mirror.json` from the Python code, and Vitest replays the same cases in TypeScript and must reach the same positions.
 - **Tooling and load:** a CLI that generates a `welcome` and a Snapshot without a server (so the frontend could start before the backend), the 1000-tick performance test and the 4-Room benchmark.
 - **Minimap**, and the match page layout (minimap and HUD anchored to the canvas, full screen button, countdown overlay).
+- **Sewer water:** the water plane at the waterline painted on the sewer walls, glossy so it reflects the torches; how deep each kind of sprite sits in it; the ripple rings at everyone's feet (`waterRipples.ts`); and one edited frame of the sea dragon's death animation.
 
 **Challenges**
 
@@ -681,6 +683,9 @@ The dashboards, the alerts and how to trigger one live are in the *Monitoring gu
 - **A Room that never repeats an Input.** The first version kept only the last Input and applied it every tick. The server then took steps the client never predicted, and reconciliation pulled the player back. The queue applies each Input once, stands still when it is empty and catches up two at a time.
 - **Smooth correction without hiding bugs.** Snapping on every Snapshot made the camera shake near other players, whose positions the client only knows from the past. Small errors are now absorbed over 0.1 s, large ones snap, and the `console.assert` still reports any real divergence.
 - **Performance target.** The first target (1000 ticks in 200 ms) was not realistic in Python. Profiling with `cProfile` measured ~820 ms and pointed at the wall check. Instead of optimizing what did not matter at our scale, I revised the target to 2 s (6 % of the tick budget) so the test still catches a real regression, such as the BFS without its cache, and confirmed the real load with the 4-Room benchmark.
+- **The sewer water in C was an illusion.** The bottom quarter of the sewer walls is painted water, in the same blue as the floor color of the `.cub` map. The raycaster drew the floor as a flat color, so it merged with that band, and the eye read the water surface at the painted waterline, just below the camera: you felt half submerged. In real 3D the floor became a lit plane at height 0, and the band read as part of the wall. Raising the water plane to the painted waterline fixed it, and the depth test hides whatever stands below the surface without extra code.
+- **Sprites drawn for a flat 2.5D floor.** Each sheet paints its waterline at different rows, and some frames sink inside the PNG. A small script rebuilds the front view of every frame with the water over it (exact, because the camera is above the water), and I chose how deep each kind sits from those measurements. The sea dragon shares one base while walking and attacking, as in C, so its waterline does not jump; its death frames and the boss use their own. One death frame had its front ripple under the surface, so I moved it up in the PNG. Standing in the water, the boss's head passes the ceiling, so in the sewer the ceiling no longer writes depth, and doors are clipped at the ceiling height when they slide up.
+- **Ripples seen from 0.3 above the water.** At that grazing angle a flat ring becomes a thin line a few meters away, and pixel art flickers. The rings use mipmaps far away and stay crisp up close, are drawn before the sprites so a body hides the back half of its ring, and come from a fixed pool, so nothing is allocated while rendering.
 
 ### Augusto Cesar — Developer
 
