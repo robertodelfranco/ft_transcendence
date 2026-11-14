@@ -40,7 +40,7 @@ export default function RoomList({ lobby }: { lobby: ReturnType<typeof useLobbyR
   }
 
   return (
-    <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-4">
+    <section aria-labelledby={`${id}-heading`} className="dungeon-panel dungeon-rooms flex min-w-0 flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <h2 id={`${id}-heading`} className="text-xl font-bold">{t("rooms.heading")}</h2>
         <label className="flex items-center gap-2 text-sm">
@@ -86,12 +86,12 @@ export default function RoomList({ lobby }: { lobby: ReturnType<typeof useLobbyR
           return (
             <li
               key={room.match_id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded border border-crypt-700 bg-crypt-900 p-3"
+              className="dungeon-room-card flex flex-wrap items-center justify-between gap-4"
             >
-              <div className="flex flex-col gap-1">
-                <p className="flex items-baseline gap-2">
-                  <span className="font-bold">{mapName(t, room.map)}</span>
-                  <span className="text-sm text-torch">{t(`game:modes.${modeChoice(room.mode, room.max_players)}`)}</span>
+              <div className="flex min-w-0 flex-col gap-2">
+                <p className="flex flex-wrap items-baseline gap-2">
+                  <span className="dungeon-room-name font-bold">{mapName(t, room.map)}</span>
+                  <span className="dungeon-badge text-sm text-torch">{t(`game:modes.${modeChoice(room.mode, room.max_players)}`)}</span>
                 </p>
                 <p className="text-sm text-bone/70">
                   {t(`game:themes.${room.options.theme}`)}

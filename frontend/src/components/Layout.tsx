@@ -34,6 +34,7 @@ export default function Layout() {
   }
   // modo partida (#254): a rota declara, e o Layout só encolhe cabeçalho, miolo e rodapé
   const compact = useMatches().some((match) => (match.handle as RouteHandle | undefined)?.compact);
+  const dungeon = location.pathname === "/lobby" || location.pathname.startsWith("/lobby/");
   const navLink = `${navLinkClass} ${compact ? "px-1.5 py-0.5" : "px-2 py-1"}`;
 
   async function handleLogout() {
@@ -63,7 +64,7 @@ export default function Layout() {
   }
 
   return (
-    <div data-layout={compact ? "compact" : "default"} className="flex min-h-screen flex-col bg-crypt-950 text-bone">
+    <div data-layout={compact ? "compact" : "default"} className={`flex min-h-screen flex-col bg-crypt-950 text-bone ${dungeon ? "dungeon-shell" : ""}`}>
       <header className={`relative flex flex-wrap items-center justify-between gap-2 border-b border-crypt-700 px-4 ${compact ? "py-1" : "py-3"}`}>
         <Link
           to="/"

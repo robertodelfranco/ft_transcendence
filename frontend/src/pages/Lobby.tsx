@@ -11,10 +11,13 @@ export default function Lobby() {
   usePageTitle("lobby:title");
 
   return (
-    <section className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <h1 className="text-2xl font-bold text-torch">{t("title")}</h1>
+    <section className="dungeon-page mx-auto flex w-full max-w-6xl flex-col gap-8">
+      <header className="dungeon-heading">
+        <span aria-hidden="true" className="dungeon-sigil" />
+        <h1>{t("title")}</h1>
+      </header>
       <SocketNotice />
-      <div className="grid gap-8 md:grid-cols-[2fr_1fr]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <RoomList lobby={lobby} />
         <CreateRoomForm />
       </div>
