@@ -1,6 +1,4 @@
-*This project has been created as part of the 42 curriculum by rdel-fra, acesar-m, \<login3\>, cbrito-s, gyasuhir.*
-
-> **TODO F9.1 (@rflheringer):** replace one `<loginN>` above with your 42 intra login.
+*This project has been created as part of the 42 curriculum by rdel-fra, acesar-m, rheringe, cbrito-s, gyasuhir.*
 
 # Catacombs 42
 
@@ -150,8 +148,6 @@ The CI (GitHub Actions) runs on every pull request: it builds and starts the who
 
 ## How to play
 
-> **TODO F9.1 (@rflheringer):** review this section against the final maps, numbers and HUD.
-
 1. **Sign up or log in** (e-mail and password, or *Log in with 42*).
 2. In the **Lobby**, create a Room or join an open one. A *Room* is one match being played; while it waits for players it is in the Lobby, and everyone who joins sees it change in real time.
 3. The creator picks the **mode** and the **Room options** when creating it; they cannot change afterwards:
@@ -174,7 +170,7 @@ The CI (GitHub Actions) runs on every pull request: it builds and starts the who
 | `W` `A` `S` `D` | move and strafe |
 | mouse (click the game to lock the pointer) or `←` `→` | turn |
 | `Shift` | sprint |
-| `Space` | cast a fireball (costs mana) |
+| `Space` | hold to charge a fireball, release to cast (costs mana) |
 | `F` | open a door |
 
 **Modes**
@@ -433,10 +429,10 @@ Win/loss statistics are always read from `match_players.won`, never from `matche
 | Game WebSocket, Room manager and reconnection | One `asyncio` task per Room ticking at a fixed 30 Hz with drift compensation; Snapshots at 15 Hz; strict message validation; 30 s grace period and automatic reconnection to the same match; ping/pong with the RTT shown on the HUD | Augusto |
 | Client-side prediction and reconciliation | The client moves its own player at once with `applyInput.ts`, the same function as the server's `apply_input`, in fixed steps of 1/30 s. Each Snapshot resets the player to the server's position and replays the inputs it has not seen. An error under 0.05 cell is smoothed over 0.1 s, a larger one snaps | Roberto |
 | Interpolation of other entities | Other players, enemies, the boss and projectiles are drawn 100 ms in the past, between the two Snapshots around that instant, so they glide instead of jumping 15 times per second; a jump of more than 2 cells (a respawn) snaps instead of sliding through walls | Augusto |
-| 3D rendering, themes and visual effects | **TODO F9.1 (@rflheringer)** | Rafael |
+| 3D rendering, themes and visual effects | A first-person Three.js scene built from the Grid, with instanced walls, animated Doors, Enemy and Boss sprites, Pickups, Projectiles and the other Players. The dungeon and sewer Themes change textures, lighting and entity visuals; torches, shadows, fog, bloom, fireball particles add depth. The camera has a hand overlay and local damage, death and respawn feedback | Rafael |
 | Sewer water | The water surface sits at the waterline painted on the sewer walls and reflects the torches. Players wade with their legs under it; enemies, the boss and pickups sit just below it, so the ripples painted on their sprites stay on the surface. Animated ripple rings spread at everyone's feet | Roberto |
-| Audio | **TODO F9.1 (@rflheringer)** | Rafael |
-| Maps, balance and Room options | **TODO F9.1 (@rflheringer)** | Rafael |
+| Audio | Web Audio sound effects and synthesized background music, activated after a user gesture. Playback follows gameplay and local movement; leaving the game stops voices and timers and closes the audio context | Rafael |
+| Maps, balance and Room options | Co-op and PvP Maps, plus specifications for starting HP, optional Pickups, Themes and PvP limits. Shared balance values are documented for Simulation and Prediction (see [balanceamento-f4.7.md](docs/balanceamento-f4.7.md)) | Rafael |
 | HUD | A React layer over the game canvas, fed by the game through one callback: HP, mana, armor and keys; the players in co-op, or the score, time left and kill feed in PvP; ping; the countdown, death and reconnection notices; the controls. Low HP has a text label, not only a color; on narrow screens the HUD moves below the canvas. The canvas itself has no text | Caio (implementation), Rafael (specification) |
 | Minimap | A 2D canvas over the game drawn from the same `ViewState` as the 3D scene: walls, doors, the players and the local player's view cone, with north up as in the scene | Roberto |
 | Match recording, stats, XP/levels and Elo | When a match ends, the server records it exactly once, in one transaction: each player's numbers, the stats per mode, XP and level, and the Elo in PvP (starts at 1000, K = 32). Matches left unfinished by a restart are marked `aborted` at startup | Akita (backend), Caio (screens) |
@@ -596,11 +592,27 @@ The user and token models are Augusto's; the match, stats and achievement models
 
 ### 9. Advanced 3D graphics — Major (2)
 
-> **TODO F9.1 (@rflheringer):** why we chose it and how it was implemented.
+**Why:** Catacombs 42 brings the Cub3D dungeon into a browser as a real 3D scene. Three.js gives us perspective, materials, lighting, shadows and post-processing while keeping the Renderer separate from the authoritative Simulation.
+
+**How:**
+
+- **Grid to scene:** each cell is one world unit; Grid X maps to Three.js X, Grid Y maps to Z, and Y is height. Walls share an `InstancedMesh`; the camera draws the local Player's view from the supplied `ViewState`.
+- **Entities and animation:** billboards draw Enemies, the Boss, Pickups, Projectiles and other Players. Enemy and Boss clips follow their published states. Doors animate as meshes, and a separate camera overlay draws the hand and fireball charge.
+- **Lighting and effects:** point lights on torches, shadow maps, exponential fog, bloom and fireball trail/impact particles. Torch lights are selected by distance to the camera to limit lighting work.
+- **Two Themes:** `dungeon` and `sewer` select textures, colors, lighting and Enemy/Boss sprite sets without changing the Map or the Simulation rules. Textures use nearest-neighbor filtering to preserve the pixel art.
+- **Lifecycle:** `init`, `render`, `resize` and `dispose` manage the scene. The AssetLoader owns textures; the Renderer releases its geometries, materials and post-processing resources. Asset failures propagate as an error code for the shell to translate.
+
+The implementation lives in `frontend/game/src/render/`. The integration boundary is documented in [mount-game.md](docs/contracts/mount-game.md).
+
+**Observed performance:** in a manual Chrome FPS-meter check on 14 November 2026, Rafael observed 55–60 FPS on Crypt Descent with the dungeon Theme and 1 Player (Solo), with Enemies present. The overlay reported 7 MB of GPU memory used. These readings describe that session; GPU memory is not total application memory.
 
 ### 10. Game customization — Minor (1)
 
-> **TODO F9.1 (@rflheringer):** why we chose it and how it was implemented.
+**Why:** Room creation lets Players choose the dungeon's appearance and match settings, so they can vary the experience without changing source files.
+
+**How:** the Lobby exposes the Map and RoomOptions; the backend validates the choices and applies defaults. Options include `theme`, starting HP, potion/Mana/Armor Pickups and PvP Frag/time limits. The Simulation applies gameplay options, while the Renderer applies the Theme. Options remain fixed after Room creation. Each Player can also choose a visual in the waiting Lobby; the selected `character_id` determines the sprite, with the same gameplay attributes for every visual.
+
+Rafael specifies content and renders the visual choices; Roberto applies gameplay options in the Simulation, Akita handles the Lobby API, and Caio builds the screens. Contracts: [room-options.md](docs/contracts/room-options.md) and [player-characters.md](docs/contracts/player-characters.md).
 
 ### 11. Game statistics and match history — Minor (1)
 
@@ -743,7 +755,21 @@ The dashboards, the alerts and how to trigger one live are in the *Monitoring gu
 
 ### Rafael Heringer — Developer
 
-> **TODO F9.1 (@rflheringer):** what you built (features, modules, components), and the challenges you faced and how you overcame them.
+**What I built**
+
+- **3D Renderer:** the Three.js dungeon scene, first-person camera rendering, instanced textured walls, floor and ceiling; the `init`, `render`, `resize` and `dispose` lifecycle, consuming `ViewState` through the game integration contract.
+- **Assets and entities:** texture loading and failure handling; animated Enemy/Boss billboards, Pickups, Projectiles and other Players; animated Doors, the camera hand overlay, fireball charge/recoil and local damage, death and respawn feedback.
+- **Themes and visual effects:** dungeon and sewer appearances, torch lighting and shadows, fog, bloom, fireball particles; the Player visual catalog and character-specific projectile images.
+- **Audio:** Web Audio effects and synthesized music, with activation after user interaction and cleanup when leaving the game.
+- **Content and contracts:** co-op and PvP Maps; HUD specification for Caio; the RoomOptions catalog; Achievement conditions and proposed XP/level/ranking formulas for Akita; shared balance values coordinated with Roberto. The HUD screens, progress persistence and authoritative gameplay belong to their respective owners.
+
+**Challenges**
+
+- **Drawing a networked game without duplicating its rules.** The Renderer consumes a prepared `ViewState`: it draws positions and published entity states while the server decides hits, damage, collection and victory. Prediction and Interpolation reach it through the same boundary.
+- **Sprites with different transparent margins.** Centering every PNG the same way made visual size and ground contact depend on empty pixels. The loader measures opaque bounds once and calculates each frame's foot anchor and a shared reference height for its sequence.
+- **Lighting a dungeon within a limited budget.** Walls share geometry through instancing, and torch lights are assigned to the nearest positions as the camera moves. This limits repeated rendering work.
+- **Browser audio restrictions and leaving a Room.** The audio context starts after a user gesture. Cleanup stops oscillators and music timers and closes the context; graphics resources also have explicit owners and disposal paths.
+- **Keeping appearance separate from gameplay.** A Theme changes textures, sprites and lights. The Map remains the source of the Grid, and gameplay values stay shared between the server and client.
 
 ### Caio Santos — Product Owner
 
