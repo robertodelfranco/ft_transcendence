@@ -142,6 +142,7 @@ export default function CreateRoomForm() {
         <label className="flex flex-col gap-1 text-sm">
           {t("create.mode")}
           <select
+            name="mode"
             value={mode}
             disabled={!catalog}
             onChange={(e) => selectMode(e.target.value as Mode)}
@@ -160,6 +161,7 @@ export default function CreateRoomForm() {
             <label className="flex flex-col gap-1 text-sm">
               {t("create.map")}
               <select
+                name="map"
                 value={map}
                 disabled={!catalog}
                 onChange={(e) => selectMap(e.target.value)}
@@ -173,6 +175,7 @@ export default function CreateRoomForm() {
             <label className="flex flex-col gap-1 text-sm">
               {t("create.maxPlayers")}
               <select
+                name="max_players"
                 value={maxPlayers}
                 disabled={!catalog}
                 onChange={(e) => setChoice({ ...choice, maxPlayers: Number(e.target.value) })}

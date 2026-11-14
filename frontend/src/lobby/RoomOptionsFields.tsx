@@ -43,6 +43,7 @@ export default function RoomOptionsFields({ mode, draft, errors, onChange }: Roo
       <label className="flex flex-col gap-1 text-sm">
         {t("options.theme")}
         <select
+          name="theme"
           value={draft.theme}
           onChange={(e) => onChange({ ...draft, theme: e.target.value as Theme })}
           className={fieldClass}
@@ -89,6 +90,7 @@ export default function RoomOptionsFields({ mode, draft, errors, onChange }: Roo
           <label key={item} className="flex items-center gap-2">
             <input
               type="checkbox"
+              name={`pickups.${item}`}
               checked={draft.pickups[item]}
               onChange={(e) => setPickup(item, e.target.checked)}
               className="accent-torch"

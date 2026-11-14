@@ -31,7 +31,8 @@ export default function LanguageSelector() {
     <div className="flex flex-col items-end gap-1">
       <label className="flex items-center gap-2 text-sm">
         <span>{t("language.label")}</span>
-        <select 
+        <select
+          name="language"
           value={i18n.resolvedLanguage}
           onChange={(e) => {
             if (isLanguage(e.target.value)) select(e.target.value);

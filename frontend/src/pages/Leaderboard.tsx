@@ -47,6 +47,7 @@ export default function Leaderboard() {
           {t("leaderboard.mode")}
           {/* trocar de Mode volta à métrica padrão dele: xp no coop, elo no pvp */}
           <select
+            name="mode"
             value={mode}
             onChange={(e) => {
               const next = e.target.value as Mode;
@@ -62,6 +63,7 @@ export default function Leaderboard() {
         <label className="flex flex-col gap-1 text-sm">
           {t("leaderboard.metric")}
           <select
+            name="metric"
             value={metric}
             onChange={(e) => choose({ mode, metric: e.target.value as LeaderboardMetric })}
             className={fieldClass}

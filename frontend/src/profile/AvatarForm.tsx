@@ -87,7 +87,7 @@ export default function AvatarForm() {
                   não no da tela. O label faz o papel do botão e recebe o foco visível */}
               <label className={`${buttonSecondary} cursor-pointer text-center has-focus-visible:outline-2 has-focus-visible:outline-torch`}>
                 {t("settings.avatar.choose")}
-                <input type="file" accept={ACCEPT} onChange={choose} disabled={busy} className="sr-only" />
+                <input type="file" name="avatar" accept={ACCEPT} onChange={choose} disabled={busy} className="sr-only" />
               </label>
               {user.avatar_url !== DEFAULT_AVATAR_URL && (
                 <button type="button" onClick={() => save(null)} disabled={busy} className={buttonSecondary}>

@@ -46,6 +46,7 @@ export default function RoomList({ lobby }: { lobby: ReturnType<typeof useLobbyR
         <label className="flex items-center gap-2 text-sm">
           {t("rooms.filter")}
           <select
+            name="mode_filter"
             value={filter}
             onChange={(e) => setFilter(e.target.value as Filter)}
             className={fieldClass}
