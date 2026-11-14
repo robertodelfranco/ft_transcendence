@@ -1,13 +1,12 @@
 import { Suspense } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, Outlet, useMatches, useNavigate } from "react-router";
+import { Link, NavLink, Outlet, useMatches, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import LanguageSelector from "./LanguageSelector";
 import Loading from "./Loading";
 
-const linkClass = "underline hover:text-torch focus-visible:outline-2 focus-visible:outline-torch";
-// no menu compacto o sublinhado sai: o menu já se reconhece como navegação, e o foco segue visível
-const compactLinkClass = "hover:text-torch hover:underline focus-visible:outline-2 focus-visible:outline-torch";
+const navLinkClass =
+  "rounded font-semibold text-bone transition-colors hover:bg-crypt-700 focus-visible:outline-2 focus-visible:outline-torch aria-[current=page]:text-torch";
 
 // o que uma rota pode pedir ao Layout pelo `handle` (routes.tsx)
 type RouteHandle = { compact?: boolean };
@@ -18,7 +17,7 @@ export default function Layout() {
   const navigate = useNavigate();
   // modo partida (#254): a rota declara, e o Layout só encolhe cabeçalho, miolo e rodapé
   const compact = useMatches().some((match) => (match.handle as RouteHandle | undefined)?.compact);
-  const navLink = compact ? compactLinkClass : linkClass;
+  const navLink = `${navLinkClass} ${compact ? "px-1.5 py-0.5" : "px-2 py-1 tracking-wider"}`;
 
   async function handleLogout() {
     try {
@@ -44,11 +43,12 @@ export default function Layout() {
           {status === "authenticated" && user && (
             <>
               {/* o nome leva ao próprio perfil: mostra quem entrou e é o caminho para ele */}
-              <nav aria-label={t("nav.label")} className={`flex flex-wrap items-center gap-x-4 gap-y-1 ${compact ? "text-xs" : "text-sm"}`}>
-                <Link to={`/users/${user.id}`} className={navLink}>{user.username}</Link>
-                <Link to="/leaderboard" className={navLink}>{t("nav.leaderboard")}</Link>
-                <Link to="/friends" className={navLink}>{t("nav.friends")}</Link>
-                <Link to="/settings" className={navLink}>{t("nav.settings")}</Link>
+              <nav aria-label={t("nav.label")} className={`flex flex-wrap items-center gap-x-1 gap-y-1 ${compact ? "text-xs" : "text-sm"}`}>
+                {/* o username fica como foi escrito: em maiúsculas, "sokks" pareceria outro nome */}
+                <NavLink to={`/users/${user.id}`} className={navLink}>{user.username}</NavLink>
+                <NavLink to="/leaderboard" className={`${navLink} uppercase`}>{t("nav.leaderboard")}</NavLink>
+                <NavLink to="/friends" className={`${navLink} uppercase`}>{t("nav.friends")}</NavLink>
+                <NavLink to="/settings" className={`${navLink} uppercase`}>{t("nav.settings")}</NavLink>
               </nav>
               <button
                 type="button"
@@ -72,13 +72,13 @@ export default function Layout() {
 
       <footer className={`border-t border-crypt-700 px-4 ${compact ? "py-1" : "py-4"}`}>
         {/* compacto, mas sempre visível: o subject pede os links legais em toda página */}
-        <nav aria-label={t("footer.navLabel")} className={`flex gap-4 ${compact ? "text-xs" : "text-sm"}`}>
-          <Link to="/privacy" className={linkClass}>
+        <nav aria-label={t("footer.navLabel")} className={`flex flex-wrap justify-center gap-2 ${compact ? "text-xs" : "text-sm"}`}>
+          <NavLink to="/privacy" className={`${navLink} uppercase`}>
             {t("footer.privacy")}
-          </Link>
-          <Link to="/terms" className={linkClass}>
+          </NavLink>
+          <NavLink to="/terms" className={`${navLink} uppercase`}>
             {t("footer.terms")}
-          </Link>
+          </NavLink>
         </nav>
       </footer>
     </div>

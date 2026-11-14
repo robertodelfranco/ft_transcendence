@@ -81,6 +81,27 @@ describe("cabeçalho", () => {
   });
 })
 
+describe("página atual nos links de navegação", () => {
+  it("no rodapé, só o link da página aberta fica marcado", async () => {
+    renderAt("/privacy");
+    const footer = await screen.findByRole("navigation", { name: "Legal information" });
+    expect(within(footer).getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("aria-current", "page");
+    expect(within(footer).getByRole("link", { name: "Terms of Service" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("no cabeçalho, a marca acompanha a navegação", async () => {
+    const user = userEvent.setup();
+    await reloadWithSession();
+    renderAt("/friends");
+    const nav = await screen.findByRole("navigation", { name: "Sua conta" });
+    expect(within(nav).getByRole("link", { name: "Amigos" })).toHaveAttribute("aria-current", "page");
+
+    await user.click(within(nav).getByRole("link", { name: "Ranking" }));
+    await waitFor(() => expect(within(nav).getByRole("link", { name: "Ranking" })).toHaveAttribute("aria-current", "page"));
+    expect(within(nav).getByRole("link", { name: "Amigos" })).not.toHaveAttribute("aria-current");
+  });
+});
+
 describe("telas da conta", () => {
   it.each(["/users/7", "/settings", "/friends", "/leaderboard"])("%s sem sessão manda para o login", async (path) => {
     const router = renderAt(path);
