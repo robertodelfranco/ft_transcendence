@@ -3,7 +3,7 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, Request, Response, status
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import IntegrityError
 
 from app.auth import oauth, service
@@ -11,7 +11,7 @@ from app.auth.deps import CurrentUser, same_origin
 from app.auth.models import Provider
 from app.auth.schemas import AuthResponse, LoginIn, PrivateUser, SignupIn, Unauthenticated
 from app.core.config import get_app_settings
-from app.core.errors import error_response, ApiError
+from app.core.errors import ApiError
 from app.core.metrics import get_metrics
 from app.core.ratelimit import Limit, RateLimit, client_ip
 from app.db.session import DbSession
@@ -79,17 +79,17 @@ async def login(body: LoginIn, request: Request, response: Response,
 @router.post("/refresh", dependencies=[Depends(same_origin), Depends(REFRESHES)],
 		response_model=AuthResponse | Unauthenticated)
 async def refresh(request: Request, response: Response, session: DbSession,
-		refresh_token: RefreshCookie = None) -> AuthResponse | Unauthenticated | JSONResponse:
+		refresh_token: RefreshCookie = None) -> AuthResponse | Unauthenticated:
 	if not refresh_token:
 		return Unauthenticated()
 	tokens = await service.rotate_refresh(session, refresh_token, request, response)
 	await session.commit() # também no None: o reuso revogou a família
 	if tokens is not None:
 		return tokens
-	# a sessão acabou: o cookie sai na mesma resposta, e a casca vai para o login
-	error = error_response(request, 401, "invalid_refresh", "invalid or expired refresh token")
-	service.clear_refresh_cookie(error)
-	return error
+	# cookie morto ou reusado: a sessão acabou, e isso é o mesmo "sem sessão" do cookie ausente
+	# (auth.md §4 decisão 4). Um 401 pintaria o console de vermelho. O cookie sai nesta resposta
+	service.clear_refresh_cookie(response)
+	return Unauthenticated()
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(same_origin)])
