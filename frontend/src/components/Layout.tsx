@@ -1,4 +1,4 @@
-import { Suspense, useId, useRef, useState, type KeyboardEvent } from "react";
+import { Suspense, useId, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink, Outlet, useLocation, useMatches, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -19,12 +19,18 @@ export default function Layout() {
   const { t } = useTranslation();
   const { status, user, logout } = useAuth();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const location = useLocation();
   const menuId = useId();
   const menuButton = useRef<HTMLButtonElement>(null);
-  // o menu fica aberto só na página em que foi aberto: navegar o fecha, sem efeito nem estado extra
-  const [menuOpenAt, setMenuOpenAt] = useState<string | null>(null);
-  const menuOpen = menuOpenAt === pathname;
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Toda navegação fecha o menu, inclusive o Voltar do navegador: o key muda a cada entrada do
+  // histórico. Comparar com o da renderização anterior é o jeito do React de resetar estado quando
+  // algo muda, sem efeito (react.dev, "Storing information from previous renders")
+  const [menuKey, setMenuKey] = useState(location.key);
+  if (menuKey !== location.key) {
+    setMenuKey(location.key);
+    setMenuOpen(false);
+  }
   // modo partida (#254): a rota declara, e o Layout só encolhe cabeçalho, miolo e rodapé
   const compact = useMatches().some((match) => (match.handle as RouteHandle | undefined)?.compact);
   const navLink = `${navLinkClass} ${compact ? "px-1.5 py-0.5" : "px-2 py-1"}`;
@@ -44,8 +50,15 @@ export default function Layout() {
   function handleMenuKey(event: KeyboardEvent) {
     if (event.key !== "Escape" || !menuOpen)
       return;
-    setMenuOpenAt(null);
+    setMenuOpen(false);
     menuButton.current?.focus();
+  }
+
+  // O foco saindo do <nav> (clique fora, ou Tab depois do último item) fecha o menu: o painel não
+  // fica aberto por cima da página
+  function handleMenuBlur(event: FocusEvent<HTMLElement>) {
+    if (menuOpen && !event.currentTarget.contains(event.relatedTarget as Node | null))
+      setMenuOpen(false);
   }
 
   return (
@@ -63,6 +76,7 @@ export default function Layout() {
           <nav
             aria-label={t("nav.label")}
             onKeyDown={handleMenuKey}
+            onBlur={handleMenuBlur}
             className={`flex flex-wrap items-center gap-x-1 gap-y-1 ${compact ? "text-xs" : "text-sm"}`}
           >
             {/* o nome leva ao próprio perfil: mostra quem entrou e é o caminho para ele */}
@@ -72,7 +86,7 @@ export default function Layout() {
               type="button"
               aria-expanded={menuOpen}
               aria-controls={menuId}
-              onClick={() => setMenuOpenAt(menuOpen ? null : pathname)}
+              onClick={() => setMenuOpen((open) => !open)}
               className="rounded p-1.5 text-bone hover:bg-crypt-700 focus-visible:outline-2 focus-visible:outline-torch md:hidden"
             >
               <span className="sr-only">{t("nav.menu")}</span>
@@ -85,10 +99,9 @@ export default function Layout() {
               className={`${menuOpen ? "flex" : "hidden"} absolute inset-x-0 top-full z-30 flex-col items-start gap-3 border-b border-crypt-700 bg-crypt-950 px-4 py-3 md:static md:flex md:flex-row md:flex-wrap md:items-center md:gap-x-4 md:gap-y-2 md:border-0 md:bg-transparent md:p-0`}
             >
               <div className="flex flex-col items-start gap-1 md:flex-row md:items-center">
-                {/* o clique fecha o menu também quando o link é o da página atual */}
-                <NavLink to="/leaderboard" onClick={() => setMenuOpenAt(null)} className={navLink}>{t("nav.leaderboard")}</NavLink>
-                <NavLink to="/friends" onClick={() => setMenuOpenAt(null)} className={navLink}>{t("nav.friends")}</NavLink>
-                <NavLink to="/settings" onClick={() => setMenuOpenAt(null)} className={navLink}>{t("nav.settings")}</NavLink>
+                <NavLink to="/leaderboard" className={navLink}>{t("nav.leaderboard")}</NavLink>
+                <NavLink to="/friends" className={navLink}>{t("nav.friends")}</NavLink>
+                <NavLink to="/settings" className={navLink}>{t("nav.settings")}</NavLink>
               </div>
               <button
                 type="button"

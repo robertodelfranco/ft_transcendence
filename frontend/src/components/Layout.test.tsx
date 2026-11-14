@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
@@ -133,6 +133,40 @@ describe("menu em janela estreita", () => {
     await user.keyboard("{Escape}");
     expect(button).toHaveAttribute("aria-expanded", "false");
     expect(button).toHaveFocus();
+  });
+
+  it("clicar no link da página atual também fecha o menu", async () => {
+    const { user, button, panel } = await openShell();
+    await user.click(within(panel).getByRole("link", { name: "Amigos" }));
+    await screen.findByRole("heading", { name: "Amigos" });
+    await user.click(button);
+    await user.click(within(panel).getByRole("link", { name: "Amigos" }));
+    expect(button).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("sair por outro caminho e voltar pelo histórico não reabre o menu", async () => {
+    const user = userEvent.setup();
+    await reloadWithSession();
+    const router = renderAt("/lobby");
+    await user.click(await screen.findByRole("button", { name: "Menu" }));
+    await act(() => router.navigate("/friends")); // um link da página, não o do menu
+    await screen.findByRole("heading", { name: "Amigos" });
+    await act(() => router.navigate(-1)); // o Voltar do navegador
+    await screen.findByRole("heading", { name: "Lobby" });
+    expect(screen.getByRole("button", { name: "Menu" })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("clicar fora do menu o fecha", async () => {
+    const { user, button } = await openShell();
+    await user.click(button);
+    await user.click(screen.getByRole("heading", { name: "Lobby" }));
+    expect(button).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("sem sessão não há menu: o cabeçalho só tem o nome do jogo e o idioma", async () => {
+    renderAt("/privacy");
+    await screen.findByLabelText("Language");
+    expect(screen.queryByRole("button", { name: "Menu" })).not.toBeInTheDocument();
   });
 
   it("navegar pelo menu o fecha", async () => {
