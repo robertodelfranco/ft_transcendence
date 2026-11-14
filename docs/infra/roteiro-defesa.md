@@ -1,6 +1,6 @@
 # Roteiro da defesa
 
-Versão curta do [teste-2-pcs.md](teste-2-pcs.md), validado na 42 em 01/11. Detalhes e plano B estão lá.
+Versão curta do [teste-2-pcs.md](teste-2-pcs.md), validado na 42 em 01/11 (PC com `slirp4netns`) e em 14/11 (c1r5p2, sem `slirp4netns`). Detalhes e plano B estão lá.
 
 - **Host:** o PC que roda a stack (Docker rootless, portas 8080/8443).
 - **Clientes:** os outros PCs do cluster. Só abrem o Chrome; nada de Docker, nada de sudo.
@@ -16,12 +16,24 @@ Versão curta do [teste-2-pcs.md](teste-2-pcs.md), validado na 42 em 01/11. Deta
 # quem é o host (repita em todo terminal novo)
 HOST=$(hostname -f); IP=$(hostname -I | awk '{print $1}'); echo "$HOST $IP"
 
-# Docker: imagens no goinfre e IP real do cliente (uma vez por login; pule se já feito)
-docker info >/dev/null 2>&1 || dockerd-rootless-setuptool.sh install
+# Docker rootless instalado neste login? (o docker info falharia também com o daemon quebrado)
+[ -f ~/.config/systemd/user/docker.service ] || dockerd-rootless-setuptool.sh install
+
+# Docker: imagens no goinfre e IP real do cliente. Rode em todo PC novo: o home acompanha o
+# login, mas o pacote muda de PC para PC, e o override de um PC derruba o Docker de outro
 mkdir -p /goinfre/$USER/docker ~/.config/docker ~/.config/systemd/user/docker.service.d
-[ -f ~/.config/docker/daemon.json ] || echo "{ \"data-root\": \"/goinfre/$USER/docker/\" }" > ~/.config/docker/daemon.json
-printf '[Service]\nEnvironment="DOCKERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns"\n' > ~/.config/systemd/user/docker.service.d/override.conf
-systemctl --user daemon-reload && systemctl --user restart docker
+if command -v slirp4netns >/dev/null; then
+    # 01/11: o port driver slirp4netns repassa o IP de origem
+    echo "{ \"data-root\": \"/goinfre/$USER/docker/\" }" > ~/.config/docker/daemon.json
+    printf '[Service]\nEnvironment="DOCKERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns"\n' > ~/.config/systemd/user/docker.service.d/override.conf
+else
+    # 14/11: sem slirp4netns, o slirp4netns derruba o daemon; o builtin repassa o IP sem o
+    # userland-proxy, que por sua vez pede o br_netfilter (só root carrega; a stack não precisa dele)
+    echo "{ \"data-root\": \"/goinfre/$USER/docker/\", \"userland-proxy\": false }" > ~/.config/docker/daemon.json
+    printf '[Service]\nEnvironment="DOCKERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=builtin"\nEnvironment="DOCKER_IGNORE_BR_NETFILTER_ERROR=1"\n' > ~/.config/systemd/user/docker.service.d/override.conf
+fi
+systemctl --user daemon-reload && systemctl --user reset-failed docker; systemctl --user restart docker
+ps -eo args | grep -o -- '--port-driver=[a-z0-9]*' | sort -u   # esperado: slirp4netns ou builtin
 docker info -f '{{.DockerRootDir}}'                 # esperado: /goinfre/...
 
 # código e .env
@@ -38,6 +50,7 @@ sed -i "s|^PUBLIC_HOST=.*|PUBLIC_HOST=$HOST:8443|; s|^PROXY_HTTP_PORT=.*|PROXY_H
 docker compose up -d --build --wait --wait-timeout 300
 docker compose ps                                    # 8 serviços Up; só o proxy com porta
 curl -s "https://$HOST:8443/api/health" --cacert "$(~/bin/mkcert -CAROOT)/rootCA.pem"   # {"status":"ok"}
+docker compose logs proxy | tail -1                  # IP de origem = $IP, nunca 172.x (senão o rate limit vira global)
 
 # entregar a CA pública aos clientes (NUNCA o rootCA-key.pem)
 mkdir -p /sgoinfre/$USER/defesa && cp "$(~/bin/mkcert -CAROOT)/rootCA.pem" /sgoinfre/$USER/defesa/
@@ -46,7 +59,7 @@ chmod 711 /sgoinfre/$USER && chmod 755 /sgoinfre/$USER/defesa
 
 Na intra (app da 42), acrescente a URL de retorno `https://<HOST>:8443/api/auth/oauth/42/callback`.
 
-Se o `up` falhar: `docker compose logs backend proxy | tail -50`. Prometheus sem ler a config: `chmod -R go+rX monitoring` e suba de novo.
+Se o Docker não subir: `journalctl --user -u docker | grep 'failed to start' | tail -1`. Se o `up` falhar: `docker compose logs backend proxy | tail -50`. Prometheus sem ler a config: `chmod -R go+rX monitoring` e suba de novo.
 
 ## 2. Cliente (cada PC)
 
@@ -68,7 +81,7 @@ cp /sgoinfre/<login-do-host>/defesa/rootCA.pem ~/rootCA.pem
 | Logs | `docker compose logs -f backend` |
 | Partidas no banco | `docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select id, status from matches order by id desc limit 5"'` |
 | Alerta `TargetDown` | `docker compose stop backend` → espera ~1 min → `docker compose start backend` (se der 502: `docker compose restart proxy`) |
-| Banco do zero | `docker compose down -v && docker compose up -d --wait` |
+| Banco do zero (apaga também avatares e métricas) | `docker compose down -v && docker compose up -d --wait` |
 
 ## 4. Depois
 

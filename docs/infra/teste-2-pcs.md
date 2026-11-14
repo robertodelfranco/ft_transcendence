@@ -108,19 +108,49 @@ O restart vem no 1.4.
 
 Sem isto, o Nginx vê todo cliente com o mesmo IP interno (`172.18.0.1`), e o rate limit vira global: 5 senhas erradas em **qualquer** PC travam o login de **todos** por 60 s. Detalhes no [resultado de 17/10](resultados-teste-pc-42-2026-10-17.md#achado-o-rootless-da-42-esconde-o-ip-do-cliente).
 
+A correção depende do que o PC tem instalado:
+
+```bash
+command -v slirp4netns || echo "sem slirp4netns"
+```
+
+**Com `slirp4netns`** (o PC de 01/11): o port driver `slirp4netns` repassa o IP de origem.
+
 ```bash
 mkdir -p ~/.config/systemd/user/docker.service.d
 cat > ~/.config/systemd/user/docker.service.d/override.conf <<'EOF'
-# ft_transcendence: o driver builtin do rootlesskit não repassa o IP de origem
+# ft_transcendence: o driver builtin do rootlesskit, com o userland-proxy, não repassa o IP de origem
 [Service]
 Environment="DOCKERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns"
 EOF
-systemctl --user daemon-reload && systemctl --user restart docker && sleep 3
+```
+
+**Sem `slirp4netns`** (c1r5p2, 14/11; Docker 29.9, rootlesskit 3.3): o override acima **derruba o Docker** (`port driver requires slirp4netns network`), porque sem o pacote a rede vira `gvisor-tap-vsock`. No rootlesskit 3, o driver `builtin` repassa o IP quando o `userland-proxy` está desligado. Sem o `userland-proxy`, o Docker exige o módulo `br_netfilter`, que só root carrega. O `DOCKER_IGNORE_BR_NETFILTER_ERROR=1` dispensa o módulo: ele só isola containers entre si e faz o hairpin (um container chamando a porta publicada do host), e a stack não usa nenhum dos dois.
+
+```bash
+mkdir -p ~/.config/systemd/user/docker.service.d
+echo "{ \"data-root\": \"/goinfre/$USER/docker/\", \"userland-proxy\": false }" > ~/.config/docker/daemon.json
+cat > ~/.config/systemd/user/docker.service.d/override.conf <<'EOF'
+# ft_transcendence: sem slirp4netns, o builtin sem userland-proxy repassa o IP de origem
+[Service]
+Environment="DOCKERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=builtin"
+Environment="DOCKER_IGNORE_BR_NETFILTER_ERROR=1"
+EOF
+```
+
+Se o `daemon.json` do 1.3 tinha outras chaves, acrescente `"userland-proxy": false` à mão em vez do `echo`.
+
+**Nos dois casos:**
+
+```bash
+systemctl --user daemon-reload && systemctl --user reset-failed docker; systemctl --user restart docker && sleep 3
 ps -eo args | grep -o -- '--port-driver=[a-z0-9]*' | sort -u
 docker info -f '{{.DockerRootDir}}'
 ```
 
-**Esperado:** `--port-driver=slirp4netns` e um caminho em `/goinfre/`. Os dois arquivos ficam no home e acompanham o seu login em qualquer PC.
+**Esperado:** `--port-driver=slirp4netns` (ou `builtin`, no PC sem o pacote) e um caminho em `/goinfre/`. Se o `docker info` falhar, a causa está em `journalctl --user -u docker | grep 'failed to start' | tail -1`.
+
+Os dois arquivos ficam no home e acompanham o seu login, mas o pacote muda de PC para PC: **refaça o 1.4 em todo PC novo**, porque o override de um PC pode derrubar o Docker de outro.
 
 ### 1.5 Certificado para este PC
 
@@ -454,7 +484,7 @@ Preencha a tabela "Pendente 2º PC" em [resultados-teste-pc-42-2026-10-17.md](re
 | `nip.io` não resolve só no PC B | DNS público bloqueado nesse PC | Anote: o `nip.io` não é usado na demo (era para o Google, fora do escopo desde 09/11) |
 | D3 com `000` ou erro de certificado | `rootCA.pem` errado (de outro servidor) ou certificado gerado em outro PC | No PC A, confira o SAN (1.5) e mande o `rootCA.pem` do login que rodou o `mkcert` |
 | D3 com `502` | a stack caiu | No PC A: `docker compose ps -a` e `docker compose logs backend proxy \| tail -50` |
-| D4 com `429` | o 1.4 não foi aplicado, ou o PC A travou o login pelo `localhost` em vez do `$HOST` | No PC A: `ps -eo args \| grep -o -- '--port-driver=[a-z0-9]*'` deve dizer `slirp4netns`; no log do 1.9, o IP do PC B deve aparecer |
+| D4 com `429` | o 1.4 não foi aplicado, ou o PC A travou o login pelo `localhost` em vez do `$HOST` | No PC A: `ps -eo args \| grep -o -- '--port-driver=[a-z0-9]*'` deve dizer `slirp4netns` (ou `builtin`, com `"userland-proxy": false` no `daemon.json`); no log do 1.9, o IP do PC B deve aparecer |
 | D5 com porta `ABERTA` | algo além do proxy está publicando porta | No PC A: `docker compose ps` e anote qual serviço |
 | Chrome mostra aviso de certificado | CA não importada, Chrome não reiniciado, ou o nome não está no SAN | Refazer o 2.3 fechando todas as janelas; conferir o SAN no PC A |
 | `up` falha com `GF_SECURITY_ADMIN_...` | `.env` sem o admin do Grafana (decisão 19 do `infra.md`) | Confira o `diff` e o último `grep` do 1.6 |
@@ -472,7 +502,7 @@ Preencha a tabela "Pendente 2º PC" em [resultados-teste-pc-42-2026-10-17.md](re
 **PC A:**
 - Derrube a stack: `cd ~/teste-2-pcs/ft_transcendence && docker compose down -v`.
 - **Apague a pasta: `rm -rf ~/teste-2-pcs`.** Não é opcional hoje, porque o `.env` tem o secret da 42, o `JWT_SECRET` e a senha do Grafana. Apague também a cópia do `.env` que veio de casa, onde quer que ela tenha ficado no PC (Downloads, pendrive montado). O `~/bin/mkcert` e a CA ficam para a próxima.
-- O `override.conf` do 1.4 pode ficar: só melhora o Docker para este projeto. Para desfazer: `rm ~/.config/systemd/user/docker.service.d/override.conf && systemctl --user daemon-reload && systemctl --user restart docker`.
+- O `override.conf` do 1.4 pode ficar: só melhora o Docker para este projeto. Para desfazer: `rm ~/.config/systemd/user/docker.service.d/override.conf`, tire o `"userland-proxy": false` do `~/.config/docker/daemon.json` se ele estiver lá, e rode `systemctl --user daemon-reload && systemctl --user restart docker`.
 - Se usou o sgoinfre: `rm -rf /sgoinfre/$USER/teste-2-pcs && chmod 700 /sgoinfre/$USER`.
 
 **Cada PC cliente:** o 2.4, no fim do dia.
