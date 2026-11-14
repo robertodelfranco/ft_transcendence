@@ -138,7 +138,7 @@ export default function CreateRoomForm() {
   const seats = seatOptions(mode, mapInfo?.max_players ?? 0);
 
   return (
-    <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-4">
+    <section aria-labelledby={`${id}-heading`} className="dungeon-panel dungeon-create flex min-w-0 flex-col gap-5">
       <h2 id={`${id}-heading`} className="text-xl font-bold">{t("create.heading")}</h2>
 
       {failure && <ErrorNotice failure={failure} />}
@@ -161,7 +161,7 @@ export default function CreateRoomForm() {
         {catalog && maps.length === 0 ? (
           <p className="text-sm text-bone/70">{t("create.noMaps")}</p>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               {t("create.map")}
               <select

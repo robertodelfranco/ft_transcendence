@@ -135,9 +135,10 @@ export default function WaitingRoom() {
     : null;
 
   return (
-    <section className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-torch">{t("room.title")}</h1>
+    <section className="dungeon-page mx-auto flex w-full max-w-6xl flex-col gap-6">
+      <div className="dungeon-heading">
+        <span aria-hidden="true" className="dungeon-sigil" />
+        <h1>{t("room.title")}</h1>
         <p className="text-lg">
           {mapName(t, room.map)}
           <span className="ml-2 text-sm text-torch">{t(`game:modes.${modeChoice(room.mode, room.max_players)}`)}</span>
@@ -147,8 +148,8 @@ export default function WaitingRoom() {
       <SocketNotice />
       {failure && <ErrorNotice failure={failure} />}
 
-      <div className="grid gap-8 md:grid-cols-[2fr_1fr]">
-        <section className="flex flex-col gap-3">
+      <div className="grid items-start gap-6 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <section className="dungeon-panel flex min-w-0 flex-col gap-4">
           <h2 className="text-xl font-bold">
             {t("room.players", { count: room.players.length, max: room.max_players })}
           </h2>
@@ -157,11 +158,11 @@ export default function WaitingRoom() {
             {room.players.map((player) => (
               <li
                 key={player.user_id}
-                className="flex flex-wrap items-center gap-2 rounded border border-crypt-700 bg-crypt-900 px-3 py-2"
+                className="dungeon-player flex flex-wrap items-center gap-3 px-3 py-3"
               >
-                <CharacterPortrait characterId={player.character_id} className="h-10 w-10 rounded-sm bg-crypt-950 p-1" />
+                <CharacterPortrait characterId={player.character_id} className="h-14 w-14 rounded-sm bg-crypt-950 p-1" />
                 <span className="flex flex-col">
-                  <span className="font-bold">{player.username}</span>
+                  <span className="break-all font-bold">{player.username}</span>
                   <span className="text-xs text-bone/60">{t(`characters.names.${playerCharacter(player.character_id).id}`)}</span>
                 </span>
                 {player.user_id === user?.id && <span className="text-sm text-bone/70">({t("room.you")})</span>}
@@ -178,7 +179,8 @@ export default function WaitingRoom() {
           </ul>
         </section>
 
-        <section className="flex flex-col gap-3">
+        <section className="dungeon-panel flex min-w-0 flex-col gap-4">
+          <h2 className="text-xl font-bold">{t("create.options")}</h2>
           <RoomOptionsSummary options={room.options} />
         </section>
       </div>
@@ -192,7 +194,7 @@ export default function WaitingRoom() {
       )}
 
       {me ? (
-        <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+        <div className="dungeon-actions flex flex-wrap items-center justify-center gap-3 md:justify-start">
           {!solo && (
             <button
               type="button"
@@ -251,7 +253,7 @@ export default function WaitingRoom() {
           {!isHost && <p className="text-center md:text-left text-sm text-bone/70">{t("room.waitingHost")}</p>}
         </div>
       ) : (
-        <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+        <div className="dungeon-actions flex flex-wrap items-center justify-center gap-3 md:justify-start">
           <p className="text-center md:text-left">{t("room.notMember")}</p>
           <button
             type="button"

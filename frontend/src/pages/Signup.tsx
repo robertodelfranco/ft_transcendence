@@ -7,7 +7,8 @@ import { useAuthForm } from "../auth/useAuthForm";
 import {
   normalize, validateEmail, validateNewPassword, validateUsername,
 } from "../auth/validation";
-import { linkClass } from "../components/styles";
+import Icon from "../components/Icon";
+import { buttonPrimary, linkClass } from "../components/styles";
 import TextField from "../components/TextField";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { errorMessage } from "../i18n/errorMessage";
@@ -90,8 +91,9 @@ export default function Signup() {
         <button
           type="submit"
           disabled={submitting}
-          className="rounded bg-torch px-4 py-2 font-bold text-crypt-950 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-torch disabled:opacity-60"
+          className={`inline-flex items-center justify-center gap-2 ${buttonPrimary}`}
         >
+          <Icon name="scroll" />
           {submitting ? t("signup.submitting") : t("signup.submit")}
         </button>
       </form>

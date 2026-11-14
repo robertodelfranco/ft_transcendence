@@ -5,7 +5,8 @@ import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { useAuthForm } from "../auth/useAuthForm";
 import { normalize, validateEmail, validateLoginPassword } from "../auth/validation";
-import { linkClass } from "../components/styles";
+import Icon from "../components/Icon";
+import { buttonPrimary, linkClass } from "../components/styles";
 import TextField from "../components/TextField";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { errorMessage } from "../i18n/errorMessage";
@@ -79,8 +80,9 @@ export default function Login() {
         <button
           type="submit"
           disabled={submitting}
-          className="rounded bg-torch px-4 py-2 font-bold text-crypt-950 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-torch disabled:opacity-60"
+          className={`inline-flex items-center justify-center gap-2 ${buttonPrimary}`}
         >
+          <Icon name="key" />
           {submitting ? t("login.submitting") : t("login.submit")} 
         </button>
       </form>

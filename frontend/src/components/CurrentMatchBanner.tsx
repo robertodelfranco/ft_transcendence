@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router";
 import { apiFetch } from "../api/client";
 import type { RoomInfo } from "../api/types";
+import Icon from "./Icon";
 import { buttonPrimary } from "./styles";
 
 // Faixa "Voltar à partida": quem saiu do /play tem o Grace period (30 s) para voltar, e a casca
@@ -41,7 +42,7 @@ export default function CurrentMatchBanner() {
       className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-b border-torch/60 bg-torch/10 px-4 py-2 text-sm text-torch"
     >
       <p>{t("currentMatch.notice")}</p>
-      <Link to={`/play/${matchId}`} className={buttonPrimary}>{t("currentMatch.back")}</Link>
+      <Link to={`/play/${matchId}`} className={`inline-flex items-center gap-2 ${buttonPrimary}`}><Icon name="sword" />{t("currentMatch.back")}</Link>
     </div>
   );
 }

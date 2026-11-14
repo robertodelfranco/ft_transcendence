@@ -29,7 +29,7 @@ Alturas visuais: Enemy e Player 0,8 unidade; Boss 0,95; Pickup 0,2; Projectile 0
 - `assets/collectables/key.png` e `pot.png`.
 - `assets/player/fireball_0.png`, `fireball_2.png` e `fireball_3.png`. O quadro 1 já veio na F3.4.
 
-Os caminhos relativos foram preservados dentro de `frontend/public/assets/`. Mana, Armor e outro Player usam SVGs provisórios em `frontend/public/assets/placeholders/`, sem texto: cristal azul, escudo e figura humana verde. A arte definitiva continua pendente; o carregamento não usa esses desenhos como fallback para um arquivo ausente.
+Os caminhos relativos foram preservados dentro de `frontend/public/assets/`. Mana, Armor e outro Player usam SVGs provisórios em `frontend/public/assets/placeholders/`, sem texto: cristal azul, escudo e figura humana verde. O carregamento não usa esses desenhos como fallback para um arquivo ausente. Mana e Armor ganharam arte definitiva na #253 (`collectables/mana.png` e `armor.png`, 64×64, no layout de `pot.png` e `key.png`); o SVG da figura humana continua provisório.
 
 ## Demo e integração
 

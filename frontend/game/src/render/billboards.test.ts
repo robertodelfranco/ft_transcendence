@@ -68,7 +68,7 @@ it("na água, Enemy, Boss e Pickup ficam logo abaixo da superfície; o Player af
   expect(enemy.position.y).toBeCloseTo(0.17);
   // Pickups flutuam ±0,02 em torno da base + 0,02; fase pela célula (potion em 0,0: seno 0)
   expect(potion.position.y).toBeCloseTo(0.22); // só a sombra pintada fica submersa
-  expect(mana.position.y).toBeCloseTo(0.27 + 0.02 * Math.sin(1)); // placeholder sem sombra
+  expect(mana.position.y).toBeCloseTo(0.22 + 0.02 * Math.sin(1)); // o PNG também tem sombra
   expect(boss.position.y).toBeCloseTo(0.19);
   expect(player.position.y).toBe(0);
   billboards.update({
@@ -249,4 +249,45 @@ it("o tiro do Boss leva o tingimento do Theme; a fireball do Player não", () =>
   expect(boss.material.color.getHex()).toBe(0xff6650);
   expect(player.material.color.getHex()).toBe(0xffffff);
   billboards.dispose();
+});
+
+it.each([
+  ...[1 / 30, 1 / 60, 1 / 144].map(dt => ({ character: "nemesis", count: 2, dt })),
+  ...[1 / 30, 1 / 60, 1 / 144].map(dt => ({ character: "sucubus", count: 4, dt })),
+  ...[1 / 30, 1 / 60, 1 / 144].map(dt => ({ character: "oil", count: 3, dt })),
+])("$character caminha por distância, para e ignora teleporte (dt=$dt)", ({ character, count, dt }) => {
+  const sheet = sheetOf(count);
+  const billboards = new Billboards({ [`player:${character}`]: sheet } as unknown as BillboardAssets);
+  const other: PlayerSnapshot = {
+    id: 2, character_id: character, name: "other", x: 1, y: 1, dx: 1, dy: 0,
+    hp: 10, mana: 100, armor: 0, keys: 0, alive: true, connected: true,
+  };
+  const update = () => billboards.update({ ...empty, otherPlayers: [{ ...other }] }, dt);
+  update();
+  const sprite = billboards.object.children[0] as THREE.Sprite;
+  expect(sprite.material.map).toBe(sheet.frames[0].texture);
+  for (let index = 1; index <= count; index++) {
+    other.x += 0.36;
+    update();
+    expect(sprite.material.map).toBe(sheet.frames[index % count].texture);
+  }
+  other.x += 0.36;
+  update();
+  expect(sprite.material.map).toBe(sheet.frames[1].texture);
+  other.dx = 0;
+  other.dy = 1; // girar sem deslocamento não é andar
+  update();
+  expect(sprite.material.map).toBe(sheet.frames[0].texture);
+  other.x += 10;
+  update();
+  expect(sprite.material.map).toBe(sheet.frames[0].texture);
+  other.x += 0.36;
+  update();
+  expect(sprite.material.map).toBe(sheet.frames[1].texture);
+  other.connected = false;
+  other.x += 0.36;
+  update();
+  expect(sprite.material.map).toBe(sheet.frames[0].texture);
+  billboards.dispose();
+  for (const frame of sheet.frames) frame.texture.dispose();
 });

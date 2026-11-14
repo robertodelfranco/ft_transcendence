@@ -23,6 +23,7 @@ interface Clip {
   // Células andadas por quadro: o passo acompanha o chão e para quando a entidade para.
   // Sem stride, o quadro avança com o tempo.
   stride?: number;
+  restWhenStopped?: boolean;
 }
 
 const idle: Clip = { first: 0, count: 3, frameSeconds: 0.3, loop: true };
@@ -53,19 +54,23 @@ const ENEMY_SINK = 0.08;
 const BOSS_SINK = 0.06;
 // Na morte afunda mais: a poça do respingo final (quadro 9, 9 linhas) parecia flutuar.
 const BOSS_DYING_SINK = 0.09;
-// key.png e pot.png têm sombra + vão (13 texels ≈ 0,05) sob o item: afundar esconde só isso.
-// mana.svg e armor.svg (placeholders) não têm sombra e seriam cortados.
+// Os quatro PNGs de collectables/ têm sombra + vão (13 texels ≈ 0,05) sob o item: afundar esconde
+// só isso
 const PICKUP_SINK: Record<(typeof pickups)[keyof typeof pickups], number> = {
-  key: 0.05, potion: 0.05, mana: 0, armor: 0,
+  key: 0.05, potion: 0.05, mana: 0.05, armor: 0.05,
 };
 // Pickups flutuam ±0,02 em torno de 0,02 acima da base: o item nunca entra no chão nem na água.
-// No dungeon a base de key e potion também fica 0,05 abaixo do chão, que esconde a sombra pintada:
+// No dungeon a base dos Pickups também fica 0,05 abaixo do chão, que esconde a sombra pintada:
 // uma sombra que sobe junto com o item pareceria solta.
 const PICKUP_FLOAT = 0.02;
 const PICKUP_FLOAT_SPEED = 2.5; // rad/s, um ciclo a cada ~2,5 s
 // Outros Players: um pulinho por passo, no mesmo passo do som de passos (mount.ts).
 const PLAYER_HOP = 0.03;
 const PLAYER_STEP = 0.7;
+const playerWalk: Clip = {
+  first: 0, count: 4, frameSeconds: 0.1, loop: true,
+  stride: PLAYER_STEP / 2, restWhenStopped: true,
+};
 const MOTION_FADE_S = 0.15; // o pulinho some em vez de parar no ar
 const STEP_MAX = 0.5; // salto maior que isso (respawn, reconexão) não é passo
 // Boss: o HP vem no Snapshot; quando cai, o sprite pisca em vermelho. Cor acima de 1 (HDR): um tom
@@ -151,6 +156,7 @@ export class Billboards {
       entry.motion = Math.min(1, Math.max(0, entry.motion + (walking ? seconds : -seconds) / MOTION_FADE_S));
       entry.x = x;
       entry.y = y;
+      if (clip.restWhenStopped && !walking) entry.travel = 0;
       const index = Math.floor(clip.stride
         ? entry.travel / clip.stride : entry.elapsed / clip.frameSeconds);
       const frame = sheet.frames[clip.first + (clip.loop
@@ -208,8 +214,11 @@ export class Billboards {
     for (const player of view.otherPlayers) {
       if (player.id === view.localPlayer.id || !player.alive) continue;
       const character = playerCharacter(player.character_id);
-      const entry = draw(`player:${player.id}`, character.id, this.assets[`player:${character.id}`],
-        still, player.x, player.y, 0.8, 0, player.connected ? 0xffffff : 0x777777);
+      const sheet = this.assets[`player:${character.id}`];
+      const clip = sheet.frames.length > 1 && player.connected
+        ? { ...playerWalk, count: sheet.frames.length } : still;
+      const entry = draw(`player:${player.id}`, character.id, sheet,
+        clip, player.x, player.y, 0.8, 0, player.connected ? 0xffffff : 0x777777);
       entry.sprite.position.y += PLAYER_HOP * entry.motion
         * Math.abs(Math.sin(entry.travel * Math.PI / PLAYER_STEP));
     }
