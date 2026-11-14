@@ -22,12 +22,12 @@ export default function Scoreboard({ hud, userId }: { hud: HudState; userId: num
                 <span title={name} className={`min-w-0 max-w-28 truncate ${id === userId ? "font-medium text-bone" : "text-bone/85"}`}>{name}</span>
                 {id === userId && <span className="text-[10px] text-torch/90">{t("players.you")}</span>}
               </div>
-              <span className="text-[11px] tabular-nums text-bone/90">{t("scoreboard.frags", { frags })}</span>
+              <span className="hud-num text-[11px] text-bone/90">{t("scoreboard.frags", { frags })}</span>
             </li>
           );
         })}
       </ol>
-      <dl className="flex items-center justify-between gap-3 pt-0.5">
+      <dl className="flex items-center justify-between gap-3 border-t border-bronze-dark/60 pt-1.5">
         <dt className="flex items-center gap-1.5 text-[10px] text-bone/80">
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-3 w-3 shrink-0">
             <circle cx="12" cy="12" r="9" />
@@ -35,7 +35,7 @@ export default function Scoreboard({ hud, userId }: { hud: HudState; userId: num
           </svg>
           {t("scoreboard.timeLeft")}
         </dt>
-        <dd className="font-mono text-xs tabular-nums text-bone/90">{formatClock(hud.scoreboard.timeLeftS)}</dd>
+        <dd className="hud-num text-xs text-torch">{formatClock(hud.scoreboard.timeLeftS)}</dd>
       </dl>
     </div>
   );

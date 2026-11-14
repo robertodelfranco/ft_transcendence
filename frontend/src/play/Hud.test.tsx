@@ -1,5 +1,5 @@
-import { render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { act, render, screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "../i18n";
 import { hudState } from "../mocks/game";
 import Hud from "./Hud";
@@ -34,6 +34,27 @@ describe("recursos do Player local", () => {
   it("acima do limiar não tem rótulo", () => {
     render(<Hud userId={7} hud={hudState({ hp: 26, maxHp: 100 })} />);
     expect(screen.queryByText("Vida baixa")).not.toBeInTheDocument();
+  });
+
+  it("Armor que cai (golpe absorvido) pisca por 400 ms", () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = render(<Hud userId={7} hud={hudState({ armor: 5, keys: 1 })} />);
+      const armorRow = () => within(stats()).getByText("Armadura").closest("div");
+      expect(armorRow()).not.toHaveClass("hud-hit");
+      rerender(<Hud userId={7} hud={hudState({ armor: 3, keys: 1 })} />);
+      expect(armorRow()).toHaveClass("hud-hit");
+      act(() => vi.advanceTimersByTime(400));
+      expect(armorRow()).not.toHaveClass("hud-hit");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("Armor que sobe (Pickup) não pisca", () => {
+    const { rerender } = render(<Hud userId={7} hud={hudState({ armor: 0 })} />);
+    rerender(<Hud userId={7} hud={hudState({ armor: 5 })} />);
+    expect(within(stats()).getByText("Armadura").closest("div")).not.toHaveClass("hud-hit");
   });
 
   it("cada filho da lista é um div com um par termo/valor, como a dl exige", () => {

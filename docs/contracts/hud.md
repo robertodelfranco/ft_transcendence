@@ -37,7 +37,7 @@ acessíveis das listas permanecem. O Player local recebe destaque no nome e no
 rótulo existente. No coop, HP numérico com coração; sem barra dos companheiros,
 pois o HudState não informa máximo por participante. No PvP, Frags alinhados à
 direita e relógio discreto na linha seguinte. Ping, ajuda e feed usam texto menor.
-O minimapa ocupa 112–128 px, sem moldura ou fundo opaco externo ao desenho do Grid.
+O minimapa ocupa 112–128 px e é um radar redondo, com aro de bronze no CSS: centrado no Player local, com zoom fixo de 6 células até a borda, e girando para que o olhar do Player aponte para cima, como a cena 3D. Um losango na borda marca o norte, sem texto. Companheiro fora do raio aparece preso na borda, na direção dele.
 Ordem, valores, alertas de HP baixo, estados de morte/desconexão e comportamento
 de Reconnection permanecem os definidos neste contrato. Esta revisão substitui
 as molduras propostas anteriormente na #256. Validação visual e revisão de Caio pendentes.
@@ -68,7 +68,7 @@ Contagem do início (#255): enquanto `HudState.countdown` não é `null`, uma ca
 |---|---|---|
 | HP local | `hp`, `maxHp` | Barra e número `atual / máximo`; sempre durante `running`, inclusive morto |
 | Mana local | `mana`, `maxMana` | Barra e número `atual / máximo`; sempre durante `running` |
-| Armor local | `armor` | Ícone com rótulo traduzido acessível e número; mostrar zero; sem barra percentual, pois não existe `maxArmor` |
+| Armor local | `armor` | Ícone com rótulo traduzido acessível e número; mostrar zero; sem barra percentual, pois não existe `maxArmor`. Quando `armor` cai em relação ao valor anterior (só cai absorvendo golpe), ícone e número piscam em `blood` por 400 ms; com `prefers-reduced-motion`, só mudam de cor nesse intervalo. Sem `aria-live`: o número continua sendo o valor acessível |
 | Chaves locais | `keys` | Ícone com rótulo traduzido acessível e quantidade; mostrar zero, inclusive se Pickups estiverem desativados |
 | Companheiros coop | `players` | Nome, HP numérico, vivo/morto e conectado/desconectado; Player local primeiro, demais por `id` crescente |
 | Ping | `ping` | RTT inteiro em ms; `null` aparece como indisponível (`—` com descrição traduzida), nunca como 0 ms |

@@ -132,7 +132,7 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
           <canvas
             ref={minimapRef}
             aria-hidden="true"
-            className="pointer-events-none absolute bottom-3 left-3 aspect-square w-1/4 opacity-85 sm:w-32 md:left-auto md:right-3"
+            className="hud-minimap pointer-events-none absolute bottom-3 left-3 aspect-square w-1/4 sm:w-32 md:left-auto md:right-3"
           />
           {/* #255: cobre só o canvas, também abaixo do md, onde a HUD vem depois dele */}
           {hud && live && <Countdown countdown={hud.countdown} />}
@@ -142,7 +142,7 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
             close 1000 do servidor marcaria "finished": a tela de fim não pisca antes do Lobby */}
         {!live && !leaving && (
           <div className="mt-2 flex justify-center md:absolute md:inset-0 md:mt-0 md:items-center md:p-3">
-            <div className="flex max-w-md flex-col items-center gap-3 rounded bg-crypt-950/85 px-4 py-3 text-center">
+            <div className="hud-frame flex max-w-md flex-col items-center gap-3 px-5 py-4 text-center">
               {status === "connecting" && <p role="status">{t("connecting", { matchId })}</p>}
               {status === "error" && (
                 <>
@@ -156,7 +156,7 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
               {status === "finished" && !outcome && <p role="status">{t("finished")}</p>}
               {outcome && (
                 <div role="status" className="flex flex-col gap-1">
-                  <p className="text-xl font-bold">{t(`game:outcomes.${outcome}`)}</p>
+                  <p className="font-game text-3xl font-bold text-torch [text-shadow:0_3px_0_#000]">{t(`game:outcomes.${outcome}`)}</p>
                   {reason && <p>{t(`game:reasons.${reason}`)}</p>}
                 </div>
               )}
