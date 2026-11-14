@@ -1,7 +1,5 @@
-*This project has been created as part of the 42 curriculum by \<login1\>, acesar-m, \<login3\>, \<login4\>, gyasuhir.*
+*This project has been created as part of the 42 curriculum by rdel-fra, acesar-m, \<login3\>, \<login4\>, gyasuhir.*
 
-> **TODO F9.1 (@robertodelfranco):** replace one `<loginN>` above with your 42 intra login.
->
 > **TODO F9.1 (@rflheringer):** replace one `<loginN>` above with your 42 intra login.
 >
 > **TODO F9.1 (@caioosantos):** replace one `<loginN>` above with your 42 intra login.
@@ -251,8 +249,6 @@ At the end of a match, the result screen shows the outcome and each player's num
 
 ## Architecture overview
 
-> **TODO F9.1 (@robertodelfranco):** review the simulation, prediction and reconciliation parts.
-
 ```mermaid
 flowchart LR
     Browser["Chrome<br/>React + Three.js"] -- "HTTPS / WSS" --> Proxy["proxy<br/>Nginx + TLS"]
@@ -289,6 +285,8 @@ flowchart LR
 - Each match being played is a **Room** that lives only in the backend's memory: map grid, players, enemies, boss, projectiles and doors.
 - The server advances it in fixed **ticks of 30 Hz** and sends a **Snapshot** of the world to every player every second tick (15 Hz).
 - Clients send only their **Input** (keys pressed, mouse movement, a sequence number) and **Actions** (fire, open a door). The server decides hits, damage, pickups and victory.
+- Inputs and Actions wait in one queue per player, in `seq` order. Each tick applies one Input, or two when three or more are waiting, so a client can catch up after a lag spike but never move faster than 60 steps per second. An empty queue means the player stands still: the server never repeats the last Input, because the client did not predict that step.
+- The Simulation (`sim.py`) is a pure function of the Room, the queued messages and a fixed `dt`, with no I/O and no clock. It knows nothing about sockets or the database, so it is tested tick by tick without a server. The rules that differ between co-op and PvP live in a `Ruleset` (`CoopRuleset`, `PvpRuleset`), not in `if mode` branches.
 - Nothing about a match in progress is written to the database. When the Room ends, it produces one **MatchResult** that is recorded as a **Match** in a single transaction (see *Database Schema*).
 
 **Same math on both sides.**
@@ -299,8 +297,8 @@ flowchart LR
 
 **Prediction, reconciliation and interpolation.**
 
-- *Prediction:* the client applies its own inputs immediately, so movement feels instant.
-- *Reconciliation:* when a Snapshot arrives, the client resets its player to the server's position for the last acknowledged input and replays the inputs that the server has not seen yet.
+- *Prediction:* the client applies its own inputs immediately, so movement feels instant. It runs in fixed steps of 1/30 s, the same `dt` as the server, at most 5 steps per frame, and draws the local player between its last two steps so a 60 Hz screen does not show 30 Hz stairs.
+- *Reconciliation:* when a Snapshot arrives, the client resets its player to the server's position for the last acknowledged input (`last_input_seq`) and replays the inputs that the server has not seen yet. A small error (under 0.05 cell, usually another player who was not where the client thought) is smoothed over 0.1 s, and a larger one snaps. In development, a `console.assert` reports any divergence.
 - *Interpolation:* other players and enemies are drawn slightly in the past, between two Snapshots, so they move smoothly.
 
 **Reconnection.**
@@ -432,16 +430,17 @@ Win/loss statistics are always read from `match_players.won`, never from `matche
 | Profile, avatar upload and settings | **TODO F9.1 (@caioosantos)** | Caio |
 | Friends and online status | **TODO F9.1 (@caioosantos)** | Caio, Augusto (presence over `/ws/app`) |
 | Real-time Lobby: create, join, ready, start | Create a Room with a map, a capacity and options; list the open Rooms; join, leave, mark ready, pick a character and start. Every change reaches every open tab right after it is saved. A user is in one Room at most, the last free seat goes to one player only, and a user who goes offline leaves the Lobby. A Solo Room starts with one player; every other Room needs two | Akita (backend), Caio (screen), Augusto (connection manager) |
-| Authoritative game simulation (co-op) | **TODO F9.1 (@robertodelfranco)** | Roberto |
-| PvP 1v1 rules | **TODO F9.1 (@robertodelfranco)** | Roberto |
+| Authoritative game simulation (co-op) | The Cub3D bonus ported from C to Python as a pure Simulation (`step(room, dt)`, no I/O): movement with wall sliding, doors and keys, pickups, fireballs with cooldown and Mana, enemies that chase by BFS and strike, a boss that keeps its distance and shoots the closest player in sight. Up to 5 players. The match ends once, when the boss dies or every player is dead or gone | Roberto |
+| PvP 1v1 rules | A `PvpRuleset` on the same Simulation: fireball damage and frags credited to the shooter, respawn after 3 s at the free spawn farthest from the opponent, and the end by frag limit (default 5), time limit (default 180 s, counting only played time) or forfeit. A mutual frag on the limit, or a tie on time, is a draw | Roberto |
 | Game WebSocket, Room manager and reconnection | One `asyncio` task per Room ticking at a fixed 30 Hz with drift compensation; Snapshots at 15 Hz; strict message validation; 30 s grace period and automatic reconnection to the same match; ping/pong with the RTT shown on the HUD | Augusto |
-| Client-side prediction and reconciliation | **TODO F9.1 (@robertodelfranco)** | Roberto |
+| Client-side prediction and reconciliation | The client moves its own player at once with `applyInput.ts`, the same function as the server's `apply_input`, in fixed steps of 1/30 s. Each Snapshot resets the player to the server's position and replays the inputs it has not seen. An error under 0.05 cell is smoothed over 0.1 s, a larger one snaps | Roberto |
 | Interpolation of other entities | Other players, enemies, the boss and projectiles are drawn 100 ms in the past, between the two Snapshots around that instant, so they glide instead of jumping 15 times per second; a jump of more than 2 cells (a respawn) snaps instead of sliding through walls | Augusto |
 | 3D rendering, themes and visual effects | **TODO F9.1 (@rflheringer)** | Rafael |
+| Sewer water | The water surface sits at the waterline painted on the sewer walls and reflects the torches. Players wade with their legs under it; enemies, the boss and pickups sit just below it, so the ripples painted on their sprites stay on the surface. Animated ripple rings spread at everyone's feet | Roberto |
 | Audio | **TODO F9.1 (@rflheringer)** | Rafael |
 | Maps, balance and Room options | **TODO F9.1 (@rflheringer)** | Rafael |
 | HUD | **TODO F9.1 (@caioosantos)** | Caio (implementation), Rafael (specification) |
-| Minimap | **TODO F9.1 (@robertodelfranco)** | Roberto |
+| Minimap | A 2D canvas over the game drawn from the same `ViewState` as the 3D scene: walls, doors, the players and the local player's view cone, with north up as in the scene | Roberto |
 | Match recording, stats, XP/levels and Elo | When a match ends, the server records it exactly once, in one transaction: each player's numbers, the stats per mode, XP and level, and the Elo in PvP (starts at 1000, K = 32). Matches left unfinished by a restart are marked `aborted` at startup | Akita (backend), Caio (screens) |
 | Match history, achievements and leaderboard | Paginated history (mode, map, result, duration, teammates or opponent); 7 achievements, unlocked at the end of a match and shown on the profile; a leaderboard per mode by Elo, XP, wins or kills | Akita (backend), Rafael (achievement design), Caio (screens) |
 | Three languages (i18n) | **TODO F9.1 (@caioosantos)** | Caio |
@@ -474,7 +473,14 @@ We did not use a custom "Module of choice".
 
 ### 1. Web-based game — Major (2)
 
-> **TODO F9.1 (@robertodelfranco):** why we chose it and how it was implemented.
+**Why:** the game is the center of the project. We ported our own Cub3D bonus, written in C at 42, so the rules, maps and assets already existed and had been played. The work was to move them to an authoritative server and a 3D browser client, not to invent a game.
+
+**How:**
+
+- **Port of the C code.** The math of `movement_bonus.c`, `move_utils_bonus.c`, the enemy, boss, door and fireball files became the Python Simulation (`backend/app/game/`). The drawing stayed out: the client draws, the server decides.
+- **Time, not frames.** In the C code the player moved `0.06` per frame, so at 144 Hz it walked 2.4× faster than at 60 Hz. Every speed is now in cells per second and multiplied by `dt`, with constants in `rules.py` and `rules.ts`.
+- **Clear rules and a clear end.** Co-op: reach the boss and kill it (6 fireballs per player, since its HP grows with the team). The match is lost when every player is dead or gone. PvP: frag limit, time limit or forfeit. The server emits `game_over` exactly once and freezes the outcome.
+- **Tested without a browser.** The tests in `backend/tests/game/` cover the Simulation tick by tick (movement, doors, pickups, fireballs, enemies, boss, damage, PvP, countdown, map validation), plus a performance test: 1000 ticks with 5 players, 20 enemies, the boss and 10 projectiles fit in 2 s (2 ms per tick, 6 % of the 33 ms budget).
 
 ### 2. Real-time features — Major (2)
 
@@ -503,7 +509,15 @@ We did not use a custom "Module of choice".
 
 ### 4. Multiplayer (more than two players) — Major (2)
 
-> **TODO F9.1 (@robertodelfranco):** why we chose it and how it was implemented.
+**Why:** a dungeon crawl is better with friends. Co-op for up to 5 players is the main mode, and it forced the biggest change from the C code, where `game->player` was a single global that every enemy, door and projectile read.
+
+**How:**
+
+- **N players in one Room.** Players are a dictionary keyed by user id, each with its own input queue, HP, Mana, armor, keys and stats. The n-th player to join spawns at the n-th spawn point of the map.
+- **Shared world, per-player decisions.** Enemies pick the closest living player within range and chase it by a BFS path. The boss shoots the closest player in line of sight. Doors opened and pickups taken change the Room's grid for everyone, and the Snapshot sends the change (`grid_delta`). The difficulty follows the team size: the boss has 60 HP per player, and an enemy blow takes 1 HP solo, 2 with two or three players and 3 with four or five.
+- **Leaving and dying.** A dead player stays dead in co-op and the others carry on. A player whose grace period expires leaves, and the match ends in forfeit only when everyone has left. A victory counts for every member of the Room, including those who died.
+- **Synchronized start.** The Room waits until every player is connected (or 10 s), then counts 3, 2, 1 with everything frozen, so nobody starts ahead.
+- **Load.** A benchmark of 4 full Rooms at once (5 players, 20 enemies, the boss and 10 projectiles each) measured a p99 of 1.4 ms per tick for the Simulation and 2.1 ms with the Room manager, serialization and Snapshot queues included, against a target of 5 ms (`backend/benchmark_tick.py`).
 
 ### 5. Frontend and backend frameworks — Major (2)
 
@@ -650,7 +664,28 @@ The dashboards, the alerts and how to trigger one live are in the *Monitoring gu
 
 ### Roberto Del Franco — Tech Lead
 
-> **TODO F9.1 (@robertodelfranco):** what you built (features, modules, components), and the challenges you faced and how you overcame them.
+**What I built**
+
+- **Technical direction:** the architecture document, the task plan with the five slices, the first ADRs and the contracts between slices (rules, WebSocket messages, `mountGame` and `ViewState`), written and signed before the code so each person could build against a fake of the other side. I reviewed every change to the game rules.
+- **Simulation (`backend/app/game/`):** the map loader with its validity checks, the Room state, `apply_input` (movement, turning, wall sliding one axis at a time, body collision), the input queue, pickups and doors, fireballs and Mana, projectiles in substeps, enemies with BFS chase, the boss, armor and damage, the countdown before the start, and the end of a match.
+- **Rulesets:** `CoopRuleset` and `PvpRuleset` (frags, respawn, frag and time limits, scoreboard), plus the Room options (pickups on or off) applied to the initial grid.
+- **Client prediction:** `rules.ts` and `applyInput.ts`, the fixed-step loop that sends one Input per tick, reconciliation with smooth correction, and the client waiting for the countdown before predicting.
+- **Mirror tests:** `mirror.py` generates `mirror.json` from the Python code, and Vitest replays the same cases in TypeScript and must reach the same positions.
+- **Tooling and load:** a CLI that generates a `welcome` and a Snapshot without a server (so the frontend could start before the backend), the 1000-tick performance test and the 4-Room benchmark.
+- **Minimap**, and the match page layout (minimap and HUD anchored to the canvas, full screen button, countdown overlay).
+- **Sewer water:** the water plane at the waterline painted on the sewer walls, glossy so it reflects the torches; how deep each kind of sprite sits in it; the ripple rings at everyone's feet (`waterRipples.ts`); and one edited frame of the sea dragon's death animation.
+
+**Challenges**
+
+- **The C world is mirrored.** Cub3D draws the scene mirrored: the camera plane points west when the player faces north, and the C code swaps the arrow keys and the strafe direction to compensate. Copying it would have made the 3D scene move backwards. I wrote down what each key means in the unmirrored scene (`ws-messages.md`), ported the math but not the key bindings, and pinned it with two "mirror" tests (turning right from north increases `dx`, strafing right increases `x`).
+- **Same result in Python and TypeScript.** Prediction only works if the client computes exactly what the server computes. The order inside one Input (mouse, turn keys, normalized intention vector, `x`, then `y`, then pickup) is part of the contract, positions are compared with a tolerance (`Math.cos` and `math.cos` can differ by 1 ulp), and a shared fixture fails the build if `rules.ts` drifts from `rules.py`.
+- **Not porting the C bugs.** Three things in the C code were bugs, not rules: movement per frame instead of per second, the boss ignoring the result of its own collision check (so it walked through enemies), and a pickup check that received `double` coordinates as `int`, truncating instead of flooring. None of them was ported, and each one has a test in Python.
+- **A Room that never repeats an Input.** The first version kept only the last Input and applied it every tick. The server then took steps the client never predicted, and reconciliation pulled the player back. The queue applies each Input once, stands still when it is empty and catches up two at a time.
+- **Smooth correction without hiding bugs.** Snapping on every Snapshot made the camera shake near other players, whose positions the client only knows from the past. Small errors are now absorbed over 0.1 s, large ones snap, and the `console.assert` still reports any real divergence.
+- **Performance target.** The first target (1000 ticks in 200 ms) was not realistic in Python. Profiling with `cProfile` measured ~820 ms and pointed at the wall check. Instead of optimizing what did not matter at our scale, I revised the target to 2 s (6 % of the tick budget) so the test still catches a real regression, such as the BFS without its cache, and confirmed the real load with the 4-Room benchmark.
+- **The sewer water in C was an illusion.** The bottom quarter of the sewer walls is painted water, in the same blue as the floor color of the `.cub` map. The raycaster drew the floor as a flat color, so it merged with that band, and the eye read the water surface at the painted waterline, just below the camera: you felt half submerged. In real 3D the floor became a lit plane at height 0, and the band read as part of the wall. Raising the water plane to the painted waterline fixed it, and the depth test hides whatever stands below the surface without extra code.
+- **Sprites drawn for a flat 2.5D floor.** Each sheet paints its waterline at different rows, and some frames sink inside the PNG. A small script rebuilds the front view of every frame with the water over it (exact, because the camera is above the water), and I chose how deep each kind sits from those measurements. The sea dragon shares one base while walking and attacking, as in C, so its waterline does not jump; its death frames and the boss use their own. One death frame had its front ripple under the surface, so I moved it up in the PNG. Standing in the water, the boss's head passes the ceiling, so in the sewer the ceiling no longer writes depth, and doors are clipped at the ceiling height when they slide up.
+- **Ripples seen from 0.3 above the water.** At that grazing angle a flat ring becomes a thin line a few meters away, and pixel art flickers. The rings use mipmaps far away and stay crisp up close, are drawn before the sprites so a body hides the back half of its ring, and come from a fixed pool, so nothing is allocated while rendering.
 
 ### Augusto Cesar — Developer
 
@@ -737,6 +772,8 @@ The dashboards, the alerts and how to trigger one live are in the *Monitoring gu
 - Glenn Fiedler, [Fix Your Timestep!](https://gafferongames.com/post/fix_your_timestep/).
 - Lode Vandevenne, [Raycasting tutorial](https://lodev.org/cgtutor/raycasting.html), the basis of the original Cub3D.
 - [Elo rating system](https://en.wikipedia.org/wiki/Elo_rating_system).
+- David Goldberg, [What Every Computer Scientist Should Know About Floating-Point Arithmetic](https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html): the tolerance of the Python/TypeScript mirror tests.
+- [Python `dataclasses`](https://docs.python.org/3/library/dataclasses.html) · [pytest](https://docs.pytest.org/) · [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html) · [Vitest](https://vitest.dev/) · [MDN Canvas API](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API) · [MLX42](https://github.com/codam-coding-college/MLX42), the graphics library of the original Cub3D.
 
 > **TODO F9.1 (all):** add the references you actually used for your part.
 
@@ -755,7 +792,7 @@ The team followed one rule: the assistant explains the concept or the bug and pr
 
 ## Credits
 
-- Game logic, map format and textures come from the *Cub3D* bonus project ([robertodelfranco/42-Cub3D](https://github.com/robertodelfranco/42-Cub3D)), written at 42.
+- Game logic, map format and textures come from the *Cub3D* bonus project ([robertodelfranco/42-Cub3D](https://github.com/robertodelfranco/42-Cub3D)), written at 42 by Roberto Del Franco and Rafael Heringer.
 
   > **TODO F9.1 (@robertodelfranco):** confirm the authors of the original Cub3D (with logins) and credit any third-party textures or sounds.
 - Built with the open-source projects listed in *Technical Stack*. Each one keeps its own license.
