@@ -5,7 +5,8 @@ import { dungeonTheme, type Theme } from "./themes";
 const LIGHT_LIMIT = 4;
 const SHADOW_LIMIT = 2;
 const LIGHT_RANGE = 5;
-const LIGHT_INTENSITY = 2;
+const LIGHT_INTENSITY = 1.4;
+const LIGHT_OFFSET = 0.2; // a luz fica à frente da chama: perto demais, estoura a textura da parede
 
 type WallMount = { position: THREE.Vector3; normal: THREE.Vector3 };
 
@@ -32,6 +33,9 @@ function wallMount(grid: readonly string[], x: number, y: number): WallMount | n
 export class Torches {
   readonly object = new THREE.Group();
   private readonly positions: THREE.Vector3[] = [];
+  private readonly lightPositions: THREE.Vector3[] = [];
+  private flames: THREE.InstancedMesh | null = null;
+  private readonly transform = new THREE.Object3D();
   private readonly lights: THREE.PointLight[] = [];
   private readonly resources: Array<{ dispose(): void }> = [];
   private elapsed = 0;
@@ -47,6 +51,8 @@ export class Torches {
       });
     });
     this.positions.push(...mounts.map(mount => mount.position));
+    this.lightPositions.push(...mounts.map(mount =>
+      mount.position.clone().addScaledVector(mount.normal, LIGHT_OFFSET)));
     if (this.positions.length === 0) return;
 
     // Meshes próprios, sem PNG novo; o T continua sendo chão na Simulation.
@@ -86,12 +92,13 @@ export class Torches {
     flames.instanceMatrix.needsUpdate = true;
     brackets.instanceMatrix.needsUpdate = true;
     this.object.add(stems, brackets, flames);
+    this.flames = flames;
 
     // Pool fixo: mover fontes existentes evita criar luzes e shaders por quadro.
     const lightCount = Math.min(LIGHT_LIMIT, this.positions.length);
     for (let i = 0; i < lightCount; i++) {
       const light = new THREE.PointLight(lightColors.torch, LIGHT_INTENSITY, LIGHT_RANGE);
-      light.position.copy(this.positions[i]);
+      light.position.copy(this.lightPositions[i]);
       light.castShadow = i < SHADOW_LIMIT;
       light.shadow.mapSize.set(512, 512);
       light.shadow.camera.near = 0.05;
@@ -112,10 +119,25 @@ export class Torches {
       .sort((a, b) => a.distance - b.distance || a.index - b.index);
     this.lights.forEach((light, slot) => {
       const torch = nearest[slot];
-      light.position.copy(torch.position);
-      // Oscilação decorativa por tempo em segundos, independente do FPS.
-      light.intensity = LIGHT_INTENSITY * (1 + 0.08 * Math.sin(this.elapsed * 7 + torch.index));
+      light.position.copy(this.lightPositions[torch.index]);
+      light.intensity = LIGHT_INTENSITY * (1 + 0.08 * this.flicker(torch.index));
     });
+    // A chama estica e encolhe no mesmo ritmo da luz; cresce para cima, a base fica no lugar.
+    const flames = this.flames;
+    if (!flames) return;
+    this.positions.forEach((position, index) => {
+      const scaleY = 1 + 0.15 * this.flicker(index);
+      this.transform.position.set(position.x, position.y + 0.1 * (scaleY - 1), position.z);
+      this.transform.scale.set(2 - scaleY, scaleY, 2 - scaleY);
+      this.transform.updateMatrix();
+      flames.setMatrixAt(index, this.transform.matrix);
+    });
+    flames.instanceMatrix.needsUpdate = true;
+  }
+
+  // Oscilação decorativa por tempo em segundos, independente do FPS; uma fase por tocha.
+  private flicker(index: number): number {
+    return Math.sin(this.elapsed * 7 + index);
   }
 
   dispose(): void {
@@ -127,5 +149,7 @@ export class Torches {
     this.resources.forEach(resource => resource.dispose());
     this.resources.length = 0;
     this.positions.length = 0;
+    this.lightPositions.length = 0;
+    this.flames = null;
   }
 }

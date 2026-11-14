@@ -13,7 +13,10 @@ export class Doors {
   private readonly meshes = new Map<string, THREE.Mesh>();
 
   constructor(grid: readonly string[], doors: readonly DoorView[], texture: THREE.Texture) {
-    this.material = new THREE.MeshLambertMaterial({ map: texture });
+    // Corta a folha acima de y=1: no esgoto o teto não escreve depth e não a esconderia.
+    this.material = new THREE.MeshLambertMaterial({
+      map: texture, clippingPlanes: [new THREE.Plane(new THREE.Vector3(0, -1, 0), 1)],
+    });
     for (const door of doors) {
       const mesh = new THREE.Mesh(this.geometry, this.material.clone());
       mesh.castShadow = true;
