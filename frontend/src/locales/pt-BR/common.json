@@ -38,5 +38,9 @@
     "friends": "Amigos",
     "settings": "Configurações",
     "logout": "Sair"
+  },
+  "currentMatch": {
+    "notice": "Você tem uma partida em andamento.",
+    "back": "Voltar à partida"
   }
 }

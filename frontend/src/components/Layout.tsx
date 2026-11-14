@@ -2,6 +2,7 @@ import { Suspense, useId, useRef, useState, type FocusEvent, type KeyboardEvent 
 import { useTranslation } from "react-i18next";
 import { Link, NavLink, Outlet, useLocation, useMatches, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import CurrentMatchBanner from "./CurrentMatchBanner";
 import LanguageSelector from "./LanguageSelector";
 import Loading from "./Loading";
 
@@ -117,6 +118,9 @@ export default function Layout() {
           <LanguageSelector />
         )}
       </header>
+
+      {/* só com sessão: deslogado não há partida para voltar, nem pedido ao servidor */}
+      {status === "authenticated" && <CurrentMatchBanner />}
 
       <main className={`flex-1 px-4 ${compact ? "py-2" : "py-8"}`}>
         {/* página com React.lazy: cabeçalho e rodapé ficam na tela, só o miolo espera o chunk */}
