@@ -391,7 +391,7 @@ O canvas é da casca (tamanho, posição, CSS); o conteúdo é do jogo. Tudo que
 |---|---|---|---|---|
 | POST | `/api/auth/signup` | `{email, username, password}` | 201 `{user}` | 409 `email_taken` / `username_taken`; 422 |
 | POST | `/api/auth/login` | `{email, password}` | 200 `{access_token, token_type: "bearer", expires_in: 900, user}` + cookie de refresh | 401 `invalid_credentials`; 429 `rate_limited` |
-| POST | `/api/auth/refresh` | (cookie) | 200 igual ao login + cookie rotacionado | 401 `invalid_refresh` (inclui reuso) |
+| POST | `/api/auth/refresh` | (cookie) | 200 igual ao login + cookie rotacionado | sessão morta ou reusada: 200 `authenticated: false` e cookie apagado (inclui reuso, #285) |
 | POST | `/api/auth/logout` | (cookie) | 204 + cookie limpo | — |
 | GET | `/api/auth/me` | Bearer | 200 `{user}` | 401 `unauthorized` |
 | GET | `/api/auth/oauth/42/login` | — | 302 para a intra | — |

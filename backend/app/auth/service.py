@@ -105,7 +105,7 @@ async def issue_tokens(session: AsyncSession, user: User, request: Request,
 
 async def rotate_refresh(session: AsyncSession, token: str, request: Request,
 		response: Response) -> AuthResponse | None:
-	"""Troca o refresh do cookie seguindo a tabela de auth.md §2.6. None é 401 `invalid_refresh`.
+	"""Troca o refresh do cookie seguindo a tabela de auth.md §2.6. None vira 200 `{"authenticated": false}` com o cookie apagado.
 
 	Quem chama faz o commit também no None: o reuso revoga a família, e essa revogação precisa ficar
 	gravada mesmo com a resposta de erro.

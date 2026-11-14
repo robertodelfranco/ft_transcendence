@@ -25,7 +25,7 @@ As outras Slices não reimplementam nada disto: usam `CurrentUser`, `RateLimit`,
 |---|---|---|---|---|
 | POST | `/api/auth/signup` | `{email, username, password, preferred_language?}` | 201 `AuthResponse` + cookie de refresh | 409 `email_taken` / `username_taken`; 422 `validation_error`; 429 `rate_limited` |
 | POST | `/api/auth/login` | `{email, password}` | 200 `AuthResponse` + cookie de refresh | 401 `invalid_credentials`; 422 `validation_error`; 429 `rate_limited` |
-| POST | `/api/auth/refresh` | cookie | 200 `AuthResponse` (§2.6 diz quando vem cookie novo) **ou** 200 `{"authenticated": false}` | 401 `invalid_refresh` (cookie apagado na mesma resposta); 403 `forbidden` (Origin) |
+| POST | `/api/auth/refresh` | cookie | 200 `AuthResponse` (§2.6 diz quando vem cookie novo) **ou** 200 `{"authenticated": false}` (sem cookie, ou com cookie morto ou reusado, que sai apagado na mesma resposta) | 403 `forbidden` (Origin) |
 | POST | `/api/auth/logout` | cookie | 204, cookie apagado | 403 `forbidden` (Origin) |
 | GET | `/api/auth/me` | Bearer | 200 `PrivateUser` | 401 `unauthorized` |
 | GET | `/api/auth/oauth/{provider}/login` | `?lang` (opcional) | 302 para o provedor + cookie `oauth_state` | 404 `not_found` (provedor desconhecido) |
@@ -43,7 +43,7 @@ As outras Slices não reimplementam nada disto: usam `CurrentUser`, `RateLimit`,
 
 Regras que valem para as rotas acima:
 
-- **`/refresh` sem cookie não é erro.** Responde 200 `{"authenticated": false}`: é o caso normal de quem abre o site sem sessão, e um 401 apareceria em vermelho no console do Chrome (§4, decisão 4).
+- **`/refresh` sem sessão não é erro.** Sem cookie, com cookie morto (não existe, vencido, revogado) ou reusado, responde 200 `{"authenticated": false}`: é o caso normal de quem abre o site sem sessão, ou depois de o banco ser recriado, e um 401 apareceria em vermelho no console do Chrome (§4, decisão 4).
 - **`/logout` sempre responde 204**, com ou sem cookie, com cookie válido ou não. Sair duas vezes não é erro.
 - **`/refresh` e `/logout` conferem o cabeçalho `Origin`**: precisa ser `https://${PUBLIC_HOST}`. Sem ele, ou com outro valor, 403 `forbidden`. É a segunda barreira contra CSRF, depois do `SameSite` (arq. §4, decisão 1).
 - **Rate limit** (§2.7), por IP, que protege o que é caro (o Argon2) e o que é perigoso (errar a senha), e não o uso normal: várias abas na mesma máquina não esbarram nele.
@@ -120,7 +120,7 @@ Significado dos status: 401 = sem token, token inválido ou vencido; 403 = auten
 | `rate_limited` | 429 | |
 | `internal_error` | 500 | qualquer exceção não tratada |
 
-**`code` de auth:** `invalid_credentials`, `email_taken`, `username_taken`, `invalid_refresh`, `oauth_failed`, `oauth_cancelled`, `oauth_email_conflict`.
+**`code` de auth:** `invalid_credentials`, `email_taken`, `username_taken`, `invalid_refresh` (não emitido desde a #285; a casca ainda trata), `oauth_failed`, `oauth_cancelled`, `oauth_email_conflict`.
 
 **`code` por campo** (valores de `fields`): `required`, `invalid_format`, `too_short`, `too_long`, `weak_password`, `invalid_value`.
 
@@ -164,10 +164,10 @@ A lista é fechada aqui e cresce só por PR que muda este arquivo. Os `code` de 
 | Estado do token do cookie | Resposta | Efeito no banco |
 |---|---|---|
 | Sem cookie | 200 `{"authenticated": false}` | nenhum |
-| Não existe, vencido, ou revogado | 401 `invalid_refresh`, cookie apagado | nenhum |
+| Não existe, vencido, ou revogado | 200 `{"authenticated": false}`, cookie apagado | nenhum |
 | Válido e nunca usado | 200 `AuthResponse` + **cookie novo** | o token recebido ganha `rotated_at = now` e `replaced_by = novo`; nasce um token novo na mesma `family_id` |
 | Já rotacionado há **menos de 10 s**, com o sucessor ainda válido | 200 `AuthResponse` **sem `Set-Cookie`** | nenhum (janela de graça, §4 decisão 5) |
-| Já rotacionado há 10 s ou mais, **ou** há menos de 10 s mas com o sucessor revogado ou vencido | 401 `invalid_refresh`, cookie apagado | **reuso**: todos os tokens da `family_id` recebem `revoked_at = now`; log de aviso |
+| Já rotacionado há 10 s ou mais, **ou** há menos de 10 s mas com o sucessor revogado ou vencido | 200 `{"authenticated": false}`, cookie apagado | **reuso**: todos os tokens da `family_id` recebem `revoked_at = now`; log de aviso |
 
 A janela de graça é a única exceção à rotação estrita: o token velho só vale se o sucessor ainda vale (um logout logo depois da rotação, por exemplo, tira a graça). Rotação e revogação da mesma família rodam em fila, com um advisory lock de transação do Postgres (`pg_advisory_xact_lock`) por `family_id`, e o token é relido depois do lock. Assim dois `/refresh` com o mesmo cookie não abrem dois sucessores (o segundo cai na janela de graça), e um reuso que chega enquanto outra transação rotaciona espera o commit dela e revoga também o sucessor novo. Um `FOR UPDATE` na linha não bastaria: ele trava um token, não a família, e o `UPDATE` da revogação não enxerga a linha que outra transação inseriu depois de ele começar.
 
@@ -178,7 +178,7 @@ A janela de graça é a única exceção à rotação estrita: o token velho só
 1. Ao carregar a página: `POST /api/auth/refresh`. `authenticated: false` → tela pública; `AuthResponse` → guarda o access em memória.
 2. Renova sozinha quando passar 80 % de `expires_in`, antes de o access vencer. Assim a casca nunca recebe 401 por expiração em fluxo normal.
 3. Se mesmo assim uma rota devolver 401, chama `/refresh` **uma vez** e repete a requisição; se falhar de novo, vai para o login. Nunca entra em laço.
-4. Recebeu 401 `invalid_refresh`: sessão acabou, vai para o login.
+4. Recebeu `authenticated: false` a qualquer momento: sessão acabou, vai para o login.
 
 ### 2.7 O que as outras Slices usam
 
@@ -383,7 +383,7 @@ Payload de um access token decodificado:
 1. **Dois métodos de login: e-mail com senha e 42.** Em 07/10 o time decidiu ter também o Google, para tirar o risco do plano §8.2 (intra demorando a liberar o app). A intra liberou, a F6.8 entregou a 42 em 26/10 (#34), e o módulo *Remote authentication with OAuth 2.0* vale 1 ponto com um provedor ou com dois: em 09/11, o Google saiu do escopo em 09/11 (#164, *not planned*), decisão do Akita, dono da F6.8. As rotas continuam com `{provider}` no caminho.
 2. **Login só por e-mail** (pergunta 1 do briefing). Uma porta a menos para validar, limitar e testar; o `username` é para exibição.
 3. **`fields` leva um código por campo** (pergunta 2). Só código é traduzível; o handler converte o erro do Pydantic, então nenhuma Slice escreve tradução de erro à mão.
-4. **`/refresh` sem cookie responde 200 `{"authenticated": false}`** (pergunta 3). O Chrome mostra em vermelho, no console, toda resposta 4xx de `fetch`, e console limpo é critério de rejeição. "Não há sessão" é o estado normal de quem chega, não um erro. Junto vêm: a casca renova o access antes de vencer (nunca recebe 401 por expiração), e o front valida as mesmas regras (raramente recebe 422). Os 4xx que sobram são erro do próprio User (senha errada, e-mail em uso), não do site.
+4. **`/refresh` sem cookie responde 200 `{"authenticated": false}`** (pergunta 3). O Chrome mostra em vermelho, no console, toda resposta 4xx de `fetch`, e console limpo é critério de rejeição. "Não há sessão" é o estado normal de quem chega, não um erro. Junto vêm: a casca renova o access antes de vencer (nunca recebe 401 por expiração), e o front valida as mesmas regras (raramente recebe 422). Os 4xx que sobram são erro do próprio User (senha errada, e-mail em uso), não do site. Desde a #285 a decisão vale também para o cookie morto e para o reuso: os dois respondem o mesmo 200 com o cookie apagado, porque o cookie velho de um banco recriado (`docker compose down -v`) pintava o console de vermelho. O reuso continua revogando a família e gravando o log de aviso; só a resposta mudou.
 5. **Janela de graça de 10 s na rotação.** Duas abas que recarregam juntas mandam o mesmo cookie; com rotação estrita a segunda pareceria reuso e a família seria revogada, deslogando o User sem motivo. Como as abas dividem o cookie, a segunda já tem o cookie novo que a primeira recebeu: basta devolver um access novo, sem `Set-Cookie`. Depois de 10 s, reaparecer com o token velho é reuso de verdade (RFC 9700 §4.14.2).
 6. **Cookie de refresh com `Path=/api/auth`**, não `/api/auth/refresh` como na arq. §4 decisão 1. Com o caminho estreito, o navegador não manda o cookie para `/api/auth/logout`, e o logout não consegue revogar o token. Os outros caminhos sob `/api/auth` recebem o cookie e o ignoram.
 7. **Cookie `oauth_state` com `SameSite=Lax`**, e não `Strict`. O callback é uma navegação que vem de `api.intra.42.fr`, outro site; com `Strict` o navegador não mandaria o cookie e todo `state` seria recusado. `Lax` vai em navegação de topo com `GET`, que é exatamente o callback. O `state` mora em cookie, e não num dicionário do servidor, porque precisa estar preso ao navegador que começou o login: é isso que impede alguém de logar a vítima na conta do atacante.

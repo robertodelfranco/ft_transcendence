@@ -67,9 +67,10 @@ async def backdate_rotation(db_session, token: str, seconds: float) -> None:
 		.values(rotated_at=datetime.now(timezone.utc) - timedelta(seconds=seconds)))
 
 
-def assert_invalid_refresh(response) -> None:
-	assert response.status_code == 401
-	assert response.json()["error"]["code"] == "invalid_refresh"
+def assert_logged_out(response) -> None:
+	# sessão acabada não é erro (#285): 200 como o "sem cookie", e o cookie velho apagado
+	assert response.status_code == 200
+	assert response.json() == {"authenticated": False}
 	header = response.headers["set-cookie"]
 	assert header.startswith('refresh_token=""') or header.startswith("refresh_token=;")
 	for flag in ("Max-Age=0", "Path=/api/auth", "Secure", "HttpOnly"):
@@ -120,9 +121,9 @@ async def test_reuse_after_the_grace_window_revokes_the_whole_family(browser, db
 	new = (await refresh(browser, old)).cookies["refresh_token"]
 	await backdate_rotation(db_session, old, 10)
 
-	assert_invalid_refresh(await refresh(browser, old))
+	assert_logged_out(await refresh(browser, old))
 	assert all(token.revoked_at is not None for token in await family(db_session, old))
-	assert_invalid_refresh(await refresh(browser, new)) # quem roubou o cookie também perde
+	assert_logged_out(await refresh(browser, new)) # quem roubou o cookie também perde
 	assert (await refresh(browser, other_browser)).status_code == 200 # a outra família continua
 
 
@@ -131,12 +132,12 @@ async def test_inside_the_window_with_a_logged_out_successor_is_reuse(browser, d
 	new = (await refresh(browser, old)).cookies["refresh_token"]
 	assert (await browser.post("/api/auth/logout", headers={"Cookie": f"refresh_token={new}"})).status_code == 204
 
-	assert_invalid_refresh(await refresh(browser, old))
+	assert_logged_out(await refresh(browser, old))
 	assert all(token.revoked_at is not None for token in await family(db_session, old))
 
 
 @pytest.mark.parametrize("state", ["unknown", "expired", "revoked"])
-async def test_refresh_with_a_dead_token_is_401_and_changes_nothing(browser, db_session, user, state):
+async def test_refresh_with_a_dead_token_logs_out_and_changes_nothing(browser, db_session, user, state):
 	token = await login(browser)
 	values = {"expired": {"expires_at": datetime.now(timezone.utc) - timedelta(seconds=1)},
 		"revoked": {"revoked_at": datetime.now(timezone.utc)}}.get(state)
@@ -145,7 +146,7 @@ async def test_refresh_with_a_dead_token_is_401_and_changes_nothing(browser, db_
 			.where(RefreshToken.token_hash == hash_refresh_token(token)).values(**values))
 	before = [(t.id, t.rotated_at, t.revoked_at) for t in await family(db_session, token)]
 
-	assert_invalid_refresh(await refresh(browser, "nao-existe" if state == "unknown" else token))
+	assert_logged_out(await refresh(browser, "nao-existe" if state == "unknown" else token))
 	assert [(t.id, t.rotated_at, t.revoked_at) for t in await family(db_session, token)] == before
 
 
@@ -180,7 +181,7 @@ async def test_logout_revokes_only_its_own_token(browser, db_session):
 
 	assert (await row(db_session, mine)).revoked_at is not None
 	assert (await row(db_session, other_browser)).revoked_at is None
-	assert_invalid_refresh(await refresh(browser, mine))
+	assert_logged_out(await refresh(browser, mine))
 	assert (await refresh(browser, other_browser)).status_code == 200
 
 
