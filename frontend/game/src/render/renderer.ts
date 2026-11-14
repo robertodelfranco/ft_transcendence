@@ -10,6 +10,7 @@ import { HandOverlay } from "./handOverlay";
 import { Billboards } from "./billboards";
 import { Torches } from "./torches";
 import { FireballParticles } from "./fireballParticles";
+import { WaterRipples } from "./waterRipples";
 import { PlayerFeedbackOverlay } from "./playerFeedbackOverlay";
 import type { PlayerFeedbackState } from "./playerFeedback";
 
@@ -47,6 +48,7 @@ export class ThreeRenderer implements Renderer {
   private billboards: Billboards | null = null;
   private torches: Torches | null = null;
   private fireballParticles: FireballParticles | null = null;
+  private ripples: WaterRipples | null = null;
   private playerFeedback: PlayerFeedbackOverlay | null = null;
   private resources: Array<{ dispose(): void }> = [];
   private disposed = false;
@@ -152,6 +154,11 @@ export class ThreeRenderer implements Renderer {
       this.fireballParticles = new FireballParticles();
       this.resources.push(this.fireballParticles);
       scene.add(this.fireballParticles.object);
+      if (assets.water) {
+        this.ripples = new WaterRipples(waterLevel);
+        this.resources.push(this.ripples);
+        scene.add(this.ripples.object);
+      }
       this.initialGrid = grid;
       this.doorTexture = assets.door;
       this.handOverlay = new HandOverlay(assets.hand, assets.handCharge);
@@ -199,6 +206,7 @@ export class ThreeRenderer implements Renderer {
     this.doors?.update(view.doors, dt);
     this.torches?.update(this.camera.position, dt);
     this.fireballParticles?.update(view.projectiles, dt);
+    this.ripples?.update(view, dt);
     // Bloom e conversão de cor da cena primeiro; a mão continua nítida por cima.
     this.composer.render(dt);
     this.handOverlay?.updateCharge(view.chargeSeconds ?? null);
@@ -240,6 +248,7 @@ export class ThreeRenderer implements Renderer {
     this.billboards = null;
     this.torches = null;
     this.fireballParticles = null;
+    this.ripples = null;
     this.playerFeedback = null;
     this.renderer.dispose();
   }
