@@ -309,7 +309,7 @@ luzes. Validação visual e de desempenho pendente; detalhes em
 
 Propor capturar falhas de `init` na integração, liberar recursos parciais e emitir `onHud` com código traduzível; o código de asset ainda precisa entrar no catálogo de erros. Confirmar quais assets são obrigatórios e testar URL ausente, imagem corrompida e falha de som. Callback de erro sozinho não comprova console limpo no navegador.
 
-Meta da arquitetura: 60 fps com 5 Players, 20 Enemies e 10 Projectiles, e dez trocas de Room sem crescimento de memória. Medir com Boss, registrar máquina, navegador, resolução interna, sombras e bloom. Não há medição de FPS, memória ou luzes neste documento; nenhum número de luzes é garantia de performance.
+Meta da arquitetura: 60 fps com 5 Players, 35 Enemies e 10 Projectiles, e dez trocas de Room sem crescimento de memória. Medir com Boss, registrar máquina, navegador, resolução interna, sombras e bloom. Não há medição de FPS, memória ou luzes neste documento; nenhum número de luzes é garantia de performance.
 
 
 ### Tochas de parede — ajuste visual de 11/11/2026
