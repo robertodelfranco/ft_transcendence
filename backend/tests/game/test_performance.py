@@ -18,10 +18,10 @@ ARENA = (
 	"1N000N000N000N000N0001\n"
 	"1000000000000000000001\n"
 	"10I0I0I0I0I0I0I0I0I0I1\n"
-	"1000000000000000000001\n"
-	"1000000000000000000001\n"
 	"10I0I0I0I0I0I0I0I0I0I1\n"
 	"1000000000000000000001\n"
+	"10I0I0I0I0I0I0I0I0I0I1\n"
+	"10I0I0I0I0I00000000001\n"
 	"100000000000000000B001\n"
 	"1111111111111111111111\n"
 )
@@ -52,5 +52,5 @@ def test_a_thousand_full_ticks_fit_the_budget():
 		start = time.perf_counter()
 		step(room, DT)
 		elapsed += time.perf_counter() - start
-	assert room.result is None and len(room.enemies) == 20
+	assert room.result is None and len(room.enemies) == 35
 	assert elapsed < BUDGET_S

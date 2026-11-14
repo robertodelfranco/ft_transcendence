@@ -29,7 +29,7 @@ O time escreve os Maps; o carregador da Simulation (F1.1) os lê no servidor, e 
 | `P` | Pickup de poção | +`POTION_HEAL` HP, até `start_hp` | `P`, depois `0` |
 | `M` | Pickup de Mana | +`MANA_PICKUP` | `M`, depois `0` |
 | `A` | Pickup de Armor | +`ARMOR_POINTS` | `A`, depois `0` |
-| `I` | Enemy (só `coop`, no máximo 20) | Posição inicial de um Enemy | `0`: o Enemy vem no Snapshot |
+| `I` | Enemy (só `coop`, no máximo 35) | Posição inicial de um Enemy | `0`: o Enemy vem no Snapshot |
 | `B` | Boss (só `coop`) | Posição inicial do Boss | `0`: o Boss vem no Snapshot |
 | `T` | Tocha | Livre, como `0` | `T`: luz do Theme nessa célula |
 
@@ -67,7 +67,7 @@ Além da arq. (propostos neste rascunho, cada um com o motivo em Decisões):
 7. `I` ou `B` num Map de `pvp`.
 8. Door que não está entre duas paredes opostas: ou `1` a oeste e a leste, ou `1` ao norte e ao sul, e não os dois pares.
 9. Menos `K` que `D`.
-10. Mais de 20 `I`.
+10. Mais de 35 `I`.
 11. Quina diagonal: um bloco de 2 × 2 células com sólidos (`1`, espaço ou `D`) numa diagonal e células livres na outra.
 
 Como os mapas do Cub3D se saem nesse teste, sem o cabeçalho:
@@ -123,7 +123,7 @@ O Map de 47 × 40 do [snapshot.example.json](snapshot.example.json), derivado do
 - **Door entre duas paredes opostas** (checagem 8). É o que diz ao Rafael para que lado a porta desliza. Todas as Doors dos mapas do Cub3D seguem a regra, menos uma no `enemy.cub`.
 - **Pelo menos tantas chaves quanto Doors** (checagem 9). Toda Door nasce trancada, então isso garante que existe chave para todas. Não garante a ordem: uma chave atrás da própria Door continua possível, e é revisão de quem escreve o Map.
 - **`I` e `B` reprovam um Map de `pvp`** (checagem 7). O `PvpRuleset` ignoraria os dois, e quem escreve o Map acharia que há Enemies onde não há.
-- **No máximo 20 Enemies por Map, e não existe `enemy_density`** (checagem 10; perguntas 3 e 4). Vinte é a carga da meta de performance (arq. §6.2 e §8.2), e o número de Enemies passa a ser escolha de quem escreve o Map. O `double` saiu das opções: era o segundo corte previsto no roadmap para o atraso. Decidido pelo Roberto em 02/10; o número pode baixar depois de jogar.
+- **No máximo 35 Enemies por Map, e não existe `enemy_density`** (checagem 10; perguntas 3 e 4). O teto acompanha a carga da meta de performance (arq. §6.2 e §8.2), e o número de Enemies passa a ser escolha de quem escreve o Map. O `double` saiu das opções: era o segundo corte previsto no roadmap para o atraso. Decidido pelo Roberto em 02/10; o número pode baixar depois de jogar. Subiu para 35 em 14/11, decidido pelo Roberto: com 35 Enemies o teste de performance continua dentro do orçamento de 2 ms por Tick (`test_performance.py`, mesmo cenário em `benchmark_tick.py`); os 60 fps no navegador ainda não foram medidos com 35.
 - **Quina diagonal reprova o Map** (checagem 11). Pelo mesmo motivo do espaço sólido, o Player correndo passaria pelo vértice de uma célula livre para a outra; no `enemy.cub`, isso atravessa a Door trancada de `(20, 20)`. Corrigir no Map custa ao Rafael engrossar algumas paredes; corrigir na Simulation exigiria dividir o passo do Player em subpassos, em `sim.py` e em `applyInput.ts`. Decidido pelo Roberto em 02/10.
 
 ## 5. Em aberto

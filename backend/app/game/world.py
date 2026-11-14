@@ -11,7 +11,7 @@ MAP_NAME = re.compile(r"[a-z0-9_]+")
 MAP_CHARS = "10 NSEWDKPMAIBT" # a tabela de map-format.md §2.2
 SOLID_CHARS = "1 D" # o que bloqueia: parede, fora do Map e Door
 MIN_SPAWNS = { Mode.COOP: 5, Mode.PVP: 2 }
-MAX_ENEMIES = 20
+MAX_ENEMIES = 35
 
 SPAWN_DIRECTIONS = {
 	"N": (0.0, -1.0),

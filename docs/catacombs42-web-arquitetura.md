@@ -200,7 +200,7 @@ O Player é identificado pelo `user_id` do User, e é esse número que `target_p
 
 O C chamava tudo a cada quadro, desenho incluso. O servidor chama `step(room, 1/30)` a cada tick, numa `asyncio.Task` por Room, com compensação de deriva (`next_tick += 1/30; sleep(max(0, next_tick - now))`, relógio `time.monotonic()`), e envia Snapshot a cada 2 ticks. Sai do laço tudo que desenha: `perform_raycasting`, `render_*`, `update_minimap`, `update_lightning`, `call_clean_and_draw_functions`.
 
-Custo: poucas dezenas de entidades e aritmética simples. Meta: 1000 ticks com 5 players + 20 inimigos + boss + 10 projéteis em < 200 ms; p99 do tick < 5 ms com 4 Rooms cheias. O GIL só atrapalha código que satura CPU, e esse não satura.
+Custo: poucas dezenas de entidades e aritmética simples. Meta: 1000 ticks com 5 players + 35 inimigos + boss + 10 projéteis em < 200 ms; p99 do tick < 5 ms com 4 Rooms cheias. O GIL só atrapalha código que satura CPU, e esse não satura.
 
 ### 6.3 Constantes (`rules.py` e `rules.ts`, mesmos nomes)
 
@@ -355,7 +355,7 @@ interface Renderer {
 - **Minimapa**: canvas 2D sobreposto, a partir do grid e das posições.
 - **Áudio**: Web Audio, iniciado só após a primeira interação (evita o warning de autoplay).
 - **Assets**: `AssetLoader` carrega PNGs, modelos e sons; falha vira `HudState.status = "error"` na tela.
-- **Meta de performance**: 60 fps num laptop de sala com 5 players, 20 inimigos e 10 projéteis; trocar de Room 10 vezes sem crescer memória.
+- **Meta de performance**: 60 fps num laptop de sala com 5 players, 35 inimigos e 10 projéteis; trocar de Room 10 vezes sem crescer memória.
 
 ### 8.3 `mountGame` e `HudState` (contrato com F7)
 

@@ -1,7 +1,7 @@
 """F2.13: 4 Rooms x 5 Players, sem banco nem rede externa.
 
 Rode da pasta backend/: `python benchmark_tick.py --ticks 300 --warmup 60 --repeat 3`.
-O cenário é o de tests/game/test_performance.py: 20 Enemies, Boss e até 10 Projectiles
+O cenário é o de tests/game/test_performance.py: 35 Enemies, Boss e até 10 Projectiles
 por Room. O modo runtime usa o RoomManager e o ConnectionManager reais com sockets
 em memória; mede serialização e enfileiramento, mas não latência de rede.
 """
@@ -35,10 +35,10 @@ ARENA = (
 	"1N000N000N000N000N0001\n"
 	"1000000000000000000001\n"
 	"10I0I0I0I0I0I0I0I0I0I1\n"
-	"1000000000000000000001\n"
-	"1000000000000000000001\n"
 	"10I0I0I0I0I0I0I0I0I0I1\n"
 	"1000000000000000000001\n"
+	"10I0I0I0I0I0I0I0I0I0I1\n"
+	"10I0I0I0I0I00000000001\n"
 	"100000000000000000B001\n"
 	"1111111111111111111111\n"
 )
@@ -104,7 +104,7 @@ def simulation_trial(game_map: Map, ticks: int, warmup: int, repeat: int) -> dic
 				per_room_ms.append((time.perf_counter_ns() - started) / 1_000_000)
 		if seq > warmup:
 			cohort_ms.append((time.perf_counter_ns() - cohort_start) / 1_000_000)
-	if any(room.result is not None or len(room.enemies) != 20 for room in rooms):
+	if any(room.result is not None or len(room.enemies) != 35 for room in rooms):
 		raise RuntimeError("scenario ended or lost Enemies during measurement")
 	return {"per_room_tick": summary(per_room_ms), "four_room_cycle": summary(cohort_ms)}
 
@@ -143,6 +143,7 @@ async def runtime_trial(game_map: Map, ticks: int, warmup: int) -> dict:
 				RoomOptions(start_hp=10**6), created_by=seats[0][0])
 			for user_id, name in seats:
 				manager.join(match_id, user_id, name, "/media/avatars/default.png")
+				manager.set_ready(match_id, user_id, True) # o start pede todos prontos (d0b3bf4)
 			manager.start(match_id)
 			for user_id, _ in seats:
 				socket = MemorySocket()
