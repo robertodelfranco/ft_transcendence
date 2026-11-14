@@ -3,11 +3,12 @@ import { useTranslation } from "react-i18next";
 import { Link, NavLink, Outlet, useLocation, useMatches, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import CurrentMatchBanner from "./CurrentMatchBanner";
+import Icon from "./Icon";
 import LanguageSelector from "./LanguageSelector";
 import Loading from "./Loading";
 
 const navLinkClass =
-  "rounded font-semibold text-bone transition-colors hover:bg-crypt-700 focus-visible:outline-2 focus-visible:outline-torch aria-[current=page]:text-torch";
+  "inline-flex items-center gap-1.5 rounded font-semibold text-bone transition-colors hover:bg-crypt-700 focus-visible:outline-2 focus-visible:outline-torch aria-[current=page]:text-torch";
 
 // os dois desenhos do botão do menu: três traços fechado, um X aberto
 const MENU_CLOSED_ICON = "M4 6h16M4 12h16M4 18h16";
@@ -34,6 +35,9 @@ export default function Layout() {
   }
   // modo partida (#254): a rota declara, e o Layout só encolhe cabeçalho, miolo e rodapé
   const compact = useMatches().some((match) => (match.handle as RouteHandle | undefined)?.compact);
+  // a casca medieval vale em toda página; a partida (compacta) fica só com o fundo escuro, sem
+  // decoração em volta do canvas
+  const dungeon = !compact;
   const navLink = `${navLinkClass} ${compact ? "px-1.5 py-0.5" : "px-2 py-1"}`;
 
   async function handleLogout() {
@@ -63,11 +67,11 @@ export default function Layout() {
   }
 
   return (
-    <div data-layout={compact ? "compact" : "default"} className="flex min-h-screen flex-col bg-crypt-950 text-bone">
+    <div data-layout={compact ? "compact" : "default"} className={`flex min-h-screen flex-col bg-crypt-950 text-bone ${dungeon ? "dungeon-shell" : ""}`}>
       <header className={`relative flex flex-wrap items-center justify-between gap-2 border-b border-crypt-700 px-4 ${compact ? "py-1" : "py-3"}`}>
         <Link
           to="/"
-          className={`${compact ? "text-base" : "text-lg"} font-bold text-torch focus-visible:outline-2 focus-visible:outline-torch`}
+          className={`${compact ? "text-base" : "text-lg"} font-game font-bold tracking-wide text-torch focus-visible:outline-2 focus-visible:outline-torch`}
         >
           {t("app.name")}
         </Link>
@@ -81,7 +85,7 @@ export default function Layout() {
             className={`flex flex-wrap items-center gap-x-1 gap-y-1 ${compact ? "text-xs" : "text-sm"}`}
           >
             {/* o nome leva ao próprio perfil: mostra quem entrou e é o caminho para ele */}
-            <NavLink to={`/users/${user.id}`} className={navLink}>{user.username}</NavLink>
+            <NavLink to={`/users/${user.id}`} className={navLink}><Icon name="helm" />{user.username}</NavLink>
             <button
               ref={menuButton}
               type="button"
@@ -100,15 +104,16 @@ export default function Layout() {
               className={`${menuOpen ? "flex" : "hidden"} absolute inset-x-0 top-full z-30 flex-col items-start gap-3 border-b border-crypt-700 bg-crypt-950 px-4 py-3 md:static md:flex md:flex-row md:flex-wrap md:items-center md:gap-x-4 md:gap-y-2 md:border-0 md:bg-transparent md:p-0`}
             >
               <div className="flex flex-col items-start gap-1 md:flex-row md:items-center">
-                <NavLink to="/leaderboard" className={navLink}>{t("nav.leaderboard")}</NavLink>
-                <NavLink to="/friends" className={navLink}>{t("nav.friends")}</NavLink>
-                <NavLink to="/settings" className={navLink}>{t("nav.settings")}</NavLink>
+                <NavLink to="/leaderboard" className={navLink}><Icon name="crown" />{t("nav.leaderboard")}</NavLink>
+                <NavLink to="/friends" className={navLink}><Icon name="friends" />{t("nav.friends")}</NavLink>
+                <NavLink to="/settings" className={navLink}><Icon name="gear" />{t("nav.settings")}</NavLink>
               </div>
               <button
                 type="button"
                 onClick={handleLogout}
-                className={`rounded border border-crypt-700 px-2 ${compact ? "py-0.5 text-xs" : "py-1 text-sm"} hover:text-torch focus-visible:outline-2 focus-visible:outline-torch`}
+                className={`inline-flex items-center gap-1.5 rounded border border-crypt-700 px-2 ${compact ? "py-0.5 text-xs" : "py-1 text-sm"} hover:text-torch focus-visible:outline-2 focus-visible:outline-torch`}
               >
+                <Icon name="door" />
                 {t("nav.logout")}
               </button>
               <LanguageSelector />
@@ -133,9 +138,11 @@ export default function Layout() {
         {/* compacto, mas sempre visível: o subject pede os links legais em toda página */}
         <nav aria-label={t("footer.navLabel")} className={`flex flex-wrap justify-center gap-2 ${compact ? "text-xs" : "text-sm"}`}>
           <NavLink to="/privacy" className={navLink}>
+            <Icon name="scroll" />
             {t("footer.privacy")}
           </NavLink>
           <NavLink to="/terms" className={navLink}>
+            <Icon name="scroll" />
             {t("footer.terms")}
           </NavLink>
         </nav>

@@ -5,9 +5,9 @@ export default function Ping({ ping }: { ping: number | null }) {
   const { t } = useTranslation("hud");
 
   return (
-    <dl className="flex gap-1.5 text-[11px]">
+    <dl className="hud-frame flex items-baseline gap-2 py-1 text-[11px]">
       <dt className="text-bone/70">{t("ping.label")}</dt>
-      <dd className="font-medium tabular-nums text-bone/90">
+      <dd className="hud-num text-bone/90">
         {ping === null ? (
           <>
             <span aria-hidden>{t("ping.none")}</span>

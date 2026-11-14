@@ -1,10 +1,533 @@
 @import "tailwindcss";
 
+/* Fontes de jogo (#252), servidas pelo próprio Nginx: a avaliação pode ser sem internet. Só o
+   subconjunto latin (U+0000-00FF), que já tem os acentos de pt-BR e es; ← e → vêm da fonte de
+   reserva. Licença OFL em public/fonts/ */
+@font-face {
+  font-family: "Pixelify Sans";
+  src: url("/fonts/pixelify-sans-latin.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Pixelify Sans não tem algarismos tabulares (o 1 é mais estreito): os números que mudam durante a
+   partida usam a VT323, monoespaçada, e não tremem quando o valor muda */
+@font-face {
+  font-family: "VT323";
+  src: url("/fonts/vt323-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Letras medievais do site, em três papéis: Pirata One (gótica) no nome do app e nos títulos de
+   página; Cinzel (capitulares entalhadas) em subtítulos, menu e botões; Alegreya (serifa de livro,
+   feita para texto longo) no corpo, inclusive nas páginas legais. Mesmo subconjunto latin, OFL */
+@font-face {
+  font-family: "Pirata One";
+  src: url("/fonts/pirata-one-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cinzel";
+  src: url("/fonts/cinzel-latin.woff2") format("woff2");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Alegreya";
+  src: url("/fonts/alegreya-latin.woff2") format("woff2");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Paleta: fundo preto, laranja de tocha no destaque e azul nas bordas e detalhes. Os nomes dos tokens
+   ficaram, então toda classe crypt-*, bone e torch já existente muda junto. torch é o laranja, e
+   bronze/bronze-dark (bordas e molduras) agora são azuis */
 @theme {
-  --color-crypt-950: #0b0a0f;
-  --color-crypt-900: #14121c;
-  --color-crypt-700: #2a2638;
-  --color-bone: #e8e2d0;
-  --color-torch: #f2a03d;
-  --color-blood: #b3202a;
+  --color-crypt-950: #050608;
+  --color-crypt-900: #0d1017;
+  --color-crypt-700: #1f2a3d;
+  --color-bone: #e8edf5;
+  --color-torch: #ff8a1f;
+  --color-blood: #a3162b;
+  --color-ember: #c25e0a;
+  --color-arcane: #5aa9ff;
+  --color-bronze: #4f86e0;
+  --color-bronze-dark: #2b4a80;
+  --color-hp: #d8384a;
+  --color-mana: #4d7cff;
+  --font-sans: "Alegreya", Georgia, "Times New Roman", serif;
+  --font-display: "Pirata One", "Alegreya", Georgia, serif;
+  --font-heading: "Cinzel", "Alegreya", Georgia, serif;
+  --font-game: "Pixelify Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-num: "VT323", ui-monospace, monospace;
+}
+
+@layer base {
+  /* Alegreya tem olho pequeno: 17 px lê como 16 px de uma sem serifa */
+  html { font-size: 106.25%; }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: .02em;
+  }
+  h2, h3 { font-family: var(--font-heading); letter-spacing: .03em; }
+  ::selection { background: #2f6fd680; color: #fff; }
+}
+
+/* Casca de todas as páginas, menos a partida (modo compacto): decoração estática, sem animação */
+.dungeon-shell {
+  color-scheme: dark;
+  background:
+    radial-gradient(ellipse at 0% 30%, #1d4ed833, transparent 45%),
+    radial-gradient(ellipse at 100% 70%, #ff8a1f14, transparent 40%),
+    linear-gradient(110deg, #050608, #0b0e14 48%, #050608);
+}
+
+.dungeon-shell > header {
+  z-index: 30;
+  border-color: #2b4a8080;
+  background: linear-gradient(#0a0c11, #050608);
+  box-shadow: 0 1px 0 #ff8a1f22, 0 4px 24px #0008;
+  padding-inline: clamp(1rem, 4vw, 4rem);
+}
+
+.dungeon-shell > header > a {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.6rem;
+  letter-spacing: .04em;
+  color: #ffb066;
+  text-shadow: 0 0 18px #ff8a1f40;
+}
+
+.dungeon-shell > header nav { font-family: var(--font-heading); }
+
+.dungeon-shell > footer {
+  border-color: #2b4a8060;
+  background: #050608;
+  font-family: var(--font-heading);
+}
+
+.dungeon-shell > main {
+  position: relative;
+  isolation: isolate;
+  padding-block: clamp(1.5rem, 4vw, 3.5rem);
+}
+
+/* Blocos de pedra e arco: sem carregar imagens ou manter animações contínuas. */
+.dungeon-shell > main::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 95px, #4f86e010 96px, #0005 98px, transparent 100px),
+    repeating-linear-gradient(90deg, transparent 0 190px, #4f86e009 191px, #0003 193px, transparent 195px);
+  mask-image: linear-gradient(#000, #0005 70%, transparent);
+}
+
+.dungeon-shell > main::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  top: 2rem;
+  left: 50%;
+  width: min(88%, 88rem);
+  height: min(85%, 65rem);
+  transform: translateX(-50%);
+  border: 1px solid #4f86e024;
+  border-radius: 48% 48% 0 0;
+  box-shadow: 0 0 0 18px #0002, 0 0 0 19px #4f86e00d, inset 0 0 90px #0005;
+}
+
+.dungeon-page { min-width: 0; }
+
+.dungeon-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .75rem;
+  padding: .5rem 0 1.5rem;
+  text-align: center;
+}
+
+.dungeon-heading h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 5vw, 3.75rem);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: .05em;
+  color: #ffd9b0;
+  text-shadow: 0 3px 12px #000;
+  overflow-wrap: anywhere;
+}
+
+.dungeon-sigil {
+  position: relative;
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-bottom: .6rem;
+  border: 1px solid #ff8a1f;
+  transform: rotate(45deg);
+  background: #ff8a1f18;
+  box-shadow: 0 0 22px #ff8a1f25, inset 0 0 0 4px #07090d;
+}
+
+.dungeon-panel {
+  border: 1px solid #2b4a80;
+  border-top-color: #4f86e0;
+  border-radius: 3px;
+  padding: clamp(1rem, 2.5vw, 1.75rem);
+  background: linear-gradient(135deg, #121722f5, #090b10fa 70%);
+  box-shadow: inset 0 1px 0 #9cc3ff16, 0 12px 32px #0005;
+}
+
+.dungeon-panel h2,
+.dungeon-characters > legend {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1.3rem;
+  color: #ffd9b0;
+}
+
+.dungeon-rooms { min-height: 25rem; }
+
+.dungeon-room-card {
+  position: relative;
+  border: 1px solid #2f5291;
+  border-left: 3px solid #ff8a1f;
+  padding: 1.25rem;
+  background: radial-gradient(ellipse at left top, #ff8a1f20, transparent 80%), #0a0d13;
+  box-shadow: inset 0 1px 0 #9cc3ff08;
+}
+
+.dungeon-room-name {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
+.dungeon-badge {
+  border: 1px solid #ff8a1f4d;
+  padding: .15rem .5rem;
+  background: #ff8a1f10;
+}
+
+.dungeon-player {
+  border: 1px solid #2b4a8080;
+  background: #080b10b3;
+}
+
+.dungeon-shell .dungeon-page :is(select, input[type="number"]) {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  border-color: #3a62a8;
+  border-radius: 2px;
+  background-color: #080b10;
+}
+
+.dungeon-shell .dungeon-page input[type="checkbox"] { accent-color: #ff8a1f; }
+.dungeon-create fieldset { border-color: #2b4a8080; }
+.dungeon-characters > legend { padding-inline: .75rem; }
+
+.dungeon-character {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  min-height: 16rem;
+  padding: 2rem 1rem 1.5rem;
+  border-color: #2f5291;
+  border-radius: 48% 48% 3px 3px;
+  background: radial-gradient(ellipse at 50% 85%, #3b5b8f24, transparent 65%), #060709;
+  transition: border-color .18s ease, background-color .18s ease;
+}
+
+.dungeon-character::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  inset: 9px;
+  border: 1px solid #4f86e02e;
+  border-radius: inherit;
+}
+
+.dungeon-character[aria-pressed="true"] {
+  border-color: #ffa64d;
+  background: radial-gradient(ellipse at 50% 90%, #ff8a1f40, transparent 75%), #151b28;
+  box-shadow: inset 0 0 28px #ff8a1f12, 0 0 20px #ff8a1f10;
+}
+
+.dungeon-character[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  bottom: .6rem;
+  width: .4rem;
+  height: .4rem;
+  transform: rotate(45deg);
+  background: #ffa64d;
+}
+
+.dungeon-portrait { filter: drop-shadow(0 8px 8px #0009); }
+.dungeon-character > span:last-child {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  letter-spacing: .04em;
+}
+
+.dungeon-actions {
+  border-top: 1px solid #2b4a8080;
+  padding-block: 1.25rem;
+}
+
+.dungeon-shell > main :is(button, a).bg-torch {
+  border: 1px solid #ffb870;
+  border-radius: 2px;
+  min-height: 2.75rem;
+  background: linear-gradient(#ffa340, #d9660f);
+  color: #1a0d02;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  letter-spacing: .04em;
+  box-shadow: inset 0 1px 0 #ffe0bf, 0 3px 12px #0006;
+}
+
+.dungeon-shell > main :is(button, a).border-crypt-700:not(.dungeon-character) {
+  border-color: #3a62a8;
+  border-radius: 2px;
+  background-color: #0e121a;
+  min-height: 2.75rem;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+
+@media (max-width: 639px) {
+  .dungeon-rooms { min-height: 12rem; }
+  .dungeon-character {
+    min-height: 11rem;
+    border-radius: 5rem 5rem 3px 3px;
+  }
+  .dungeon-actions > button { flex: 1 1 9rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dungeon-character { transition: none; }
+}
+
+/* ---------- Casca medieval em todas as páginas ----------
+   Campos, caixas e títulos ganham o mesmo bronze do Lobby. CSS sem camada: vence as utilidades do
+   Tailwind nas mesmas propriedades, sem precisar trocar classe em cada página */
+
+.dungeon-shell > main :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]), select, textarea) {
+  border-color: #3a62a8;
+  border-radius: 2px;
+  background-color: #080a0f;
+}
+
+.dungeon-shell > main :is(input, select, textarea)[aria-invalid="true"] { border-color: #f87171; }
+.dungeon-shell input[type="checkbox"] { accent-color: var(--color-torch); }
+
+/* caixa com borda (lista, cartão, tabela): pedra escura com filete claro no topo */
+.dungeon-shell > main :is(div, li, ul, ol, article, section, table, form, fieldset, dl).border-crypt-700 {
+  border-color: #2b4a80;
+  background: linear-gradient(135deg, #121722e6, #080a0ff0);
+  box-shadow: inset 0 1px 0 #9cc3ff12;
+}
+
+/* Título de página: gótica em ouro, com um filete e um losango embaixo. O do Lobby já tem o sigilo
+   em cima, e o da Home é o letreiro */
+.dungeon-shell > main h1:not(.sr-only, .dungeon-heading h1, .home-hero h1) {
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  line-height: 1.15;
+  color: #ffb066;
+  text-shadow: 0 2px 10px #000;
+  overflow-wrap: anywhere;
+}
+
+.dungeon-shell > main h1:not(.sr-only, .dungeon-heading h1, .home-hero h1)::after {
+  content: "";
+  display: block;
+  width: 11rem;
+  max-width: 100%;
+  height: 10px;
+  margin-top: .4rem;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='176' height='10'%3E%3Cpath d='M5 0 10 5 5 10 0 5Z' fill='%23ff8a1f'/%3E%3Cpath d='M14 5h162' stroke='%23ff8a1f' stroke-opacity='.55'/%3E%3C/svg%3E") no-repeat left center;
+}
+
+/* Home: o letreiro ocupa a largura toda e tem o próprio fundo; sem o arco da casca atrás */
+.dungeon-shell > main:has(> .home-hero) { padding-block: 2rem; }
+.dungeon-shell > main:has(> .home-hero)::after { display: none; }
+
+/* Ícone ao lado de texto (components/Icon.tsx): acompanha o tamanho da letra */
+.icon {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  flex-shrink: 0;
+  vertical-align: -0.2em;
+}
+
+/* ---------- HUD da partida (#252, #253) ----------
+   Peças de bronze sobre pedra, na paleta do Lobby. Tudo em CSS, sem imagem de moldura: nada a falhar
+   no carregamento e a mesma moldura nos dois Themes. O que a HUD mostra continua o do hud.md */
+
+.hud-root { font-family: var(--font-game); }
+
+/* números que mudam durante a partida: VT323 tem x-height menor, por isso o 1.3em */
+.hud-num {
+  font-family: var(--font-num);
+  font-size: 1.3em;
+  line-height: 1;
+  letter-spacing: .03em;
+}
+
+/* Moldura: aro escuro, filete de bronze por dentro e um rebite quadrado em cada canto, como pixel */
+.hud-frame {
+  position: relative;
+  border: 2px solid #04050a;
+  padding: .5rem .7rem;
+  background: linear-gradient(180deg, #121722eb, #07090df0);
+  box-shadow:
+    inset 0 0 0 1px var(--color-bronze-dark),
+    inset 0 1px 0 1px #9cc3ff33,
+    0 0 0 1px #4f86e040,
+    0 6px 16px #000a;
+}
+
+.hud-frame::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  pointer-events: none;
+  --rivet: linear-gradient(#ffb066, #c25e0a);
+  background:
+    var(--rivet) top left / 6px 6px no-repeat,
+    var(--rivet) top right / 6px 6px no-repeat,
+    var(--rivet) bottom left / 6px 6px no-repeat,
+    var(--rivet) bottom right / 6px 6px no-repeat;
+}
+
+/* Ícone dos recursos: recorte do sprite de 64×64 do Pickup, só o item, sem a sombra do chão */
+.hud-icon {
+  display: block;
+  flex-shrink: 0;
+  width: 24px;
+  height: 36px;
+  overflow: hidden;
+  filter: drop-shadow(0 2px 0 #000c);
+}
+
+.hud-icon > img {
+  display: block;
+  width: 64px;
+  max-width: none;
+  height: 64px;
+  margin: -7px 0 0 -20px;
+  image-rendering: pixelated;
+}
+
+/* Barras: trilho fundo, preenchimento com brilho no topo e marcas a cada 6 px, como segmentos */
+.hud-bar {
+  height: 10px;
+  border: 1px solid #000;
+  background: #030406;
+  box-shadow: inset 0 0 0 1px #162238, 0 0 0 1px var(--color-bronze-dark);
+}
+
+.hud-bar > span {
+  display: block;
+  height: 100%;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 5px, #0005 5px 6px),
+    linear-gradient(#fff5 0 2px, transparent 2px),
+    var(--bar-color);
+  transition: width .15s steps(3);
+}
+
+.hud-bar[data-kind="hp"] { --bar-color: var(--color-hp); }
+.hud-bar[data-kind="mana"] { --bar-color: var(--color-mana); }
+
+/* HP baixo (isLowHp): barra em blood e piscando em degraus, como sprite */
+.hud-bar[data-low] { --bar-color: var(--color-blood); }
+.hud-bar[data-low] > span { animation: hud-low 0.9s steps(2, jump-none) infinite; }
+
+@keyframes hud-low {
+  from { filter: brightness(1.35); }
+  to { filter: brightness(.7); }
+}
+
+/* Armadura absorvendo golpe (#253): pisca 400 ms. O Resources tira a classe ao fim */
+.hud-hit .hud-num { color: var(--color-blood); }
+.hud-hit .hud-icon { animation: hud-hit 400ms steps(4, jump-none); }
+.hud-hit .hud-num { animation: hud-hit-text 400ms steps(4, jump-none); }
+
+@keyframes hud-hit {
+  0%, 50% { filter: drop-shadow(0 0 0 #000) drop-shadow(0 0 4px var(--color-blood)) brightness(1.6) sepia(1) hue-rotate(-40deg) saturate(4); }
+  25%, 100% { filter: drop-shadow(0 2px 0 #000c); }
+}
+
+@keyframes hud-hit-text {
+  0%, 50% { color: #ff6b6b; }
+  25%, 100% { color: var(--color-blood); }
+}
+
+/* Ajuda: o <summary> vira uma placa de bronze, e não um link de página */
+.hud-help > summary {
+  list-style: none;
+  cursor: pointer;
+  border: 1px solid var(--color-bronze-dark);
+  border-top-color: var(--color-bronze);
+  padding: .15rem .6rem;
+  background: linear-gradient(#172033f0, #0b0e14f0);
+  color: #ffd9b0;
+  box-shadow: 0 2px 0 #000a;
+}
+
+.hud-help > summary::-webkit-details-marker { display: none; }
+.hud-help > summary::before { content: "▸ "; color: var(--color-torch); }
+.hud-help[open] > summary::before { content: "▾ "; }
+.hud-help > summary:hover { color: var(--color-torch); }
+
+.hud-kbd {
+  border: 1px solid var(--color-bronze-dark);
+  border-bottom-width: 2px;
+  padding: 0 .3rem;
+  background: #04050a;
+  color: var(--color-torch);
+  font-family: var(--font-game);
+}
+
+/* Minimapa: radar redondo (o jogo recorta o desenho no círculo), com aro de bronze. O canvas não
+   tem ::before, então o aro vem só do box-shadow */
+.hud-minimap {
+  border-radius: 50%;
+  border: 2px solid #04050a;
+  background: #07090dcc;
+  box-shadow:
+    inset 0 0 0 1px var(--color-bronze-dark),
+    0 0 0 1px #4f86e040,
+    0 6px 16px #000a;
+  image-rendering: pixelated;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-bar > span { transition: none; }
+  .hud-bar[data-low] > span,
+  .hud-hit .hud-icon,
+  .hud-hit .hud-num { animation: none; }
+  /* sem piscar: a mudança de cor da .hud-hit durante os 400 ms é o sinal */
 }

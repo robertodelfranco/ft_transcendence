@@ -62,7 +62,7 @@ function MatchView({ matchId }: { matchId: number }) {
     <>
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold text-torch">{t("result.heading", { matchId })}</h1>
-        {outcome && <p className="text-xl font-bold">{t(`game:outcomes.${outcome}`)}</p>}
+        {outcome && <p className="font-game text-3xl font-bold">{t(`game:outcomes.${outcome}`)}</p>}
         {reason && <p>{t(`game:reasons.${reason}`)}</p>}
       </header>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">

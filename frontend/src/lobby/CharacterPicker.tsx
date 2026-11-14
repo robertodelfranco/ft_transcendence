@@ -36,10 +36,10 @@ export default function CharacterPicker({ value, disabled, onSelect }: {
   const selected = playerCharacter(value).id;
 
   return (
-    <fieldset disabled={disabled} className="min-w-0 rounded-sm border border-torch/30 bg-crypt-900/80 p-4">
+    <fieldset disabled={disabled} className="dungeon-panel dungeon-characters min-w-0">
       <legend className="px-2 font-bold text-torch">{t("characters.title")}</legend>
       <p className="mb-4 text-sm text-bone/70">{t("characters.description")}</p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {PLAYER_CHARACTERS.map((character) => {
           const active = character.id === selected;
           return (
@@ -48,11 +48,11 @@ export default function CharacterPicker({ value, disabled, onSelect }: {
               type="button"
               aria-pressed={active}
               onClick={() => onSelect(character.id)}
-              className={`flex flex-col items-center gap-3 rounded-sm border p-3 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-torch disabled:cursor-wait disabled:opacity-60 ${active
+              className={`dungeon-character flex flex-col items-center gap-3 rounded-sm border p-3 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-torch disabled:cursor-wait disabled:opacity-60 ${active
                 ? "border-torch bg-torch/10 ring-1 ring-torch/30"
                 : "border-crypt-700 bg-crypt-950/60 hover:border-torch/60 hover:bg-crypt-950"}`}
             >
-              <CharacterPortrait characterId={character.id} className="h-20 w-20" />
+              <CharacterPortrait characterId={character.id} className="dungeon-portrait h-32 w-32 sm:h-40 sm:w-40" />
               <span className={`font-bold ${active ? "text-torch" : "text-bone"}`}>{t(`characters.names.${character.id}`)}</span>
             </button>
           );

@@ -11,14 +11,14 @@ export default function Help({ mode }: { mode: HudState["mode"] }) {
   const { t } = useTranslation("hud");
 
   return (
-    <details className="pointer-events-auto text-[11px] md:text-right">
-      <summary className="cursor-pointer text-bone/80 underline-offset-4 hover:text-bone hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-torch">{t("help.title")}</summary>
-      <div className="mt-2 flex max-w-xs flex-col gap-2 text-left text-xs text-bone">
+    <details className="hud-help pointer-events-auto text-[11px] md:text-right">
+      <summary className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-torch">{t("help.title")}</summary>
+      <div className="hud-frame mt-2 flex max-w-xs flex-col gap-2 text-left text-xs text-bone">
         {mode && <p>{t(`help.goal.${mode}`)}</p>}
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+        <dl className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1.5">
           {CONTROLS.map((control) => (
             <div key={control} className="contents">
-              <dt><kbd className="font-bold">{t(`help.controls.${control}.keys`)}</kbd></dt>
+              <dt><kbd className="hud-kbd">{t(`help.controls.${control}.keys`)}</kbd></dt>
               <dd>{t(`help.controls.${control}.action`)}</dd>
             </div>
           ))}
