@@ -198,6 +198,16 @@ def test_boss_entering_dying_ends_the_match_with_a_win_for_every_player():
 	assert over.data == {"result": "win", "winner_ids": [7, 9], "reason": "boss_defeated"}
 
 
+def test_a_player_who_left_is_not_among_the_coop_winners():
+	room = new_room()
+	leave(room, 9)
+	aim_at_boss(room)
+	[over] = named(run(room, 5), "game_over")
+	assert over.data == {"result": "win", "winner_ids": [7], "reason": "boss_defeated"}
+	players = {player.user_id: player for player in match_outcome(room).players}
+	assert players[7].won and not players[9].won
+
+
 def test_the_last_living_player_dying_ends_the_match_with_a_loss():
 	room = new_room()
 	aim_at_player(room, 9)

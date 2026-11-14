@@ -17,8 +17,9 @@ class CoopRuleset:
 	def check_end(self, room: Room) -> dict | None:
 		# o Boss vem primeiro: Boss e último Player morrendo no mesmo Tick é vitória
 		if room.boss is not None and room.boss.state == BossState.DYING:
-			# vitória de grupo: entra todo mundo, inclusive quem morreu ou saiu
-			return {"result": "win", "winner_ids": sorted(room.players), "reason": "boss_defeated"}
+			# vitória de grupo de quem ficou: quem morreu vence; quem saiu (Grace period ou "Sair da partida") não
+			winners = [user_id for user_id, player in room.players.items() if not player.left]
+			return {"result": "win", "winner_ids": sorted(winners), "reason": "boss_defeated"}
 		# todos saíram (Grace period expirado para todos): vem antes, porque também não sobra ninguém vivo
 		if all(player.left for player in room.players.values()):
 			return {"result": "loss", "winner_ids": [], "reason": "forfeit"}

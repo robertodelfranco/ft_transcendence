@@ -151,7 +151,7 @@ Regras da Simulation que fecham estes números (respostas do Roberto ao assinar,
 
 Regra de preenchimento de `won`:
 
-- **`coop`:** todos os Players recebem o mesmo `won` (é vitória de grupo). `survived` distingue quem chegou vivo.
+- **`coop`:** é vitória de grupo de quem ficou. Com `win`, todos os Players que não saíram recebem `won = true`, inclusive quem morreu; quem saiu (Grace period expirado ou "Sair da partida") recebe `won = false`. `survived` distingue quem chegou vivo. Decidido em 14/11/2026 (#294): antes, quem abandonava no início também ganhava a vitória nas estatísticas.
 - **`pvp`:** `won = true` só para o vencedor; no empate (`time_limit` com placar igual), `won = false` para os dois e `result = "draw"`.
 
 ### 2.5 `record_match_result`

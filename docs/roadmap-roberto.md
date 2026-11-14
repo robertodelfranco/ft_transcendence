@@ -371,7 +371,7 @@ Ao fim de R2, o movimento está isolado na função `apply_input` da seção 5, 
 **Passos**
 
 **R4.1 — `Ruleset` e `CoopRuleset` (0,5 d).** A interface (`on_start`, `on_player_death`, `check_end`, `numbers`) e a regra do coop.
-- Teste: o Boss entrar em `dying` emite `game_over` com `win`, `boss_defeated` e todos os Players em `winner_ids`.
+- Teste: o Boss entrar em `dying` emite `game_over` com `win`, `boss_defeated` e em `winner_ids` todos os Players que não saíram; quem morreu entra, quem saiu não (#294).
 - Teste: o último Player vivo morrer emite `loss`, `all_dead`, `winner_ids` vazio.
 - Teste: `game_over` sai uma única vez, mesmo com 100 Ticks depois.
 - Teste: depois do `game_over`, Input, Action e dano não têm efeito; o temporizador de `dying` do Boss continua.

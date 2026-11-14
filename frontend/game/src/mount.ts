@@ -66,6 +66,7 @@ export function createMountGame(deps: GameDeps) {
     let unlocking = false;
     let previousPosition: { x: number; y: number } | null = null;
     let stepDistance = 0;
+    let firedAt: number | null = null; // recuo da mão; quem decide se o tiro saiu é o servidor
 
     function audioActive(): boolean {
       return !unmounted && status === "running" && ending === null && !document.hidden;
@@ -121,11 +122,14 @@ export function createMountGame(deps: GameDeps) {
     const input = captureInput(canvas, (kind, heldSeconds = 0) => {
       loop.action(kind); // duração local nunca vai ao servidor
       if (kind === "fire" || kind === "charge_cancel") audio.updateCharge(null);
-      if (kind === "fire" && welcome && audioReady && audioActive()) {
+      if (kind === "fire" && welcome) {
         const player = loop.localPlayer();
         const cost = RULESET_NUMBERS[welcome.room.mode].FIREBALL_MANA_COST
           * (heldSeconds >= FIREBALL_CHARGE_S ? FIREBALL_CHARGED_MANA_MULT : 1);
-        if (player?.alive && player.mana >= cost) audio.playFire();
+        if (player?.alive && player.mana >= cost) {
+          firedAt = performance.now();
+          if (audioReady && audioActive()) audio.playFire();
+        }
       }
     }, MOUSE_SENSITIVITY, () => status === "running" && ending === null
       && !document.hidden && snapshot !== null && !isFrozen(snapshot)
@@ -367,7 +371,8 @@ export function createMountGame(deps: GameDeps) {
         const others = interpolator?.sample(nowMs) ?? null;
         const rendered = others === null ? drawing : { ...drawing, ...others };
         const showingFeedback = status === "running" && ending === null && !document.hidden;
-        renderer.render({ ...rendered, chargeSeconds,
+        const firedSeconds = firedAt === null ? null : Math.max(0, nowMs - firedAt) / 1000;
+        renderer.render({ ...rendered, chargeSeconds, firedSeconds,
           feedback: showingFeedback ? feedback.state(nowMs) : undefined }, dtS);
         minimap?.render(rendered, canvas.clientWidth / canvas.clientHeight || 1);
       }

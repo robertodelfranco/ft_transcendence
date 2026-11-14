@@ -16,6 +16,7 @@ export function fixtureView(snapshot: Snapshot, grid: readonly string[], userId:
     boss: snapshot.boss,
     projectiles: snapshot.projectiles,
     grid: rows.map(row => row.join("")),
+    camera: { x: localPlayer.x, y: localPlayer.y },
   };
 }
 
@@ -24,7 +25,7 @@ export function fixtureView(snapshot: Snapshot, grid: readonly string[], userId:
 export function galleryView(base: BillboardView, kind: GalleryKind, elapsed: number): BillboardView {
   const view: BillboardView = {
     localPlayer: base.localPlayer, otherPlayers: [], enemies: [], boss: null,
-    projectiles: [], grid: base.grid.map(row => row.replace(/[KPMA]/g, "0")),
+    projectiles: [], grid: base.grid.map(row => row.replace(/[KPMA]/g, "0")), camera: base.camera,
   };
   const phase = elapsed % 6;
   if (kind === "enemy" && phase < 4.7) {

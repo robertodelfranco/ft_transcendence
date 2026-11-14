@@ -19,6 +19,7 @@ export type GameMap = { grid: string[] };
 export type CameraView = Pick<PlayerSnapshot, "x" | "y" | "dx" | "dy"> & { pitch: number };
 export interface ViewState {
   chargeSeconds?: number | null; // apresentação local; servidor valida a duração real
+  firedSeconds?: number | null; // segundos desde o último tiro local, só para o recuo da mão
   feedback?: PlayerFeedbackState; // visual local; ausente equivale a nenhum efeito
   localPlayer: PlayerSnapshot;
   otherPlayers: PlayerSnapshot[];
@@ -154,7 +155,7 @@ export class ThreeRenderer implements Renderer {
       this.torches = new Torches(grid, assets.light);
       this.resources.push(this.torches);
       scene.add(this.torches.object);
-      this.billboards = new Billboards(assets.billboards, waterLevel);
+      this.billboards = new Billboards(assets.billboards, waterLevel, assets.bulletTint);
       this.resources.push(this.billboards);
       scene.add(this.billboards.object);
       this.fireballParticles = new FireballParticles();
@@ -216,6 +217,8 @@ export class ThreeRenderer implements Renderer {
     if (this.waterTexture) flowWater(this.waterTexture, dt);
     // Bloom e conversão de cor da cena primeiro; a mão continua nítida por cima.
     this.composer.render(dt);
+    this.handOverlay?.updateMotion(view.camera.x, view.camera.y, view.localPlayer.alive, dt);
+    this.handOverlay?.updateKick(view.firedSeconds ?? null);
     this.handOverlay?.updateCharge(view.chargeSeconds ?? null);
     this.handOverlay?.render(this.renderer);
     this.playerFeedback?.render(this.renderer, view.feedback);
