@@ -102,6 +102,48 @@ describe("página atual nos links de navegação", () => {
   });
 });
 
+describe("menu em janela estreita", () => {
+  // o jsdom não aplica o CSS do md: o que se testa é o comportamento do botão e do painel
+  async function openShell() {
+    const user = userEvent.setup();
+    await reloadWithSession();
+    renderAt("/lobby");
+    const button = await screen.findByRole("button", { name: "Menu" });
+    const panel = document.getElementById(button.getAttribute("aria-controls")!)!;
+    return { user, button, panel };
+  }
+
+  it("o botão abre e fecha o painel; o username fica fora dele", async () => {
+    const { user, button, panel } = await openShell();
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(within(panel).getByRole("link", { name: "Ranking" })).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: "Sair" })).toBeInTheDocument();
+    expect(within(panel).queryByRole("link", { name: "augusto" })).not.toBeInTheDocument();
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("Esc fecha o menu e devolve o foco ao botão", async () => {
+    const { user, button, panel } = await openShell();
+    await user.click(button);
+    await user.tab();
+    expect(within(panel).getByRole("link", { name: "Ranking" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(button).toHaveFocus();
+  });
+
+  it("navegar pelo menu o fecha", async () => {
+    const { user, button, panel } = await openShell();
+    await user.click(button);
+    await user.click(within(panel).getByRole("link", { name: "Amigos" }));
+    expect(await screen.findByRole("heading", { name: "Amigos" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Menu" })).toHaveAttribute("aria-expanded", "false");
+  });
+});
+
 describe("telas da conta", () => {
   it.each(["/users/7", "/settings", "/friends", "/leaderboard"])("%s sem sessão manda para o login", async (path) => {
     const router = renderAt(path);

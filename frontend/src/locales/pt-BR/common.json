@@ -33,6 +33,7 @@
   },
   "nav": {
     "label": "Sua conta",
+    "menu": "Menu",
     "leaderboard": "Ranking",
     "friends": "Amigos",
     "settings": "Configurações",
