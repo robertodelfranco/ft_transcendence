@@ -29,7 +29,7 @@ export default function Hud({ hud, userId }: { hud: HudState; userId: number | n
             <p className="text-bone/70">{t("stale")}</p>
           </div>
         )}
-        {death && <p className="hud-frame text-sm text-[#efdbb5]">{t(`death.${death}`)}</p>}
+        {death && <p className="hud-frame text-sm text-[#ffd9b0]">{t(`death.${death}`)}</p>}
       </div>
       {/* rodapé esquerdo; o direito fica para o minimapa (F3.6), que o jogo desenha no canvas */}
       <div className={`max-w-full self-center md:col-start-1 md:row-start-3 md:self-end md:justify-self-start ${dim}`}>

@@ -120,7 +120,7 @@ export default function Match({ matchId, onRetry }: { matchId: number; onRetry: 
               focusable="false"
               viewBox="0 0 32 32"
               fill="none"
-              stroke="#f2c66d"
+              stroke="#ffa94d"
               strokeWidth="1.2"
               strokeLinecap="round"
               className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-8 w-8 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]"

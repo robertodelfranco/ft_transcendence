@@ -48,20 +48,20 @@
   font-display: swap;
 }
 
-/* Paleta: obsidiana com fundo vinho, ouro velho, pergaminho e carmim. Os nomes dos tokens ficaram,
-   então toda classe crypt-*, bone e torch já existente muda junto. Contraste conferido: ouro e
-   pergaminho/70 acima de 7:1 sobre o crypt-950 */
+/* Paleta: fundo preto, laranja de tocha no destaque e azul nas bordas e detalhes. Os nomes dos tokens
+   ficaram, então toda classe crypt-*, bone e torch já existente muda junto. torch é o laranja, e
+   bronze/bronze-dark (bordas e molduras) agora são azuis */
 @theme {
-  --color-crypt-950: #0d0a0b;
-  --color-crypt-900: #181214;
-  --color-crypt-700: #3b2b2a;
-  --color-bone: #eadfc8;
-  --color-torch: #d6a64f;
+  --color-crypt-950: #050608;
+  --color-crypt-900: #0d1017;
+  --color-crypt-700: #1f2a3d;
+  --color-bone: #e8edf5;
+  --color-torch: #ff8a1f;
   --color-blood: #a3162b;
-  --color-ember: #c2410c;
-  --color-arcane: #6fb7a8;
-  --color-bronze: #a8834f;
-  --color-bronze-dark: #6b5236;
+  --color-ember: #c25e0a;
+  --color-arcane: #5aa9ff;
+  --color-bronze: #4f86e0;
+  --color-bronze-dark: #2b4a80;
   --color-hp: #d8384a;
   --color-mana: #4d7cff;
   --font-sans: "Alegreya", Georgia, "Times New Roman", serif;
@@ -80,23 +80,23 @@
     letter-spacing: .02em;
   }
   h2, h3 { font-family: var(--font-heading); letter-spacing: .03em; }
-  ::selection { background: #d6a64f55; color: #fff; }
+  ::selection { background: #2f6fd680; color: #fff; }
 }
 
 /* Casca de todas as páginas, menos a partida (modo compacto): decoração estática, sem animação */
 .dungeon-shell {
   color-scheme: dark;
   background:
-    radial-gradient(ellipse at 0% 30%, #7a1a2433, transparent 45%),
-    radial-gradient(ellipse at 100% 70%, #d6a64f14, transparent 40%),
-    linear-gradient(110deg, #0d0a0b, #1a1113 48%, #0d0a0b);
+    radial-gradient(ellipse at 0% 30%, #1d4ed833, transparent 45%),
+    radial-gradient(ellipse at 100% 70%, #ff8a1f14, transparent 40%),
+    linear-gradient(110deg, #050608, #0b0e14 48%, #050608);
 }
 
 .dungeon-shell > header {
   z-index: 30;
-  border-color: #6b523680;
-  background: linear-gradient(#150f10, #0d0a0b);
-  box-shadow: 0 1px 0 #d6a64f22, 0 4px 24px #0008;
+  border-color: #2b4a8080;
+  background: linear-gradient(#0a0c11, #050608);
+  box-shadow: 0 1px 0 #ff8a1f22, 0 4px 24px #0008;
   padding-inline: clamp(1rem, 4vw, 4rem);
 }
 
@@ -105,15 +105,15 @@
   font-weight: 400;
   font-size: 1.6rem;
   letter-spacing: .04em;
-  color: #e9c98a;
-  text-shadow: 0 0 18px #d6a64f40;
+  color: #ffb066;
+  text-shadow: 0 0 18px #ff8a1f40;
 }
 
 .dungeon-shell > header nav { font-family: var(--font-heading); }
 
 .dungeon-shell > footer {
-  border-color: #6b523660;
-  background: #0d0a0b;
+  border-color: #2b4a8060;
+  background: #050608;
   font-family: var(--font-heading);
 }
 
@@ -131,8 +131,8 @@
   z-index: -2;
   pointer-events: none;
   background:
-    repeating-linear-gradient(0deg, transparent 0 95px, #a58a6310 96px, #0005 98px, transparent 100px),
-    repeating-linear-gradient(90deg, transparent 0 190px, #a58a6309 191px, #0003 193px, transparent 195px);
+    repeating-linear-gradient(0deg, transparent 0 95px, #4f86e010 96px, #0005 98px, transparent 100px),
+    repeating-linear-gradient(90deg, transparent 0 190px, #4f86e009 191px, #0003 193px, transparent 195px);
   mask-image: linear-gradient(#000, #0005 70%, transparent);
 }
 
@@ -146,9 +146,9 @@
   width: min(88%, 88rem);
   height: min(85%, 65rem);
   transform: translateX(-50%);
-  border: 1px solid #ad855724;
+  border: 1px solid #4f86e024;
   border-radius: 48% 48% 0 0;
-  box-shadow: 0 0 0 18px #0002, 0 0 0 19px #ad85570d, inset 0 0 90px #0005;
+  box-shadow: 0 0 0 18px #0002, 0 0 0 19px #4f86e00d, inset 0 0 90px #0005;
 }
 
 .dungeon-page { min-width: 0; }
@@ -168,7 +168,7 @@
   font-weight: 400;
   line-height: 1.15;
   letter-spacing: .05em;
-  color: #efdbb5;
+  color: #ffd9b0;
   text-shadow: 0 3px 12px #000;
   overflow-wrap: anywhere;
 }
@@ -179,19 +179,19 @@
   width: 1.25rem;
   height: 1.25rem;
   margin-bottom: .6rem;
-  border: 1px solid #d4a05b;
+  border: 1px solid #ff8a1f;
   transform: rotate(45deg);
-  background: #e2a84a18;
-  box-shadow: 0 0 22px #f2a03d25, inset 0 0 0 4px #0f1112;
+  background: #ff8a1f18;
+  box-shadow: 0 0 22px #ff8a1f25, inset 0 0 0 4px #07090d;
 }
 
 .dungeon-panel {
-  border: 1px solid #746044;
-  border-top-color: #ad8956;
+  border: 1px solid #2b4a80;
+  border-top-color: #4f86e0;
   border-radius: 3px;
   padding: clamp(1rem, 2.5vw, 1.75rem);
-  background: linear-gradient(135deg, #24231ff5, #121619fa 70%);
-  box-shadow: inset 0 1px 0 #e5c08416, 0 12px 32px #0005;
+  background: linear-gradient(135deg, #121722f5, #090b10fa 70%);
+  box-shadow: inset 0 1px 0 #9cc3ff16, 0 12px 32px #0005;
 }
 
 .dungeon-panel h2,
@@ -199,18 +199,18 @@
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: 1.3rem;
-  color: #efdbb5;
+  color: #ffd9b0;
 }
 
 .dungeon-rooms { min-height: 25rem; }
 
 .dungeon-room-card {
   position: relative;
-  border: 1px solid #736049;
-  border-left: 3px solid #c39251;
+  border: 1px solid #2f5291;
+  border-left: 3px solid #ff8a1f;
   padding: 1.25rem;
-  background: radial-gradient(ellipse at left top, #b77b2520, transparent 80%), #111517;
-  box-shadow: inset 0 1px 0 #fff07a08;
+  background: radial-gradient(ellipse at left top, #ff8a1f20, transparent 80%), #0a0d13;
+  box-shadow: inset 0 1px 0 #9cc3ff08;
 }
 
 .dungeon-room-name {
@@ -220,27 +220,27 @@
 }
 
 .dungeon-badge {
-  border: 1px solid #c392514d;
+  border: 1px solid #ff8a1f4d;
   padding: .15rem .5rem;
-  background: #b77b2510;
+  background: #ff8a1f10;
 }
 
 .dungeon-player {
-  border: 1px solid #74604480;
-  background: #0d1113b3;
+  border: 1px solid #2b4a8080;
+  background: #080b10b3;
 }
 
 .dungeon-shell .dungeon-page :is(select, input[type="number"]) {
   width: 100%;
   min-width: 0;
   min-height: 2.75rem;
-  border-color: #8e7c60;
+  border-color: #3a62a8;
   border-radius: 2px;
-  background-color: #0d1113;
+  background-color: #080b10;
 }
 
-.dungeon-shell .dungeon-page input[type="checkbox"] { accent-color: #e2ad60; }
-.dungeon-create fieldset { border-color: #74604480; }
+.dungeon-shell .dungeon-page input[type="checkbox"] { accent-color: #ff8a1f; }
+.dungeon-create fieldset { border-color: #2b4a8080; }
 .dungeon-characters > legend { padding-inline: .75rem; }
 
 .dungeon-character {
@@ -249,9 +249,9 @@
   isolation: isolate;
   min-height: 16rem;
   padding: 2rem 1rem 1.5rem;
-  border-color: #75634b;
+  border-color: #2f5291;
   border-radius: 48% 48% 3px 3px;
-  background: radial-gradient(ellipse at 50% 85%, #59626824, transparent 65%), #0c1012;
+  background: radial-gradient(ellipse at 50% 85%, #3b5b8f24, transparent 65%), #060709;
   transition: border-color .18s ease, background-color .18s ease;
 }
 
@@ -261,14 +261,14 @@
   z-index: -1;
   pointer-events: none;
   inset: 9px;
-  border: 1px solid #ad85572e;
+  border: 1px solid #4f86e02e;
   border-radius: inherit;
 }
 
 .dungeon-character[aria-pressed="true"] {
-  border-color: #efbd73;
-  background: radial-gradient(ellipse at 50% 90%, #d37c2440, transparent 75%), #1b1814;
-  box-shadow: inset 0 0 28px #d58b2012, 0 0 20px #db8a2010;
+  border-color: #ffa64d;
+  background: radial-gradient(ellipse at 50% 90%, #ff8a1f40, transparent 75%), #151b28;
+  box-shadow: inset 0 0 28px #ff8a1f12, 0 0 20px #ff8a1f10;
 }
 
 .dungeon-character[aria-pressed="true"]::after {
@@ -278,7 +278,7 @@
   width: .4rem;
   height: .4rem;
   transform: rotate(45deg);
-  background: #efbd73;
+  background: #ffa64d;
 }
 
 .dungeon-portrait { filter: drop-shadow(0 8px 8px #0009); }
@@ -289,26 +289,26 @@
 }
 
 .dungeon-actions {
-  border-top: 1px solid #74604480;
+  border-top: 1px solid #2b4a8080;
   padding-block: 1.25rem;
 }
 
 .dungeon-shell > main :is(button, a).bg-torch {
-  border: 1px solid #efc17e;
+  border: 1px solid #ffb870;
   border-radius: 2px;
   min-height: 2.75rem;
-  background: linear-gradient(#ecc779, #b5832f);
-  color: #1a1008;
+  background: linear-gradient(#ffa340, #d9660f);
+  color: #1a0d02;
   font-family: var(--font-heading);
   font-weight: 700;
   letter-spacing: .04em;
-  box-shadow: inset 0 1px 0 #fff1c9, 0 3px 12px #0006;
+  box-shadow: inset 0 1px 0 #ffe0bf, 0 3px 12px #0006;
 }
 
 .dungeon-shell > main :is(button, a).border-crypt-700:not(.dungeon-character) {
-  border-color: #8a6f4c;
+  border-color: #3a62a8;
   border-radius: 2px;
-  background-color: #1a1214;
+  background-color: #0e121a;
   min-height: 2.75rem;
   font-family: var(--font-heading);
   font-weight: 600;
@@ -333,9 +333,9 @@
    Tailwind nas mesmas propriedades, sem precisar trocar classe em cada página */
 
 .dungeon-shell > main :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]), select, textarea) {
-  border-color: #8a6f4c;
+  border-color: #3a62a8;
   border-radius: 2px;
-  background-color: #120d0e;
+  background-color: #080a0f;
 }
 
 .dungeon-shell > main :is(input, select, textarea)[aria-invalid="true"] { border-color: #f87171; }
@@ -343,9 +343,9 @@
 
 /* caixa com borda (lista, cartão, tabela): pedra escura com filete claro no topo */
 .dungeon-shell > main :is(div, li, ul, ol, article, section, table, form, fieldset, dl).border-crypt-700 {
-  border-color: #6b5236;
-  background: linear-gradient(135deg, #1f1618e6, #120d0ef0);
-  box-shadow: inset 0 1px 0 #e5c08412;
+  border-color: #2b4a80;
+  background: linear-gradient(135deg, #121722e6, #080a0ff0);
+  box-shadow: inset 0 1px 0 #9cc3ff12;
 }
 
 /* Título de página: gótica em ouro, com um filete e um losango embaixo. O do Lobby já tem o sigilo
@@ -353,7 +353,7 @@
 .dungeon-shell > main h1:not(.sr-only, .dungeon-heading h1, .home-hero h1) {
   font-size: clamp(2rem, 4vw, 2.75rem);
   line-height: 1.15;
-  color: #e9c98a;
+  color: #ffb066;
   text-shadow: 0 2px 10px #000;
   overflow-wrap: anywhere;
 }
@@ -365,7 +365,7 @@
   max-width: 100%;
   height: 10px;
   margin-top: .4rem;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='176' height='10'%3E%3Cpath d='M5 0 10 5 5 10 0 5Z' fill='%23d6a64f'/%3E%3Cpath d='M14 5h162' stroke='%23d6a64f' stroke-opacity='.55'/%3E%3C/svg%3E") no-repeat left center;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='176' height='10'%3E%3Cpath d='M5 0 10 5 5 10 0 5Z' fill='%23ff8a1f'/%3E%3Cpath d='M14 5h162' stroke='%23ff8a1f' stroke-opacity='.55'/%3E%3C/svg%3E") no-repeat left center;
 }
 
 /* Home: o letreiro ocupa a largura toda e tem o próprio fundo; sem o arco da casca atrás */
@@ -398,13 +398,13 @@
 /* Moldura: aro escuro, filete de bronze por dentro e um rebite quadrado em cada canto, como pixel */
 .hud-frame {
   position: relative;
-  border: 2px solid #0d0b08;
+  border: 2px solid #04050a;
   padding: .5rem .7rem;
-  background: linear-gradient(180deg, #1f1c18eb, #0d1012f0);
+  background: linear-gradient(180deg, #121722eb, #07090df0);
   box-shadow:
     inset 0 0 0 1px var(--color-bronze-dark),
-    inset 0 1px 0 1px #e5c08433,
-    0 0 0 1px #ad895640,
+    inset 0 1px 0 1px #9cc3ff33,
+    0 0 0 1px #4f86e040,
     0 6px 16px #000a;
 }
 
@@ -413,7 +413,7 @@
   position: absolute;
   inset: -4px;
   pointer-events: none;
-  --rivet: linear-gradient(#e7bd77, #8a6436);
+  --rivet: linear-gradient(#ffb066, #c25e0a);
   background:
     var(--rivet) top left / 6px 6px no-repeat,
     var(--rivet) top right / 6px 6px no-repeat,
@@ -444,8 +444,8 @@
 .hud-bar {
   height: 10px;
   border: 1px solid #000;
-  background: #0a0806;
-  box-shadow: inset 0 0 0 1px #2c241a, 0 0 0 1px var(--color-bronze-dark);
+  background: #030406;
+  box-shadow: inset 0 0 0 1px #162238, 0 0 0 1px var(--color-bronze-dark);
 }
 
 .hud-bar > span {
@@ -492,8 +492,8 @@
   border: 1px solid var(--color-bronze-dark);
   border-top-color: var(--color-bronze);
   padding: .15rem .6rem;
-  background: linear-gradient(#2a251ef0, #15130ff0);
-  color: #efdbb5;
+  background: linear-gradient(#172033f0, #0b0e14f0);
+  color: #ffd9b0;
   box-shadow: 0 2px 0 #000a;
 }
 
@@ -506,7 +506,7 @@
   border: 1px solid var(--color-bronze-dark);
   border-bottom-width: 2px;
   padding: 0 .3rem;
-  background: #0d0b08;
+  background: #04050a;
   color: var(--color-torch);
   font-family: var(--font-game);
 }
@@ -515,11 +515,11 @@
    tem ::before, então o aro vem só do box-shadow */
 .hud-minimap {
   border-radius: 50%;
-  border: 2px solid #0d0b08;
-  background: #0d1012cc;
+  border: 2px solid #04050a;
+  background: #07090dcc;
   box-shadow:
     inset 0 0 0 1px var(--color-bronze-dark),
-    0 0 0 1px #ad895640,
+    0 0 0 1px #4f86e040,
     0 6px 16px #000a;
   image-rendering: pixelated;
 }

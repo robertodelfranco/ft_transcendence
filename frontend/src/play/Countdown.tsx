@@ -19,9 +19,9 @@ export default function Countdown({ countdown }: { countdown: HudState["countdow
           className="pointer-events-none absolute inset-0 flex items-center justify-center rounded bg-black/50"
         >
           {countdown === "waiting" ? (
-            <p className="hud-frame font-game text-lg text-[#efdbb5]">{t("countdown.waiting")}</p>
+            <p className="hud-frame font-game text-lg text-[#ffd9b0]">{t("countdown.waiting")}</p>
           ) : (
-            <p className="font-game text-8xl font-bold text-torch [text-shadow:0_4px_0_#000,0_0_24px_rgb(242_160_61/0.55)]">{countdown}</p>
+            <p className="font-game text-8xl font-bold text-torch [text-shadow:0_4px_0_#000,0_0_24px_rgb(255_138_31/0.55)]">{countdown}</p>
           )}
         </div>
       )}

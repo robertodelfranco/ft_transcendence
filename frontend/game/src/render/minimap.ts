@@ -84,8 +84,8 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, view: ViewState,
     camY + (dx * sin + dy * cos) * CONE_LENGTH_CELLS);
   ctx.closePath();
   const cone = ctx.createRadialGradient(camX, camY, 0, camX, camY, CONE_LENGTH_CELLS);
-  cone.addColorStop(0, "#f2c66d55");
-  cone.addColorStop(1, "#f2c66d00");
+  cone.addColorStop(0, "#ffa94d55");
+  cone.addColorStop(1, "#ffa94d00");
   ctx.fillStyle = cone;
   ctx.fill();
 
@@ -99,13 +99,13 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, view: ViewState,
       ctx.beginPath();
       ctx.arc(at.x, at.y, markerRadius + 2 / cellSize, 0, Math.PI * 2);
       ctx.lineWidth = 1 / cellSize;
-      ctx.strokeStyle = "#f2c66d88";
+      ctx.strokeStyle = "#ffa94d88";
       ctx.stroke();
     }
     ctx.beginPath();
     ctx.arc(at.x, at.y, at.clamped ? markerRadius * 0.8 : markerRadius, 0, Math.PI * 2);
     ctx.fillStyle = !player.alive ? "#88918c" : local
-      ? "#f2c66d" : player.connected ? "#75d4d0" : "#8aaca9";
+      ? "#ffa94d" : player.connected ? "#5aa9ff" : "#7f9cc4";
     ctx.fill();
     ctx.lineWidth = 1 / cellSize;
     ctx.strokeStyle = "#0b0a0f";

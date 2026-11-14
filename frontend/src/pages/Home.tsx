@@ -26,12 +26,12 @@ export default function Home() {
       />
       <div
         aria-hidden
-        className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_40%,rgb(214_166_79/0.2),transparent_40%)]"
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_40%,rgb(255_138_31/0.2),transparent_40%)]"
       />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-crypt-950" />
 
       <div className="relative flex max-w-4xl flex-col items-center gap-6">
-        <h1 className="font-display text-6xl tracking-wide text-[#e9c98a] drop-shadow-[0_0_24px_rgb(214_166_79/0.45)] sm:text-7xl md:text-8xl lg:text-9xl">
+        <h1 className="font-display text-6xl tracking-wide text-[#ffb066] drop-shadow-[0_0_24px_rgb(255_138_31/0.45)] sm:text-7xl md:text-8xl lg:text-9xl">
           {t("app.name")}
         </h1>
         <p className="max-w-xl text-balance font-heading text-base font-semibold uppercase tracking-wider text-bone sm:text-xl">
