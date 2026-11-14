@@ -185,7 +185,7 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | F1.3 | Movimento por `dt` (andar, sprint, girar por tecla e por `mouse_dx` limitado), colisão com parede, porta e outros players | 2 | F1.2 | S1 | 1 s andando = 3,6 células; `\|dir\| = 1`; parede e player bloqueiam |
 | F1.4 | Portas, chaves, poções, pickups de mana e armadura | 1,5 | F1.3 | S2 | Porta trancada consome 1 chave de quem apertou; pickup some do Grid |
 | F1.5 | Inimigos (alvo = player vivo mais próximo, troca só com 1 célula de vantagem), boss, projéteis contínuos com subpasso, dano, armadura absorvendo antes do HP, mana (custo, regeneração), cooldown | 3 | F1.4 | S2 | Um teste por regra da arq. §5 e §6.3 (perseguição, ataque a ≤ 0,7, morte em 1,5 s, boss com 6 acertos, bullet tira 2, fireball some na parede), mais mana, armadura e troca de alvo |
-| F1.6 | `Ruleset` (interface) + `CoopRuleset`; `game_over` emitido uma vez; 5 players; teste de performance | 1 | F1.5 | S2 | 1000 ticks com 5 players + 20 inimigos + boss + 10 projéteis em < 2 s (2 ms por tick, 6% do orçamento de 33 ms; revisado de 200 ms em 20/10, ver roadmap R4.3) |
+| F1.6 | `Ruleset` (interface) + `CoopRuleset`; `game_over` emitido uma vez; 5 players; teste de performance | 1 | F1.5 | S2 | 1000 ticks com 5 players + 35 inimigos + boss + 10 projéteis em < 2 s (2 ms por tick, 6% do orçamento de 33 ms; revisado de 200 ms em 20/10, ver roadmap R4.3) |
 | F1.7 | CLI que roda N ticks e grava `snapshot.json` para o render | 0,5 | F1.6 | S2 | O JSON abre no `dev.html` de F3 sem adaptação |
 | F1.8 | `PvpRuleset`: 1v1, fireball fere player, respawn no spawn livre mais longe do inimigo, 5 eliminações ou 3 min, inimigos desligados | 2 | F1.6 | S3 | Partida PvP termina pelas duas condições nos testes |
 | F1.9 | `RoomOptions` aplicadas na Simulation com defaults: `map`, `theme`, `start_hp`, pickups ligados/desligados, limite de eliminações e de tempo (PvP) | 1,5 | F1.8 | S3 | Sem opções, o jogo roda com os defaults; cada opção tem teste |
@@ -228,7 +228,7 @@ As frentes vêm do doc de ideias e módulos: F1 Simulation, F2 Netcode, F3 Rende
 | F3.7 | Efeitos de dano, morte e respawn; eventos de kill feed repassados à HUD | 1 | F3.5 | S4 | Kill feed aparece no PvP |
 | F3.8 | **Temas** (Game customization): no mínimo 2 conjuntos de texturas e luz selecionáveis por `options.theme` (ex.: masmorra e esgoto, a partir de `enemy_sewer.cub`) | 1,5 | F3.5, F1.9 | S4 | Trocar o tema no lobby muda o visual da partida |
 | F3.9 | Áudio (passos, tiro, acerto, música) com Web Audio, iniciado só após interação do usuário (política de autoplay não pode gerar warning) | 1 | F3.3 | S4 | Som funciona, console limpo |
-| F3.10 | Performance e limpeza: 60 fps com 5 players, 20 inimigos e 10 projéteis; `dispose()` libera GPU; resize correto | 1 | F3.5 | S5 | Trocar de Room 10 vezes sem aumentar memória |
+| F3.10 | Performance e limpeza: 60 fps com 5 players, 35 inimigos e 10 projéteis; `dispose()` libera GPU; resize correto | 1 | F3.5 | S5 | Trocar de Room 10 vezes sem aumentar memória |
 
 **Subtotal F3: 16 d**
 

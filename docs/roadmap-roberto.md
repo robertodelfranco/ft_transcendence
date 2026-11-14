@@ -46,7 +46,7 @@ Regra de integridade: você escreve o código. Este documento dá interfaces, li
 | Medir o fps do Cub3D para fixar `PLAYER_SPEED` | Não se mede: `3.6` e `1.8` são ponto de partida, decididos jogando | [rules.md](contracts/rules.md) §5 |
 | Projétil a 2,5 cél/s | Ponto de partida `12`; o C andava a cerca de 30 | rules.md §5 |
 | Boss com cadência de 2,2 s "a conferir" | O port implementa a regra pretendida, com três constantes; o comportamento real do C é a mesma regra com outros dois números | rules.md §2.4 e §5 |
-| `enemy_density: double` | Saiu. No máximo 20 Enemies por Map | [map-format.md](contracts/map-format.md) §4 |
+| `enemy_density: double` | Saiu. No máximo 35 Enemies por Map (era 20 até 14/11) | [map-format.md](contracts/map-format.md) §4 |
 | O Player trava na parede, como no C (pergunta 4) | O Player desliza: o passo é tentado em `x` e depois em `y` | [ws-messages.md](contracts/ws-messages.md) §2.9 |
 | A diagonal é 1,41 vez mais rápida (pergunta 5) | As teclas viram um vetor de intenção normalizado | ws-messages.md §2.9 |
 | Direção guardada como vetor (pergunta 6) | Guardada como ângulo; no fio vai `(dx, dy)` | rules.md §4 |
@@ -384,7 +384,7 @@ Ao fim de R2, o movimento está isolado na função `apply_input` da seção 5, 
 - Teste: todos saírem emite `loss` por `forfeit`.
 
 **R4.3 — Performance (0,25 d).**
-- Teste: 1000 Ticks com 5 Players, 20 Enemies, Boss e 10 projéteis em menos de 2 s. Marcado com `perf`: fica fora do CI e roda com `pytest -m perf`.
+- Teste: 1000 Ticks com 5 Players, 35 Enemies, Boss e 10 projéteis em menos de 2 s. Marcado com `perf`: fica fora do CI e roda com `pytest -m perf`.
 - [ ] Um `cProfile` rodado uma vez, com a função mais cara anotada no PR.
 
 *Meta revisada em 20/10.* A meta original era 200 ms, ou 0,2 ms por Tick. O cenário medido deu cerca de 820 ms, 0,8 ms por Tick: 2,5% dos 33 ms de um Tick a 30 Hz. Com uma ou duas Rooms ao mesmo tempo, isso não pesa, então a meta passou para 2 s (2 ms por Tick, 6% do orçamento). Ela deixa folga sobre a máquina do Roberto e ainda pega uma regressão real, como a BFS sem cache. O `cProfile` apontou a checagem de parede (`_touches_wall` → `is_solid`) como a função mais cara. Três otimizações levariam a cerca de 500 ms e ficaram de fora porque o ganho não importa nessa escala: `_touches_wall` consultar `free_cells`, cada Fireball testar só os alvos perto dela e comparar distância ao quadrado.
@@ -535,7 +535,7 @@ Depende de F2.6 do Augusto (N Players pelo socket).
 | 4 | O Player desliza na parede? | Sim, um eixo de cada vez | ws-messages.md §2.9 |
 | 5 | A diagonal é mais rápida? | Não; vetor normalizado | rules.md §4 |
 | 6 | Vetor ou ângulo? | Ângulo | rules.md §4 |
-| 7, 8 | `enemy_density` e teto de Enemies | A opção saiu; no máximo 20 por Map | map-format.md §4 |
+| 7, 8 | `enemy_density` e teto de Enemies | A opção saiu; no máximo 35 por Map (era 20 até 14/11) | map-format.md §4 |
 | 9 a 12 | Campos por destinatário, `scoreboard`, saída de entidade morta, lista de `state` | Nos contratos | ws-messages.md §4 |
 | 13 | Uma Door fecha com alguém dentro? | Door aberta não fecha | ws-messages.md §4 |
 | 14 | Como os dois lados compartilham os casos do teste cruzado? | JSON versionado, gerado pelo Python, com teste de arquivo desatualizado | R5 |
