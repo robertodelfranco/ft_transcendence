@@ -175,3 +175,25 @@ PNGs do jogo não mudam de nome a cada build. Um navegador que já carregou o
 direito no recarregar → "Esvaziar cache e recarregar". A correção definitiva, a
 combinar com o Akita, é restringir o `immutable` aos arquivos do build com hash no
 nome.
+
+## Tiro do Boss e sprites colados na câmera (#295)
+
+Registrado em 14/11/2026. Só visual: nada aqui muda a Simulation.
+
+- **Tiro do Boss tingido:** o Theme dungeon usa `player/fireball_` também para o bullet
+  do Boss, e o jogador não distinguia o tiro que vem do que vai. O Theme ganhou o campo
+  opcional `bulletTint`, a cor multiplicada no sprite do bullet; ausente, não há
+  tingimento. Só o dungeon usa (`0xff6650`): o bullet sai laranja-avermelhado, e a
+  fireball do Player continua amarela, com brilho e rastro. O sewer fica sem tingimento,
+  porque o sparkle ciano do `boss_attack` escureceria. O valor vai de `themes.ts` para
+  `assets.ts`, `renderer.ts` e o construtor de `Billboards`.
+- **Fade perto da câmera:** no coop os Players atravessam um ao outro, e as fireballs do
+  aliado passam pela cabeça do Player local; colado na câmera, o sprite vira um borrão
+  de pixels gigantes. A opacidade de cada billboard cai de 1 a 0,6 da câmera até 0 a
+  0,2, e abaixo disso ele não é desenhado. O início em 0,6 vem da altura de um Player
+  (0,8): com a câmera a 0,5 e meia altura visível de 0,58·d a uma distância d, ele cobre
+  a tela inteira a menos de ~0,5. Enemies param a ~1 célula para atacar e não chegam a
+  esse ponto. O `BillboardView` passa a receber a `camera`.
+- **Validação:** `vitest --project game` (187 testes, com os novos de fade e
+  tingimento) e, no Chrome headless com bot aliado, aliado atravessando o Player e tiro
+  do Boss chegando nos dois Themes; console sem mensagens.

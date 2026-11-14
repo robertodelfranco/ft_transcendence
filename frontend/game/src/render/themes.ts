@@ -9,6 +9,7 @@ export interface Theme {
   light: { ambient: number; directional: number; torch: number; flame: number };
   fogDensity: number;
   water?: { level: number; roughness: number }; // ausente = chão seco em y=0
+  bulletTint?: number; // cor multiplicada no tiro do Boss; ausente = sem tingimento
 }
 
 export const dungeonTheme: Theme = {
@@ -26,6 +27,8 @@ export const dungeonTheme: Theme = {
     boss: "enemy/boss_mage/boss_mage_",
     bullet: "player/fireball_",
   },
+  // O Boss do dungeon atira com o sprite da fireball do Player: mais vermelho, dá para saber o que vem.
+  bulletTint: 0xff6650,
   light: { ambient: 0xffffff, directional: 0xffffff, torch: 0xffaa55, flame: 0xffb347 },
   fogDensity: 0.12, // ~90% de névoa a 12,6 cél: o Boss (BOSS_MIN_RANGE = 8) continua visível
 };

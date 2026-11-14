@@ -155,7 +155,7 @@ export class ThreeRenderer implements Renderer {
       this.torches = new Torches(grid, assets.light);
       this.resources.push(this.torches);
       scene.add(this.torches.object);
-      this.billboards = new Billboards(assets.billboards, waterLevel);
+      this.billboards = new Billboards(assets.billboards, waterLevel, assets.bulletTint);
       this.resources.push(this.billboards);
       scene.add(this.billboards.object);
       this.fireballParticles = new FireballParticles();
