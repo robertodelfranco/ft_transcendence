@@ -10,6 +10,8 @@ import { HandOverlay } from "./handOverlay";
 import { Billboards } from "./billboards";
 import { Torches } from "./torches";
 import { FireballParticles } from "./fireballParticles";
+import { WaterRipples } from "./waterRipples";
+import { createWaterTexture, flowWater } from "./waterSurface";
 import { PlayerFeedbackOverlay } from "./playerFeedbackOverlay";
 import type { PlayerFeedbackState } from "./playerFeedback";
 
@@ -47,6 +49,8 @@ export class ThreeRenderer implements Renderer {
   private billboards: Billboards | null = null;
   private torches: Torches | null = null;
   private fireballParticles: FireballParticles | null = null;
+  private ripples: WaterRipples | null = null;
+  private waterTexture: THREE.DataTexture | null = null;
   private playerFeedback: PlayerFeedbackOverlay | null = null;
   private resources: Array<{ dispose(): void }> = [];
   private disposed = false;
@@ -57,6 +61,7 @@ export class ThreeRenderer implements Renderer {
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1;
+    this.renderer.localClippingEnabled = true; // Door que sobe some no teto
   }
 
   async init(map: GameMap, assets: Assets): Promise<void> {
@@ -120,13 +125,25 @@ export class ThreeRenderer implements Renderer {
 
       const surfaceGeometry = new THREE.PlaneGeometry(width, depth);
       this.resources.push(surfaceGeometry);
-      const floorMaterial = new THREE.MeshLambertMaterial({ color: assets.floor });
+      // Água: o plano sobe até a linha pintada nas paredes e reflete as tochas.
+      const waterLevel = assets.water?.level ?? 0;
+      if (assets.water) {
+        this.waterTexture = createWaterTexture(width, depth);
+        this.resources.push(this.waterTexture);
+      }
+      const floorMaterial = assets.water
+        ? new THREE.MeshStandardMaterial({
+          map: this.waterTexture, metalness: 0, roughness: assets.water.roughness,
+        })
+        : new THREE.MeshLambertMaterial({ color: assets.floor });
       this.resources.push(floorMaterial);
       const ceilingMaterial = new THREE.MeshLambertMaterial({ color: assets.ceiling });
+      // Na água o Boss passa um pouco de y=1 (base 0,17 + 0,87); a Door é cortada em y=1.
+      ceilingMaterial.depthWrite = !assets.water;
       this.resources.push(ceilingMaterial);
       const floor = new THREE.Mesh(surfaceGeometry, floorMaterial);
       floor.rotation.x = -Math.PI / 2;
-      floor.position.set(width / 2, 0, depth / 2);
+      floor.position.set(width / 2, waterLevel, depth / 2);
       const ceiling = new THREE.Mesh(surfaceGeometry, ceilingMaterial);
       ceiling.rotation.x = Math.PI / 2;
       ceiling.position.set(width / 2, 1, depth / 2);
@@ -137,12 +154,17 @@ export class ThreeRenderer implements Renderer {
       this.torches = new Torches(grid, assets.light);
       this.resources.push(this.torches);
       scene.add(this.torches.object);
-      this.billboards = new Billboards(assets.billboards);
+      this.billboards = new Billboards(assets.billboards, waterLevel);
       this.resources.push(this.billboards);
       scene.add(this.billboards.object);
       this.fireballParticles = new FireballParticles();
       this.resources.push(this.fireballParticles);
       scene.add(this.fireballParticles.object);
+      if (assets.water) {
+        this.ripples = new WaterRipples(waterLevel);
+        this.resources.push(this.ripples);
+        scene.add(this.ripples.object);
+      }
       this.initialGrid = grid;
       this.doorTexture = assets.door;
       this.handOverlay = new HandOverlay(assets.hand, assets.handCharge);
@@ -190,6 +212,8 @@ export class ThreeRenderer implements Renderer {
     this.doors?.update(view.doors, dt);
     this.torches?.update(this.camera.position, dt);
     this.fireballParticles?.update(view.projectiles, dt);
+    this.ripples?.update(view, dt);
+    if (this.waterTexture) flowWater(this.waterTexture, dt);
     // Bloom e conversão de cor da cena primeiro; a mão continua nítida por cima.
     this.composer.render(dt);
     this.handOverlay?.updateCharge(view.chargeSeconds ?? null);
@@ -231,6 +255,8 @@ export class ThreeRenderer implements Renderer {
     this.billboards = null;
     this.torches = null;
     this.fireballParticles = null;
+    this.ripples = null;
+    this.waterTexture = null;
     this.playerFeedback = null;
     this.renderer.dispose();
   }

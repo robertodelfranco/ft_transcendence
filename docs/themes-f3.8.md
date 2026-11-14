@@ -15,6 +15,7 @@ pelo adapter em `frontend/game/src/index.ts`. O catálogo tipado fica em
 - Os 28 PNGs foram copiados sem transformação de
   `https://github.com/robertodelfranco/42-Cub3D`, commit
   `66b147353fb0278e6bbe09c98a469db9b84f8b26`, diretório `assets/`.
+  Exceção posterior: `sea_dragon_8.png` foi editado na #290 (ver "Água no sewer").
 
 ## Validação local
 
@@ -59,3 +60,118 @@ Um PR da branch `190-themes-dungeon-sewer`, com `Closes #190`, em dois commits:
    `frontend/game/dev.ts`, `frontend/game/src/index.ts`, alterações em
    `frontend/game/src/render/`, 28 novos PNGs em `frontend/public/assets/`
    e este documento.
+
+## Água no sewer (#290)
+
+Registrado em 13/11/2026; textura, correnteza e tochas em 14/11/2026. Só visual: nada
+aqui muda a Simulation, o Grid ou as regras.
+
+### Por que
+
+As paredes 5–8 têm a água pintada no quarto de baixo, a partir da linha ~47 de 64,
+no mesmo azul do `F 0,0,168` do `.cub`. No C o chão era uma cor chapada que se fundia
+com essa faixa: a superfície da água parecia estar na linha pintada, um pouco abaixo
+da câmera, e dava a impressão de andar meio submerso. No Three.js o chão virou um plano
+iluminado em y=0, e a faixa azul passou a parecer parte da parede em pé sobre ele. O
+chão parecia deslocado da parede, e o Player coop ficava em pé no seco.
+
+### O que faz
+
+- **Theme:** `water?: { level, roughness }` em `themes.ts`. O sewer usa
+  `{ level: 0.20, roughness: 0.4 }`; a linha pintada mede ~0,25, e 0,20 foi ajustado
+  no olho. Sem `water` (dungeon), o chão fica em y=0 como antes.
+- **Plano da água** (`renderer.ts`): o chão sobe até `level` e usa
+  `MeshStandardMaterial` com essa `roughness`, que reflete as tochas, no lugar do
+  `MeshLambertMaterial`. O teste de profundidade esconde tudo o que fica abaixo do
+  plano, então o que está na água sai cortado pela superfície sem código extra.
+- **Textura e correnteza** (`waterSurface.ts`): com a cor chapada, a água parecia um
+  chão azul parado, liso no meio do pixel art. A textura é uma célula de 64×64 texels,
+  a mesma densidade das paredes, gerada em memória como `DataTexture`: fundo
+  `0,0,168` e 22 traços horizontais de 2 a 5 texels nas cores da água pintada nas
+  paredes (`0,168,168`, `84,84,252` e, mais raro, `84,252,252`). Ela se repete uma vez
+  por célula do Grid (`repeat = largura, profundidade`) e o traço que passa da borda
+  continua do outro lado, sem emenda. O gerador tem semente fixa, então o desenho é o
+  mesmo em todo cliente. De perto o filtro é `Nearest` (pixel nítido); de longe, mipmap,
+  como nos anéis. A correnteza soma `FLOW × dt` (0,06 e 0,02 célula/s) ao `offset` da
+  UV a cada quadro, com `% 1` para o valor não crescer; depende do tempo, não do FPS.
+- **Tochas** (`torches.ts`, vale para os dois Themes): a luz cai com 1/d², e a
+  `PointLight` ficava na chama, a 0,14 da face da parede; ali a parede recebia ~50× a
+  luz de 1 célula de distância e a textura estourava em branco, pior no sewer, com
+  parede mais lisa. Agora a luz fica 0,2 à frente da chama (`LIGHT_OFFSET`), a
+  intensidade caiu de 2 para 1,4, e a `wallRoughness` do sewer subiu de 0,28 para 0,5,
+  o que espalha o brilho especular. A chama (cone instanciado) estica e encolhe ±15%
+  com a mesma fase `sin(7t + índice)` que faz a luz oscilar, crescendo para cima com a
+  base fixa.
+- **Altura de cada billboard** (`billboards.ts`): a base de cada um em relação à
+  superfície da água.
+
+  | Billboard | Base | Por quê |
+  |---|---|---|
+  | Player coop | y=0 | o sprite não tem ondulação pintada; a água corta as pernas |
+  | Enemy (sea dragon) | água − 0,08 | a ondulação pintada fica 6–14 texels acima da base do quadro parado |
+  | Boss (boss skeleton) | água − 0,06; na morte, − 0,09 | a elipse de água termina na base de todos os quadros, e 4 texels a cortam no meio; na morte, a poça do respingo (quadro 9) parecia flutuar |
+  | key, potion | água − 0,05 | só a sombra e o vão pintados sob o item (13 texels) ficam submersos |
+  | mana, armor | na superfície | placeholders sem sombra; afundar cortaria o desenho |
+  | Projéteis | 0,5 | sem mudança |
+
+- **Âncora dos quadros:** por padrão, cada quadro encosta o pixel opaco mais baixo na
+  base. No sea dragon, andar e atacar usam a base do quadro mais baixo do sheet
+  (`alignToSheetBase`), como no C, para a linha d'água pintada não pular entre os
+  quadros. A morte usa a base de cada quadro, porque o desenho afunda dentro do PNG: no
+  quadro 8, a ondulação termina na linha 50, contra 62 no quadro parado. O Boss usa
+  a base de cada quadro.
+- **Teto e Door:** na água, a cabeça do Boss passa de y=1 (base 0,14 + 0,87), e o plano
+  do teto a escondia. Com `water`, o teto não escreve depth. A Door que sobe ao abrir
+  passa a ser cortada em y=1 por um plano de clipping (`localClippingEnabled` no
+  renderer), para não aparecer por cima do teto. No dungeon o teto continua
+  escrevendo depth.
+- **Sprite editado:** em `sea_dragon_8.png` (65×65, morte do sea dragon), a ondulação
+  da frente ficava nas linhas 45–50, debaixo d'água. Os 126 pixels dela foram copiados
+  5 linhas acima (40–45), só nas duas cores de água (`84,84,252` e `84,252,252`). O
+  corpo não mudou e as linhas originais continuam lá, então a base do quadro é a
+  mesma. O original está no commit anterior ao `b4ada6e` e no repo do C.
+- **Anéis de ondulação** (`waterRipples.ts`): um anel deitado sobre a água
+  (+0,002), com a paleta das paredes, gerado em memória como `DataTexture` de 64×64
+  (1 px ≈ 0,016). São 4 quadros de raio 8 a 26 px, com 1,2 s de vida, esmaecendo a
+  partir de 0,7 de opacidade. Saem a cada 0,3 s de quem anda e a cada 1,4 s de quem
+  está parado, com fase aleatória. Aparecem no pé de Enemies, Boss (anel 1,3×),
+  Players coop e do Player local, na posição da câmera, visível ao olhar para baixo.
+  São desenhados antes dos sprites (`renderOrder = -1`), então o corpo cobre a metade
+  de trás do anel. De longe usam mipmap, para a linha fina não piscar no ângulo
+  rasante. O pool é fixo, de 64 anéis, sem alocar durante o render.
+
+### Como as profundidades foram medidas
+
+A vista de frente é exata: a câmera fica a 0,5, acima da água, então tudo o que fica
+abaixo da linha d'água num billboard vertical some atrás do plano. Um script em Python
+recriou essa vista para cada quadro a partir dos PNGs, com as mesmas contas do
+`billboards.ts` (base, `height`, `referenceHeight` do sheet, profundidade abaixo da
+água). As linhas da ondulação foram localizadas pelas cores de água de cada sheet.
+O script não foi versionado.
+
+### Validação
+
+- Pelo agente: `vitest --project game` (179 testes, incluindo os novos de
+  `billboards.test.ts`, `waterRipples.test.ts`, `waterSurface.test.ts` e
+  `torches.test.ts`), `eslint game/src/render` e `tsc -b`.
+  No `tsc`, os únicos erros são em `Legal.tsx`, porque falta `react-markdown` no
+  `node_modules` local; não vêm desta mudança.
+- Pelo Roberto, no jogo, em coop no sewer: altura da água; sea dragon andando,
+  atacando e morrendo; Boss parado, atacando e morrendo; Pickups; Player coop e anéis.
+- Pelo agente em 14/11, no Chrome headless com bot aliado (stack isolada, `main` +
+  #291): partidas completas no dungeon (`enemy`) e no sewer (`enemy_sewer`), e Door
+  abrindo no sewer (mapa `enemy` com Theme sewer, porque `enemy_sewer` não tem Door).
+  A Door sobe e é cortada em y=1; no dungeon, a base comum do skeleton desloca no
+  máximo 1 texel (0,013); console sem mensagens; 61 FPS em 1280×800 durante o jogo.
+  Antes e depois da textura e das tochas comparados nos mesmos pontos de spawn.
+- Pendente: FPS na cena de carga do sewer (`/game/dev.html?stress=1&theme=sewer`),
+  anotado em `performance-f3.10.md`.
+
+### Cache do PNG editado
+
+O `frontend/nginx.conf` serve `/assets/` com `Cache-Control: immutable` de 1 ano, e os
+PNGs do jogo não mudam de nome a cada build. Um navegador que já carregou o
+`sea_dragon_8.png` antigo continua com ele; para ver o novo, use DevTools → botão
+direito no recarregar → "Esvaziar cache e recarregar". A correção definitiva, a
+combinar com o Akita, é restringir o `immutable` aos arquivos do build com hash no
+nome.

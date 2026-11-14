@@ -8,6 +8,7 @@ export interface Theme {
   sprites: { enemy: string; boss: string; bullet: string };
   light: { ambient: number; directional: number; torch: number; flame: number };
   fogDensity: number;
+  water?: { level: number; roughness: number }; // ausente = chão seco em y=0
 }
 
 export const dungeonTheme: Theme = {
@@ -30,7 +31,7 @@ export const dungeonTheme: Theme = {
 };
 
 export const sewerTheme: Theme = {
-  wallRoughness: 0.28,
+  wallRoughness: 0.5,
   floor: 0x0000a8,
   ceiling: 0x161e00,
   walls: {
@@ -47,6 +48,8 @@ export const sewerTheme: Theme = {
   // Paleta inicial do esgoto; não altera o orçamento de luzes e sombras.
   light: { ambient: 0xc3d9cf, directional: 0xb5d4cf, torch: 0x88ccaa, flame: 0xaaffcc },
   fogDensity: 0.13, // um pouco mais densa que a do dungeon, ~90% a 11,7 cél
+  // A água já está pintada nas paredes 5–8 a partir da linha ~47/64: o plano do chão sobe até ela.
+  water: { level: 0.20, roughness: 0.4 },
 };
 
 export const themes: Record<RoomOptions["theme"], Theme> = {

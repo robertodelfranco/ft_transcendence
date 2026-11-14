@@ -38,6 +38,27 @@ const projectileClips: Record<ProjectileSnapshot["state"], Clip> = {
   hit: { first: 0, count: 4, frameSeconds: 0.1, loop: false },
 };
 const pickups = { K: "key", P: "potion", M: "mana", A: "armor" } as const;
+// Quanto a base afunda abaixo da superfície quando o Theme tem água.
+// Enemy: a ondulação pintada no sea_dragon (8–14 texels acima da base) fica na superfície.
+const ENEMY_SINK = 0.08;
+// Boss: a elipse de água do boss_skeleton termina na base de todos os quadros (linhas 53–60
+// no quadro 0), então a âncora é por quadro. 4 texels (≈0,06) cortam a elipse no meio: as
+// pernas entram na água com a ondulação em volta.
+const BOSS_SINK = 0.06;
+// Na morte afunda mais: a poça do respingo final (quadro 9, 9 linhas) parecia flutuar.
+const BOSS_DYING_SINK = 0.09;
+// key.png e pot.png têm sombra + vão (13 texels ≈ 0,05) sob o item: afundar esconde só isso.
+// mana.svg e armor.svg (placeholders) não têm sombra e seriam cortados.
+const PICKUP_SINK: Record<(typeof pickups)[keyof typeof pickups], number> = {
+  key: 0.05, potion: 0.05, mana: 0, armor: 0,
+};
+
+// Todos os quadros com a base do quadro mais baixo: a animação fica presa ao canvas do PNG,
+// como no C, e a linha d'água pintada não pula entre os clips. Vale para quadros do mesmo tamanho.
+export function alignToSheetBase(sheet: SpriteSheet): SpriteSheet {
+  const base = Math.min(...sheet.frames.map((frame) => frame.anchorY));
+  return { ...sheet, frames: sheet.frames.map((frame) => ({ ...frame, anchorY: base })) };
+}
 
 interface Entry {
   sprite: THREE.Sprite;
@@ -50,15 +71,23 @@ export class Billboards {
   readonly object = new THREE.Group();
   private readonly entries = new Map<string, Entry>();
   private spriteGeometry: THREE.BufferGeometry | null = null;
+  private enemySheet: SpriteSheet | null = null;
 
-  constructor(private readonly assets: BillboardAssets) {}
+  // waterLevel > 0: Enemy, Boss e Pickups ficam logo abaixo da superfície; o Player fica em y=0
+  // e a água corta as pernas.
+  constructor(private readonly assets: BillboardAssets, private readonly waterLevel = 0) {}
+
+  private sunk(depth: number): number {
+    return Math.max(0, this.waterLevel - depth);
+  }
 
   update(view: BillboardView, dt: number): void {
     const seen = new Set<string>();
     const seconds = Number.isFinite(dt) ? Math.max(0, dt) : 0;
     const draw = (
       id: string, state: string, sheet: SpriteSheet, clip: Clip,
-      x: number, y: number, height: number, grounded = true, color = 0xffffff,
+      // ground: altura da base do sprite; null centraliza a 0,5 (projéteis).
+      x: number, y: number, height: number, ground: number | null, color = 0xffffff,
     ) => {
       seen.add(id);
       let entry = this.entries.get(id);
@@ -88,17 +117,22 @@ export class Billboards {
         height * frame.width / sheet.referenceHeight,
         height * frame.height / sheet.referenceHeight, 1,
       );
-      entry.sprite.center.set(frame.anchorX, grounded ? frame.anchorY : 0.5);
-      entry.sprite.position.set(x, grounded ? 0 : 0.5, y);
+      entry.sprite.center.set(frame.anchorX, ground === null ? 0.5 : frame.anchorY);
+      entry.sprite.position.set(x, ground ?? 0.5, y);
     };
 
     for (const enemy of view.enemies) {
-      draw(`enemy:${enemy.id}`, enemy.state, this.assets.enemy,
-        enemyClips[enemy.state], enemy.x, enemy.y, 0.8);
+      this.enemySheet ??= alignToSheetBase(this.assets.enemy);
+      // Na morte o sea_dragon afunda dentro do PNG (ondulação termina na linha 50 no quadro 8,
+      // contra 62 do parado): com a base comum ele flutuaria, então cada quadro usa a sua.
+      const sheet = enemy.state === "dying" ? this.assets.enemy : this.enemySheet;
+      draw(`enemy:${enemy.id}`, enemy.state, sheet,
+        enemyClips[enemy.state], enemy.x, enemy.y, 0.8, this.sunk(ENEMY_SINK));
     }
     if (view.boss) {
       const boss = view.boss;
-      draw("boss", boss.state, this.assets.boss, bossClips[boss.state], boss.x, boss.y, 0.95);
+      draw("boss", boss.state, this.assets.boss, bossClips[boss.state],
+        boss.x, boss.y, 0.95, this.sunk(boss.state === "dying" ? BOSS_DYING_SINK : BOSS_SINK));
     }
     for (const projectile of view.projectiles) {
       // O visual em voo depende do autor; impacto e bullet do Boss seguem os assets comuns.
@@ -115,19 +149,21 @@ export class Billboards {
       const fireballScale = projectile.kind === "fireball" ? 1.2 : 1;
       draw(`projectile:${projectile.id}`, `${projectile.kind}:${projectile.state}`,
         sheet, clip,
-        projectile.x, projectile.y, 0.18 * fireballScale, false);
+        projectile.x, projectile.y, 0.18 * fireballScale, null);
     }
     for (const player of view.otherPlayers) {
       if (player.id === view.localPlayer.id || !player.alive) continue;
       const character = playerCharacter(player.character_id);
       draw(`player:${player.id}`, character.id, this.assets[`player:${character.id}`], still,
-        player.x, player.y, 0.8, true, player.connected ? 0xffffff : 0x777777);
+        player.x, player.y, 0.8, 0, player.connected ? 0xffffff : 0x777777);
     }
     view.grid.forEach((row, y) => {
       [...row].forEach((cell, x) => {
         if (!(cell in pickups)) return;
         const kind = pickups[cell as keyof typeof pickups];
-        draw(`pickup:${x},${y}`, kind, this.assets[kind], still, x + 0.5, y + 0.5, 0.2);
+        // Pickup (0,2 de altura) ancorado em y=0 sumiria inteiro debaixo d'água.
+        draw(`pickup:${x},${y}`, kind, this.assets[kind], still,
+          x + 0.5, y + 0.5, 0.2, this.sunk(PICKUP_SINK[kind]));
       });
     });
     // Remover por identidade evita manter cadáveres, tiros e Pickups coletados.
