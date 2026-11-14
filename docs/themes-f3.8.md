@@ -110,8 +110,7 @@ chão parecia deslocado da parede, e o Player coop ficava em pé no seco.
   | Player coop | y=0 | o sprite não tem ondulação pintada; a água corta as pernas |
   | Enemy (sea dragon) | água − 0,08 | a ondulação pintada fica 6–14 texels acima da base do quadro parado |
   | Boss (boss skeleton) | água − 0,06; na morte, − 0,09 | a elipse de água termina na base de todos os quadros, e 4 texels a cortam no meio; na morte, a poça do respingo (quadro 9) parecia flutuar |
-  | key, potion | água − 0,05 | só a sombra e o vão pintados sob o item (13 texels) ficam submersos |
-  | mana, armor | na superfície | placeholders sem sombra; afundar cortaria o desenho |
+  | key, potion, mana, armor | água − 0,05 | só a sombra e o vão pintados sob o item (13 texels ou mais) ficam submersos. Mana e Armor usavam SVGs provisórios sem sombra, na superfície, até os PNGs da #253 |
   | Projéteis | 0,5 | sem mudança |
 
 - **Âncora dos quadros:** por padrão, cada quadro encosta o pixel opaco mais baixo na

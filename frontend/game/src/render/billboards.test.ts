@@ -68,7 +68,7 @@ it("na água, Enemy, Boss e Pickup ficam logo abaixo da superfície; o Player af
   expect(enemy.position.y).toBeCloseTo(0.17);
   // Pickups flutuam ±0,02 em torno da base + 0,02; fase pela célula (potion em 0,0: seno 0)
   expect(potion.position.y).toBeCloseTo(0.22); // só a sombra pintada fica submersa
-  expect(mana.position.y).toBeCloseTo(0.27 + 0.02 * Math.sin(1)); // placeholder sem sombra
+  expect(mana.position.y).toBeCloseTo(0.22 + 0.02 * Math.sin(1)); // o PNG também tem sombra
   expect(boss.position.y).toBeCloseTo(0.19);
   expect(player.position.y).toBe(0);
   billboards.update({

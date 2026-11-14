@@ -20,8 +20,8 @@ export const billboardUrls = (theme: Theme = dungeonTheme) => ({
   fireball: sequence("player/fireball_", 4),
   key: ["/assets/collectables/key.png"],
   potion: ["/assets/collectables/pot.png"],
-  mana: ["/assets/placeholders/mana.svg"],
-  armor: ["/assets/placeholders/armor.svg"],
+  mana: ["/assets/collectables/mana.png"],
+  armor: ["/assets/collectables/armor.png"],
   ...playerUrls,
   ...projectileUrls,
 });
