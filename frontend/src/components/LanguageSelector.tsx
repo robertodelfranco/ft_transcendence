@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ProfileUpdateCancelled, useAuth } from "../auth/AuthContext";
 import { changeLanguage } from "../i18n";
 import { isLanguage, LANGUAGES, type Language } from "../i18n/languages";
+import Icon from "./Icon";
 import ErrorNotice, { toFailure, type Failure } from "./ErrorNotice";
 
 export default function LanguageSelector() {
@@ -30,7 +31,7 @@ export default function LanguageSelector() {
   return (
     <div className="flex flex-col items-end gap-1">
       <label className="flex items-center gap-2 text-sm">
-        <span>{t("language.label")}</span>
+        <span className="inline-flex items-center gap-1.5"><Icon name="globe" />{t("language.label")}</span>
         <select 
           value={i18n.resolvedLanguage}
           onChange={(e) => {
