@@ -4,6 +4,7 @@
     "pvp": "PvP 1x1"
   },
   "maps": {
+    "crypt_descent": "Descida à cripta",
     "dungeon_map": "Masmorra",
     "enemy": "Salões inimigos",
     "enemy_sewer": "Salões do esgoto",
