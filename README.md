@@ -414,8 +414,6 @@ Win/loss statistics are always read from `match_players.won`, never from `matche
 
 ## Features List
 
-> **TODO F9.1 (all):** write the one-line description of each feature you own, and fix the owners if needed.
-
 | Feature | Description | Member(s) |
 |---|---|---|
 | Sign up and log in with e-mail and password | Accounts with a unique e-mail and username; passwords hashed with Argon2id; the same error for a wrong e-mail or a wrong password; repeated failed logins are rate-limited (`429`) | Augusto (backend), Caio (screens) |
@@ -444,8 +442,6 @@ Win/loss statistics are always read from `match_players.won`, never from `matche
 
 ## Modules
 
-> **TODO F9.1 (@kanashir0):** after the last checkpoint (C5, 13/11), remove every module that did not pass its demo and recompute the total.
-
 | # | Module (subject) | Type | Points | Member(s) |
 |---|---|---|---|---|
 | 1 | Web-based game where users play against each other | Major | 2 | Roberto, Augusto, Rafael |
@@ -461,7 +457,7 @@ Win/loss statistics are always read from `match_players.won`, never from `matche
 | 11 | Game statistics and match history | Minor | 1 | Akita, Caio |
 | 12 | Monitoring system (Prometheus + Grafana) | Major | 2 | Akita, Augusto |
 | 13 | Support for multiple languages (3) | Minor | 1 | Caio |
-| | **Total** (9 Major × 2 + 4 Minor × 1; 14 required) | | **21** | |
+| | **Total** (8 Major × 2 + 5 Minor × 1; 14 required) | | **21** | |
 
 We did not use a custom "Module of choice".
 
@@ -857,8 +853,6 @@ The dashboards, the alerts and how to trigger one live are in the *Monitoring gu
 - David Goldberg, [What Every Computer Scientist Should Know About Floating-Point Arithmetic](https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html): the tolerance of the Python/TypeScript mirror tests.
 - [Python `dataclasses`](https://docs.python.org/3/library/dataclasses.html) · [pytest](https://docs.pytest.org/) · [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html) · [Vitest](https://vitest.dev/) · [MDN Canvas API](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API) · [MLX42](https://github.com/codam-coding-college/MLX42), the graphics library of the original Cub3D.
 
-> **TODO F9.1 (all):** add the references you actually used for your part.
-
 **How we used AI**
 
 We used AI assistants (Claude) as a support tool throughout the project. They were used for:
@@ -874,7 +868,6 @@ The team followed one rule: the assistant explains the concept or the bug and pr
 
 ## Credits
 
-- Game logic, map format and textures come from the *Cub3D* bonus project ([robertodelfranco/42-Cub3D](https://github.com/robertodelfranco/42-Cub3D)), written at 42 by Roberto Del Franco and Rafael Heringer.
-
-  > **TODO F9.1 (@robertodelfranco):** confirm the authors of the original Cub3D (with logins) and credit any third-party textures or sounds.
+- Game logic, map format and textures come from the *Cub3D* bonus project ([robertodelfranco/42-Cub3D](https://github.com/robertodelfranco/42-Cub3D)), written at 42 by Roberto Del Franco (`rdel-fra`) and Rafael Heringer (`rheringe`).
+- Fonts: Alegreya, Cinzel, Pirata One, Pixelify Sans and VT323, each under the SIL Open Font License 1.1 (license files in `frontend/public/fonts/`).
 - Built with the open-source projects listed in *Technical Stack*. Each one keeps its own license.
