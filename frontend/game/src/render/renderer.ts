@@ -57,6 +57,7 @@ export class ThreeRenderer implements Renderer {
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1;
+    this.renderer.localClippingEnabled = true; // Door que sobe some no teto
   }
 
   async init(map: GameMap, assets: Assets): Promise<void> {
@@ -120,13 +121,21 @@ export class ThreeRenderer implements Renderer {
 
       const surfaceGeometry = new THREE.PlaneGeometry(width, depth);
       this.resources.push(surfaceGeometry);
-      const floorMaterial = new THREE.MeshLambertMaterial({ color: assets.floor });
+      // Água: o plano sobe até a linha pintada nas paredes e reflete as tochas.
+      const waterLevel = assets.water?.level ?? 0;
+      const floorMaterial = assets.water
+        ? new THREE.MeshStandardMaterial({
+          color: assets.floor, metalness: 0, roughness: assets.water.roughness,
+        })
+        : new THREE.MeshLambertMaterial({ color: assets.floor });
       this.resources.push(floorMaterial);
       const ceilingMaterial = new THREE.MeshLambertMaterial({ color: assets.ceiling });
+      // Na água o Boss passa um pouco de y=1 (base 0,17 + 0,87); a Door é cortada em y=1.
+      ceilingMaterial.depthWrite = !assets.water;
       this.resources.push(ceilingMaterial);
       const floor = new THREE.Mesh(surfaceGeometry, floorMaterial);
       floor.rotation.x = -Math.PI / 2;
-      floor.position.set(width / 2, 0, depth / 2);
+      floor.position.set(width / 2, waterLevel, depth / 2);
       const ceiling = new THREE.Mesh(surfaceGeometry, ceilingMaterial);
       ceiling.rotation.x = Math.PI / 2;
       ceiling.position.set(width / 2, 1, depth / 2);
@@ -137,7 +146,7 @@ export class ThreeRenderer implements Renderer {
       this.torches = new Torches(grid, assets.light);
       this.resources.push(this.torches);
       scene.add(this.torches.object);
-      this.billboards = new Billboards(assets.billboards);
+      this.billboards = new Billboards(assets.billboards, waterLevel);
       this.resources.push(this.billboards);
       scene.add(this.billboards.object);
       this.fireballParticles = new FireballParticles();
