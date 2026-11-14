@@ -17,7 +17,7 @@ export default function Layout() {
   const navigate = useNavigate();
   // modo partida (#254): a rota declara, e o Layout só encolhe cabeçalho, miolo e rodapé
   const compact = useMatches().some((match) => (match.handle as RouteHandle | undefined)?.compact);
-  const navLink = `${navLinkClass} ${compact ? "px-1.5 py-0.5" : "px-2 py-1 tracking-wider"}`;
+  const navLink = `${navLinkClass} ${compact ? "px-1.5 py-0.5" : "px-2 py-1"}`;
 
   async function handleLogout() {
     try {
@@ -44,11 +44,10 @@ export default function Layout() {
             <>
               {/* o nome leva ao próprio perfil: mostra quem entrou e é o caminho para ele */}
               <nav aria-label={t("nav.label")} className={`flex flex-wrap items-center gap-x-1 gap-y-1 ${compact ? "text-xs" : "text-sm"}`}>
-                {/* o username fica como foi escrito: em maiúsculas, "sokks" pareceria outro nome */}
                 <NavLink to={`/users/${user.id}`} className={navLink}>{user.username}</NavLink>
-                <NavLink to="/leaderboard" className={`${navLink} uppercase`}>{t("nav.leaderboard")}</NavLink>
-                <NavLink to="/friends" className={`${navLink} uppercase`}>{t("nav.friends")}</NavLink>
-                <NavLink to="/settings" className={`${navLink} uppercase`}>{t("nav.settings")}</NavLink>
+                <NavLink to="/leaderboard" className={navLink}>{t("nav.leaderboard")}</NavLink>
+                <NavLink to="/friends" className={navLink}>{t("nav.friends")}</NavLink>
+                <NavLink to="/settings" className={navLink}>{t("nav.settings")}</NavLink>
               </nav>
               <button
                 type="button"
@@ -73,10 +72,10 @@ export default function Layout() {
       <footer className={`border-t border-crypt-700 px-4 ${compact ? "py-1" : "py-4"}`}>
         {/* compacto, mas sempre visível: o subject pede os links legais em toda página */}
         <nav aria-label={t("footer.navLabel")} className={`flex flex-wrap justify-center gap-2 ${compact ? "text-xs" : "text-sm"}`}>
-          <NavLink to="/privacy" className={`${navLink} uppercase`}>
+          <NavLink to="/privacy" className={navLink}>
             {t("footer.privacy")}
           </NavLink>
-          <NavLink to="/terms" className={`${navLink} uppercase`}>
+          <NavLink to="/terms" className={navLink}>
             {t("footer.terms")}
           </NavLink>
         </nav>

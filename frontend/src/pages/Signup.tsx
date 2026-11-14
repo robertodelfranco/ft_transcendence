@@ -7,6 +7,7 @@ import { useAuthForm } from "../auth/useAuthForm";
 import {
   normalize, validateEmail, validateNewPassword, validateUsername,
 } from "../auth/validation";
+import { linkClass } from "../components/styles";
 import TextField from "../components/TextField";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { errorMessage } from "../i18n/errorMessage";
@@ -101,7 +102,7 @@ export default function Signup() {
         {t("signup.haveAccount")}{" "}
         <Link
           to={loginTo}
-          className="underline hover:text-torch focus-visible:outline-2 focus-visible:outline-torch"
+          className={linkClass}
         >
           {t("signup.toLogin")}
         </Link>
