@@ -4,11 +4,13 @@ import type { PlayerSnapshot, ProjectileSnapshot } from "../types";
 import { Billboards } from "./billboards";
 import type { BillboardAssets } from "./billboardAssets";
 
+const FAR = { x: -50, y: -50 }; // câmera longe de tudo: nada some por estar colado nela
+
 it("dispose libera a geometria compartilhada do THREE.Sprite", () => {
   const frame = { texture: new THREE.Texture(), width: 1, height: 1, anchorX: 0.5, anchorY: 0 };
   const enemy = { frames: Array(10).fill(frame), referenceHeight: 1 };
   const billboards = new Billboards({ enemy } as unknown as BillboardAssets);
-  billboards.update({ localPlayer: { id: 1 }, otherPlayers: [], boss: null, projectiles: [], grid: [],
+  billboards.update({ localPlayer: { id: 1 }, camera: FAR, otherPlayers: [], boss: null, projectiles: [], grid: [],
     enemies: [{ id: "e1", x: 1, y: 1, state: "alert" }] }, 0);
   const geometry = (billboards.object.children[0] as THREE.Sprite).geometry;
   let disposed = false;
@@ -29,7 +31,7 @@ it("desenha cada Player com sua sprite e usa Nemesis para um ID desconhecido", (
     id, character_id, name: `p${id}`, x: id, y: 1, dx: 0, dy: -1,
     hp: 10, mana: 100, armor: 0, keys: 0, alive: true, connected: true,
   });
-  const view = { localPlayer: { id: 1 }, enemies: [], boss: null, projectiles: [], grid: [],
+  const view = { localPlayer: { id: 1 }, camera: FAR, enemies: [], boss: null, projectiles: [], grid: [],
     otherPlayers: [player(2, "nemesis"), player(3, "sucubus")] };
   billboards.update(view, 0);
   const [first, second] = billboards.object.children as THREE.Sprite[];
@@ -58,7 +60,7 @@ it("na água, Enemy, Boss e Pickup ficam logo abaixo da superfície; o Player af
     hp: 10, mana: 100, armor: 0, keys: 0, alive: true, connected: true,
   };
   billboards.update({
-    localPlayer: { id: 1 }, otherPlayers: [other], projectiles: [], grid: ["PM"],
+    localPlayer: { id: 1 }, camera: FAR, otherPlayers: [other], projectiles: [], grid: ["PM"],
     enemies: [{ id: "e1", x: 1, y: 1, state: "alert" }],
     boss: { x: 2, y: 2, hp: 10, state: "idle" },
   }, 0);
@@ -70,7 +72,7 @@ it("na água, Enemy, Boss e Pickup ficam logo abaixo da superfície; o Player af
   expect(boss.position.y).toBeCloseTo(0.19);
   expect(player.position.y).toBe(0);
   billboards.update({
-    localPlayer: { id: 1 }, otherPlayers: [other], projectiles: [], grid: ["PM"],
+    localPlayer: { id: 1 }, camera: FAR, otherPlayers: [other], projectiles: [], grid: ["PM"],
     enemies: [{ id: "e1", x: 1, y: 1, state: "alert" }],
     boss: { x: 2, y: 2, hp: 0, state: "dying" },
   }, 0);
@@ -89,7 +91,7 @@ it("o Enemy usa a base do quadro mais baixo ao andar e atacar, e a própria ao m
     referenceHeight: 62,
   };
   const billboards = new Billboards({ enemy } as unknown as BillboardAssets);
-  const view = { localPlayer: { id: 1 }, otherPlayers: [], boss: null, projectiles: [], grid: [] };
+  const view = { localPlayer: { id: 1 }, camera: FAR, otherPlayers: [], boss: null, projectiles: [], grid: [] };
   billboards.update({ ...view, enemies: [{ id: "e1", x: 1, y: 1, state: "alert" }] }, 0);
   const sprite = billboards.object.children[0] as THREE.Sprite;
   expect(sprite.center.y).toBe(0.02);
@@ -118,7 +120,7 @@ it.each(["local", "remote"])("usa o projétil da Sucubus do Player %s e preserva
     x: 2, y: 2, dx: 0, dy: -1,
   };
   const view = {
-    localPlayer: { id: 1, character_id: source === "local" ? "sucubus" : "nemesis" },
+    localPlayer: { id: 1, character_id: source === "local" ? "sucubus" : "nemesis" }, camera: FAR,
     otherPlayers: [other], enemies: [], boss: null, projectiles: [projectile], grid: [],
   };
   billboards.update(view, 0);
@@ -141,7 +143,7 @@ const sheetOf = (count: number) => ({
     ({ texture: new THREE.Texture(), width: 64, height: 64, anchorX: 0.5, anchorY: 0 })),
   referenceHeight: 64,
 });
-const empty = { localPlayer: { id: 1 }, otherPlayers: [], enemies: [], boss: null, projectiles: [], grid: [] };
+const empty = { localPlayer: { id: 1 }, camera: FAR, otherPlayers: [], enemies: [], boss: null, projectiles: [], grid: [] };
 
 it("o Enemy troca o quadro de andar pela distância andada, não pelo tempo", () => {
   const enemy = sheetOf(10);
@@ -212,5 +214,39 @@ it("outro Player dá um pulinho por passo enquanto anda e volta ao chão quando 
   expect(Math.max(...heights)).toBeGreaterThan(0.02);
   for (let i = 0; i < 12; i++) billboards.update({ ...empty, otherPlayers: [other(x)] }, 1 / 60);
   expect(sprite.position.y).toBe(0);
+  billboards.dispose();
+});
+
+it("um sprite colado na câmera some aos poucos entre 0,6 e 0,2", () => {
+  const nemesis = sheetOf(1);
+  const billboards = new Billboards({ "player:nemesis": nemesis } as unknown as BillboardAssets);
+  const other: PlayerSnapshot = {
+    id: 2, character_id: "nemesis", name: "other", x: 5, y: 5, dx: 1, dy: 0,
+    hp: 10, mana: 100, armor: 0, keys: 0, alive: true, connected: true,
+  };
+  const at = (distance: number) => ({ ...empty, otherPlayers: [other], camera: { x: 5 - distance, y: 5 } });
+  billboards.update(at(1), 0);
+  const sprite = billboards.object.children[0] as THREE.Sprite;
+  expect(sprite.material.opacity).toBe(1);
+  billboards.update(at(0.4), 0); // no meio da faixa
+  expect(sprite.material.opacity).toBeCloseTo(0.5);
+  expect(sprite.visible).toBe(true);
+  billboards.update(at(0.15), 0);
+  expect(sprite.material.opacity).toBe(0);
+  expect(sprite.visible).toBe(false);
+  billboards.dispose();
+});
+
+it("o tiro do Boss leva o tingimento do Theme; a fireball do Player não", () => {
+  const frame = () => ({ texture: new THREE.Texture(), width: 45, height: 45, anchorX: 0.5, anchorY: 0 });
+  const fireball = { frames: Array.from({ length: 4 }, frame), referenceHeight: 45 };
+  const bullet = { frames: Array.from({ length: 4 }, frame), referenceHeight: 45 };
+  const billboards = new Billboards({ fireball, bullet } as BillboardAssets, 0, 0xff6650);
+  const shot = (id: string, kind: ProjectileSnapshot["kind"]): ProjectileSnapshot =>
+    ({ id, kind, state: "moving", owner: kind === "bullet" ? null : 7, x: 3, y: 3, dx: 1, dy: 0 });
+  billboards.update({ ...empty, projectiles: [shot("b1", "bullet"), shot("f1", "fireball")] }, 0);
+  const [boss, player] = billboards.object.children as THREE.Sprite[];
+  expect(boss.material.color.getHex()).toBe(0xff6650);
+  expect(player.material.color.getHex()).toBe(0xffffff);
   billboards.dispose();
 });

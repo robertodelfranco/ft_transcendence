@@ -12,6 +12,7 @@ export interface BillboardView {
   boss: BossSnapshot | null;
   projectiles: readonly ProjectileSnapshot[];
   grid: readonly string[];
+  camera: { x: number; y: number };
 }
 
 interface Clip {
@@ -71,6 +72,12 @@ const STEP_MAX = 0.5; // salto maior que isso (respawn, reconexão) não é pass
 // multiplicado não aparece no boss_mage, que já é vermelho; acima de 1 ele clareia e passa pelo bloom.
 const BOSS_FLASH_S = 0.12;
 const BOSS_FLASH_RGB = [2.5, 0.8, 0.8] as const;
+// Colado na câmera, um sprite vira um borrão de pixels gigantes (aliado ou fireball atravessando o
+// Player): a opacidade cai de 1 em NEAR_FADE_START até 0 em NEAR_FADE_END. Um Player (0,8 de altura)
+// já cobre a tela inteira a ~0,5 da câmera (meia altura visível a d é 0,58·d, e ele passa 0,3 acima
+// dela), por isso o fade começa em 0,6.
+const NEAR_FADE_START = 0.6;
+const NEAR_FADE_END = 0.2;
 
 // Todos os quadros com a base do quadro mais baixo: a animação fica presa ao canvas do PNG,
 // como no C, e a linha d'água pintada não pula entre os clips. Vale para quadros do mesmo tamanho.
@@ -100,7 +107,11 @@ export class Billboards {
 
   // waterLevel > 0: Enemy, Boss e Pickups ficam logo abaixo da superfície; o Player fica em y=0
   // e a água corta as pernas.
-  constructor(private readonly assets: BillboardAssets, private readonly waterLevel = 0) {}
+  constructor(
+    private readonly assets: BillboardAssets,
+    private readonly waterLevel = 0,
+    private readonly bulletTint = 0xffffff,
+  ) {}
 
   private sunk(depth: number): number {
     return Math.max(0, this.waterLevel - depth);
@@ -152,6 +163,10 @@ export class Billboards {
       );
       entry.sprite.center.set(frame.anchorX, ground === null ? 0.5 : frame.anchorY);
       entry.sprite.position.set(x, ground ?? 0.5, y);
+      const near = Math.hypot(x - view.camera.x, y - view.camera.y);
+      entry.material.opacity = Math.min(1, Math.max(0,
+        (near - NEAR_FADE_END) / (NEAR_FADE_START - NEAR_FADE_END)));
+      entry.sprite.visible = entry.material.opacity > 0;
       return entry;
     };
 
@@ -187,7 +202,8 @@ export class Billboards {
       const fireballScale = projectile.kind === "fireball" ? 1.2 : 1;
       draw(`projectile:${projectile.id}`, `${projectile.kind}:${projectile.state}`,
         sheet, clip,
-        projectile.x, projectile.y, 0.18 * fireballScale, null);
+        projectile.x, projectile.y, 0.18 * fireballScale, null,
+        projectile.kind === "bullet" ? this.bulletTint : 0xffffff);
     }
     for (const player of view.otherPlayers) {
       if (player.id === view.localPlayer.id || !player.alive) continue;
