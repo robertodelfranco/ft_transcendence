@@ -61,6 +61,8 @@ Anote o resultado na linha D6 da Parte 5: qual secret foi usado e se a troca já
 
 Todos os comandos vão no terminal do PC A. Não precisa de sudo em nenhum passo.
 
+> **Atalho:** o [subir-host.sh](subir-host.sh) faz do 1.2 ao 1.8 de uma vez, e confere o resultado (uso no [roteiro-defesa.md](roteiro-defesa.md) §1). Os passos abaixo continuam valendo para entender cada um, ou quando o script falhar.
+
 ### 1.1 Anotar quem é o servidor
 
 ```bash
